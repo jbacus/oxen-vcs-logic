@@ -28,6 +28,24 @@ Professional DAW projects contain massive binary assets that overwhelm tradition
 - Xcode 15+
 - Rust toolchain (for CLI wrapper)
 
+## Quick Start
+
+```bash
+# Build the CLI tool
+cd OxVCS-CLI-Wrapper
+cargo build --release
+
+# Initialize a Logic Pro project
+cd ~/Music/YourProject.logicx
+oxenvcs-cli init --logic .
+
+# Stage and commit
+oxenvcs-cli add --all
+oxenvcs-cli commit -m "Initial commit" --bpm 120 --sample-rate 48000
+```
+
+See [Quick Start Guide](docs/QUICKSTART.md) for detailed instructions.
+
 ## Development Setup
 
 ```bash
@@ -42,16 +60,23 @@ pip install oxen-ai
 cd OxVCS-CLI-Wrapper
 cargo build --release
 
-# Open main app in Xcode
-open OxVCS-App/OxVCS.xcodeproj
+# Build FSEvents monitor (requires Swift/Xcode)
+cd ../OxVCS-LaunchAgent
+swift build -c release
 ```
 
 ## Implementation Status
 
 See [IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) for detailed roadmap.
 
-- [ ] Phase 1: Core Data Management (MVP)
-- [ ] Phase 2: Service Architecture & Resilience  
+- [x] **Phase 1: Core Data Management (MVP)** - ✅ COMPLETE ([Details](docs/PHASE1_COMPLETE.md))
+  - Logic Pro project detection and validation
+  - .oxenignore template generation
+  - Oxen initialization wrapper
+  - Core operations (init, add, commit, log, restore)
+  - Structured commit metadata (BPM, sample rate, key signature)
+  - FSEvents monitoring with debounce (proof of concept)
+- [ ] Phase 2: Service Architecture & Resilience
 - [ ] Phase 3: UI Application & Collaboration
 
 ## Key Features
@@ -89,8 +114,11 @@ oxen-vcs-logic/
 
 ## Documentation
 
-- [Architecture Blueprint](docs/ARCHITECTURE.md) - Full technical specification
+- [Quick Start Guide](docs/QUICKSTART.md) - Get started in 5 minutes
+- [Usage Guide](OxVCS-CLI-Wrapper/USAGE.md) - Complete CLI reference
+- [Phase 1 Completion Report](docs/PHASE1_COMPLETE.md) - Technical implementation details
 - [Implementation Plan](docs/IMPLEMENTATION_PLAN.md) - Development roadmap
+- [Architecture Blueprint](docs/ARCHITECTURE.md) - Full technical specification (TBD)
 - [API Reference](docs/API.md) - Component interfaces (TBD)
 
 ## License
