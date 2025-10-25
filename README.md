@@ -46,6 +46,26 @@ oxenvcs-cli commit -m "Initial commit" --bpm 120 --sample-rate 48000
 
 See [Quick Start Guide](docs/QUICKSTART.md) for detailed instructions.
 
+## Testing
+
+We maintain comprehensive test coverage across all components:
+
+```bash
+# Run all Rust tests
+cd OxVCS-CLI-Wrapper && cargo test
+
+# Run all Swift tests
+cd OxVCS-LaunchAgent && swift test
+cd OxVCS-App && swift test
+```
+
+**Documentation**:
+- [Testing Strategy](docs/TESTING_STRATEGY.md) - Comprehensive testing approach
+- [Test Implementation Plan](docs/TEST_IMPLEMENTATION_PLAN.md) - Phased implementation roadmap
+- See [CONTRIBUTING.md](CONTRIBUTING.md#testing) for detailed testing guidelines
+
+**Coverage Goals**: 70-80% overall, with 90%+ coverage for critical paths (locks, commits, power management)
+
 ## Development Setup
 
 ```bash
@@ -114,12 +134,24 @@ oxen-vcs-logic/
 
 ## Documentation
 
+### User Guides
 - [Quick Start Guide](docs/QUICKSTART.md) - Get started in 5 minutes
 - [Usage Guide](OxVCS-CLI-Wrapper/USAGE.md) - Complete CLI reference
-- [Phase 1 Completion Report](docs/PHASE1_COMPLETE.md) - Technical implementation details
+
+### Technical Documentation
+- [Testing Strategy](docs/TESTING_STRATEGY.md) - Comprehensive testing approach
+- [Test Implementation Plan](docs/TEST_IMPLEMENTATION_PLAN.md) - Phased test implementation
 - [Implementation Plan](docs/IMPLEMENTATION_PLAN.md) - Development roadmap
 - [Architecture Blueprint](docs/ARCHITECTURE.md) - Full technical specification (TBD)
 - [API Reference](docs/API.md) - Component interfaces (TBD)
+
+### Completion Reports
+- [Phase 1 Completion Report](docs/PHASE1_COMPLETE.md) - MVP implementation details
+- [Phase 2 Completion Report](docs/PHASE2_COMPLETE.md) - Service architecture details
+- [Phase 3 Completion Report](PHASE3_COMPLETE.md) - UI & collaboration features
+
+### Developer Resources
+- [Contributing Guidelines](CONTRIBUTING.md) - Code style, testing, and PR process
 
 ## License
 
