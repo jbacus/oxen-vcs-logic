@@ -80,6 +80,19 @@ public class CommitOrchestrator {
         let startTime = Date()
         let normalizedPath = (projectPath as NSString).standardizingPath
 
+        // Check for lock before committing
+        if LockManager.shared.isLocked(projectPath: normalizedPath) {
+            if let lock = LockManager.shared.getLockInfo(projectPath: normalizedPath) {
+                print("🔒 Project is locked by \(lock.lockedBy)")
+                return CommitResult(
+                    success: false,
+                    commitId: nil,
+                    message: "Project is locked by \(lock.lockedBy). Lock expires in \(lock.remainingHours) hours.",
+                    duration: 0
+                )
+            }
+        }
+
         // Prevent concurrent commits
         guard !isCommitting else {
             print("⚠️  Commit already in progress, skipping")
