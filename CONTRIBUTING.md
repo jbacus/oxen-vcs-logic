@@ -47,17 +47,155 @@ Examples:
 
 ## Testing
 
-### Swift Tests
+We have a comprehensive testing strategy to ensure quality and reliability. Please refer to:
+- **[Testing Strategy](docs/TESTING_STRATEGY.md)** - Overall testing philosophy and approach
+- **[Test Implementation Plan](docs/TEST_IMPLEMENTATION_PLAN.md)** - Phased implementation roadmap
+
+### Running Tests
+
+#### All Tests (CI Pipeline)
 ```bash
-xcodebuild test -project OxVCS-App/OxVCS.xcodeproj -scheme OxVCS
+# Runs all test suites via GitHub Actions locally
+act -j rust-tests
+act -j swift-daemon-tests
+act -j swift-app-tests
 ```
 
-### Rust Tests
+#### Rust Tests (CLI Wrapper)
 ```bash
 cd OxVCS-CLI-Wrapper
+
+# Run all tests
 cargo test
+
+# Run tests with coverage
+cargo tarpaulin --out Html --output-dir coverage
+
+# Run benchmarks
 cargo bench
+
+# Run with verbose output
+cargo test -- --nocapture
 ```
+
+#### Swift Tests (LaunchAgent Daemon)
+```bash
+cd OxVCS-LaunchAgent
+
+# Run all tests
+swift test
+
+# Run with coverage
+swift test --enable-code-coverage
+
+# Run specific test
+swift test --filter LockManagerTests
+```
+
+#### Swift Tests (App UI)
+```bash
+cd OxVCS-App
+
+# Run all tests
+swift test
+
+# Run with coverage
+swift test --enable-code-coverage
+```
+
+### Writing Tests
+
+#### Test Requirements
+- **All new features** must include tests
+- **Bug fixes** should include regression tests
+- Aim for **70-80% code coverage** overall
+- Critical paths require **90%+ coverage**
+
+#### Test Utilities
+We provide test utilities to make testing easier:
+
+**Rust**:
+- `TestFixture` - Creates temporary Logic Pro projects
+- See `OxVCS-CLI-Wrapper/tests/common/mod.rs`
+- Example: `OxVCS-CLI-Wrapper/tests/example_test.rs`
+
+**Swift (LaunchAgent)**:
+- `TestFixtures` - Creates test projects and environments
+- See `OxVCS-LaunchAgent/Tests/TestUtils/TestFixtures.swift`
+
+**Swift (App)**:
+- `MockOxenDaemonXPCClient` - Mock XPC client for UI testing
+- See `OxVCS-App/Tests/TestUtils/MockXPCClient.swift`
+
+#### Test Naming Conventions
+
+**Swift**:
+```swift
+// Pattern: test_{function}_{scenario}_{expectedResult}
+func testLockAcquisition_WhenAvailable_Succeeds()
+func testLockAcquisition_WhenAlreadyLocked_Fails()
+```
+
+**Rust**:
+```rust
+// Pattern: test_{function}_{scenario}
+#[test]
+fn test_is_logic_project_valid_structure()
+#[test]
+fn test_is_logic_project_missing_alternatives()
+```
+
+### Code Coverage
+
+We use coverage tracking to ensure test quality:
+
+**View Coverage Reports**:
+```bash
+# Rust
+cd OxVCS-CLI-Wrapper
+cargo tarpaulin --out Html
+open tarpaulin-report.html
+
+# Swift
+cd OxVCS-LaunchAgent
+swift test --enable-code-coverage
+xcrun llvm-cov show .build/debug/...xctest -instr-profile=... -format=html -output-dir=coverage
+open coverage/index.html
+```
+
+**Coverage Requirements**:
+- Overall: ≥70%
+- Critical paths (locks, commits, power management): ≥90%
+- New code should not decrease coverage (ratcheting)
+
+### Continuous Integration
+
+All tests run automatically on:
+- Every push to `main`, `develop`, or `claude/*` branches
+- Every pull request
+- See `.github/workflows/test.yml` for CI configuration
+
+**Quality Gates** (must pass for PR merge):
+- All tests pass
+- No linting errors (`cargo clippy`, `cargo fmt`)
+- Code coverage ≥ baseline (no decrease)
+
+### Performance Testing
+
+We use benchmarking to track performance:
+
+```bash
+cd OxVCS-CLI-Wrapper
+cargo bench
+
+# Compare with baseline
+cargo bench -- --baseline main
+```
+
+**Performance Requirements**:
+- Commit 1GB project: <10 seconds
+- Lock acquisition: <100ms
+- Daemon CPU usage: <5% average
 
 ## Pull Request Process
 
