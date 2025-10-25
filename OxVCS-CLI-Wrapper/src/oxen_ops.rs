@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 use crate::commit_metadata::CommitMetadata;
 use crate::ignore_template::generate_oxenignore;
 use crate::logic_project::LogicProject;
+use crate::draft_manager::DraftManager;
 
 /// Wrapper for Oxen repository operations
 pub struct OxenRepository {
@@ -52,9 +53,20 @@ impl OxenRepository {
 
         println!("Created .oxenignore file");
 
-        Ok(Self {
+        // Create repository instance
+        let repo_instance = Self {
             path: path.to_path_buf(),
-        })
+        };
+
+        // Initialize draft branch workflow
+        println!("Initializing draft branch workflow...");
+        let draft_manager = DraftManager::new(path)
+            .context("Failed to create draft manager")?;
+
+        draft_manager.initialize().await
+            .context("Failed to initialize draft branch")?;
+
+        Ok(repo_instance)
     }
 
     /// Initializes a new Oxen repository (generic)
@@ -187,6 +199,35 @@ impl OxenRepository {
             || !status.untracked_files.is_empty()
             || !status.untracked_dirs.is_empty()
             || !status.modified_files.is_empty())
+    }
+
+    /// Get the draft manager for this repository
+    pub fn draft_manager(&self) -> Result<DraftManager> {
+        DraftManager::new(&self.path)
+    }
+
+    /// Ensure repository is on draft branch
+    pub async fn ensure_on_draft_branch(&self) -> Result<()> {
+        let draft = self.draft_manager()?;
+
+        if !draft.is_on_draft_branch()? {
+            draft.switch_to_draft().await?;
+        }
+
+        Ok(())
+    }
+
+    /// Create an auto-commit on the draft branch
+    ///
+    /// This is the primary method for daemon auto-commits
+    pub async fn auto_commit(&self, metadata: CommitMetadata) -> Result<String> {
+        let draft = self.draft_manager()?;
+
+        // Stage all changes first
+        self.stage_all().await?;
+
+        // Create auto-commit on draft branch
+        draft.auto_commit(metadata).await
     }
 }
 

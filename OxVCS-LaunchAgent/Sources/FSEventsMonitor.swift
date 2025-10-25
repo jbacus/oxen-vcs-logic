@@ -2,12 +2,15 @@ import Foundation
 import CoreServices
 
 /// FSEvents-based file system monitor with debounce logic
-class FSEventsMonitor {
+public class FSEventsMonitor {
 
     // MARK: - Configuration
 
     /// Debounce threshold in seconds (default: 30 seconds)
-    private let debounceThreshold: TimeInterval = 30.0
+    private let debounceThreshold: TimeInterval
+
+    /// Callback triggered when debounce expires
+    private var commitCallback: ((String) async -> Void)?
 
     /// Minimum delay between checks (default: 5 seconds)
     private let minimumCheckInterval: TimeInterval = 5.0
@@ -22,7 +25,9 @@ class FSEventsMonitor {
 
     // MARK: - Lifecycle
 
-    init() {}
+    public init(debounceThreshold: TimeInterval = 30.0) {
+        self.debounceThreshold = debounceThreshold
+    }
 
     deinit {
         stop()
@@ -30,8 +35,13 @@ class FSEventsMonitor {
 
     // MARK: - Public Methods
 
+    /// Set the callback to be triggered when debounce expires
+    public func setCommitCallback(_ callback: @escaping (String) async -> Void) {
+        self.commitCallback = callback
+    }
+
     /// Starts monitoring the specified path for file system events
-    func start(watchingPath path: String) async throws {
+    public func start(watchingPath path: String) async throws {
         guard !isMonitoring else {
             print("⚠️  Already monitoring")
             return
@@ -101,7 +111,7 @@ class FSEventsMonitor {
     }
 
     /// Stops monitoring
-    func stop() {
+    public func stop() {
         guard isMonitoring, let stream = eventStream else { return }
 
         FSEventStreamStop(stream)
@@ -115,6 +125,16 @@ class FSEventsMonitor {
         eventStream = nil
 
         print("✓ Monitoring stopped")
+    }
+
+    /// Check if currently monitoring
+    public func isActive() -> Bool {
+        return isMonitoring
+    }
+
+    /// Get the path being watched
+    public func getWatchedPath() -> String {
+        return watchedPath
     }
 
     // MARK: - Private Methods
@@ -192,8 +212,17 @@ class FSEventsMonitor {
         let timeSinceLastEvent = Date().timeIntervalSince(lastTime)
 
         print("\n⏱️  Debounce expired (no activity for \(Int(timeSinceLastEvent))s)")
-        print("📝 Would trigger auto-commit here (Phase 2 feature)")
-        print("   - This would run: oxenvcs-cli add --all && oxenvcs-cli commit -m 'Auto-save'\n")
+
+        // Trigger commit callback if set
+        if let callback = commitCallback {
+            print("💾 Triggering auto-commit for: \(watchedPath)")
+            Task {
+                await callback(watchedPath)
+            }
+        } else {
+            print("📝 Would trigger auto-commit here (no callback set)")
+            print("   - This would run: oxenvcs-cli add --all && oxenvcs-cli commit -m 'Auto-save'\n")
+        }
 
         // Reset state
         lastEventTime = nil

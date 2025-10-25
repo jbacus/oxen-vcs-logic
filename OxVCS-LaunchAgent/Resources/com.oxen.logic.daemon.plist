@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Service Identification -->
+    <key>Label</key>
+    <string>com.oxen.logic.daemon</string>
+
+    <!-- Program Configuration -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/local/bin/oxvcs-daemon</string>
+        <string>--daemon</string>
+    </array>
+
+    <!-- Launch Conditions -->
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <dict>
+        <!-- Restart if crashed -->
+        <key>SuccessfulExit</key>
+        <false/>
+        <!-- Only run when Logic Pro projects exist -->
+        <key>PathState</key>
+        <dict>
+            <key>/Users</key>
+            <string>true</string>
+        </dict>
+    </dict>
+
+    <!-- Process Management -->
+    <key>ProcessType</key>
+    <string>Background</string>
+
+    <key>Nice</key>
+    <integer>1</integer>
+
+    <key>LowPriorityIO</key>
+    <true/>
+
+    <!-- Throttle Settings -->
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
+    <!-- Logging Configuration -->
+    <key>StandardOutPath</key>
+    <string>/tmp/com.oxen.logic.daemon.stdout</string>
+
+    <key>StandardErrorPath</key>
+    <string>/tmp/com.oxen.logic.daemon.stderr</string>
+
+    <!-- Environment -->
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+
+    <!-- Working Directory -->
+    <key>WorkingDirectory</key>
+    <string>/tmp</string>
+
+    <!-- User Context -->
+    <key>UserName</key>
+    <string><!-- Will be dynamically set during installation --></string>
+
+    <!-- Security -->
+    <key>HardResourceLimits</key>
+    <dict>
+        <!-- Limit memory to 512MB -->
+        <key>MemoryLimit</key>
+        <integer>536870912</integer>
+        <!-- Limit CPU to 50% -->
+        <key>CPU</key>
+        <integer>50</integer>
+    </dict>
+
+    <key>SoftResourceLimits</key>
+    <dict>
+        <key>MemoryLimit</key>
+        <integer>268435456</integer>
+        <key>CPU</key>
+        <integer>25</integer>
+    </dict>
+
+    <!-- Launch Events -->
+    <key>LaunchEvents</key>
+    <dict>
+        <!-- Respond to file system events -->
+        <key>com.apple.fsevents.matching</key>
+        <dict>
+            <key>com.oxen.logic.watch</key>
+            <dict>
+                <key>MatchingPaths</key>
+                <array>
+                    <string>/Users</string>
+                </array>
+            </dict>
+        </dict>
+    </dict>
+
+    <!-- XPC Service -->
+    <key>MachServices</key>
+    <dict>
+        <key>com.oxen.logic.daemon.xpc</key>
+        <true/>
+    </dict>
+
+    <!-- Exit Timeout -->
+    <key>ExitTimeOut</key>
+    <integer>30</integer>
+
+    <!-- Session Type -->
+    <key>LimitLoadToSessionType</key>
+    <string>Aqua</string>
+</dict>
+</plist>

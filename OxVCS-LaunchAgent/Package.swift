@@ -8,7 +8,7 @@ let package = Package(
     ],
     products: [
         .executable(
-            name: "oxvcs-monitor",
+            name: "oxvcs-daemon",
             targets: ["OxVCS-LaunchAgent"]
         ),
     ],
@@ -17,7 +17,10 @@ let package = Package(
         .executableTarget(
             name: "OxVCS-LaunchAgent",
             dependencies: [],
-            path: "Sources"
+            path: "Sources",
+            resources: [
+                .copy("../Resources")
+            ]
         ),
         .testTarget(
             name: "OxVCS-LaunchAgentTests",
