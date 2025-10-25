@@ -92,6 +92,44 @@ import Foundation
     func ping(
         withReply reply: @escaping (Bool) -> Void
     )
+
+    /// Acquire an exclusive lock for a project
+    /// - Parameters:
+    ///   - projectPath: Path to project
+    ///   - timeoutHours: Lock timeout in hours (default: 24)
+    ///   - reply: Success status and error message
+    func acquireLock(
+        for projectPath: String,
+        timeoutHours: Int,
+        withReply reply: @escaping (Bool, String?) -> Void
+    )
+
+    /// Release a lock for a project
+    /// - Parameters:
+    ///   - projectPath: Path to project
+    ///   - reply: Success status and error message
+    func releaseLock(
+        for projectPath: String,
+        withReply reply: @escaping (Bool, String?) -> Void
+    )
+
+    /// Force-break a lock (admin operation)
+    /// - Parameters:
+    ///   - projectPath: Path to project
+    ///   - reply: Success status and error message
+    func forceBreakLock(
+        for projectPath: String,
+        withReply reply: @escaping (Bool, String?) -> Void
+    )
+
+    /// Get lock information for a project
+    /// - Parameters:
+    ///   - projectPath: Path to project
+    ///   - reply: Lock info dictionary or nil if not locked
+    func getLockInfo(
+        for projectPath: String,
+        withReply reply: @escaping ([String: Any]?) -> Void
+    )
 }
 
 // MARK: - XPC Service Implementation
@@ -248,6 +286,76 @@ public class OxenDaemonXPCService: NSObject, OxenDaemonXPCProtocol {
 
     public func ping(withReply reply: @escaping (Bool) -> Void) {
         reply(true)
+    }
+
+    public func acquireLock(
+        for projectPath: String,
+        timeoutHours: Int,
+        withReply reply: @escaping (Bool, String?) -> Void
+    ) {
+        print("XPC: Acquire lock for: \(projectPath)")
+
+        let success = LockManager.shared.acquireLock(projectPath: projectPath, timeoutHours: timeoutHours)
+        if success {
+            reply(true, nil)
+        } else {
+            if let lock = LockManager.shared.getLockInfo(projectPath: projectPath) {
+                reply(false, "Project is already locked by \(lock.lockedBy)")
+            } else {
+                reply(false, "Failed to acquire lock")
+            }
+        }
+    }
+
+    public func releaseLock(
+        for projectPath: String,
+        withReply reply: @escaping (Bool, String?) -> Void
+    ) {
+        print("XPC: Release lock for: \(projectPath)")
+
+        let success = LockManager.shared.releaseLock(projectPath: projectPath)
+        if success {
+            reply(true, nil)
+        } else {
+            reply(false, "Failed to release lock (not locked or owned by someone else)")
+        }
+    }
+
+    public func forceBreakLock(
+        for projectPath: String,
+        withReply reply: @escaping (Bool, String?) -> Void
+    ) {
+        print("XPC: Force-break lock for: \(projectPath)")
+
+        let success = LockManager.shared.forceBreakLock(projectPath: projectPath)
+        if success {
+            reply(true, nil)
+        } else {
+            reply(false, "Failed to break lock (project not locked)")
+        }
+    }
+
+    public func getLockInfo(
+        for projectPath: String,
+        withReply reply: @escaping ([String: Any]?) -> Void
+    ) {
+        guard let lock = LockManager.shared.getLockInfo(projectPath: projectPath) else {
+            reply(nil)
+            return
+        }
+
+        let formatter = ISO8601DateFormatter()
+        let lockInfo: [String: Any] = [
+            "projectPath": lock.projectPath,
+            "lockedBy": lock.lockedBy,
+            "lockId": lock.lockId,
+            "acquiredAt": formatter.string(from: lock.acquiredAt),
+            "expiresAt": formatter.string(from: lock.expiresAt),
+            "isExpired": lock.isExpired,
+            "remainingHours": lock.remainingHours
+        ]
+
+        reply(lockInfo)
     }
 
     // MARK: - Helpers
