@@ -15,8 +15,6 @@ class LockManager {
     /// Attempts to acquire a lock for a project
     /// Returns true if lock acquired, false if already locked by someone else
     func acquireLock(projectPath: String, timeoutHours: Int = 24) -> Bool {
-        let lockFilePath = getLockFilePath(projectPath: projectPath)
-
         // Check if project is already locked
         if let existingLock = readLock(projectPath: projectPath) {
             if existingLock.isExpired {

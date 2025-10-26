@@ -91,12 +91,9 @@ public class FSEventsMonitor {
 
         self.eventStream = stream
 
-        // Schedule stream on run loop
-        FSEventStreamScheduleWithRunLoop(
-            stream,
-            CFRunLoopGetCurrent(),
-            CFRunLoopMode.defaultMode.rawValue
-        )
+        // Use dispatch queue instead of deprecated CFRunLoop
+        let queue = DispatchQueue(label: "com.oxenvcs.fsevents", qos: .userInitiated)
+        FSEventStreamSetDispatchQueue(stream, queue)
 
         // Start the stream
         guard FSEventStreamStart(stream) else {
@@ -106,8 +103,10 @@ public class FSEventsMonitor {
         isMonitoring = true
         print("✓ Monitoring started for: \(path)\n")
 
-        // Keep the run loop running
-        CFRunLoopRun()
+        // Keep the task alive
+        while !Task.isCancelled {
+            try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+        }
     }
 
     /// Stops monitoring
