@@ -27,29 +27,34 @@ impl LogicProject {
             return Err(anyhow!("Path is not a directory: {}", path.display()));
         }
 
+        // Canonicalize the path to resolve relative paths like "." to absolute paths
+        // This ensures we can properly check the extension even when running from inside the .logicx directory
+        let canonical_path = std::fs::canonicalize(path)
+            .context("Failed to canonicalize path")?;
+
         // Check if it has .logicx extension
-        let extension = path.extension()
+        let extension = canonical_path.extension()
             .and_then(|e| e.to_str())
             .unwrap_or("");
 
         if extension != "logicx" {
             return Err(anyhow!(
                 "Path is not a Logic Pro folder project (.logicx): {}",
-                path.display()
+                canonical_path.display()
             ));
         }
 
         // Check for projectData file
-        let project_data_path = path.join("projectData");
+        let project_data_path = canonical_path.join("projectData");
         if !project_data_path.exists() {
             return Err(anyhow!(
                 "No projectData file found in {}",
-                path.display()
+                canonical_path.display()
             ));
         }
 
         Ok(LogicProject {
-            path: path.to_path_buf(),
+            path: canonical_path,
             project_data_path,
         })
     }
@@ -90,6 +95,7 @@ impl LogicProject {
 mod tests {
     use super::*;
     use std::fs;
+    use std::env;
 
     #[test]
     fn test_detect_invalid_extension() {
@@ -99,6 +105,33 @@ mod tests {
         let result = LogicProject::detect(&temp_dir);
         assert!(result.is_err());
 
+        let _ = fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_detect_with_current_directory() {
+        // Create a test .logicx directory
+        let temp_dir = std::env::temp_dir().join("test_project.logicx");
+        let _ = fs::create_dir_all(&temp_dir);
+
+        // Create projectData file
+        let project_data = temp_dir.join("projectData");
+        let _ = fs::write(&project_data, b"test");
+
+        // Save current directory
+        let original_dir = env::current_dir().unwrap();
+
+        // Change to the .logicx directory and test with "."
+        env::set_current_dir(&temp_dir).unwrap();
+        let result = LogicProject::detect(".");
+
+        // Restore original directory
+        env::set_current_dir(original_dir).unwrap();
+
+        // Verify it worked
+        assert!(result.is_ok());
+
+        // Cleanup
         let _ = fs::remove_dir_all(&temp_dir);
     }
 
