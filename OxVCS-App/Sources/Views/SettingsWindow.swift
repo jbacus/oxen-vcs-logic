@@ -130,33 +130,37 @@ class SettingsWindow {
     }
 
     @objc private func toggleDaemonMonitoring() {
+        // Note: This is a placeholder implementation. In a complete implementation,
+        // you would need to pause/resume monitoring for all registered projects.
+        // For now, we'll show a message that this feature needs project selection.
+
+        showError("Global pause/resume not yet implemented. Use per-project controls instead.")
+
+        // TODO: Implement global pause/resume by:
+        // 1. Getting all monitored projects
+        // 2. Calling pause/resumeMonitoring(for:) for each project
+
+        /*
         if isDaemonPaused {
-            // Resume monitoring
-            OxenDaemonXPCClient.shared.resumeMonitoring { [weak self] success in
-                DispatchQueue.main.async {
-                    if success {
-                        self?.isDaemonPaused = false
-                        self?.pauseResumeButton.title = "Pause Monitoring"
-                        self?.showSuccess("Monitoring resumed")
-                    } else {
-                        self?.showError("Failed to resume monitoring")
+            // Resume monitoring for all projects
+            OxenDaemonXPCClient.shared.getMonitoredProjects { [weak self] projects in
+                for project in projects {
+                    OxenDaemonXPCClient.shared.resumeMonitoring(for: project) { success in
+                        // Handle result
                     }
                 }
             }
         } else {
-            // Pause monitoring
-            OxenDaemonXPCClient.shared.pauseMonitoring { [weak self] success in
-                DispatchQueue.main.async {
-                    if success {
-                        self?.isDaemonPaused = true
-                        self?.pauseResumeButton.title = "Resume Monitoring"
-                        self?.showSuccess("Monitoring paused")
-                    } else {
-                        self?.showError("Failed to pause monitoring")
+            // Pause monitoring for all projects
+            OxenDaemonXPCClient.shared.getMonitoredProjects { [weak self] projects in
+                for project in projects {
+                    OxenDaemonXPCClient.shared.pauseMonitoring(for: project) { success in
+                        // Handle result
                     }
                 }
             }
         }
+        */
     }
 
     private func showError(_ message: String) {

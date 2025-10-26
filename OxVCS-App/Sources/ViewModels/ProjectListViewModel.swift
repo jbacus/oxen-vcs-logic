@@ -77,30 +77,26 @@ class ProjectListViewModel: ObservableObject {
     // MARK: - Private Methods
 
     private func loadProjectDetails(path: String, completion: @escaping (Project?) -> Void) {
-        xpcClient.getStatus(path: path) { status in
-            guard let status = status else {
-                completion(nil)
-                return
-            }
+        // Note: The XPC protocol doesn't currently support per-project status queries.
+        // For now, we'll create a basic project object and get commit history.
 
-            // Get commit history to determine last commit
-            self.xpcClient.getCommitHistory(path: path, limit: 1) { commits in
-                let lastCommit = commits.first?["timestamp"] as? Date
-                let commitCount = status["commit_count"] as? Int ?? 0
+        // Get commit history to determine last commit
+        self.xpcClient.getCommitHistory(path: path, limit: 1) { commits in
+            let lastCommit = commits.first?["timestamp"] as? Date
+            let commitCount = commits.first?["count"] as? Int ?? 0
 
-                let project = Project(
-                    id: UUID(),
-                    path: path,
-                    name: URL(fileURLWithPath: path).lastPathComponent,
-                    isMonitored: true,
-                    lastCommit: lastCommit,
-                    commitCount: commitCount,
-                    isLocked: status["is_locked"] as? Bool ?? false,
-                    lockedBy: status["locked_by"] as? String
-                )
+            let project = Project(
+                id: UUID(),
+                path: path,
+                name: URL(fileURLWithPath: path).lastPathComponent,
+                isMonitored: true,
+                lastCommit: lastCommit,
+                commitCount: commitCount,
+                isLocked: false,  // TODO: Add per-project status query to XPC protocol
+                lockedBy: nil
+            )
 
-                completion(project)
-            }
+            completion(project)
         }
     }
 
