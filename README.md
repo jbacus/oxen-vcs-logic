@@ -28,13 +28,32 @@ Professional DAW projects contain massive binary assets that overwhelm tradition
 - Xcode 15+
 - Rust toolchain (for CLI wrapper)
 
-## Quick Start
+## Installation
+
+### Automated Installation (Recommended)
 
 ```bash
-# Build the CLI tool
-cd OxVCS-CLI-Wrapper
-cargo build --release
+# Clone the repository
+git clone https://github.com/YOUR_USERNAME/oxen-vcs-logic.git
+cd oxen-vcs-logic
 
+# Run the automated installer
+./install.sh
+```
+
+The installer will build all components, install binaries, and configure the daemon service.
+
+See [Installation Guide](INSTALL.md) for detailed instructions and troubleshooting.
+
+### Manual Installation
+
+See [Installation Guide](INSTALL.md) for step-by-step manual installation instructions.
+
+## Quick Start
+
+After installation:
+
+```bash
 # Initialize a Logic Pro project
 cd ~/Music/YourProject.logicx
 oxenvcs-cli init --logic .
@@ -44,7 +63,7 @@ oxenvcs-cli add --all
 oxenvcs-cli commit -m "Initial commit" --bpm 120 --sample-rate 48000
 ```
 
-See [Quick Start Guide](docs/QUICKSTART.md) for detailed instructions.
+See [Quick Start Guide](docs/QUICKSTART.md) for detailed usage instructions.
 
 ## Testing
 
@@ -73,17 +92,14 @@ cd OxVCS-App && swift test
 git clone https://github.com/YOUR_USERNAME/oxen-vcs-logic.git
 cd oxen-vcs-logic
 
-# Install Oxen CLI
-pip install oxen-ai
+# Install dependencies
+pip install oxen-ai  # Optional
 
-# Build CLI wrapper (requires Rust)
-cd OxVCS-CLI-Wrapper
-cargo build --release
-
-# Build FSEvents monitor (requires Swift/Xcode)
-cd ../OxVCS-LaunchAgent
-swift build -c release
+# Run automated installation
+./install.sh
 ```
+
+For manual build instructions, see [Installation Guide](INSTALL.md).
 
 ## Implementation Status
 
@@ -147,6 +163,7 @@ oxen-vcs-logic/
 ## Documentation
 
 ### User Guides
+- [Installation Guide](INSTALL.md) - Complete installation instructions
 - [Quick Start Guide](docs/QUICKSTART.md) - Get started in 5 minutes
 - [Usage Guide](OxVCS-CLI-Wrapper/USAGE.md) - Complete CLI reference
 

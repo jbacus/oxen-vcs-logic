@@ -2,6 +2,17 @@
 
 Quick installation guide for the Oxen VCS Daemon (Phase 2).
 
+## Automated Installation (Recommended)
+
+The easiest way to install all components:
+
+```bash
+cd oxen-vcs-logic
+./install.sh
+```
+
+See [Installation Guide](../INSTALL.md) for detailed instructions.
+
 ## Prerequisites
 
 - macOS 14.0 or later
@@ -9,7 +20,9 @@ Quick installation guide for the Oxen VCS Daemon (Phase 2).
 - Rust toolchain (1.70+)
 - Swift 5.9+
 
-## Quick Install
+## Manual Installation
+
+For manual installation or development setup:
 
 ### 1. Build Components
 

@@ -9,6 +9,36 @@ Get started with version control for your Logic Pro projects in 5 minutes.
 3. **Rust toolchain** (install from https://rustup.rs)
 4. **Oxen.ai CLI** (install: `pip install oxen-ai`)
 
+## Installation
+
+### Option A: Automated Installation (Recommended)
+
+The easiest way to get started:
+
+```bash
+# Clone the repository
+git clone https://github.com/YOUR_USERNAME/oxen-vcs-logic.git
+cd oxen-vcs-logic
+
+# Run the automated installer
+./install.sh
+```
+
+The installer will:
+- Check prerequisites
+- Build all components (CLI, daemon, app)
+- Install binaries to `/usr/local/bin`
+- Configure the LaunchAgent
+- Verify the installation
+
+**Then skip to [Step 2: Initialize Your First Project](#step-2-initialize-your-first-project).**
+
+For detailed installation instructions and troubleshooting, see [Installation Guide](../INSTALL.md).
+
+### Option B: Manual Build (For Development)
+
+If you prefer to build manually or need more control:
+
 ## Step 1: Build the Components
 
 ### Build the Rust CLI Wrapper
