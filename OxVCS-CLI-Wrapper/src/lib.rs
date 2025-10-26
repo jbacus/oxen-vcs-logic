@@ -1,3 +1,8 @@
+// STUB: Using local liboxen stub until official Rust bindings are published
+pub mod liboxen_stub;
+// Alias stub as liboxen for compatibility
+use liboxen_stub as liboxen;
+
 pub mod logic_project;
 pub mod oxen_ops;
 pub mod ignore_template;
