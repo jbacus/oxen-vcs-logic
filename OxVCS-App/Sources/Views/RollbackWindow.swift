@@ -1,6 +1,6 @@
 import AppKit
 
-class RollbackWindow {
+class RollbackWindow: NSObject {
     private let window: NSWindow
     private let viewModel: ProjectDetailViewModel
     private let tableView: NSTableView
