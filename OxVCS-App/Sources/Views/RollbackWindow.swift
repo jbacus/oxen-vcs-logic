@@ -24,6 +24,8 @@ class RollbackWindow: NSObject {
         tableView = NSTableView()
         progressIndicator = NSProgressIndicator()
 
+        super.init()
+
         setupUI(in: contentView)
     }
 
