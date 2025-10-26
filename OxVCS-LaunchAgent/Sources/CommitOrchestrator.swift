@@ -284,8 +284,6 @@ public class CommitOrchestrator {
     }
 
     private func generateCommitMessage(for type: CommitType) -> String {
-        let timestamp = ISO8601DateFormatter().string(from: Date())
-
         switch type {
         case .autoSave:
             return "Auto-save at \(formatTimestamp(Date()))"

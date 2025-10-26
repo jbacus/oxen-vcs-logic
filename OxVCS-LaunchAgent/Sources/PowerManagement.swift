@@ -1,6 +1,8 @@
 import Foundation
+import AppKit
 import IOKit
 import IOKit.pwr_mgt
+import IOKit.ps
 
 /// Handles system power events and triggers emergency commits before sleep/shutdown
 /// Ensures data safety by committing uncommitted changes when system power events occur
