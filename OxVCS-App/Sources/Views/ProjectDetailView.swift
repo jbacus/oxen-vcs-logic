@@ -9,6 +9,7 @@ class ProjectDetailView: NSView {
     private let projectNameLabel = NSTextField(labelWithString: "")
     private let commitButton = NSButton(title: "Create Milestone Commit", target: nil, action: nil)
     private let rollbackButton = NSButton(title: "Rollback", target: nil, action: nil)
+    private let lockButton = NSButton(title: "Manage Locks", target: nil, action: nil)
 
     private let tableView = NSTableView()
     private let scrollView = NSScrollView()
@@ -45,6 +46,12 @@ class ProjectDetailView: NSView {
         rollbackButton.action = #selector(showRollbackView)
         rollbackButton.translatesAutoresizingMaskIntoConstraints = false
         headerView.addSubview(rollbackButton)
+
+        lockButton.bezelStyle = .rounded
+        lockButton.target = self
+        lockButton.action = #selector(showLockManagement)
+        lockButton.translatesAutoresizingMaskIntoConstraints = false
+        headerView.addSubview(lockButton)
 
         // Table setup
         scrollView.translatesAutoresizingMaskIntoConstraints = false
@@ -100,6 +107,9 @@ class ProjectDetailView: NSView {
             rollbackButton.topAnchor.constraint(equalTo: projectNameLabel.bottomAnchor, constant: 8),
             rollbackButton.leadingAnchor.constraint(equalTo: commitButton.trailingAnchor, constant: 8),
 
+            lockButton.topAnchor.constraint(equalTo: projectNameLabel.bottomAnchor, constant: 8),
+            lockButton.leadingAnchor.constraint(equalTo: rollbackButton.trailingAnchor, constant: 8),
+
             scrollView.topAnchor.constraint(equalTo: headerView.bottomAnchor, constant: 16),
             scrollView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
             scrollView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
@@ -124,6 +134,22 @@ class ProjectDetailView: NSView {
     @objc private func showRollbackView() {
         let rollbackWindow = RollbackWindow(viewModel: viewModel)
         rollbackWindow.show()
+    }
+
+    @objc private func showLockManagement() {
+        let lockWindow = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 500, height: 350),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        lockWindow.title = "Lock Management"
+        lockWindow.center()
+
+        let lockView = LockManagementView(project: viewModel.project)
+        lockWindow.contentView = lockView
+
+        lockWindow.makeKeyAndOrderFront(nil)
     }
 }
 
