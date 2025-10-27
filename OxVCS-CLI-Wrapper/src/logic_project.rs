@@ -44,19 +44,60 @@ impl LogicProject {
             ));
         }
 
-        // Check for projectData file
-        let project_data_path = canonical_path.join("projectData");
-        if !project_data_path.exists() {
-            return Err(anyhow!(
-                "No projectData file found in {}",
-                canonical_path.display()
-            ));
-        }
+        // Check for ProjectData file in Logic Pro's actual structure
+        // Logic Pro stores project data in Alternatives/###/ProjectData
+        let project_data_path = Self::find_project_data(&canonical_path)?;
 
         Ok(LogicProject {
             path: canonical_path,
             project_data_path,
         })
+    }
+
+    /// Finds the ProjectData file in a Logic Pro project
+    ///
+    /// Logic Pro stores project data in various locations:
+    /// 1. Alternatives/###/ProjectData (most common, numbered alternatives)
+    /// 2. ProjectData (root level, older format)
+    /// 3. projectData (root level, case variation)
+    fn find_project_data(project_path: &Path) -> Result<PathBuf> {
+        // First, check for Alternatives directory (standard Logic Pro structure)
+        let alternatives_path = project_path.join("Alternatives");
+
+        if alternatives_path.exists() && alternatives_path.is_dir() {
+            // Look for numbered subdirectories in Alternatives/
+            if let Ok(entries) = std::fs::read_dir(&alternatives_path) {
+                for entry in entries.flatten() {
+                    if entry.path().is_dir() {
+                        // Check for ProjectData in this alternative
+                        let project_data = entry.path().join("ProjectData");
+                        if project_data.exists() {
+                            return Ok(project_data);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Fallback: Check for ProjectData at root level (various case variations)
+        let possible_names = vec!["ProjectData", "projectData", "Project Data"];
+
+        for name in possible_names {
+            let path = project_path.join(name);
+            if path.exists() {
+                return Ok(path);
+            }
+        }
+
+        Err(anyhow!(
+            "No ProjectData file found in {}. \n\
+             Expected locations:\n\
+             - Alternatives/###/ProjectData\n\
+             - ProjectData (root)\n\
+             - projectData (root)\n\n\
+             This may not be a valid Logic Pro project, or it hasn't been saved yet.",
+            project_path.display()
+        ))
     }
 
     /// Returns the name of the Logic Pro project
@@ -71,7 +112,6 @@ impl LogicProject {
     /// Lists all key paths in the Logic Pro project that should be tracked
     pub fn tracked_paths(&self) -> Vec<PathBuf> {
         vec![
-            self.path.join("projectData"),
             self.path.join("Alternatives"),
             self.path.join("Resources"),
         ]
@@ -110,12 +150,13 @@ mod tests {
 
     #[test]
     fn test_detect_with_current_directory() {
-        // Create a test .logicx directory
+        // Create a test .logicx directory with Logic Pro structure
         let temp_dir = std::env::temp_dir().join("test_project.logicx");
-        let _ = fs::create_dir_all(&temp_dir);
+        let alternatives_dir = temp_dir.join("Alternatives").join("001");
+        let _ = fs::create_dir_all(&alternatives_dir);
 
-        // Create projectData file
-        let project_data = temp_dir.join("projectData");
+        // Create ProjectData file in Alternatives structure
+        let project_data = alternatives_dir.join("ProjectData");
         let _ = fs::write(&project_data, b"test");
 
         // Save current directory
@@ -130,6 +171,35 @@ mod tests {
 
         // Verify it worked
         assert!(result.is_ok());
+        if let Ok(project) = result {
+            assert!(project.project_data_path.exists());
+            assert!(project.project_data_path.to_string_lossy().contains("ProjectData"));
+        }
+
+        // Cleanup
+        let _ = fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_detect_alternatives_structure() {
+        // Create a test .logicx directory with Alternatives/###/ProjectData structure
+        let temp_dir = std::env::temp_dir().join("test_alternatives.logicx");
+        let alternatives_dir = temp_dir.join("Alternatives").join("004");
+        let _ = fs::create_dir_all(&alternatives_dir);
+
+        // Create ProjectData file
+        let project_data = alternatives_dir.join("ProjectData");
+        let _ = fs::write(&project_data, b"test data");
+
+        // Test detection
+        let result = LogicProject::detect(&temp_dir);
+        assert!(result.is_ok());
+
+        if let Ok(project) = result {
+            assert_eq!(project.path, temp_dir.canonicalize().unwrap());
+            assert!(project.project_data_path.ends_with("ProjectData"));
+            assert!(project.project_data_path.exists());
+        }
 
         // Cleanup
         let _ = fs::remove_dir_all(&temp_dir);
