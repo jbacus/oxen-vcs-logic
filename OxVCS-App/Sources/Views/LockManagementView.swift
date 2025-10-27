@@ -129,7 +129,7 @@ class LockManagementView: NSView {
         alert.messageText = "Acquire Lock"
         alert.informativeText = "Lock timeout (hours):"
         alert.alertStyle = .informational
-        alert.addButton(withTitle = "Acquire")
+        alert.addButton(withTitle: "Acquire")
         alert.addButton(withTitle: "Cancel")
 
         let input = NSTextField(frame: NSRect(x: 0, y: 0, width: 100, height: 24))
