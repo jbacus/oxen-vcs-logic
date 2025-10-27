@@ -1,4 +1,5 @@
 use clap::{Parser, Subcommand};
+use colored::Colorize;
 use oxenvcs_cli::{logger, CommitMetadata, OxenRepository, vlog, info, success, error};
 use std::path::PathBuf;
 

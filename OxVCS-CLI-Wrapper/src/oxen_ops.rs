@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Context, Result};
+use colored::Colorize;
 use crate::liboxen_stub as liboxen;
 use liboxen::api;
 use liboxen::command;
