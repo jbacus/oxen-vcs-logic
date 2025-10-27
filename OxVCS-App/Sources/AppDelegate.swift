@@ -52,6 +52,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         editMenu.addItem(NSMenuItem(title: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c"))
         editMenu.addItem(NSMenuItem(title: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v"))
 
+        // View Menu
+        let viewMenuItem = NSMenuItem()
+        mainMenu.addItem(viewMenuItem)
+        let viewMenu = NSMenu(title: "View")
+        viewMenuItem.submenu = viewMenu
+
+        viewMenu.addItem(NSMenuItem(title: "Refresh Project List", action: #selector(refreshProjectList), keyEquivalent: "r"))
+        viewMenu.addItem(NSMenuItem.separator())
+        viewMenu.addItem(NSMenuItem(title: "Merge Helper...", action: #selector(showMergeHelper), keyEquivalent: ""))
+
         // Window Menu
         let windowMenuItem = NSMenuItem()
         mainMenu.addItem(windowMenuItem)
@@ -60,6 +70,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         windowMenu.addItem(NSMenuItem(title: "Minimize", action: #selector(NSWindow.miniaturize(_:)), keyEquivalent: "m"))
         windowMenu.addItem(NSMenuItem(title: "Zoom", action: #selector(NSWindow.zoom(_:)), keyEquivalent: ""))
+
+        // Help Menu
+        let helpMenuItem = NSMenuItem()
+        mainMenu.addItem(helpMenuItem)
+        let helpMenu = NSMenu(title: "Help")
+        helpMenuItem.submenu = helpMenu
+
+        helpMenu.addItem(NSMenuItem(title: "OxVCS Help", action: #selector(showHelp), keyEquivalent: "?"))
 
         NSApp.mainMenu = mainMenu
     }
@@ -98,5 +116,47 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func showProjectWizard() {
         let wizard = ProjectWizardWindow()
         wizard.show()
+    }
+
+    @objc private func refreshProjectList() {
+        mainViewController?.refreshProjects()
+    }
+
+    @objc private func showMergeHelper() {
+        if let selectedProject = mainViewController?.selectedProject {
+            let mergeHelper = MergeHelperWindow(project: selectedProject)
+            mergeHelper.show()
+        } else {
+            let alert = NSAlert()
+            alert.messageText = "No Project Selected"
+            alert.informativeText = "Please select a project first"
+            alert.alertStyle = .informational
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
+        }
+    }
+
+    @objc private func showHelp() {
+        let alert = NSAlert()
+        alert.messageText = "OxVCS for Logic Pro"
+        alert.informativeText = """
+        Version Control for Logic Pro Projects
+
+        Features:
+        • Automatic background tracking
+        • Milestone commits with metadata
+        • Rollback to any previous version
+        • File locking for collaboration
+        • Manual merge helpers
+
+        Documentation:
+        See README.md and docs/ folder in the repository
+
+        Support:
+        https://github.com/oxen-ai/oxen-vcs-logic
+        """
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
     }
 }

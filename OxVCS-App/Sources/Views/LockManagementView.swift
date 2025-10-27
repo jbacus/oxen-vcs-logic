@@ -81,14 +81,46 @@ class LockManagementView: NSView {
     }
 
     @objc private func refreshLockStatus() {
-        // This would call the XPC service to get lock info
-        // For now, placeholder implementation
         statusLabel.stringValue = "Checking lock status..."
 
-        // Simulated lock check (would actually use XPC client)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-            self?.statusLabel.stringValue = "Lock status updated"
-            self?.lockInfoTextView.string = "Not locked"
+        OxenDaemonXPCClient.shared.getLockInfo(for: project.path) { [weak self] lockInfo in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+
+                if let lockInfo = lockInfo,
+                   let lockedBy = lockInfo["lockedBy"] as? String,
+                   let acquiredAt = lockInfo["acquiredAt"] as? Date,
+                   let expiresAt = lockInfo["expiresAt"] as? Date {
+
+                    self.statusLabel.stringValue = "🔒 Locked"
+                    self.statusLabel.textColor = .systemOrange
+
+                    let formatter = DateFormatter()
+                    formatter.dateStyle = .medium
+                    formatter.timeStyle = .short
+
+                    let info = """
+                    Locked by: \(lockedBy)
+                    Acquired: \(formatter.string(from: acquiredAt))
+                    Expires: \(formatter.string(from: expiresAt))
+                    """
+                    self.lockInfoTextView.string = info
+
+                    // Enable/disable buttons
+                    self.acquireButton.isEnabled = false
+                    self.releaseButton.isEnabled = true
+                    self.forceBreakButton.isEnabled = true
+                } else {
+                    self.statusLabel.stringValue = "🔓 Not Locked"
+                    self.statusLabel.textColor = .systemGreen
+                    self.lockInfoTextView.string = "No active lock"
+
+                    // Enable/disable buttons
+                    self.acquireButton.isEnabled = true
+                    self.releaseButton.isEnabled = false
+                    self.forceBreakButton.isEnabled = false
+                }
+            }
         }
     }
 
@@ -97,7 +129,7 @@ class LockManagementView: NSView {
         alert.messageText = "Acquire Lock"
         alert.informativeText = "Lock timeout (hours):"
         alert.alertStyle = .informational
-        alert.addButton(withTitle: "Acquire")
+        alert.addButton(withTitle = "Acquire")
         alert.addButton(withTitle: "Cancel")
 
         let input = NSTextField(frame: NSRect(x: 0, y: 0, width: 100, height: 24))
@@ -112,10 +144,22 @@ class LockManagementView: NSView {
             return
         }
 
-        // Acquire lock via XPC
-        // OxenDaemonXPCClient.shared.acquireLock(...)
-        statusLabel.stringValue = "Lock acquired successfully"
-        refreshLockStatus()
+        statusLabel.stringValue = "Acquiring lock..."
+        OxenDaemonXPCClient.shared.acquireLock(for: project.path, timeoutHours: timeout) { [weak self] success, error in
+            DispatchQueue.main.async {
+                if success {
+                    self?.statusLabel.stringValue = "Lock acquired successfully"
+                    self?.statusLabel.textColor = .systemGreen
+                } else {
+                    self?.statusLabel.stringValue = "Failed to acquire lock"
+                    self?.statusLabel.textColor = .systemRed
+                    if let error = error {
+                        self?.showError(error)
+                    }
+                }
+                self?.refreshLockStatus()
+            }
+        }
     }
 
     @objc private func releaseLock() {
@@ -129,10 +173,22 @@ class LockManagementView: NSView {
         let response = alert.runModal()
         guard response == .alertFirstButtonReturn else { return }
 
-        // Release lock via XPC
-        // OxenDaemonXPCClient.shared.releaseLock(...)
-        statusLabel.stringValue = "Lock released"
-        refreshLockStatus()
+        statusLabel.stringValue = "Releasing lock..."
+        OxenDaemonXPCClient.shared.releaseLock(for: project.path) { [weak self] success, error in
+            DispatchQueue.main.async {
+                if success {
+                    self?.statusLabel.stringValue = "Lock released successfully"
+                    self?.statusLabel.textColor = .systemGreen
+                } else {
+                    self?.statusLabel.stringValue = "Failed to release lock"
+                    self?.statusLabel.textColor = .systemRed
+                    if let error = error {
+                        self?.showError(error)
+                    }
+                }
+                self?.refreshLockStatus()
+            }
+        }
     }
 
     @objc private func forceBreakLock() {
@@ -146,10 +202,22 @@ class LockManagementView: NSView {
         let response = alert.runModal()
         guard response == .alertFirstButtonReturn else { return }
 
-        // Force break lock via XPC
-        // OxenDaemonXPCClient.shared.forceBreakLock(...)
-        statusLabel.stringValue = "Lock forcibly broken"
-        refreshLockStatus()
+        statusLabel.stringValue = "Breaking lock..."
+        OxenDaemonXPCClient.shared.forceBreakLock(for: project.path) { [weak self] success, error in
+            DispatchQueue.main.async {
+                if success {
+                    self?.statusLabel.stringValue = "Lock forcibly broken"
+                    self?.statusLabel.textColor = .systemGreen
+                } else {
+                    self?.statusLabel.stringValue = "Failed to break lock"
+                    self?.statusLabel.textColor = .systemRed
+                    if let error = error {
+                        self?.showError(error)
+                    }
+                }
+                self?.refreshLockStatus()
+            }
+        }
     }
 
     private func showError(_ message: String) {

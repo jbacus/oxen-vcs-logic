@@ -147,4 +147,46 @@ class OxenDaemonXPCClient {
             completion(success)
         })
     }
+
+    // MARK: - Lock Management
+
+    func acquireLock(for path: String, timeoutHours: Int, completion: @escaping (Bool, String?) -> Void) {
+        guard let proxy = getProxy() else {
+            completion(false, "Failed to connect to daemon")
+            return
+        }
+        proxy.acquireLock(for: path, timeoutHours: timeoutHours, withReply: { success, error in
+            completion(success, error)
+        })
+    }
+
+    func releaseLock(for path: String, completion: @escaping (Bool, String?) -> Void) {
+        guard let proxy = getProxy() else {
+            completion(false, "Failed to connect to daemon")
+            return
+        }
+        proxy.releaseLock(for: path, withReply: { success, error in
+            completion(success, error)
+        })
+    }
+
+    func forceBreakLock(for path: String, completion: @escaping (Bool, String?) -> Void) {
+        guard let proxy = getProxy() else {
+            completion(false, "Failed to connect to daemon")
+            return
+        }
+        proxy.forceBreakLock(for: path, withReply: { success, error in
+            completion(success, error)
+        })
+    }
+
+    func getLockInfo(for path: String, completion: @escaping ([String: Any]?) -> Void) {
+        guard let proxy = getProxy() else {
+            completion(nil)
+            return
+        }
+        proxy.getLockInfo(for: path, withReply: { lockInfo in
+            completion(lockInfo)
+        })
+    }
 }

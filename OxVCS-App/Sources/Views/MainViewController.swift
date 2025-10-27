@@ -8,6 +8,7 @@ class MainViewController: NSViewController {
     private let splitView = NSSplitView()
     private let projectListView = ProjectListView()
     private var projectDetailView: ProjectDetailView?
+    private(set) var selectedProject: Project?
 
     override func loadView() {
         view = NSView(frame: NSRect(x: 0, y: 0, width: 1200, height: 800))
@@ -90,10 +91,17 @@ class MainViewController: NSViewController {
         alert.addButton(withTitle: "OK")
         alert.runModal()
     }
+
+    func refreshProjects() {
+        viewModel.loadProjects()
+    }
 }
 
 extension MainViewController: ProjectListViewDelegate {
     func projectListView(_ view: ProjectListView, didSelectProject project: Project) {
+        // Store selected project
+        self.selectedProject = project
+
         // Remove existing detail view
         if splitView.arrangedSubviews.count > 1 {
             splitView.arrangedSubviews[1].removeFromSuperview()
