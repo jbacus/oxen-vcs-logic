@@ -137,13 +137,13 @@ class ProjectWizardWindow {
         }
 
         // Show progress
-        statusLabel.stringValue = "Initializing repository..."
+        statusLabel.stringValue = "Initializing Oxen repository..."
         statusLabel.textColor = .secondaryLabelColor
         progressIndicator.isHidden = false
         progressIndicator.startAnimation(nil)
 
-        // Initialize project via XPC
-        OxenDaemonXPCClient.shared.registerProject(path: path) { [weak self] success in
+        // Initialize project via XPC (this calls the CLI to run 'oxenvcs-cli init')
+        OxenDaemonXPCClient.shared.initializeProject(path: path) { [weak self] success, error in
             DispatchQueue.main.async {
                 self?.progressIndicator.stopAnimation(nil)
                 self?.progressIndicator.isHidden = true
@@ -157,11 +157,13 @@ class ProjectWizardWindow {
                         self?.window.close()
                     }
 
-                    self?.showSuccess("Project initialized and monitoring started")
+                    self?.showSuccess("Project initialized successfully!\n\nThe project is now being monitored for changes. Automatic commits will be created after 30 seconds of inactivity.")
                 } else {
                     self?.statusLabel.stringValue = "Failed to initialize project"
                     self?.statusLabel.textColor = .systemRed
-                    self?.showError("Failed to initialize project. The project may already be initialized or there was an error with Oxen.")
+
+                    let errorMessage = error ?? "Unknown error occurred"
+                    self?.showError("Failed to initialize project:\n\n\(errorMessage)\n\nMake sure the oxenvcs-cli tool is installed at /usr/local/bin/oxenvcs-cli")
                 }
             }
         }

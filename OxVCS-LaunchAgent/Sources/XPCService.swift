@@ -6,6 +6,15 @@ import Foundation
 /// All methods are async and return results via completion handlers
 @objc public protocol OxenDaemonXPCProtocol {
 
+    /// Initialize an Oxen repository for a Logic Pro project
+    /// - Parameters:
+    ///   - projectPath: Absolute path to .logicx project
+    ///   - reply: Completion handler with success status and error message
+    func initializeProject(
+        _ projectPath: String,
+        withReply reply: @escaping (Bool, String?) -> Void
+    )
+
     /// Register a Logic Pro project for automatic monitoring
     /// - Parameters:
     ///   - projectPath: Absolute path to .logicx project
@@ -204,6 +213,70 @@ public class OxenDaemonXPCService: NSObject, OxenDaemonXPCProtocol {
     }
 
     // MARK: - Protocol Implementation
+
+    public func initializeProject(
+        _ projectPath: String,
+        withReply reply: @escaping (Bool, String?) -> Void
+    ) {
+        print("XPC: Initialize project: \(projectPath)")
+
+        // Validate path
+        guard FileManager.default.fileExists(atPath: projectPath) else {
+            reply(false, "Project not found at path")
+            return
+        }
+
+        guard projectPath.hasSuffix(".logicx") else {
+            reply(false, "Invalid Logic Pro project (must be .logicx)")
+            return
+        }
+
+        // Check if already initialized
+        let oxenDir = (projectPath as NSString).appendingPathComponent(".oxen")
+        if FileManager.default.fileExists(atPath: oxenDir) {
+            print("XPC: Project already initialized, registering for monitoring")
+            orchestrator.registerProject(projectPath)
+            reply(true, nil)
+            return
+        }
+
+        // Call CLI to initialize the Oxen repository
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/usr/local/bin/oxenvcs-cli")
+        task.arguments = ["init", "--project", projectPath]
+
+        let outputPipe = Pipe()
+        let errorPipe = Pipe()
+        task.standardOutput = outputPipe
+        task.standardError = errorPipe
+
+        task.terminationHandler = { [weak self] process in
+            let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
+            let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+            let output = String(data: outputData, encoding: .utf8) ?? ""
+            let error = String(data: errorData, encoding: .utf8) ?? ""
+
+            if process.terminationStatus == 0 {
+                print("✓ Project initialized successfully")
+                print("  Output: \(output)")
+
+                // Register for monitoring after successful initialization
+                self?.orchestrator.registerProject(projectPath)
+                reply(true, nil)
+            } else {
+                print("✗ Failed to initialize project")
+                print("  Error: \(error)")
+                reply(false, "Failed to initialize: \(error.isEmpty ? "Unknown error" : error)")
+            }
+        }
+
+        do {
+            try task.run()
+        } catch {
+            print("✗ Failed to launch CLI: \(error)")
+            reply(false, "Failed to launch CLI tool: \(error.localizedDescription)")
+        }
+    }
 
     public func registerProject(
         _ projectPath: String,
