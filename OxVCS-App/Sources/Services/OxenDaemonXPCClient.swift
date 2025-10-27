@@ -4,6 +4,7 @@ import Foundation
 
 /// Protocol for communication between UI app and background daemon
 @objc protocol OxenDaemonXPCProtocol {
+    func initializeProject(_ projectPath: String, withReply reply: @escaping (Bool, String?) -> Void)
     func registerProject(_ projectPath: String, withReply reply: @escaping (Bool, String?) -> Void)
     func unregisterProject(_ projectPath: String, withReply reply: @escaping (Bool, String?) -> Void)
     func getMonitoredProjects(withReply reply: @escaping ([String]) -> Void)
@@ -57,6 +58,19 @@ class OxenDaemonXPCClient {
         }
         proxy.ping(withReply: { success in
             completion(success)
+        })
+    }
+
+    func initializeProject(path: String, completion: @escaping (Bool, String?) -> Void) {
+        guard let proxy = getProxy() else {
+            completion(false, "Failed to connect to daemon")
+            return
+        }
+        proxy.initializeProject(path, withReply: { success, error in
+            if let error = error {
+                print("XPC initializeProject error: \(error)")
+            }
+            completion(success, error)
         })
     }
 
