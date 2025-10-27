@@ -1,5 +1,6 @@
 use anyhow::{anyhow, Context, Result};
 use std::path::{Path, PathBuf};
+use crate::{vlog, info};
 
 /// Represents a Logic Pro folder project structure
 #[derive(Debug, Clone)]
@@ -17,36 +18,55 @@ impl LogicProject {
     pub fn detect(path: impl AsRef<Path>) -> Result<Self> {
         let path = path.as_ref();
 
+        vlog!("=== Logic Pro Project Detection ===");
+        vlog!("Input path: {}", path.display());
+
         // Check if path exists
+        vlog!("Checking if path exists...");
         if !path.exists() {
+            vlog!("❌ Path does not exist");
             return Err(anyhow!("Path does not exist: {}", path.display()));
         }
+        vlog!("✓ Path exists");
 
         // Check if it's a directory
+        vlog!("Checking if path is a directory...");
         if !path.is_dir() {
+            vlog!("❌ Path is not a directory");
             return Err(anyhow!("Path is not a directory: {}", path.display()));
         }
+        vlog!("✓ Path is a directory");
 
         // Canonicalize the path to resolve relative paths like "." to absolute paths
         // This ensures we can properly check the extension even when running from inside the .logicx directory
+        vlog!("Canonicalizing path to resolve relative paths...");
         let canonical_path = std::fs::canonicalize(path)
             .context("Failed to canonicalize path")?;
+        vlog!("Canonical path: {}", canonical_path.display());
 
         // Check if it has .logicx extension
+        vlog!("Checking for .logicx extension...");
         let extension = canonical_path.extension()
             .and_then(|e| e.to_str())
             .unwrap_or("");
+        vlog!("Found extension: '{}'", extension);
 
         if extension != "logicx" {
+            vlog!("❌ Extension is not 'logicx'");
             return Err(anyhow!(
                 "Path is not a Logic Pro folder project (.logicx): {}",
                 canonical_path.display()
             ));
         }
+        vlog!("✓ Valid .logicx extension");
 
         // Check for ProjectData file in Logic Pro's actual structure
         // Logic Pro stores project data in Alternatives/###/ProjectData
+        vlog!("Searching for ProjectData file...");
         let project_data_path = Self::find_project_data(&canonical_path)?;
+
+        info!("Successfully detected Logic Pro project: {}", canonical_path.display());
+        vlog!("ProjectData location: {}", project_data_path.display());
 
         Ok(LogicProject {
             path: canonical_path,
@@ -61,33 +81,71 @@ impl LogicProject {
     /// 2. ProjectData (root level, older format)
     /// 3. projectData (root level, case variation)
     fn find_project_data(project_path: &Path) -> Result<PathBuf> {
+        vlog!("--- Searching for ProjectData file ---");
+
         // First, check for Alternatives directory (standard Logic Pro structure)
         let alternatives_path = project_path.join("Alternatives");
+        vlog!("Checking for Alternatives directory: {}", alternatives_path.display());
 
         if alternatives_path.exists() && alternatives_path.is_dir() {
+            vlog!("✓ Alternatives directory exists");
+
             // Look for numbered subdirectories in Alternatives/
+            vlog!("Scanning subdirectories in Alternatives/...");
             if let Ok(entries) = std::fs::read_dir(&alternatives_path) {
+                let mut found_dirs = Vec::new();
+
                 for entry in entries.flatten() {
-                    if entry.path().is_dir() {
+                    let entry_path = entry.path();
+                    if entry_path.is_dir() {
+                        let dir_name = entry_path.file_name()
+                            .and_then(|n| n.to_str())
+                            .unwrap_or("?");
+                        found_dirs.push(dir_name.to_string());
+
+                        vlog!("  Checking subdirectory: {}", dir_name);
+
                         // Check for ProjectData in this alternative
-                        let project_data = entry.path().join("ProjectData");
+                        let project_data = entry_path.join("ProjectData");
+                        vlog!("    Looking for: {}", project_data.display());
+
                         if project_data.exists() {
+                            vlog!("    ✓ Found ProjectData!");
                             return Ok(project_data);
+                        } else {
+                            vlog!("    ❌ ProjectData not found in this directory");
                         }
                     }
                 }
+
+                if !found_dirs.is_empty() {
+                    vlog!("Found {} subdirectories: {}", found_dirs.len(), found_dirs.join(", "));
+                } else {
+                    vlog!("No subdirectories found in Alternatives/");
+                }
+            } else {
+                vlog!("❌ Failed to read Alternatives directory");
             }
+        } else {
+            vlog!("❌ Alternatives directory does not exist");
         }
 
         // Fallback: Check for ProjectData at root level (various case variations)
+        vlog!("Checking for ProjectData at root level...");
         let possible_names = vec!["ProjectData", "projectData", "Project Data"];
 
         for name in possible_names {
             let path = project_path.join(name);
+            vlog!("  Checking: {}", path.display());
             if path.exists() {
+                vlog!("  ✓ Found: {}", name);
                 return Ok(path);
+            } else {
+                vlog!("  ❌ Not found: {}", name);
             }
         }
+
+        vlog!("❌ No ProjectData file found in any expected location");
 
         Err(anyhow!(
             "No ProjectData file found in {}. \n\

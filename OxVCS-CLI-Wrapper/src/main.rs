@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand};
-use oxenvcs_cli::{CommitMetadata, OxenRepository};
+use oxenvcs_cli::{logger, CommitMetadata, OxenRepository, vlog, info, success, error};
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -28,6 +28,10 @@ BASIC WORKFLOW:
 
 For more information, visit: https://github.com/your-repo")]
 struct Cli {
+    /// Enable verbose debug output
+    #[arg(short, long, global = true)]
+    verbose: bool,
+
     #[command(subcommand)]
     command: Commands,
 }
@@ -227,14 +231,22 @@ EXAMPLES:
 async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
+    // Enable verbose logging if requested
+    logger::set_verbose(cli.verbose);
+
     match cli.command {
         Commands::Init { path, logic } => {
+            vlog!("Starting initialization for path: {}", path.display());
+            vlog!("Logic Pro mode: {}", logic);
+
             if logic {
+                vlog!("Initializing Logic Pro project repository...");
                 let repo = OxenRepository::init_for_logic_project(&path).await?;
-                println!("✓ Successfully initialized Logic Pro project repository");
+                success!("Successfully initialized Logic Pro project repository");
             } else {
+                vlog!("Initializing generic Oxen repository...");
                 let repo = OxenRepository::init(&path).await?;
-                println!("✓ Successfully initialized Oxen repository at: {}", path.display());
+                success!("Successfully initialized Oxen repository at: {}", path.display());
             }
             Ok(())
         }

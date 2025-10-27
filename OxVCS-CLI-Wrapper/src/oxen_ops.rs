@@ -9,6 +9,7 @@ use crate::commit_metadata::CommitMetadata;
 use crate::ignore_template::generate_oxenignore;
 use crate::logic_project::LogicProject;
 use crate::draft_manager::DraftManager;
+use crate::{vlog, info};
 
 /// Wrapper for Oxen repository operations
 pub struct OxenRepository {
@@ -32,27 +33,37 @@ impl OxenRepository {
     pub async fn init_for_logic_project(path: impl AsRef<Path>) -> Result<Self> {
         let path = path.as_ref();
 
+        vlog!("=== Initializing Logic Pro Project Repository ===");
+        vlog!("Target path: {}", path.display());
+
         // Detect Logic Pro project
+        vlog!("Step 1: Detecting Logic Pro project structure...");
         let logic_project = LogicProject::detect(path)
             .context("Failed to detect Logic Pro project")?;
 
-        println!("Detected Logic Pro project: {}", logic_project.name());
+        info!("Detected Logic Pro project: {}", logic_project.name());
+        vlog!("Project name: {}", logic_project.name());
 
         // Initialize Oxen repository
+        vlog!("Step 2: Initializing Oxen repository...");
         let repo = api::local::repositories::init(path)
             .context("Failed to initialize Oxen repository")?;
 
-        println!("Initialized Oxen repository at: {}", path.display());
+        info!("Initialized Oxen repository at: {}", path.display());
 
         // Create .oxenignore file
+        vlog!("Step 3: Creating .oxenignore file...");
         let ignore_path = path.join(".oxenignore");
+        vlog!("Ignore file path: {}", ignore_path.display());
+
         let ignore_content = generate_oxenignore();
+        vlog!("Generated ignore patterns ({} bytes)", ignore_content.len());
 
         tokio::fs::write(&ignore_path, ignore_content)
             .await
             .context("Failed to write .oxenignore file")?;
 
-        println!("Created .oxenignore file");
+        info!("Created .oxenignore file");
 
         // Create repository instance
         let repo_instance = Self {
@@ -60,12 +71,17 @@ impl OxenRepository {
         };
 
         // Initialize draft branch workflow
-        println!("Initializing draft branch workflow...");
+        vlog!("Step 4: Initializing draft branch workflow...");
+        info!("Initializing draft branch workflow...");
+
         let draft_manager = DraftManager::new(path)
             .context("Failed to create draft manager")?;
 
         draft_manager.initialize().await
             .context("Failed to initialize draft branch")?;
+
+        vlog!("Draft branch initialized successfully");
+        vlog!("=== Initialization Complete ===");
 
         Ok(repo_instance)
     }
