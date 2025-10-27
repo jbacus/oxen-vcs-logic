@@ -77,14 +77,33 @@ class ProjectListViewModel: ObservableObject {
     // MARK: - Private Methods
 
     private func loadProjectDetails(path: String, completion: @escaping (Project?) -> Void) {
-        // Note: The XPC protocol doesn't currently support per-project status queries.
-        // For now, we'll create a basic project object and get commit history.
+        let group = DispatchGroup()
 
-        // Get commit history to determine last commit
+        var lastCommit: Date?
+        var commitCount = 0
+        var isLocked = false
+        var lockedBy: String?
+
+        // Get commit history
+        group.enter()
         self.xpcClient.getCommitHistory(path: path, limit: 1) { commits in
-            let lastCommit = commits.first?["timestamp"] as? Date
-            let commitCount = commits.first?["count"] as? Int ?? 0
+            lastCommit = commits.first?["timestamp"] as? Date
+            commitCount = commits.first?["count"] as? Int ?? 0
+            group.leave()
+        }
 
+        // Get lock status
+        group.enter()
+        self.xpcClient.getLockInfo(for: path) { lockInfo in
+            if let lockInfo = lockInfo {
+                isLocked = lockInfo["isLocked"] as? Bool ?? false
+                lockedBy = lockInfo["lockedBy"] as? String
+            }
+            group.leave()
+        }
+
+        // Create project once all data is loaded
+        group.notify(queue: .main) {
             let project = Project(
                 id: UUID(),
                 path: path,
@@ -92,8 +111,8 @@ class ProjectListViewModel: ObservableObject {
                 isMonitored: true,
                 lastCommit: lastCommit,
                 commitCount: commitCount,
-                isLocked: false,  // TODO: Add per-project status query to XPC protocol
-                lockedBy: nil
+                isLocked: isLocked,
+                lockedBy: lockedBy
             )
 
             completion(project)

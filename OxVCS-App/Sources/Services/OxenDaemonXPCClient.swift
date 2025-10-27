@@ -18,6 +18,9 @@ import Foundation
     func releaseLock(for projectPath: String, withReply reply: @escaping (Bool, String?) -> Void)
     func forceBreakLock(for projectPath: String, withReply reply: @escaping (Bool, String?) -> Void)
     func getLockInfo(for projectPath: String, withReply reply: @escaping ([String: Any]?) -> Void)
+    func getConfiguration(withReply reply: @escaping ([String: Any]) -> Void)
+    func setDebounceTime(_ seconds: Int, withReply reply: @escaping (Bool) -> Void)
+    func setLockTimeout(_ hours: Int, withReply reply: @escaping (Bool) -> Void)
 }
 
 // MARK: - XPC Client
@@ -187,6 +190,38 @@ class OxenDaemonXPCClient {
         }
         proxy.getLockInfo(for: path, withReply: { lockInfo in
             completion(lockInfo)
+        })
+    }
+
+    // MARK: - Configuration Management
+
+    func getConfiguration(completion: @escaping ([String: Any]) -> Void) {
+        guard let proxy = getProxy() else {
+            completion([:])
+            return
+        }
+        proxy.getConfiguration(withReply: { config in
+            completion(config)
+        })
+    }
+
+    func setDebounceTime(_ seconds: Int, completion: @escaping (Bool) -> Void) {
+        guard let proxy = getProxy() else {
+            completion(false)
+            return
+        }
+        proxy.setDebounceTime(seconds, withReply: { success in
+            completion(success)
+        })
+    }
+
+    func setLockTimeout(_ hours: Int, completion: @escaping (Bool) -> Void) {
+        guard let proxy = getProxy() else {
+            completion(false)
+            return
+        }
+        proxy.setLockTimeout(hours, withReply: { success in
+            completion(success)
         })
     }
 }

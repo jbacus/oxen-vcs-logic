@@ -4,14 +4,19 @@ class SettingsWindow {
     private let window: NSWindow
     private let daemonStatusLabel: NSTextField
     private let pauseResumeButton: NSButton
+    private let debounceField: NSTextField
+    private let lockTimeoutField: NSTextField
+    private let saveButton: NSButton
 
     private var isDaemonPaused = false
+    private var currentDebounceTime: Int = 30
+    private var currentLockTimeout: Int = 24
 
     init() {
-        let contentView = NSView(frame: NSRect(x: 0, y: 0, width: 500, height: 400))
+        let contentView = NSView(frame: NSRect(x: 0, y: 0, width: 500, height: 450))
 
         window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 500, height: 400),
+            contentRect: NSRect(x: 0, y: 0, width: 500, height: 450),
             styleMask: [.titled, .closable],
             backing: .buffered,
             defer: false
@@ -22,13 +27,17 @@ class SettingsWindow {
 
         daemonStatusLabel = NSTextField(labelWithString: "")
         pauseResumeButton = NSButton(title: "Pause Monitoring", target: nil, action: nil)
+        debounceField = NSTextField(frame: .zero)
+        lockTimeoutField = NSTextField(frame: .zero)
+        saveButton = NSButton(title: "Save Configuration", target: nil, action: nil)
 
         setupUI(in: contentView)
         updateDaemonStatus()
+        loadConfiguration()
     }
 
     private func setupUI(in contentView: NSView) {
-        var yPos: CGFloat = 350
+        var yPos: CGFloat = 400
 
         // Title
         let titleLabel = NSTextField(labelWithString: "OxVCS Settings")
@@ -63,13 +72,13 @@ class SettingsWindow {
         contentView.addSubview(autoCommitLabel)
         yPos -= 35
 
-        let debounceLabel = NSTextField(labelWithString: "Debounce Time (seconds):")
+        let debounceLabel = NSTextField(labelWithString: "Debounce Time (5-300 seconds):")
         debounceLabel.frame = NSRect(x: 20, y: yPos, width: 200, height: 20)
         contentView.addSubview(debounceLabel)
 
-        let debounceField = NSTextField(frame: NSRect(x: 230, y: yPos, width: 100, height: 22))
+        debounceField.frame = NSRect(x: 230, y: yPos, width: 100, height: 22)
         debounceField.placeholderString = "30"
-        debounceField.isEnabled = false // TODO: Implement dynamic debounce configuration
+        debounceField.integerValue = 30
         contentView.addSubview(debounceField)
         yPos -= 60
 
@@ -80,15 +89,23 @@ class SettingsWindow {
         contentView.addSubview(lockLabel)
         yPos -= 35
 
-        let lockTimeoutLabel = NSTextField(labelWithString: "Lock Timeout (hours):")
+        let lockTimeoutLabel = NSTextField(labelWithString: "Lock Timeout (1-168 hours):")
         lockTimeoutLabel.frame = NSRect(x: 20, y: yPos, width: 200, height: 20)
         contentView.addSubview(lockTimeoutLabel)
 
-        let lockTimeoutField = NSTextField(frame: NSRect(x: 230, y: yPos, width: 100, height: 22))
+        lockTimeoutField.frame = NSRect(x: 230, y: yPos, width: 100, height: 22)
         lockTimeoutField.placeholderString = "24"
-        lockTimeoutField.isEnabled = false // TODO: Implement dynamic timeout configuration
+        lockTimeoutField.integerValue = 24
         contentView.addSubview(lockTimeoutField)
-        yPos -= 60
+        yPos -= 45
+
+        // Save Button
+        saveButton.frame = NSRect(x: 20, y: yPos, width: 180, height: 32)
+        saveButton.bezelStyle = .rounded
+        saveButton.target = self
+        saveButton.action = #selector(saveConfiguration)
+        contentView.addSubview(saveButton)
+        yPos -= 50
 
         // About Section
         let aboutLabel = NSTextField(labelWithString: "About")
@@ -179,5 +196,78 @@ class SettingsWindow {
         alert.alertStyle = .informational
         alert.addButton(withTitle: "OK")
         alert.runModal()
+    }
+
+    private func loadConfiguration() {
+        OxenDaemonXPCClient.shared.getConfiguration { [weak self] config in
+            DispatchQueue.main.async {
+                if let debounceTime = config["debounceTime"] as? Int {
+                    self?.currentDebounceTime = debounceTime
+                    self?.debounceField.integerValue = debounceTime
+                }
+
+                if let lockTimeout = config["lockTimeout"] as? Int {
+                    self?.currentLockTimeout = lockTimeout
+                    self?.lockTimeoutField.integerValue = lockTimeout
+                }
+            }
+        }
+    }
+
+    @objc private func saveConfiguration() {
+        let newDebounceTime = debounceField.integerValue
+        let newLockTimeout = lockTimeoutField.integerValue
+
+        // Validate inputs
+        guard newDebounceTime >= 5 && newDebounceTime <= 300 else {
+            showError("Debounce time must be between 5 and 300 seconds")
+            return
+        }
+
+        guard newLockTimeout >= 1 && newLockTimeout <= 168 else {
+            showError("Lock timeout must be between 1 and 168 hours")
+            return
+        }
+
+        var successCount = 0
+        let totalUpdates = 2
+
+        // Save debounce time
+        OxenDaemonXPCClient.shared.setDebounceTime(newDebounceTime) { [weak self] success in
+            if success {
+                successCount += 1
+                self?.currentDebounceTime = newDebounceTime
+            } else {
+                DispatchQueue.main.async {
+                    self?.showError("Failed to set debounce time")
+                }
+                return
+            }
+
+            if successCount == totalUpdates {
+                DispatchQueue.main.async {
+                    self?.showSuccess("Configuration saved successfully!\n\nNote: Debounce changes apply to newly registered projects.\nLock timeout applies to new locks.")
+                }
+            }
+        }
+
+        // Save lock timeout
+        OxenDaemonXPCClient.shared.setLockTimeout(newLockTimeout) { [weak self] success in
+            if success {
+                successCount += 1
+                self?.currentLockTimeout = newLockTimeout
+            } else {
+                DispatchQueue.main.async {
+                    self?.showError("Failed to set lock timeout")
+                }
+                return
+            }
+
+            if successCount == totalUpdates {
+                DispatchQueue.main.async {
+                    self?.showSuccess("Configuration saved successfully!\n\nNote: Debounce changes apply to newly registered projects.\nLock timeout applies to new locks.")
+                }
+            }
+        }
     }
 }
