@@ -130,6 +130,30 @@ import Foundation
         for projectPath: String,
         withReply reply: @escaping ([String: Any]?) -> Void
     )
+
+    /// Get current configuration settings
+    /// - Parameter reply: Configuration dictionary
+    func getConfiguration(
+        withReply reply: @escaping ([String: Any]) -> Void
+    )
+
+    /// Set debounce time for auto-commits
+    /// - Parameters:
+    ///   - seconds: Debounce time in seconds
+    ///   - reply: Success status
+    func setDebounceTime(
+        _ seconds: Int,
+        withReply reply: @escaping (Bool) -> Void
+    )
+
+    /// Set default lock timeout
+    /// - Parameters:
+    ///   - hours: Timeout in hours
+    ///   - reply: Success status
+    func setLockTimeout(
+        _ hours: Int,
+        withReply reply: @escaping (Bool) -> Void
+    )
 }
 
 // MARK: - XPC Service Implementation
@@ -143,6 +167,17 @@ public class OxenDaemonXPCService: NSObject, OxenDaemonXPCProtocol {
     private let orchestrator: CommitOrchestrator
     private let listener: NSXPCListener
     private var pausedProjects: Set<String> = []
+
+    // Configuration settings
+    private var debounceTime: Int {
+        get { UserDefaults.standard.integer(forKey: "debounceTime") == 0 ? 30 : UserDefaults.standard.integer(forKey: "debounceTime") }
+        set { UserDefaults.standard.set(newValue, forKey: "debounceTime") }
+    }
+
+    private var lockTimeout: Int {
+        get { UserDefaults.standard.integer(forKey: "lockTimeout") == 0 ? 24 : UserDefaults.standard.integer(forKey: "lockTimeout") }
+        set { UserDefaults.standard.set(newValue, forKey: "lockTimeout") }
+    }
 
     // MARK: - Initialization
 
@@ -352,10 +387,56 @@ public class OxenDaemonXPCService: NSObject, OxenDaemonXPCProtocol {
             "acquiredAt": formatter.string(from: lock.acquiredAt),
             "expiresAt": formatter.string(from: lock.expiresAt),
             "isExpired": lock.isExpired,
-            "remainingHours": lock.remainingHours
+            "remainingHours": lock.remainingHours,
+            "isLocked": true
         ]
 
         reply(lockInfo)
+    }
+
+    public func getConfiguration(
+        withReply reply: @escaping ([String: Any]) -> Void
+    ) {
+        let config: [String: Any] = [
+            "debounceTime": debounceTime,
+            "lockTimeout": lockTimeout
+        ]
+        reply(config)
+    }
+
+    public func setDebounceTime(
+        _ seconds: Int,
+        withReply reply: @escaping (Bool) -> Void
+    ) {
+        guard seconds >= 5 && seconds <= 300 else {
+            print("XPC: Invalid debounce time: \(seconds) (must be 5-300 seconds)")
+            reply(false)
+            return
+        }
+
+        print("XPC: Set debounce time to: \(seconds) seconds")
+        debounceTime = seconds
+
+        // Note: This change will apply to newly registered projects
+        // Existing monitors would need to be recreated to use the new value
+        reply(true)
+    }
+
+    public func setLockTimeout(
+        _ hours: Int,
+        withReply reply: @escaping (Bool) -> Void
+    ) {
+        guard hours >= 1 && hours <= 168 else {
+            print("XPC: Invalid lock timeout: \(hours) (must be 1-168 hours)")
+            reply(false)
+            return
+        }
+
+        print("XPC: Set lock timeout to: \(hours) hours")
+        lockTimeout = hours
+
+        // This will apply to newly acquired locks
+        reply(true)
     }
 
     // MARK: - Helpers
