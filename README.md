@@ -41,7 +41,7 @@ cd oxen-vcs-logic
 ./install.sh
 ```
 
-The installer will build all components, install binaries, and configure the daemon service.
+The installer will build all components, install binaries, configure the daemon service, and install the GUI app to `/Applications/OxVCS.app`.
 
 See [Installation Guide](INSTALL.md) for detailed instructions and troubleshooting.
 
@@ -51,7 +51,17 @@ See [Installation Guide](INSTALL.md) for step-by-step manual installation instru
 
 ## Quick Start
 
-After installation:
+### Using the GUI Application
+
+After installation, launch the double-clickable app:
+
+1. Open Finder → Applications → OxVCS
+2. Click "Add Project..." to initialize a Logic Pro project
+3. The app will monitor changes and create automatic draft commits
+4. Create milestone commits with rich metadata (BPM, sample rate, tags)
+5. Browse history and rollback to any previous version
+
+### Using the Command Line
 
 ```bash
 # Initialize a Logic Pro project
@@ -165,6 +175,7 @@ oxen-vcs-logic/
 ### User Guides
 - [Installation Guide](INSTALL.md) - Complete installation instructions
 - [Quick Start Guide](docs/QUICKSTART.md) - Get started in 5 minutes
+- [App Bundle Guide](OxVCS-App/APP_BUNDLE.md) - Double-clickable app creation
 - [Usage Guide](OxVCS-CLI-Wrapper/USAGE.md) - Complete CLI reference
 
 ### Technical Documentation

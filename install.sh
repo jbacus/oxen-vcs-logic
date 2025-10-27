@@ -148,15 +148,26 @@ build_daemon() {
 
 # Function to build Swift app
 build_app() {
-    print_header "Building Swift App (Optional)"
+    print_header "Building OxVCS Application Bundle"
 
     cd "$PROJECT_ROOT/OxVCS-App"
 
     print_info "Building OxVCS-App in release mode..."
-    if swift build -c release 2>/dev/null; then
+    if swift build -c release; then
         print_success "App built successfully"
     else
-        print_warning "App build skipped or failed (this is optional)"
+        print_error "App build failed"
+        cd "$PROJECT_ROOT"
+        return 1
+    fi
+
+    print_info "Creating OxVCS.app bundle..."
+    if ./create-app-bundle.sh; then
+        print_success "App bundle created: OxVCS.app"
+    else
+        print_error "App bundle creation failed"
+        cd "$PROJECT_ROOT"
+        return 1
     fi
 
     cd "$PROJECT_ROOT"
@@ -186,6 +197,43 @@ install_binaries() {
     $USE_SUDO cp "$PROJECT_ROOT/OxVCS-LaunchAgent/.build/release/oxvcs-daemon" "$INSTALL_DIR/"
     $USE_SUDO chmod +x "$INSTALL_DIR/oxvcs-daemon"
     print_success "Daemon installed: $INSTALL_DIR/oxvcs-daemon"
+
+    echo ""
+}
+
+# Function to install app bundle
+install_app() {
+    print_header "Installing OxVCS Application"
+
+    local APP_SOURCE="$PROJECT_ROOT/OxVCS-App/OxVCS.app"
+    local APP_DEST="/Applications/OxVCS.app"
+
+    if [ ! -d "$APP_SOURCE" ]; then
+        print_warning "App bundle not found at $APP_SOURCE (this is optional)"
+        return 0
+    fi
+
+    print_info "Installing OxVCS.app to /Applications..."
+
+    # Remove existing installation if present
+    if [ -d "$APP_DEST" ]; then
+        print_info "Removing existing installation..."
+        rm -rf "$APP_DEST"
+    fi
+
+    # Copy app bundle to Applications
+    cp -R "$APP_SOURCE" "$APP_DEST"
+
+    if [ -d "$APP_DEST" ]; then
+        print_success "App installed: $APP_DEST"
+        echo ""
+        print_info "You can now:"
+        echo "  • Double-click OxVCS in Applications folder"
+        echo "  • Or run: open /Applications/OxVCS.app"
+    else
+        print_error "Failed to install app bundle"
+        return 1
+    fi
 
     echo ""
 }
@@ -314,19 +362,33 @@ print_next_steps() {
 
     echo "Next steps:"
     echo ""
-    echo "1. Initialize your first Logic Pro project:"
-    echo "   cd ~/Music/YourProject.logicx"
-    echo "   oxenvcs-cli init --logic ."
+
+    # Check if app was installed
+    if [ -d "/Applications/OxVCS.app" ]; then
+        echo "1. Launch the OxVCS application:"
+        echo "   - Open Finder → Applications → OxVCS"
+        echo "   - Or run: open /Applications/OxVCS.app"
+        echo "   - Use the GUI to initialize and manage projects"
+        echo ""
+        echo "2. Or use the command-line interface:"
+        echo "   cd ~/Music/YourProject.logicx"
+        echo "   oxenvcs-cli init --logic ."
+    else
+        echo "1. Initialize your first Logic Pro project:"
+        echo "   cd ~/Music/YourProject.logicx"
+        echo "   oxenvcs-cli init --logic ."
+    fi
+
     echo ""
-    echo "2. Check daemon status:"
+    echo "3. Check daemon status:"
     echo "   oxvcs-daemon --status"
     echo ""
-    echo "3. If the daemon requires approval:"
+    echo "4. If the daemon requires approval:"
     echo "   - Open System Settings"
     echo "   - Go to General → Login Items & Extensions"
     echo "   - Enable 'Oxen VCS Daemon'"
     echo ""
-    echo "4. View the Quick Start Guide:"
+    echo "5. View the Quick Start Guide:"
     echo "   cat $PROJECT_ROOT/docs/QUICKSTART.md"
     echo ""
     echo "For more information, see:"
@@ -381,6 +443,14 @@ uninstall() {
     rm -f /tmp/com.oxen.logic.daemon.stdout
     rm -f /tmp/com.oxen.logic.daemon.stderr
     print_success "Logs removed"
+
+    print_info "Removing app bundle (if installed)..."
+    if [ -d "/Applications/OxVCS.app" ]; then
+        rm -rf "/Applications/OxVCS.app"
+        print_success "App bundle removed"
+    else
+        print_info "App bundle not found (skipping)"
+    fi
 
     echo ""
     print_success "Uninstallation complete"
@@ -441,6 +511,11 @@ main() {
     fi
 
     install_binaries
+
+    if [ "$skip_app" = false ]; then
+        install_app
+    fi
+
     install_plist
     register_service
     verify_installation
