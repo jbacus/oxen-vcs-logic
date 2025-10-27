@@ -1,7 +1,6 @@
 import Foundation
-import ServiceManagement
 
-/// Manages the lifecycle of the Oxen VCS daemon using SMAppService
+/// Manages the lifecycle of the Oxen VCS daemon using launchctl
 /// Handles registration, activation, and status monitoring of the LaunchAgent
 @available(macOS 13.0, *)
 public class ServiceManager {
@@ -9,7 +8,7 @@ public class ServiceManager {
     // MARK: - Properties
 
     private static let serviceName = "com.oxen.logic.daemon"
-    private let service: SMAppService
+    private let plistPath: String
 
     public enum ServiceError: Error, LocalizedError {
         case registrationFailed(String)
@@ -18,6 +17,7 @@ public class ServiceManager {
         case notAuthorized
         case alreadyRegistered
         case notRegistered
+        case plistNotFound
 
         public var errorDescription: String? {
             switch self {
@@ -33,6 +33,8 @@ public class ServiceManager {
                 return "Service is already registered"
             case .notRegistered:
                 return "Service is not registered"
+            case .plistNotFound:
+                return "Service plist not found. Please run the install.sh script first."
             }
         }
     }
@@ -40,7 +42,8 @@ public class ServiceManager {
     // MARK: - Initialization
 
     public init() {
-        self.service = SMAppService.agent(plistName: ServiceManager.serviceName)
+        let launchAgentsDir = NSString(string: "~/Library/LaunchAgents").expandingTildeInPath
+        self.plistPath = "\(launchAgentsDir)/\(ServiceManager.serviceName).plist"
     }
 
     // MARK: - Service Management
@@ -48,82 +51,120 @@ public class ServiceManager {
     /// Register and start the LaunchAgent service
     /// - Throws: ServiceError if registration fails
     public func register() throws {
-        let status = service.status
+        // Check if plist exists
+        guard FileManager.default.fileExists(atPath: plistPath) else {
+            throw ServiceError.plistNotFound
+        }
 
-        switch status {
-        case .enabled:
-            print("Service is already enabled and running")
+        // Check if already loaded
+        if isServiceLoaded() {
+            print("Service is already loaded and running")
             return
+        }
 
-        case .requiresApproval:
-            print("⚠️  Service requires user approval in System Settings")
-            print("Please go to: System Settings → General → Login Items & Extensions")
-            print("Enable: Oxen VCS Daemon")
-            throw ServiceError.notAuthorized
+        print("Registering LaunchAgent service...")
 
-        case .notRegistered:
-            print("Registering LaunchAgent service...")
-            do {
-                try service.register()
+        // Use launchctl to load the service
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/bin/launchctl")
+        task.arguments = ["load", plistPath]
+
+        let pipe = Pipe()
+        task.standardError = pipe
+
+        do {
+            try task.run()
+            task.waitUntilExit()
+
+            if task.terminationStatus == 0 {
                 print("✓ Service registered successfully")
                 print("The daemon will start automatically on login")
-            } catch {
-                throw ServiceError.registrationFailed(error.localizedDescription)
+            } else {
+                let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                let error = String(data: data, encoding: .utf8) ?? "Unknown error"
+                throw ServiceError.registrationFailed("launchctl error: \(error)")
             }
-
-        case .notFound:
-            throw ServiceError.registrationFailed("Service plist not found at expected location")
-
-        @unknown default:
-            throw ServiceError.statusCheckFailed("Unknown service status: \(status)")
+        } catch let error as ServiceError {
+            throw error
+        } catch {
+            throw ServiceError.registrationFailed(error.localizedDescription)
         }
     }
 
     /// Unregister the LaunchAgent service
     /// - Throws: ServiceError if unregistration fails
     public func unregister() throws {
-        let status = service.status
-
-        guard status != .notRegistered else {
-            print("Service is not registered")
+        guard isServiceLoaded() else {
+            print("Service is not loaded")
             return
         }
 
         print("Unregistering LaunchAgent service...")
+
+        // Use launchctl to unload the service
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/bin/launchctl")
+        task.arguments = ["unload", plistPath]
+
+        let pipe = Pipe()
+        task.standardError = pipe
+
         do {
-            try service.unregister()
-            print("✓ Service unregistered successfully")
+            try task.run()
+            task.waitUntilExit()
+
+            if task.terminationStatus == 0 {
+                print("✓ Service unregistered successfully")
+            } else {
+                let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                let error = String(data: data, encoding: .utf8) ?? "Unknown error"
+                throw ServiceError.unregistrationFailed("launchctl error: \(error)")
+            }
+        } catch let error as ServiceError {
+            throw error
         } catch {
             throw ServiceError.unregistrationFailed(error.localizedDescription)
         }
     }
 
-    /// Get the current status of the service
-    /// - Returns: SMAppService.Status
-    public func getStatus() -> SMAppService.Status {
-        return service.status
+    /// Check if the service is currently loaded with launchctl
+    /// - Returns: true if loaded
+    private func isServiceLoaded() -> Bool {
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/bin/launchctl")
+        task.arguments = ["list", ServiceManager.serviceName]
+
+        let pipe = Pipe()
+        task.standardOutput = pipe
+        task.standardError = pipe
+
+        do {
+            try task.run()
+            task.waitUntilExit()
+            return task.terminationStatus == 0
+        } catch {
+            return false
+        }
     }
 
     /// Check if the service is currently running
     /// - Returns: true if enabled and running
     public func isRunning() -> Bool {
-        return service.status == .enabled
+        return isServiceLoaded()
     }
 
     /// Get a human-readable status string
     /// - Returns: Status description
     public func getStatusDescription() -> String {
-        switch service.status {
-        case .enabled:
+        let plistExists = FileManager.default.fileExists(atPath: plistPath)
+        let serviceLoaded = isServiceLoaded()
+
+        if !plistExists {
+            return "✗ Service configuration not found (run install.sh)"
+        } else if serviceLoaded {
             return "✓ Enabled and running"
-        case .requiresApproval:
-            return "⚠️  Requires approval in System Settings"
-        case .notRegistered:
-            return "○ Not registered"
-        case .notFound:
-            return "✗ Service configuration not found"
-        @unknown default:
-            return "? Unknown status"
+        } else {
+            return "○ Not loaded (run: oxvcs-daemon --install)"
         }
     }
 
@@ -168,17 +209,18 @@ public class ServiceManager {
         print("=====================")
         print("Service: \(ServiceManager.serviceName)")
         print("Status: \(getStatusDescription())")
+        print("Plist: \(plistPath)")
 
         if isRunning() {
             print("\nThe daemon is monitoring your Logic Pro projects")
             print("Auto-commits will be created after 30 seconds of inactivity")
-        } else if service.status == .requiresApproval {
-            print("\n⚠️  Action Required:")
-            print("Go to System Settings → General → Login Items")
-            print("Enable 'Oxen VCS Daemon' to start automatic tracking")
         } else {
             print("\nThe daemon is not running")
-            print("Run: oxvcs-daemon --install")
+            if FileManager.default.fileExists(atPath: plistPath) {
+                print("Run: oxvcs-daemon --install")
+            } else {
+                print("Run: ./install.sh (to install the plist and daemon)")
+            }
         }
     }
 
