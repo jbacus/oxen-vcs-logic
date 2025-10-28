@@ -196,6 +196,18 @@ mod tests {
     use std::fs;
     use std::env;
 
+    // Helper function to create a temporary .logicx project
+    fn create_test_project(name: &str) -> PathBuf {
+        let temp_dir = std::env::temp_dir().join(name);
+        let alternatives_dir = temp_dir.join("Alternatives").join("001");
+        fs::create_dir_all(&alternatives_dir).unwrap();
+
+        let project_data = alternatives_dir.join("ProjectData");
+        fs::write(&project_data, b"test project data").unwrap();
+
+        temp_dir
+    }
+
     #[test]
     fn test_detect_invalid_extension() {
         let temp_dir = std::env::temp_dir().join("test_project");
@@ -203,6 +215,40 @@ mod tests {
 
         let result = LogicProject::detect(&temp_dir);
         assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("not a Logic Pro folder project"));
+
+        let _ = fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_detect_nonexistent_path() {
+        let nonexistent = std::env::temp_dir().join("nonexistent_path_12345.logicx");
+        let result = LogicProject::detect(&nonexistent);
+
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("does not exist"));
+    }
+
+    #[test]
+    fn test_detect_file_not_directory() {
+        let temp_file = std::env::temp_dir().join("test_file.logicx");
+        fs::write(&temp_file, b"not a directory").unwrap();
+
+        let result = LogicProject::detect(&temp_file);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("not a directory"));
+
+        let _ = fs::remove_file(&temp_file);
+    }
+
+    #[test]
+    fn test_detect_missing_project_data() {
+        let temp_dir = std::env::temp_dir().join("empty_project.logicx");
+        fs::create_dir_all(&temp_dir).unwrap();
+
+        let result = LogicProject::detect(&temp_dir);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("No ProjectData file found"));
 
         let _ = fs::remove_dir_all(&temp_dir);
     }
@@ -265,10 +311,170 @@ mod tests {
     }
 
     #[test]
+    fn test_detect_root_level_project_data() {
+        // Test older format with ProjectData at root
+        let temp_dir = std::env::temp_dir().join("old_project.logicx");
+        fs::create_dir_all(&temp_dir).unwrap();
+
+        let project_data = temp_dir.join("ProjectData");
+        fs::write(&project_data, b"old format data").unwrap();
+
+        let result = LogicProject::detect(&temp_dir);
+        assert!(result.is_ok());
+
+        if let Ok(project) = result {
+            assert!(project.project_data_path.ends_with("ProjectData"));
+            assert_eq!(project.project_data_path.parent().unwrap(), temp_dir.canonicalize().unwrap());
+        }
+
+        let _ = fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_detect_lowercase_project_data() {
+        // Test case variation: projectData instead of ProjectData
+        let temp_dir = std::env::temp_dir().join("lowercase_project.logicx");
+        fs::create_dir_all(&temp_dir).unwrap();
+
+        let project_data = temp_dir.join("projectData");
+        fs::write(&project_data, b"lowercase variant").unwrap();
+
+        let result = LogicProject::detect(&temp_dir);
+        assert!(result.is_ok());
+
+        let _ = fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_detect_multiple_alternatives() {
+        // Test project with multiple alternative directories
+        let temp_dir = std::env::temp_dir().join("multi_alt.logicx");
+        let alt_001 = temp_dir.join("Alternatives").join("001");
+        let alt_002 = temp_dir.join("Alternatives").join("002");
+
+        fs::create_dir_all(&alt_001).unwrap();
+        fs::create_dir_all(&alt_002).unwrap();
+
+        // Only create ProjectData in 001
+        fs::write(alt_001.join("ProjectData"), b"data 001").unwrap();
+
+        let result = LogicProject::detect(&temp_dir);
+        assert!(result.is_ok());
+
+        if let Ok(project) = result {
+            assert!(project.project_data_path.to_string_lossy().contains("001"));
+        }
+
+        let _ = fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_project_name() {
+        let temp_dir = create_test_project("my_song.logicx");
+        let project = LogicProject::detect(&temp_dir).unwrap();
+
+        assert_eq!(project.name(), "my_song");
+
+        let _ = fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_project_name_with_spaces() {
+        let temp_dir = create_test_project("My Amazing Song.logicx");
+        let project = LogicProject::detect(&temp_dir).unwrap();
+
+        assert_eq!(project.name(), "My Amazing Song");
+
+        let _ = fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_tracked_paths() {
+        let temp_dir = create_test_project("track_test.logicx");
+        let project = LogicProject::detect(&temp_dir).unwrap();
+
+        let tracked = project.tracked_paths();
+        assert_eq!(tracked.len(), 2);
+
+        // Check that paths end with expected directories
+        assert!(tracked.iter().any(|p| p.ends_with("Alternatives")));
+        assert!(tracked.iter().any(|p| p.ends_with("Resources")));
+
+        let _ = fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
     fn test_ignored_patterns() {
         let patterns = LogicProject::ignored_patterns();
+
+        // Essential patterns that must be present
         assert!(patterns.contains(&"Bounces/"));
         assert!(patterns.contains(&"Freeze Files/"));
         assert!(patterns.contains(&".DS_Store"));
+        assert!(patterns.contains(&"*.nosync"));
+        assert!(patterns.contains(&"Autosave/"));
+        assert!(patterns.contains(&"Media.localized/"));
+        assert!(patterns.contains(&"*.smbdelete*"));
+
+        // Should have at least 7 patterns
+        assert!(patterns.len() >= 7);
+    }
+
+    #[test]
+    fn test_ignored_patterns_all_types() {
+        let patterns = LogicProject::ignored_patterns();
+
+        // Should contain directory patterns (ending with /)
+        assert!(patterns.iter().any(|p| p.ends_with('/')));
+
+        // Should contain wildcard patterns
+        assert!(patterns.iter().any(|p| p.contains('*')));
+
+        // Should contain exact filename patterns
+        assert!(patterns.iter().any(|p| !p.contains('*') && !p.ends_with('/')));
+    }
+
+    #[test]
+    fn test_project_path_is_canonical() {
+        let temp_dir = create_test_project("canonical_test.logicx");
+        let project = LogicProject::detect(&temp_dir).unwrap();
+
+        // Path should be absolute (canonical)
+        assert!(project.path.is_absolute());
+
+        let _ = fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_project_data_path_exists() {
+        let temp_dir = create_test_project("exists_test.logicx");
+        let project = LogicProject::detect(&temp_dir).unwrap();
+
+        // ProjectData path should exist
+        assert!(project.project_data_path.exists());
+        assert!(project.project_data_path.is_file());
+
+        let _ = fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_detect_with_symlink() {
+        // This test may not work on all systems, so we'll make it conditional
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::symlink;
+
+            let temp_dir = create_test_project("real_project.logicx");
+            let link_path = std::env::temp_dir().join("link_project.logicx");
+
+            if symlink(&temp_dir, &link_path).is_ok() {
+                let result = LogicProject::detect(&link_path);
+                assert!(result.is_ok());
+
+                let _ = fs::remove_file(&link_path);
+            }
+
+            let _ = fs::remove_dir_all(&temp_dir);
+        }
     }
 }
