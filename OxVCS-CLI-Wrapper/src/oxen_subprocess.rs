@@ -630,4 +630,556 @@ Date: 2025-01-02
         assert!(branch.is_current);
         assert_eq!(branch.name, "main");
     }
+
+    // ========== Additional Comprehensive Tests ==========
+
+    #[test]
+    fn test_parse_commit_id_short_hash() {
+        let oxen = OxenSubprocess::new();
+        assert_eq!(
+            oxen.parse_commit_id("abc1234"),
+            Some("abc1234".to_string())
+        );
+    }
+
+    #[test]
+    fn test_parse_commit_id_long_hash() {
+        let oxen = OxenSubprocess::new();
+        let long_hash = "abc123def456789012345678901234567890";
+        assert_eq!(
+            oxen.parse_commit_id(long_hash),
+            Some(long_hash.to_string())
+        );
+    }
+
+    #[test]
+    fn test_parse_commit_id_with_brackets() {
+        let oxen = OxenSubprocess::new();
+        assert_eq!(
+            oxen.parse_commit_id("[abc123def]"),
+            Some("abc123def".to_string())
+        );
+    }
+
+    #[test]
+    fn test_parse_commit_id_multiline() {
+        let oxen = OxenSubprocess::new();
+        let output = "Some text\nCommit abc123 created\nMore text";
+        assert_eq!(
+            oxen.parse_commit_id(output),
+            Some("abc123".to_string())
+        );
+    }
+
+    #[test]
+    fn test_parse_commit_id_empty_string() {
+        let oxen = OxenSubprocess::new();
+        assert_eq!(oxen.parse_commit_id(""), None);
+    }
+
+    #[test]
+    fn test_parse_commit_id_too_short() {
+        let oxen = OxenSubprocess::new();
+        assert_eq!(oxen.parse_commit_id("abc12"), None); // Less than 7 chars
+    }
+
+    #[test]
+    fn test_parse_log_output_empty() {
+        let oxen = OxenSubprocess::new();
+        let commits = oxen.parse_log_output("").unwrap();
+        assert!(commits.is_empty());
+    }
+
+    #[test]
+    fn test_parse_log_output_single_commit() {
+        let oxen = OxenSubprocess::new();
+        let output = r#"
+commit abc123
+Author: Test User <test@example.com>
+Date: 2025-01-01
+
+    First commit
+        "#;
+
+        let commits = oxen.parse_log_output(output).unwrap();
+        assert_eq!(commits.len(), 1);
+        assert_eq!(commits[0].id, "abc123");
+        assert_eq!(commits[0].message, "First commit");
+    }
+
+    #[test]
+    fn test_parse_log_output_multiple_commits() {
+        let oxen = OxenSubprocess::new();
+        let output = r#"
+commit abc123
+Author: User <user@example.com>
+Date: 2025-01-01
+
+    Third commit
+
+commit def456
+Author: User <user@example.com>
+Date: 2025-01-02
+
+    Second commit
+
+commit xyz789
+Author: User <user@example.com>
+Date: 2025-01-03
+
+    First commit
+        "#;
+
+        let commits = oxen.parse_log_output(output).unwrap();
+        assert_eq!(commits.len(), 3);
+        assert_eq!(commits[0].id, "abc123");
+        assert_eq!(commits[1].id, "def456");
+        assert_eq!(commits[2].id, "xyz789");
+    }
+
+    #[test]
+    fn test_parse_log_output_multiline_message() {
+        let oxen = OxenSubprocess::new();
+        let output = r#"
+commit abc123
+Author: User <user@example.com>
+Date: 2025-01-01
+
+    First line of commit
+    Second line of commit
+    Third line of commit
+        "#;
+
+        let commits = oxen.parse_log_output(output).unwrap();
+        assert_eq!(commits.len(), 1);
+        assert!(commits[0].message.contains("First line"));
+        assert!(commits[0].message.contains("Second line"));
+        assert!(commits[0].message.contains("Third line"));
+    }
+
+    #[test]
+    fn test_parse_status_output_empty() {
+        let oxen = OxenSubprocess::new();
+        let status = oxen.parse_status_output("").unwrap();
+        assert!(status.modified.is_empty());
+        assert!(status.untracked.is_empty());
+        assert!(status.staged.is_empty());
+    }
+
+    #[test]
+    fn test_parse_status_output_modified_only() {
+        let oxen = OxenSubprocess::new();
+        let output = "M  file1.txt\nM  file2.rs";
+        let status = oxen.parse_status_output(output).unwrap();
+
+        assert_eq!(status.modified.len(), 2);
+        assert!(status.untracked.is_empty());
+        assert!(status.staged.is_empty());
+    }
+
+    #[test]
+    fn test_parse_status_output_untracked_only() {
+        let oxen = OxenSubprocess::new();
+        let output = "?  new1.txt\n?  new2.txt";
+        let status = oxen.parse_status_output(output).unwrap();
+
+        assert!(status.modified.is_empty());
+        assert_eq!(status.untracked.len(), 2);
+        assert!(status.staged.is_empty());
+    }
+
+    #[test]
+    fn test_parse_status_output_staged_only() {
+        let oxen = OxenSubprocess::new();
+        let output = "A  added1.txt\nA  added2.txt";
+        let status = oxen.parse_status_output(output).unwrap();
+
+        assert!(status.modified.is_empty());
+        assert!(status.untracked.is_empty());
+        assert_eq!(status.staged.len(), 2);
+    }
+
+    #[test]
+    fn test_parse_status_output_mixed() {
+        let oxen = OxenSubprocess::new();
+        let output = r#"
+M  modified.txt
+?  untracked.txt
+A  staged.txt
+modified: another_modified.txt
+        "#;
+
+        let status = oxen.parse_status_output(output).unwrap();
+
+        assert_eq!(status.modified.len(), 2);
+        assert_eq!(status.untracked.len(), 1);
+        assert_eq!(status.staged.len(), 1);
+    }
+
+    #[test]
+    fn test_parse_status_output_with_paths() {
+        let oxen = OxenSubprocess::new();
+        let output = "M  src/main.rs\n?  tests/new_test.rs";
+        let status = oxen.parse_status_output(output).unwrap();
+
+        assert_eq!(status.modified[0], PathBuf::from("src/main.rs"));
+        assert_eq!(status.untracked[0], PathBuf::from("tests/new_test.rs"));
+    }
+
+    #[test]
+    fn test_parse_branches_output_empty() {
+        let oxen = OxenSubprocess::new();
+        let branches = oxen.parse_branches_output("").unwrap();
+        assert!(branches.is_empty());
+    }
+
+    #[test]
+    fn test_parse_branches_output_single_branch() {
+        let oxen = OxenSubprocess::new();
+        let output = "* main";
+        let branches = oxen.parse_branches_output(output).unwrap();
+
+        assert_eq!(branches.len(), 1);
+        assert_eq!(branches[0].name, "main");
+        assert!(branches[0].is_current);
+    }
+
+    #[test]
+    fn test_parse_branches_output_multiple_branches() {
+        let oxen = OxenSubprocess::new();
+        let output = r#"
+* main
+  develop
+  feature-branch
+  draft
+        "#;
+
+        let branches = oxen.parse_branches_output(output).unwrap();
+
+        assert_eq!(branches.len(), 4);
+        assert_eq!(branches[0].name, "main");
+        assert!(branches[0].is_current);
+        assert_eq!(branches[1].name, "develop");
+        assert!(!branches[1].is_current);
+        assert_eq!(branches[2].name, "feature-branch");
+        assert!(!branches[2].is_current);
+    }
+
+    #[test]
+    fn test_parse_branches_output_no_current() {
+        let oxen = OxenSubprocess::new();
+        let output = "  branch1\n  branch2";
+        let branches = oxen.parse_branches_output(output).unwrap();
+
+        assert_eq!(branches.len(), 2);
+        assert!(!branches[0].is_current);
+        assert!(!branches[1].is_current);
+    }
+
+    #[test]
+    fn test_parse_branches_output_with_whitespace() {
+        let oxen = OxenSubprocess::new();
+        let output = "  \n* main  \n  develop\n  \n";
+        let branches = oxen.parse_branches_output(output).unwrap();
+
+        assert_eq!(branches.len(), 2);
+        assert_eq!(branches[0].name, "main");
+        assert_eq!(branches[1].name, "develop");
+    }
+
+    #[test]
+    fn test_extract_path_from_status_line_modified() {
+        let oxen = OxenSubprocess::new();
+        assert_eq!(
+            oxen.extract_path_from_status_line("M  path/to/file.txt"),
+            PathBuf::from("path/to/file.txt")
+        );
+    }
+
+    #[test]
+    fn test_extract_path_from_status_line_modified_colon() {
+        let oxen = OxenSubprocess::new();
+        assert_eq!(
+            oxen.extract_path_from_status_line("modified: src/lib.rs"),
+            PathBuf::from("src/lib.rs")
+        );
+    }
+
+    #[test]
+    fn test_extract_path_from_status_line_untracked() {
+        let oxen = OxenSubprocess::new();
+        assert_eq!(
+            oxen.extract_path_from_status_line("?  new_file.rs"),
+            PathBuf::from("new_file.rs")
+        );
+    }
+
+    #[test]
+    fn test_extract_path_from_status_line_added() {
+        let oxen = OxenSubprocess::new();
+        assert_eq!(
+            oxen.extract_path_from_status_line("A  added.txt"),
+            PathBuf::from("added.txt")
+        );
+    }
+
+    #[test]
+    fn test_extract_path_from_status_line_with_spaces() {
+        let oxen = OxenSubprocess::new();
+        assert_eq!(
+            oxen.extract_path_from_status_line("M  path with spaces/file.txt"),
+            PathBuf::from("path with spaces/file.txt")
+        );
+    }
+
+    #[test]
+    fn test_oxen_subprocess_default() {
+        let oxen = OxenSubprocess::default();
+        assert_eq!(oxen.oxen_path, "oxen");
+        assert!(!oxen.verbose);
+    }
+
+    #[test]
+    fn test_oxen_subprocess_clone() {
+        let oxen = OxenSubprocess::new().verbose(true);
+        let cloned = oxen.clone();
+        assert!(cloned.verbose);
+        assert_eq!(cloned.oxen_path, "oxen");
+    }
+
+    #[test]
+    fn test_oxen_subprocess_debug() {
+        let oxen = OxenSubprocess::new();
+        let debug_str = format!("{:?}", oxen);
+        assert!(debug_str.contains("oxen"));
+    }
+
+    #[test]
+    fn test_commit_info_equality() {
+        let commit1 = CommitInfo {
+            id: "abc123".to_string(),
+            message: "Test".to_string(),
+        };
+        let commit2 = CommitInfo {
+            id: "abc123".to_string(),
+            message: "Test".to_string(),
+        };
+        assert_eq!(commit1, commit2);
+    }
+
+    #[test]
+    fn test_commit_info_clone() {
+        let commit = CommitInfo {
+            id: "abc123".to_string(),
+            message: "Test".to_string(),
+        };
+        let cloned = commit.clone();
+        assert_eq!(commit, cloned);
+    }
+
+    #[test]
+    fn test_commit_info_debug() {
+        let commit = CommitInfo {
+            id: "abc123".to_string(),
+            message: "Test".to_string(),
+        };
+        let debug_str = format!("{:?}", commit);
+        assert!(debug_str.contains("abc123"));
+        assert!(debug_str.contains("Test"));
+    }
+
+    #[test]
+    fn test_status_info_clone() {
+        let status = StatusInfo {
+            modified: vec![PathBuf::from("a.txt")],
+            untracked: vec![],
+            staged: vec![],
+        };
+        let cloned = status.clone();
+        assert_eq!(status, cloned);
+    }
+
+    #[test]
+    fn test_status_info_debug() {
+        let status = StatusInfo {
+            modified: vec![PathBuf::from("a.txt")],
+            untracked: vec![],
+            staged: vec![],
+        };
+        let debug_str = format!("{:?}", status);
+        assert!(debug_str.contains("modified"));
+    }
+
+    #[test]
+    fn test_branch_info_equality() {
+        let branch1 = BranchInfo {
+            name: "main".to_string(),
+            is_current: true,
+        };
+        let branch2 = BranchInfo {
+            name: "main".to_string(),
+            is_current: true,
+        };
+        assert_eq!(branch1, branch2);
+    }
+
+    #[test]
+    fn test_branch_info_clone() {
+        let branch = BranchInfo {
+            name: "main".to_string(),
+            is_current: true,
+        };
+        let cloned = branch.clone();
+        assert_eq!(branch, cloned);
+    }
+
+    #[test]
+    fn test_branch_info_debug() {
+        let branch = BranchInfo {
+            name: "main".to_string(),
+            is_current: true,
+        };
+        let debug_str = format!("{:?}", branch);
+        assert!(debug_str.contains("main"));
+        assert!(debug_str.contains("true"));
+    }
+
+    #[test]
+    fn test_verbose_builder_chain() {
+        let oxen = OxenSubprocess::new()
+            .verbose(true)
+            .verbose(false)
+            .verbose(true);
+        assert!(oxen.verbose);
+    }
+
+    #[test]
+    fn test_with_path_custom() {
+        let custom_path = "/usr/local/bin/oxen";
+        let oxen = OxenSubprocess::with_path(custom_path);
+        assert_eq!(oxen.oxen_path, custom_path);
+    }
+
+    #[test]
+    fn test_parse_log_output_with_metadata() {
+        let oxen = OxenSubprocess::new();
+        let output = r#"
+commit abc123
+Author: User <user@example.com>
+Date: 2025-01-01
+
+    Added drum track
+
+    BPM: 120
+    Sample Rate: 48000 Hz
+    Key: C Major
+        "#;
+
+        let commits = oxen.parse_log_output(output).unwrap();
+        assert_eq!(commits.len(), 1);
+        assert!(commits[0].message.contains("Added drum track"));
+        assert!(commits[0].message.contains("BPM: 120"));
+    }
+
+    #[test]
+    fn test_parse_status_output_new_file_colon_format() {
+        let oxen = OxenSubprocess::new();
+        let output = "new file: path/to/file.txt";
+        let status = oxen.parse_status_output(output).unwrap();
+
+        assert_eq!(status.staged.len(), 1);
+        assert_eq!(status.staged[0], PathBuf::from("path/to/file.txt"));
+    }
+
+    #[test]
+    fn test_parse_branches_with_remotes() {
+        let oxen = OxenSubprocess::new();
+        let output = r#"
+* main
+  remotes/origin/main
+  develop
+        "#;
+
+        let branches = oxen.parse_branches_output(output).unwrap();
+        // Should parse all as branch names
+        assert!(branches.len() >= 2);
+    }
+
+    #[test]
+    fn test_status_info_all_empty() {
+        let status = StatusInfo {
+            modified: vec![],
+            untracked: vec![],
+            staged: vec![],
+        };
+        assert!(status.modified.is_empty());
+        assert!(status.untracked.is_empty());
+        assert!(status.staged.is_empty());
+    }
+
+    #[test]
+    fn test_status_info_multiple_files() {
+        let status = StatusInfo {
+            modified: vec![
+                PathBuf::from("file1.txt"),
+                PathBuf::from("file2.txt"),
+                PathBuf::from("file3.txt"),
+            ],
+            untracked: vec![
+                PathBuf::from("new1.txt"),
+                PathBuf::from("new2.txt"),
+            ],
+            staged: vec![PathBuf::from("staged.txt")],
+        };
+
+        assert_eq!(status.modified.len(), 3);
+        assert_eq!(status.untracked.len(), 2);
+        assert_eq!(status.staged.len(), 1);
+    }
+
+    #[test]
+    fn test_commit_info_empty_message() {
+        let commit = CommitInfo {
+            id: "abc123".to_string(),
+            message: String::new(),
+        };
+        assert!(commit.message.is_empty());
+    }
+
+    #[test]
+    fn test_commit_info_long_message() {
+        let long_msg = "a".repeat(1000);
+        let commit = CommitInfo {
+            id: "abc123".to_string(),
+            message: long_msg.clone(),
+        };
+        assert_eq!(commit.message.len(), 1000);
+    }
+
+    #[test]
+    fn test_parse_commit_id_edge_case_7_chars() {
+        let oxen = OxenSubprocess::new();
+        assert_eq!(
+            oxen.parse_commit_id("abc1234"),
+            Some("abc1234".to_string())
+        );
+    }
+
+    #[test]
+    fn test_parse_commit_id_edge_case_40_chars() {
+        let oxen = OxenSubprocess::new();
+        let hash = "a".repeat(40);
+        assert_eq!(
+            oxen.parse_commit_id(&hash),
+            Some(hash)
+        );
+    }
+
+    #[test]
+    fn test_parse_commit_id_edge_case_41_chars() {
+        let oxen = OxenSubprocess::new();
+        let hash = "a".repeat(41);
+        assert_eq!(oxen.parse_commit_id(&hash), None); // Too long
+    }
 }
+
