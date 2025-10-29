@@ -7,9 +7,10 @@ class ProjectDetailView: NSView {
 
     private let headerView = NSView()
     private let projectNameLabel = NSTextField(labelWithString: "")
-    private let commitButton = NSButton(title: "Create Milestone Commit", target: nil, action: nil)
+    private let projectPathLabel = NSTextField(labelWithString: "")
+    private let commitButton = NSButton(title: "Milestone Commit", target: nil, action: nil)
     private let rollbackButton = NSButton(title: "Rollback", target: nil, action: nil)
-    private let lockButton = NSButton(title: "Manage Locks", target: nil, action: nil)
+    private let lockButton = NSButton(title: "Lock Management", target: nil, action: nil)
 
     private let tableView = NSTableView()
     private let scrollView = NSScrollView()
@@ -30,26 +31,46 @@ class ProjectDetailView: NSView {
         headerView.translatesAutoresizingMaskIntoConstraints = false
         addSubview(headerView)
 
+        // Project name with SF Symbol
         projectNameLabel.font = NSFont.systemFont(ofSize: 20, weight: .semibold)
         projectNameLabel.stringValue = viewModel.project.displayName
         projectNameLabel.translatesAutoresizingMaskIntoConstraints = false
         headerView.addSubview(projectNameLabel)
 
+        // Project path (smaller, secondary)
+        projectPathLabel.font = NSFont.systemFont(ofSize: 11)
+        projectPathLabel.textColor = .secondaryLabelColor
+        projectPathLabel.stringValue = viewModel.project.path
+        projectPathLabel.lineBreakMode = .byTruncatingMiddle
+        projectPathLabel.translatesAutoresizingMaskIntoConstraints = false
+        headerView.addSubview(projectPathLabel)
+
+        // Style buttons with SF Symbols
         commitButton.bezelStyle = .rounded
+        commitButton.image = NSImage(systemSymbolName: "arrow.up.doc", accessibilityDescription: "Commit")
+        commitButton.imagePosition = .imageLeading
         commitButton.target = self
         commitButton.action = #selector(createMilestoneCommit)
+        commitButton.keyEquivalent = "k"
+        commitButton.keyEquivalentModifierMask = .command
         commitButton.translatesAutoresizingMaskIntoConstraints = false
         headerView.addSubview(commitButton)
 
         rollbackButton.bezelStyle = .rounded
+        rollbackButton.image = NSImage(systemSymbolName: "clock.arrow.circlepath", accessibilityDescription: "Rollback")
+        rollbackButton.imagePosition = .imageLeading
         rollbackButton.target = self
         rollbackButton.action = #selector(showRollbackView)
         rollbackButton.translatesAutoresizingMaskIntoConstraints = false
         headerView.addSubview(rollbackButton)
 
         lockButton.bezelStyle = .rounded
+        lockButton.image = NSImage(systemSymbolName: "lock", accessibilityDescription: "Lock")
+        lockButton.imagePosition = .imageLeading
         lockButton.target = self
         lockButton.action = #selector(showLockManagement)
+        lockButton.keyEquivalent = "l"
+        lockButton.keyEquivalentModifierMask = .command
         lockButton.translatesAutoresizingMaskIntoConstraints = false
         headerView.addSubview(lockButton)
 
@@ -96,18 +117,22 @@ class ProjectDetailView: NSView {
             headerView.topAnchor.constraint(equalTo: topAnchor, constant: 16),
             headerView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
             headerView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
-            headerView.heightAnchor.constraint(equalToConstant: 60),
+            headerView.heightAnchor.constraint(equalToConstant: 80),
 
             projectNameLabel.topAnchor.constraint(equalTo: headerView.topAnchor),
             projectNameLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor),
 
-            commitButton.topAnchor.constraint(equalTo: projectNameLabel.bottomAnchor, constant: 8),
+            projectPathLabel.topAnchor.constraint(equalTo: projectNameLabel.bottomAnchor, constant: 2),
+            projectPathLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor),
+            projectPathLabel.trailingAnchor.constraint(lessThanOrEqualTo: headerView.trailingAnchor),
+
+            commitButton.topAnchor.constraint(equalTo: projectPathLabel.bottomAnchor, constant: 12),
             commitButton.leadingAnchor.constraint(equalTo: headerView.leadingAnchor),
 
-            rollbackButton.topAnchor.constraint(equalTo: projectNameLabel.bottomAnchor, constant: 8),
+            rollbackButton.topAnchor.constraint(equalTo: projectPathLabel.bottomAnchor, constant: 12),
             rollbackButton.leadingAnchor.constraint(equalTo: commitButton.trailingAnchor, constant: 8),
 
-            lockButton.topAnchor.constraint(equalTo: projectNameLabel.bottomAnchor, constant: 8),
+            lockButton.topAnchor.constraint(equalTo: projectPathLabel.bottomAnchor, constant: 12),
             lockButton.leadingAnchor.constraint(equalTo: rollbackButton.trailingAnchor, constant: 8),
 
             scrollView.topAnchor.constraint(equalTo: headerView.bottomAnchor, constant: 16),

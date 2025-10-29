@@ -91,6 +91,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         )
         window.title = "OxVCS - Logic Pro Version Control"
         window.center()
+        window.minSize = NSSize(width: 800, height: 600)
 
         mainViewController = MainViewController()
         window.contentViewController = mainViewController
