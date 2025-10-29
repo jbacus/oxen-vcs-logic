@@ -194,7 +194,7 @@ impl DraftManager {
     /// Merge draft changes back to main
     ///
     /// This creates a clean commit on main with all draft changes
-    pub async fn merge_to_main(&self, commit_message: &str) -> Result<String> {
+    pub async fn merge_to_main(&self, _commit_message: &str) -> Result<String> {
         println!("Merging draft branch to main...");
 
         // Switch to main

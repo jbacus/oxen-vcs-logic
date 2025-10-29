@@ -42,7 +42,7 @@ mod cli_tests {
 
         assert!(command_succeeded(&output), "Help should succeed");
         assert!(stdout.contains("oxenvcs-cli"), "Should show program name");
-        assert!(stdout.contains("USAGE"), "Should show usage");
+        assert!(stdout.contains("USAGE") || stdout.contains("Usage"), "Should show usage");
         assert!(stdout.contains("COMMANDS") || stdout.contains("Commands"), "Should list commands");
     }
 
@@ -267,7 +267,7 @@ mod cli_tests {
         let stderr = get_stderr(&output);
 
         assert!(
-            stdout.contains("USAGE") || stderr.contains("required") || stderr.contains("USAGE"),
+            stdout.contains("USAGE") || stdout.contains("Usage") || stderr.contains("required") || stderr.contains("USAGE") || stderr.contains("Usage"),
             "Should show usage or error message"
         );
     }

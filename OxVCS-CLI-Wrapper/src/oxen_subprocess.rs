@@ -59,28 +59,31 @@ use crate::{vlog, info, error};
 /// use oxenvcs_cli::OxenSubprocess;
 /// use std::path::Path;
 ///
-/// let oxen = OxenSubprocess::new();
+/// fn main() -> anyhow::Result<()> {
+///     let oxen = OxenSubprocess::new();
 ///
-/// // Check if oxen is available
-/// if !oxen.is_available() {
-///     eprintln!("oxen CLI not found. Install: pip install oxen-ai");
-///     return;
+///     // Check if oxen is available
+///     if !oxen.is_available() {
+///         eprintln!("oxen CLI not found. Install: pip install oxen-ai");
+///         return Ok(());
+///     }
+///
+///     // Initialize repository
+///     let project = Path::new("/path/to/project.logicx");
+///     oxen.init(project)?;
+///
+///     // Add and commit files
+///     oxen.add_all(project)?;
+///     oxen.commit(project, "Initial commit")?;
+///
+///     // View history
+///     let commits = oxen.log(project, Some(10))?;
+///     for commit in commits {
+///         println!("{}: {}", commit.id, commit.message);
+///     }
+///
+///     Ok(())
 /// }
-///
-/// // Initialize repository
-/// let project = Path::new("/path/to/project.logicx");
-/// oxen.init(project)?;
-///
-/// // Add and commit files
-/// oxen.add_all(project)?;
-/// oxen.commit(project, "Initial commit")?;
-///
-/// // View history
-/// let commits = oxen.log(project, Some(10))?;
-/// for commit in commits {
-///     println!("{}: {}", commit.id, commit.message);
-/// }
-/// # Ok::<(), anyhow::Error>(())
 /// ```
 ///
 /// # Performance

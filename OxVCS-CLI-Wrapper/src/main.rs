@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
 use colored::Colorize;
-use oxenvcs_cli::{logger, CommitMetadata, OxenRepository, vlog, info, success, error};
+use oxenvcs_cli::{logger, CommitMetadata, OxenRepository, vlog, success};
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -242,11 +242,11 @@ async fn main() -> anyhow::Result<()> {
 
             if logic {
                 vlog!("Initializing Logic Pro project repository...");
-                let repo = OxenRepository::init_for_logic_project(&path).await?;
+                let _repo = OxenRepository::init_for_logic_project(&path).await?;
                 success!("Successfully initialized Logic Pro project repository");
             } else {
                 vlog!("Initializing generic Oxen repository...");
-                let repo = OxenRepository::init(&path).await?;
+                let _repo = OxenRepository::init(&path).await?;
                 success!("Successfully initialized Oxen repository at: {}", path.display());
             }
             Ok(())

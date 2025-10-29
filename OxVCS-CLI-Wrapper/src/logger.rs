@@ -1,3 +1,4 @@
+#[allow(unused_imports)] // Required for macro expansion
 use colored::Colorize;
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -193,7 +194,6 @@ mod tests {
 
     #[test]
     fn test_verbose_flag_thread_safety() {
-        use std::sync::Arc;
         use std::thread;
 
         let handles: Vec<_> = (0..10)

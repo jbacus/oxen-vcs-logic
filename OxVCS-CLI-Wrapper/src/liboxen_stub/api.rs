@@ -1,6 +1,5 @@
 use crate::liboxen_stub::model::{Commit, LocalRepository};
-use crate::liboxen_stub::branches;
-use anyhow::{Result, anyhow};
+use anyhow::Result;
 use std::path::Path;
 
 pub mod local {

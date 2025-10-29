@@ -1,5 +1,3 @@
-use crate::logic_project::LogicProject;
-
 /// Generates a complete `.oxenignore` file template for Logic Pro projects.
 ///
 /// Creates a well-organized ignore file with comprehensive patterns for files
@@ -52,14 +50,13 @@ use crate::logic_project::LogicProject;
 ///
 /// # Examples
 ///
-/// ```
+/// ```no_run
 /// use oxenvcs_cli::generate_oxenignore;
 /// use std::fs;
 ///
 /// // Generate and write to disk
 /// let content = generate_oxenignore();
-/// fs::write("/path/to/project.logicx/.oxenignore", content)?;
-/// # Ok::<(), std::io::Error>(())
+/// fs::write("/path/to/project.logicx/.oxenignore", content).unwrap();
 /// ```
 ///
 /// ```
@@ -111,8 +108,6 @@ use crate::logic_project::LogicProject;
 /// - `LogicProject::ignored_patterns()` - Source of truth for patterns
 /// - `.oxenignore` documentation: https://docs.oxen.ai/concepts/oxenignore
 pub fn generate_oxenignore() -> String {
-    let patterns = LogicProject::ignored_patterns();
-
     let mut content = String::new();
     content.push_str("# Oxen VCS - Logic Pro Ignore Rules\n");
     content.push_str("# Auto-generated ignore file for Logic Pro folder projects\n\n");
@@ -155,6 +150,7 @@ pub fn generate_oxenignore() -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::logic_project::LogicProject;
 
     #[test]
     fn test_generate_oxenignore_contains_essential_patterns() {

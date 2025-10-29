@@ -47,7 +47,7 @@ impl OxenRepository {
 
         // Initialize Oxen repository
         vlog!("Step 2: Initializing Oxen repository...");
-        let repo = api::local::repositories::init(path)
+        let _repo = api::local::repositories::init(path)
             .context("Failed to initialize Oxen repository")?;
 
         info!("Initialized Oxen repository at: {}", path.display());
@@ -91,7 +91,7 @@ impl OxenRepository {
     pub async fn init(path: impl AsRef<Path>) -> Result<Self> {
         let path = path.as_ref();
 
-        let repo = api::local::repositories::init(path)
+        let _repo = api::local::repositories::init(path)
             .context("Failed to initialize Oxen repository")?;
 
         Ok(Self {
@@ -424,7 +424,7 @@ mod tests {
         let _ = fs::remove_dir_all(&temp_dir);
         fs::create_dir_all(&temp_dir).unwrap();
 
-        let result = OxenRepository::init(&temp_dir).await;
+        let _result = OxenRepository::init(&temp_dir).await;
         // With stub implementation, this may succeed or fail
         // The important part is that the function signature is correct
 

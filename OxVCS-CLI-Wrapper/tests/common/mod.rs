@@ -5,6 +5,7 @@ use tempfile::TempDir;
 
 /// Test fixture for creating Logic Pro project structures
 pub struct TestFixture {
+    #[allow(dead_code)] // Kept alive to prevent directory deletion
     pub temp_dir: TempDir,
     pub project_path: PathBuf,
 }
@@ -82,6 +83,7 @@ impl TestFixture {
     }
 
     /// Add a file with text content to the project
+    #[allow(dead_code)] // Utility function for future tests
     pub fn add_text_file(&self, relative_path: &str, content: &str) -> PathBuf {
         let file_path = self.project_path.join(relative_path);
         if let Some(parent) = file_path.parent() {
@@ -105,6 +107,7 @@ impl Default for TestFixture {
 ///
 /// # Returns
 /// Test fixture with the specified size
+#[allow(dead_code)] // Utility function for future tests
 pub fn create_test_project_with_size(size_mb: usize) -> TestFixture {
     let fixture = TestFixture::new();
     fixture.create_audio_file("large.wav", size_mb);
@@ -115,6 +118,7 @@ pub fn create_test_project_with_size(size_mb: usize) -> TestFixture {
 ///
 /// # Returns
 /// Test fixture with projectData configured
+#[allow(dead_code)] // Utility function for future tests
 pub fn create_test_project_with_metadata() -> TestFixture {
     let fixture = TestFixture::new();
     fixture.create_project_data(120, 48000, Some("C"));

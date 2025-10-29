@@ -1,6 +1,7 @@
 // STUB: Using local liboxen stub until official Rust bindings are published
 pub mod liboxen_stub;
 // Alias stub as liboxen for compatibility
+#[allow(unused_imports)] // Used by other modules via the alias
 use liboxen_stub as liboxen;
 
 pub mod logic_project;

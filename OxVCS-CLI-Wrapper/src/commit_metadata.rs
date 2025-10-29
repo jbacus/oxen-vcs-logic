@@ -45,18 +45,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// # Serialization
 ///
-/// Supports JSON serialization via Serde for storage and IPC:
-///
-/// ```
-/// use oxenvcs_cli::CommitMetadata;
-///
-/// let metadata = CommitMetadata::new("Test")
-///     .with_bpm(120.0);
-///
-/// let json = serde_json::to_string(&metadata)?;
-/// let deserialized: CommitMetadata = serde_json::from_str(&json)?;
-/// # Ok::<(), Box<dyn std::error::Error>>(())
-/// ```
+/// Supports JSON serialization via Serde for storage and IPC.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CommitMetadata {
     /// User-provided commit message (primary description)

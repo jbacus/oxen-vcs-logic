@@ -1,6 +1,6 @@
 use crate::liboxen_stub::model::{Commit, LocalRepository, StagedData};
 use crate::liboxen_stub::opts::AddOpts;
-use anyhow::{Result, anyhow};
+use anyhow::Result;
 
 pub async fn add(repo: &LocalRepository, opts: &AddOpts) -> Result<()> {
     // STUB: In real implementation, this would stage files
