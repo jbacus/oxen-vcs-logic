@@ -87,11 +87,6 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-cargo-
 
-    - name: Install Oxen CLI
-      run: |
-        pip3 install oxen-ai
-        oxen config --name "CI Test" --email "ci@test.com"
-
     - name: Run Rust unit tests
       working-directory: ./OxVCS-CLI-Wrapper
       run: cargo test --lib --verbose
