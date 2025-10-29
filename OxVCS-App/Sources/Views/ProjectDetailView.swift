@@ -27,6 +27,10 @@ class ProjectDetailView: NSView {
     }
 
     private func setupUI() {
+        // Set background color for the detail view
+        wantsLayer = true
+        layer?.backgroundColor = NSColor.textBackgroundColor.cgColor
+
         // Header setup
         headerView.translatesAutoresizingMaskIntoConstraints = false
         addSubview(headerView)

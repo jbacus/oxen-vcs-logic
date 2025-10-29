@@ -16,15 +16,22 @@ class MainViewController: NSViewController {
     private var statusUpdateTimer: Timer?
 
     override func loadView() {
-        view = NSView(frame: NSRect(x: 0, y: 0, width: 1200, height: 800))
+        let mainView = NSView(frame: NSRect(x: 0, y: 0, width: 1200, height: 800))
+        mainView.wantsLayer = true
+        mainView.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
+        view = mainView
     }
 
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
-        setupToolbar()
         bindViewModel()
         startStatusUpdates()
+    }
+
+    override func viewDidAppear() {
+        super.viewDidAppear()
+        setupToolbar()
     }
 
     deinit {
@@ -60,6 +67,8 @@ class MainViewController: NSViewController {
         // Add project list to left side
         projectListView.delegate = self
         let listContainer = NSView()
+        listContainer.wantsLayer = true
+        listContainer.layer?.backgroundColor = NSColor.controlBackgroundColor.cgColor
         listContainer.addSubview(projectListView)
         projectListView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
@@ -75,6 +84,8 @@ class MainViewController: NSViewController {
 
         // Add placeholder for detail view
         let placeholderView = NSView()
+        placeholderView.wantsLayer = true
+        placeholderView.layer?.backgroundColor = NSColor.textBackgroundColor.cgColor
         let label = NSTextField(labelWithString: "Select a project to view details")
         label.font = NSFont.systemFont(ofSize: 16)
         label.textColor = .secondaryLabelColor

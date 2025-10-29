@@ -22,13 +22,15 @@ class ProjectListView: NSView {
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = false
         scrollView.borderType = .noBorder
+        scrollView.backgroundColor = .controlBackgroundColor
+        scrollView.drawsBackground = true
 
         // Setup table view
         tableView.delegate = self
         tableView.dataSource = self
         tableView.headerView = nil
         tableView.rowSizeStyle = .medium
-        tableView.backgroundColor = .clear
+        tableView.backgroundColor = .controlBackgroundColor
 
         // Add column
         let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("ProjectColumn"))
