@@ -83,41 +83,52 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func setupMainWindow() {
+        // Create window with explicit size
+        let windowRect = NSRect(x: 0, y: 0, width: 1200, height: 800)
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 1200, height: 800),
+            contentRect: windowRect,
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
         )
         window.title = "OxVCS - Logic Pro Version Control"
+
+        // Set size constraints
         window.minSize = NSSize(width: 800, height: 600)
+        window.maxSize = NSSize(width: 4096, height: 2160)  // Reasonable maximum
+        window.contentMinSize = NSSize(width: 800, height: 600)
 
         // Ensure window has proper background
         window.backgroundColor = .windowBackgroundColor
         window.isOpaque = true
 
-        // Set frame autosave name to persist window position (but respect minSize)
-        window.setFrameAutosaveName("MainWindow")
-
+        // Create and set view controller BEFORE autosave
         mainViewController = MainViewController()
         window.contentViewController = mainViewController
 
-        // Force window to display its content
-        window.display()
+        // Force the content view to have the correct size
+        mainViewController!.view.frame = NSRect(x: 0, y: 0, width: 1200, height: 800)
+        mainViewController!.view.needsLayout = true
+        mainViewController!.view.layoutSubtreeIfNeeded()
 
-        // Ensure window respects minimum size on first launch
-        var frame = window.frame
-        if frame.size.width < 800 {
-            frame.size.width = 1200
-        }
-        if frame.size.height < 600 {
-            frame.size.height = 800
-        }
-        window.setFrame(frame, display: true)
+        // Now set autosave name (after content is set)
+        window.setFrameAutosaveName("MainWindow")
 
+        // Ensure window has correct frame (override any bad saved state)
+        var currentFrame = window.frame
+        if currentFrame.size.width < 800 || currentFrame.size.height < 600 {
+            // Reset to default size if saved frame is too small
+            currentFrame.size.width = 1200
+            currentFrame.size.height = 800
+            window.setFrame(currentFrame, display: false)
+        }
+
+        // Center and show
         window.center()
         window.makeKeyAndOrderFront(nil)
+        window.display()
         NSApp.activate(ignoringOtherApps: true)
+
         self.mainWindow = window
     }
 
