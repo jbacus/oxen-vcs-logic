@@ -282,7 +282,7 @@ impl OxenSubprocess {
     pub fn list_branches(&self, repo_path: &Path) -> Result<Vec<BranchInfo>> {
         vlog!("Listing branches");
 
-        let output = self.run_command(&["branch", "--list"], Some(repo_path))?;
+        let output = self.run_command(&["branch"], Some(repo_path))?;
 
         let branches = self.parse_branches_output(&output)?;
 
@@ -441,9 +441,29 @@ impl OxenSubprocess {
         let mut untracked = Vec::new();
         let mut staged = Vec::new();
 
+        let mut current_section = None;
+
         for line in output.lines() {
             let trimmed = line.trim();
 
+            // Check for section headers
+            if trimmed.starts_with("Untracked Files") || trimmed.starts_with("Untracked Directories") {
+                current_section = Some("untracked");
+                continue;
+            } else if trimmed.starts_with("Modified Files") || trimmed.starts_with("Changes not staged") {
+                current_section = Some("modified");
+                continue;
+            } else if trimmed.starts_with("Staged Files") || trimmed.starts_with("Changes to be committed") {
+                current_section = Some("staged");
+                continue;
+            }
+
+            // Skip empty lines and help text
+            if trimmed.is_empty() || trimmed.starts_with("(use") || trimmed.starts_with("On branch") {
+                continue;
+            }
+
+            // Legacy format support
             if trimmed.starts_with("M ") || trimmed.starts_with("modified:") {
                 let path = self.extract_path_from_status_line(trimmed);
                 modified.push(path);
@@ -453,6 +473,21 @@ impl OxenSubprocess {
             } else if trimmed.starts_with("A ") || trimmed.starts_with("new file:") {
                 let path = self.extract_path_from_status_line(trimmed);
                 staged.push(path);
+            } else if let Some(section) = current_section {
+                // Files/directories listed under section headers (indented)
+                // Handle format like "Media (1 item)" by extracting just the path
+                let path_str = if let Some(paren_pos) = trimmed.find(" (") {
+                    &trimmed[..paren_pos]
+                } else {
+                    trimmed
+                };
+                let path = PathBuf::from(path_str);
+                match section {
+                    "untracked" => untracked.push(path),
+                    "modified" => modified.push(path),
+                    "staged" => staged.push(path),
+                    _ => {}
+                }
             }
         }
 

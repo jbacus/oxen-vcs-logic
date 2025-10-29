@@ -1,5 +1,11 @@
 # Oxen-VCS for Logic Pro
 
+[![Test Suite](https://github.com/jbacus/oxen-vcs-logic/actions/workflows/test.yml/badge.svg)](https://github.com/jbacus/oxen-vcs-logic/actions/workflows/test.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![macOS](https://img.shields.io/badge/macOS-14.0+-blue.svg)](https://www.apple.com/macos)
+[![Rust](https://img.shields.io/badge/rust-stable-orange.svg)](https://www.rust-lang.org)
+[![Swift](https://img.shields.io/badge/swift-5.9+-orange.svg)](https://swift.org)
+
 A native macOS version control system for Apple Logic Pro projects, leveraging Oxen.ai for efficient large binary file management.
 
 ## Overview
