@@ -20,6 +20,7 @@
 /// ```
 
 use anyhow::{anyhow, Context, Result};
+use colored::Colorize;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
