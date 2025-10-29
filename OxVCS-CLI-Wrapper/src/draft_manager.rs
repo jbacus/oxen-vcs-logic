@@ -281,4 +281,196 @@ mod tests {
         assert_eq!(DraftManager::MAIN_BRANCH, "main");
         assert!(DraftManager::DEFAULT_MAX_COMMITS > 0);
     }
+
+    #[test]
+    fn test_default_draft_branch_name() {
+        assert_eq!(DraftManager::DEFAULT_DRAFT_BRANCH, "draft");
+    }
+
+    #[test]
+    fn test_main_branch_name() {
+        assert_eq!(DraftManager::MAIN_BRANCH, "main");
+    }
+
+    #[test]
+    fn test_default_max_commits_reasonable() {
+        // Should be a reasonable number (not too small, not ridiculously large)
+        assert!(DraftManager::DEFAULT_MAX_COMMITS >= 50);
+        assert!(DraftManager::DEFAULT_MAX_COMMITS <= 1000);
+    }
+
+    #[test]
+    fn test_default_max_commits_value() {
+        // Verify the documented default
+        assert_eq!(DraftManager::DEFAULT_MAX_COMMITS, 100);
+    }
+
+    #[test]
+    fn test_draft_stats_fields() {
+        let stats = DraftStats {
+            commit_count: 42,
+            is_on_draft: true,
+            current_branch: "draft".to_string(),
+            draft_branch_name: "draft".to_string(),
+            max_commits: 100,
+        };
+
+        assert_eq!(stats.commit_count, 42);
+        assert!(stats.is_on_draft);
+        assert_eq!(stats.current_branch, "draft");
+        assert_eq!(stats.draft_branch_name, "draft");
+        assert_eq!(stats.max_commits, 100);
+    }
+
+    #[test]
+    fn test_draft_stats_clone() {
+        let stats = DraftStats {
+            commit_count: 10,
+            is_on_draft: false,
+            current_branch: "main".to_string(),
+            draft_branch_name: "draft".to_string(),
+            max_commits: 100,
+        };
+
+        let cloned = stats.clone();
+        assert_eq!(stats.commit_count, cloned.commit_count);
+        assert_eq!(stats.is_on_draft, cloned.is_on_draft);
+        assert_eq!(stats.current_branch, cloned.current_branch);
+    }
+
+    #[test]
+    fn test_draft_stats_debug() {
+        let stats = DraftStats {
+            commit_count: 5,
+            is_on_draft: true,
+            current_branch: "draft".to_string(),
+            draft_branch_name: "draft".to_string(),
+            max_commits: 100,
+        };
+
+        let debug_str = format!("{:?}", stats);
+        assert!(debug_str.contains("commit_count"));
+        assert!(debug_str.contains("5"));
+    }
+
+    #[test]
+    fn test_draft_stats_print_doesnt_panic() {
+        let stats = DraftStats {
+            commit_count: 50,
+            is_on_draft: true,
+            current_branch: "draft".to_string(),
+            draft_branch_name: "custom-draft".to_string(),
+            max_commits: 100,
+        };
+
+        // Should not panic
+        stats.print();
+    }
+
+    #[test]
+    fn test_draft_stats_print_with_exceeded_limit() {
+        let stats = DraftStats {
+            commit_count: 150, // Exceeds max
+            is_on_draft: true,
+            current_branch: "draft".to_string(),
+            draft_branch_name: "draft".to_string(),
+            max_commits: 100,
+        };
+
+        // Should not panic even when limit is exceeded
+        stats.print();
+    }
+
+    #[test]
+    fn test_draft_stats_on_main_branch() {
+        let stats = DraftStats {
+            commit_count: 25,
+            is_on_draft: false,
+            current_branch: "main".to_string(),
+            draft_branch_name: "draft".to_string(),
+            max_commits: 100,
+        };
+
+        assert!(!stats.is_on_draft);
+        assert_eq!(stats.current_branch, "main");
+    }
+
+    #[test]
+    fn test_draft_stats_custom_branch_name() {
+        let stats = DraftStats {
+            commit_count: 10,
+            is_on_draft: true,
+            current_branch: "my-custom-draft".to_string(),
+            draft_branch_name: "my-custom-draft".to_string(),
+            max_commits: 50,
+        };
+
+        assert_eq!(stats.draft_branch_name, "my-custom-draft");
+        assert_eq!(stats.current_branch, "my-custom-draft");
+    }
+
+    #[test]
+    fn test_draft_stats_zero_commits() {
+        let stats = DraftStats {
+            commit_count: 0,
+            is_on_draft: true,
+            current_branch: "draft".to_string(),
+            draft_branch_name: "draft".to_string(),
+            max_commits: 100,
+        };
+
+        assert_eq!(stats.commit_count, 0);
+        // Should not trigger "exceeds limit" warning
+        assert!(stats.commit_count <= stats.max_commits);
+    }
+
+    #[test]
+    fn test_draft_stats_at_limit() {
+        let stats = DraftStats {
+            commit_count: 100,
+            is_on_draft: true,
+            current_branch: "draft".to_string(),
+            draft_branch_name: "draft".to_string(),
+            max_commits: 100,
+        };
+
+        // At limit, not exceeding
+        assert_eq!(stats.commit_count, stats.max_commits);
+    }
+
+    #[test]
+    fn test_draft_stats_just_over_limit() {
+        let stats = DraftStats {
+            commit_count: 101,
+            is_on_draft: true,
+            current_branch: "draft".to_string(),
+            draft_branch_name: "draft".to_string(),
+            max_commits: 100,
+        };
+
+        // Just over the limit
+        assert!(stats.commit_count > stats.max_commits);
+    }
+
+    // Note: Testing async methods and methods that depend on liboxen
+    // would require mocking or integration tests. For now, we test
+    // the synchronous data structures and constants.
+
+    #[test]
+    fn test_draft_stats_various_max_commits() {
+        let max_values = vec![50, 100, 200, 500, 1000];
+
+        for max in max_values {
+            let stats = DraftStats {
+                commit_count: max / 2,
+                is_on_draft: true,
+                current_branch: "draft".to_string(),
+                draft_branch_name: "draft".to_string(),
+                max_commits: max,
+            };
+
+            assert_eq!(stats.max_commits, max);
+            assert!(stats.commit_count < stats.max_commits);
+        }
+    }
 }

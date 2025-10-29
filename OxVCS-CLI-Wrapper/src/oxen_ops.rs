@@ -252,10 +252,359 @@ impl OxenRepository {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
+
+    // Constructor tests
+
+    #[test]
+    fn test_new_with_relative_path() {
+        let repo = OxenRepository::new("test/path");
+        assert!(repo.path.to_string_lossy().contains("test"));
+        assert!(repo.path.to_string_lossy().contains("path"));
+    }
+
+    #[test]
+    fn test_new_with_absolute_path() {
+        let repo = OxenRepository::new("/absolute/test/path");
+        assert_eq!(repo.path, PathBuf::from("/absolute/test/path"));
+    }
+
+    #[test]
+    fn test_new_with_pathbuf() {
+        let path = PathBuf::from("/some/path");
+        let repo = OxenRepository::new(path.clone());
+        assert_eq!(repo.path, path);
+    }
+
+    #[test]
+    fn test_new_with_str_slice() {
+        let repo = OxenRepository::new("test");
+        assert_eq!(repo.path, PathBuf::from("test"));
+    }
+
+    #[test]
+    fn test_new_with_path_reference() {
+        let path = Path::new("/test/reference");
+        let repo = OxenRepository::new(path);
+        assert_eq!(repo.path, PathBuf::from("/test/reference"));
+    }
+
+    #[test]
+    fn test_new_empty_path() {
+        let repo = OxenRepository::new("");
+        assert_eq!(repo.path, PathBuf::from(""));
+    }
+
+    #[test]
+    fn test_new_with_special_characters() {
+        let repo = OxenRepository::new("/path/with spaces/and-dashes");
+        assert_eq!(repo.path, PathBuf::from("/path/with spaces/and-dashes"));
+    }
+
+    #[test]
+    fn test_new_with_unicode() {
+        let repo = OxenRepository::new("/path/with/日本語");
+        assert!(repo.path.to_string_lossy().contains("日本語"));
+    }
+
+    // Path handling tests
+
+    #[test]
+    fn test_multiple_repos_different_paths() {
+        let repo1 = OxenRepository::new("/path1");
+        let repo2 = OxenRepository::new("/path2");
+        assert_ne!(repo1.path, repo2.path);
+    }
+
+    #[test]
+    fn test_path_normalization() {
+        let repo = OxenRepository::new("./test/../test");
+        // PathBuf stores the path as-is, doesn't automatically normalize
+        assert!(repo.path.to_string_lossy().contains("test"));
+    }
+
+    // Draft manager wrapper test
+
+    #[test]
+    fn test_draft_manager_returns_result() {
+        let temp_dir = std::env::temp_dir().join("oxen_ops_test_draft");
+        let _ = fs::remove_dir_all(&temp_dir);
+        fs::create_dir_all(&temp_dir).unwrap();
+
+        let repo = OxenRepository::new(&temp_dir);
+        let result = repo.draft_manager();
+
+        // Should return Ok since DraftManager::new doesn't fail
+        assert!(result.is_ok());
+
+        fs::remove_dir_all(&temp_dir).ok();
+    }
+
+    #[test]
+    fn test_draft_manager_uses_repo_path() {
+        let temp_dir = std::env::temp_dir().join("oxen_ops_test_draft2");
+        let _ = fs::remove_dir_all(&temp_dir);
+        fs::create_dir_all(&temp_dir).unwrap();
+
+        let repo = OxenRepository::new(&temp_dir);
+        let draft = repo.draft_manager().unwrap();
+
+        // Verify the draft manager is using the same path
+        // (This tests the integration between OxenRepository and DraftManager)
+        assert_eq!(draft.repo_path, temp_dir);
+
+        fs::remove_dir_all(&temp_dir).ok();
+    }
+
+    // Integration with ignore_template
 
     #[tokio::test]
     async fn test_generate_ignore() {
         let content = generate_oxenignore();
         assert!(content.contains("Bounces/"));
+    }
+
+    #[test]
+    fn test_generate_ignore_has_logic_patterns() {
+        let content = generate_oxenignore();
+        assert!(content.contains("Bounces/"));
+        assert!(content.contains("Freeze Files/"));
+        assert!(content.contains("Autosave/"));
+        assert!(content.contains(".DS_Store"));
+    }
+
+    // Error path tests (testing with invalid paths)
+
+    #[test]
+    fn test_get_repo_with_nonexistent_path() {
+        let repo = OxenRepository::new("/nonexistent/path/that/does/not/exist");
+        let result = repo.get_repo();
+
+        // Should return an error since the repository doesn't exist
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_get_repo_error_message() {
+        let path = "/nonexistent/repo";
+        let repo = OxenRepository::new(path);
+        let result = repo.get_repo();
+
+        assert!(result.is_err());
+        let err_msg = format!("{}", result.unwrap_err());
+        assert!(err_msg.contains("Repository not found"));
+        assert!(err_msg.contains(path));
+    }
+
+    // Struct field access tests
+
+    #[test]
+    fn test_path_field_accessible() {
+        let test_path = PathBuf::from("/test/path");
+        let repo = OxenRepository::new(&test_path);
+        assert_eq!(repo.path, test_path);
+    }
+
+    #[test]
+    fn test_path_field_immutable() {
+        let repo = OxenRepository::new("/test");
+        let path_copy = repo.path.clone();
+        assert_eq!(repo.path, path_copy);
+    }
+
+    // Testing async function signatures (compilation tests)
+
+    #[tokio::test]
+    async fn test_init_signature() {
+        // This test verifies the init function signature compiles correctly
+        // We don't expect it to succeed with the stub, but it validates the API
+        let temp_dir = std::env::temp_dir().join("oxen_ops_test_init");
+        let _ = fs::remove_dir_all(&temp_dir);
+        fs::create_dir_all(&temp_dir).unwrap();
+
+        let result = OxenRepository::init(&temp_dir).await;
+        // With stub implementation, this may succeed or fail
+        // The important part is that the function signature is correct
+
+        fs::remove_dir_all(&temp_dir).ok();
+    }
+
+    #[tokio::test]
+    async fn test_stage_changes_signature() {
+        let repo = OxenRepository::new("/test");
+        let files = vec![PathBuf::from("test.txt")];
+
+        // This should fail because repo doesn't exist, but verifies signature
+        let _ = repo.stage_changes(files).await;
+    }
+
+    #[tokio::test]
+    async fn test_stage_all_signature() {
+        let repo = OxenRepository::new("/test");
+
+        // This should fail because repo doesn't exist, but verifies signature
+        let _ = repo.stage_all().await;
+    }
+
+    #[tokio::test]
+    async fn test_create_commit_signature() {
+        let repo = OxenRepository::new("/test");
+        let metadata = CommitMetadata::builder()
+            .message("Test commit")
+            .build();
+
+        // This should fail because repo doesn't exist, but verifies signature
+        let _ = repo.create_commit(metadata).await;
+    }
+
+    #[tokio::test]
+    async fn test_get_history_signature() {
+        let repo = OxenRepository::new("/test");
+
+        // This should fail because repo doesn't exist, but verifies signature
+        let _ = repo.get_history(None).await;
+        let _ = repo.get_history(Some(10)).await;
+    }
+
+    #[tokio::test]
+    async fn test_restore_signature() {
+        let repo = OxenRepository::new("/test");
+
+        // This should fail because repo doesn't exist, but verifies signature
+        let _ = repo.restore("abc123").await;
+    }
+
+    #[tokio::test]
+    async fn test_status_signature() {
+        let repo = OxenRepository::new("/test");
+
+        // This should fail because repo doesn't exist, but verifies signature
+        let _ = repo.status().await;
+    }
+
+    #[tokio::test]
+    async fn test_has_changes_signature() {
+        let repo = OxenRepository::new("/test");
+
+        // This should fail because repo doesn't exist, but verifies signature
+        let _ = repo.has_changes().await;
+    }
+
+    #[tokio::test]
+    async fn test_ensure_on_draft_branch_signature() {
+        let repo = OxenRepository::new("/test");
+
+        // This should fail because repo doesn't exist, but verifies signature
+        let _ = repo.ensure_on_draft_branch().await;
+    }
+
+    #[tokio::test]
+    async fn test_auto_commit_signature() {
+        let repo = OxenRepository::new("/test");
+        let metadata = CommitMetadata::builder()
+            .message("Auto commit")
+            .build();
+
+        // This should fail because repo doesn't exist, but verifies signature
+        let _ = repo.auto_commit(metadata).await;
+    }
+
+    // CommitMetadata integration tests
+
+    #[test]
+    fn test_commit_metadata_builder_integration() {
+        let metadata = CommitMetadata::builder()
+            .message("Test message")
+            .bpm(120.0)
+            .sample_rate(48000)
+            .key("C major")
+            .build();
+
+        assert_eq!(metadata.message, "Test message");
+        assert_eq!(metadata.bpm, Some(120.0));
+        assert_eq!(metadata.sample_rate, Some(48000));
+        assert_eq!(metadata.key, Some("C major".to_string()));
+    }
+
+    #[test]
+    fn test_commit_metadata_format_integration() {
+        let metadata = CommitMetadata::builder()
+            .message("Integration test")
+            .bpm(140.0)
+            .build();
+
+        let formatted = metadata.format_commit_message();
+        assert!(formatted.contains("Integration test"));
+        assert!(formatted.contains("BPM: 140"));
+    }
+
+    // LogicProject integration tests
+
+    #[test]
+    fn test_logic_project_detect_integration() {
+        // Test that detect returns proper error for invalid path
+        let result = LogicProject::detect("/nonexistent/path");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_logic_project_detect_not_a_project() {
+        let temp_dir = std::env::temp_dir().join("not_a_logic_project");
+        let _ = fs::remove_dir_all(&temp_dir);
+        fs::create_dir_all(&temp_dir).unwrap();
+
+        let result = LogicProject::detect(&temp_dir);
+        assert!(result.is_err());
+
+        fs::remove_dir_all(&temp_dir).ok();
+    }
+
+    // Additional edge case tests
+
+    #[test]
+    fn test_new_with_current_dir() {
+        let repo = OxenRepository::new(".");
+        assert_eq!(repo.path, PathBuf::from("."));
+    }
+
+    #[test]
+    fn test_new_with_parent_dir() {
+        let repo = OxenRepository::new("..");
+        assert_eq!(repo.path, PathBuf::from(".."));
+    }
+
+    #[test]
+    fn test_new_with_home_tilde() {
+        // Note: PathBuf doesn't expand ~ automatically
+        let repo = OxenRepository::new("~/test");
+        assert_eq!(repo.path, PathBuf::from("~/test"));
+    }
+
+    #[test]
+    fn test_new_with_trailing_slash() {
+        let repo = OxenRepository::new("/test/path/");
+        assert!(repo.path.to_string_lossy().contains("test"));
+    }
+
+    #[test]
+    fn test_new_with_multiple_slashes() {
+        let repo = OxenRepository::new("/test//path///here");
+        assert!(repo.path.to_string_lossy().contains("test"));
+    }
+
+    // Clone and Debug trait tests (if we add them in the future)
+
+    #[test]
+    fn test_repository_paths_can_be_compared() {
+        let repo1 = OxenRepository::new("/same/path");
+        let repo2 = OxenRepository::new("/same/path");
+        assert_eq!(repo1.path, repo2.path);
+    }
+
+    #[test]
+    fn test_repository_paths_inequality() {
+        let repo1 = OxenRepository::new("/path1");
+        let repo2 = OxenRepository::new("/path2");
+        assert_ne!(repo1.path, repo2.path);
     }
 }
