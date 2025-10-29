@@ -1,4 +1,8 @@
-# CLAUDE.md - Oxen-VCS for Logic Pro
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+---
 
 ## Project Overview
 
@@ -32,230 +36,212 @@ Oxen-VCS leverages Oxen.ai's block-level deduplication and implements:
 
 ---
 
+## Quick Reference
+
+### Most Common Commands
+
+```bash
+# Run all tests (comprehensive test suite)
+./run_all_tests.sh
+
+# Build Rust CLI wrapper
+cd OxVCS-CLI-Wrapper && cargo build --release && cargo test
+
+# Build Swift components (macOS only)
+cd OxVCS-LaunchAgent && swift build
+cd OxVCS-App && swift build
+
+# Run specific test suites
+cd OxVCS-CLI-Wrapper && cargo test                    # Rust unit tests
+cd OxVCS-LaunchAgent && swift test                    # LaunchAgent tests
+cd OxVCS-App && swift test                            # App tests
+
+# Lint and format
+cd OxVCS-CLI-Wrapper && cargo fmt && cargo clippy     # Rust
+swiftlint lint && swiftlint autocorrect               # Swift (if configured)
+```
+
+### Key Documentation Files
+
+- **[README.md](README.md)** - Project overview and status
+- **[INSTALL.md](INSTALL.md)** - Installation instructions
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** - Code style, testing requirements
+- **[docs/QUICKSTART.md](docs/QUICKSTART.md)** - Get started in 5 minutes
+- **[docs/TESTING_STRATEGY.md](docs/TESTING_STRATEGY.md)** - Testing approach
+- **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** - Full technical specification
+- **[docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)** - Common issues and solutions
+- **[docs/USER_GUIDE.md](docs/USER_GUIDE.md)** - End-user documentation
+
+### Critical Source Files
+
+**Rust CLI Wrapper** (`OxVCS-CLI-Wrapper/src/`):
+- `main.rs:1` - CLI entry point and command handling
+- `oxen_subprocess.rs:1` - **CRITICAL**: Oxen CLI subprocess integration (primary Oxen interface)
+- `oxen_ops.rs:1` - High-level Oxen operation wrappers
+- `logic_project.rs:1` - Logic Pro project detection and validation
+- `commit_metadata.rs:1` - Structured commit metadata (BPM, sample rate, key)
+- `ignore_template.rs:1` - .oxenignore generation
+- `draft_manager.rs:1` - Draft branch management logic
+- `liboxen_stub/` - Stub implementation (not connected to real Oxen)
+
+**Swift LaunchAgent** (`OxVCS-LaunchAgent/Sources/`):
+- `Daemon.swift:1` - Main daemon orchestration and lifecycle
+- `FSEventsMonitor.swift:1` - File system change monitoring
+- `PowerManagement.swift:1` - Sleep/shutdown event handling
+- `CommitOrchestrator.swift:1` - Auto-commit workflow logic
+- `LockManager.swift:1` - File lock enforcement
+- `XPCService.swift:1` - IPC communication with app
+- `ServiceManager.swift:1` - LaunchAgent registration
+
+**Swift App** (`OxVCS-App/Sources/`):
+- `AppDelegate.swift:1` - App entry point and initialization
+- `Views/` - SwiftUI/AppKit UI components
+- `ViewModels/` - MVVM business logic layer
+- `Services/OxenDaemonXPCClient.swift` - XPC client for daemon communication
+
+### Common Development Workflows
+
+**Adding a New Feature:**
+1. Read relevant source files to understand existing patterns
+2. Create feature branch: `git checkout -b feature/your-feature`
+3. Write implementation following existing patterns (see Coding Conventions below)
+4. Write tests (required - see Testing Strategy section)
+5. Run tests: `./run_all_tests.sh` or component-specific tests
+6. Update documentation if needed
+7. Submit PR with description
+
+**Debugging the Daemon:**
+```bash
+# View daemon logs
+log show --predicate 'process == "OxVCS-LaunchAgent"' --last 1h --style syslog
+
+# Stop daemon
+launchctl unload ~/Library/LaunchAgents/com.oxenvcs.agent.plist
+
+# Start daemon with manual logging
+cd OxVCS-LaunchAgent && swift run
+
+# Check daemon status
+launchctl list | grep com.oxenvcs
+```
+
+**Testing Oxen Integration:**
+```bash
+# Install Oxen CLI (prerequisite for integration tests)
+pip3 install oxen-ai
+# or: cargo install oxen
+
+# Run integration tests
+cd OxVCS-CLI-Wrapper && cargo test --test oxen_subprocess_integration_test
+```
+
+**Building for Distribution:**
+```bash
+# Use the automated installer script
+./install.sh
+
+# Or manually build release versions
+cd OxVCS-CLI-Wrapper && cargo build --release
+cd OxVCS-LaunchAgent && swift build -c release
+cd OxVCS-App && swift build -c release
+```
+
+---
+
 ## Project Status & Reality Check
 
 **Last Updated**: 2025-10-28
+**Development Environment**: Linux 4.4.0 (cannot compile/test Swift components)
+**Required for Production**: macOS 14.0+ with Logic Pro 11.x
 
-### What's Actually Working
+### Component Status Summary
 
-#### ✅ Rust CLI Wrapper (~85% complete)
-- **Code**: ~2,500 lines of well-structured Rust
-- **Tests**: 121 comprehensive unit tests (85% coverage)
-- **Status**: Production-ready code structure
-- **Limitation**: Using liboxen **stub** - not connected to real Oxen.ai yet
+| Component | Code Complete | Test Coverage | Integration Tested | Production Ready |
+|-----------|---------------|---------------|-------------------|------------------|
+| **Rust CLI Wrapper** | ✅ 100% | ✅ 85% (121 tests) | 🟡 Partial | 🟡 With subprocess wrapper |
+| **Swift LaunchAgent** | ✅ 100% | 🟡 30% | ❌ 0% | ❌ Needs testing |
+| **Swift App UI** | ✅ 100% | 🔴 <10% | ❌ 0% | ❌ Needs testing |
 
-**Key Components:**
+### What's Working
+
+**Rust CLI Wrapper** (~2,500 lines):
 - ✅ Logic Pro project detection and validation
-- ✅ Commit metadata parsing and formatting
+- ✅ Commit metadata parsing (BPM, sample rate, key)
 - ✅ .oxenignore template generation
 - ✅ Draft branch management (data structures)
 - ✅ Logging system with verbose mode
-- ✅ **NEW**: Oxen subprocess wrapper (via CLI commands)
+- ✅ **Oxen subprocess wrapper** - primary interface to Oxen CLI
+- 🟡 **Limitation**: Using liboxen stub (fallback only)
 
-#### ✅ LaunchAgent Daemon (Swift)
-- **Code**: Fully implemented with FSEvents, power management, XPC
-- **Tests**: ~30% coverage (only LockManager tested)
-- **Status**: Code complete, needs testing
-- **Limitation**: Untested in production scenarios
-
-**Key Components:**
+**Swift LaunchAgent** (FSEvents + Power Management):
 - ✅ FSEvents monitoring with debounce
 - ✅ Power management (sleep/shutdown hooks)
 - ✅ XPC service for IPC
 - ✅ Lock management with timeout
-- ❌ **NOT TESTED**: Long-running stability
-- ❌ **NOT TESTED**: Multi-project monitoring
-- ❌ **NOT TESTED**: Memory leaks under load
+- ❌ **NOT TESTED**: Long-running stability, multi-project monitoring, memory leaks
 
-#### ✅ UI Application (Swift/AppKit)
-- **Code**: Full MVVM implementation with all views
-- **Tests**: <5% coverage (only MockXPCClient)
-- **Status**: Code complete, needs testing
-- **Limitation**: Never run with real Logic Pro projects
-
-**Key Components:**
+**Swift App UI** (MVVM/AppKit):
 - ✅ Project browser and initialization wizard
 - ✅ Milestone commit interface with metadata
 - ✅ Rollback/restore UI
 - ✅ Lock management views
 - ✅ Merge helper window
-- ❌ **NOT TESTED**: With actual .logicx files
-- ❌ **NOT TESTED**: XPC communication
-- ❌ **NOT TESTED**: User workflows
+- ❌ **NOT TESTED**: With actual .logicx files, XPC communication, user workflows
 
-### Critical Gaps
+### Critical Gaps & Blockers
 
-#### 🔴 Oxen.ai Integration (BLOCKER)
-**Problem**: The liboxen Rust crate doesn't exist on crates.io
+**🔴 Oxen.ai Integration Status:**
+- **Solution Implemented**: Subprocess wrapper (oxen_subprocess.rs) executes Oxen CLI commands
+- **Fallback**: liboxen stub (not functional)
+- **Requirement**: `pip install oxen-ai` or `cargo install oxen` for real operations
+- **Status**: Integration code written, needs macOS testing
 
-**Current State:**
-- Using a **stub implementation** that does nothing
-- All "Oxen operations" are fake
-- Cannot actually version control any files
+**🔴 Platform Constraint:**
+- **Current Dev Environment**: Linux 4.4.0 (cannot compile Swift)
+- **Required**: macOS 14.0+ with Xcode 15+ and Logic Pro 11.x
+- **Impact**: All Swift components untested until macOS access
 
-**Solutions Available:**
-1. **Subprocess Wrapper** (✅ IMPLEMENTED 2025-10-28)
-   - Execute `oxen` CLI commands via subprocess
-   - Parse stdout/stderr for results
-   - Requires: `pip install oxen-ai` or `cargo install oxen`
-   - Status: Code written, needs integration testing
+**🟡 Test Coverage Gaps:**
+- Rust: 85% ✅
+- Swift LaunchAgent: ~30% 🟡 (only LockManager tested)
+- Swift App: <10% 🔴 (only MockXPCClient tested)
+- **Missing**: FSEvents, power management, XPC, ViewModels, end-to-end workflows
 
-2. **HTTP API** (Future)
-   - Use Oxen Hub REST API
-   - Requires network for all operations
-   - Not suitable for local-only workflows
+### Production Readiness
 
-3. **Wait for liboxen** (Unknown timeline)
-   - Official Rust bindings from Oxen.ai team
-   - Unknown if/when this will be available
+**Can It Version Control Logic Pro Projects Today?** No (but close!)
 
-**Recommendation**: Use subprocess wrapper immediately for MVP testing
+**To Ship v0.1 MVP** (1-2 weeks on macOS):
+1. Integrate oxen_subprocess (primary blocker)
+2. Integration tests with real .logicx projects
+3. Build and test Swift components
+4. Fix bugs from testing
+5. Create .app bundle installer
 
-#### 🔴 Platform Mismatch (DEVELOPMENT BLOCKER)
-**Problem**: Project requires macOS, but development environment is Linux
+**Known Risks:**
+- **High**: Daemon stability, lock conflicts, power management edge cases, XPC reliability
+- **Medium**: Subprocess hangs, large file timeouts, .oxenignore accuracy
+- **Low**: Commit metadata, project detection, logging (well-tested)
 
-**Impact:**
-- ✅ Can write code (Rust + Swift)
-- ✅ Can write tests
-- ❌ **CANNOT compile** Swift components
-- ❌ **CANNOT run** any tests
-- ❌ **CANNOT test** with Logic Pro
-- ❌ **CANNOT build** .app bundle
+---
 
-**Required:**
-- macOS 14.0+ with Xcode 15+
-- Swift 5.9+ compiler
-- Logic Pro 11.x for real-world testing
+## Technology Stack
 
-#### 🟡 Swift Testing Gap (QUALITY RISK)
-**Current Coverage:**
-- LaunchAgent: ~30% (only LockManager)
-- App: <5% (only MockXPCClient)
-- Total Swift: <10% coverage
+### Languages & Frameworks
+- **macOS Layer**: Swift 5.9+, AppKit (macOS-native UI)
+- **VCS Backend**: Rust 2021 edition, Oxen CLI subprocess wrapper
+- **Build Tools**: Swift Package Manager, Cargo
+- **Minimum macOS**: 14.0
 
-**Missing Tests:**
-- FSEventsMonitor behavior
-- Power management triggers
-- XPC communication reliability
-- CommitOrchestrator logic
-- All ViewModels
-- UI integration flows
+### Key Dependencies
+- **Rust**: serde, tokio, clap, anyhow, chrono, colored
+- **Swift**: FSEvents API, SMAppService, XPC, NSWorkspace
+- **External**: Oxen CLI (`pip install oxen-ai` or `cargo install oxen`)
 
-**Impact**: High risk of runtime failures in production
-
-#### 🟡 Integration Testing (VALIDATION GAP)
-**What's NOT Tested:**
-- End-to-end commit workflows
-- Real .logicx project handling
-- Long-running daemon stability
-- Multi-project monitoring
-- Lock contention scenarios
-- Power management edge cases
-- System sleep/wake cycles
-
-**Impact**: Unknown behavior in real-world usage
-
-### What "Phase Complete" Actually Means
-
-The README claims all three phases are complete. Here's the reality:
-
-| Phase | Code | Tests | Integration | Production Ready? |
-|-------|------|-------|-------------|-------------------|
-| **Phase 1: MVP** | ✅ 100% | ✅ 85% (Rust only) | ❌ 0% | 🟡 With subprocess wrapper |
-| **Phase 2: Service** | ✅ 100% | 🟡 30% | ❌ 0% | ❌ Untested |
-| **Phase 3: UI & Collab** | ✅ 100% | 🔴 <10% | ❌ 0% | ❌ Untested |
-
-**Translation:**
-- ✅ **"Complete"** means: Code is written and compiles
-- ❌ **"Complete"** does NOT mean: Tested or validated
-- ❌ **"Complete"** does NOT mean: Connected to real Oxen
-- ❌ **"Complete"** does NOT mean: Runs on macOS
-
-### Honest Production Readiness Assessment
-
-#### Can It Version Control Logic Pro Projects Today?
-**Answer**: No (but close!)
-
-**Why Not:**
-1. Need to integrate subprocess wrapper (1-2 days)
-2. Need macOS to compile and test (hardware req)
-3. Need integration tests with real .logicx files (2-3 days)
-4. Need Swift test coverage (1-2 weeks)
-
-#### What Would It Take to Ship v0.1 MVP?
-**Minimum Requirements** (1-2 weeks on macOS):
-1. ✅ Integrate oxen_subprocess into CLI wrapper
-2. ✅ Write integration tests for common workflows
-3. ✅ Test with 3-5 real Logic Pro projects
-4. ✅ Fix bugs discovered during testing
-5. ✅ Create .app bundle installer
-6. ✅ Write user documentation
-
-**Nice to Have** (additional 2-3 weeks):
-- Swift unit tests (70%+ coverage)
-- Continuous monitoring (8+ hours)
-- Multi-user lock testing
-- Performance optimization
-- Error recovery testing
-
-#### What Could Go Wrong in Production?
-**High Risk:**
-- Daemon crashes and stops monitoring
-- Lock conflicts cause data races
-- Power management triggers miss commits
-- Memory leaks on long-running daemon
-- XPC connection drops unexpectedly
-
-**Medium Risk:**
-- Oxen CLI subprocess hangs
-- Large files cause timeouts
-- .oxenignore patterns miss files
-- FCP XML export loses data
-- UI freezes on large operations
-
-**Low Risk (Well-Tested):**
-- Commit metadata parsing
-- Project detection
-- .oxenignore generation
-- Logger functionality
-
-### Development Environment Constraints
-
-**Current Environment**: Linux 4.4.0 (CI/Container)
-**Capabilities:**
-- ✅ Write Rust code
-- ✅ Write Swift code (syntax only)
-- ✅ Write unit tests
-- ✅ Document architecture
-- ❌ Compile Swift
-- ❌ Run tests
-- ❌ Test with Logic Pro
-- ❌ Build .app bundle
-
-**Required for Testing**: macOS 14.0+
-**Required for Production**: macOS 14.0+ with Logic Pro 11.x
-
-### Next Steps to Reality
-
-#### Immediate (Can Do on Linux)
-1. ✅ **DONE**: Write comprehensive Rust unit tests
-2. ✅ **DONE**: Implement oxen subprocess wrapper
-3. ✅ **DONE**: Document reality check
-4. 🔄 **IN PROGRESS**: Update all documentation
-
-#### Short-term (Requires macOS)
-1. Integrate oxen_subprocess into main CLI
-2. Write integration tests
-3. Test with real .logicx projects
-4. Build and test Swift components
-5. Create .app bundle
-
-#### Medium-term (Production Readiness)
-1. Expand Swift test coverage to 70%+
-2. 8-hour continuous monitoring test
-3. Multi-user collaboration testing
-4. Performance optimization
-5. Beta user testing
+### Development Requirements
+- Xcode 15+ (for Swift compilation)
+- Rust toolchain (rustc, cargo)
+- Logic Pro 11.x (for real-world testing)
 
 ---
 
@@ -338,36 +324,6 @@ oxen-vcs-logic/
 
 ---
 
-## Technology Stack
-
-### macOS Layer
-- **Language**: Swift 5.9+
-- **UI Framework**: AppKit (macOS-native)
-- **File Monitoring**: FSEvents API
-- **Service Management**: SMAppService (macOS 13+)
-- **IPC**: XPC (Inter-Process Communication)
-- **Power Events**: NSWorkspace notifications
-
-### VCS Backend
-- **Engine**: Oxen.ai (via liboxen Rust crate)
-- **Storage**: Block-level deduplicated object store
-- **Features**: Merkle trees, smart network protocols, compression
-- **Remote**: Oxen Hub or self-hosted instances
-
-### CLI Wrapper
-- **Language**: Rust 2021 edition
-- **Core Dependency**: `liboxen = "0.19"`
-- **IPC**: XPC bindings or Darwin notifications
-- **Build**: Embedded as helper tool in app bundle
-
-### Development Tools
-- **IDE**: Xcode 15+
-- **Build System**: Swift Package Manager + Cargo
-- **Testing**: XCTest + Criterion (Rust benchmarks)
-- **Minimum macOS**: 14.0
-
----
-
 ## Key Concepts
 
 ### Asset Classification Strategy
@@ -438,84 +394,58 @@ When feature branches diverge:
 
 ## Development Commands
 
+> **Note**: See [Quick Reference](#quick-reference) section at the top for the most common commands.
+
 ### Initial Setup
 
 ```bash
-# Clone repository
+# Clone and install
 git clone https://github.com/jbacus/oxen-vcs-logic.git
 cd oxen-vcs-logic
+./install.sh  # Automated installation (recommended)
 
-# Install Oxen CLI (for testing)
-pip install oxen-ai
-
-# Build Rust CLI wrapper
-cd OxVCS-CLI-Wrapper
-cargo build --release
-cd ..
-
-# Open main app in Xcode
-open OxVCS-App/OxVCS.xcodeproj
+# Or install Oxen CLI manually for development
+pip3 install oxen-ai  # or: cargo install oxen
 ```
 
-### Build & Test
+### Testing
 
-**Swift Components**
 ```bash
-# Build main app (Xcode)
-xcodebuild -project OxVCS-App/OxVCS.xcodeproj \
-           -scheme OxVCS \
-           -configuration Release
+# Run all tests (recommended)
+./run_all_tests.sh
 
-# Run tests
-xcodebuild test -project OxVCS-App/OxVCS.xcodeproj \
-                -scheme OxVCS
+# Component-specific tests
+cd OxVCS-CLI-Wrapper && cargo test           # Rust unit tests
+cd OxVCS-CLI-Wrapper && cargo test --test oxen_subprocess_integration_test  # Integration tests
+cd OxVCS-LaunchAgent && swift test           # LaunchAgent tests (macOS only)
+cd OxVCS-App && swift test                   # App tests (macOS only)
 
-# Build LaunchAgent
-xcodebuild -project OxVCS-LaunchAgent/OxVCS-LaunchAgent.xcodeproj \
-           -scheme OxVCS-LaunchAgent \
-           -configuration Release
+# With coverage
+cd OxVCS-CLI-Wrapper && cargo tarpaulin --out Html
+cd OxVCS-LaunchAgent && swift test --enable-code-coverage
 ```
 
-**Rust CLI Wrapper**
+### Building
+
 ```bash
-cd OxVCS-CLI-Wrapper
+# Using Swift Package Manager (recommended)
+cd OxVCS-LaunchAgent && swift build -c release
+cd OxVCS-App && swift build -c release
 
-# Build
-cargo build --release
-
-# Run tests
-cargo test
-
-# Run benchmarks
-cargo bench
-
-# Check performance
-cargo run --release -- --help
+# Using Xcode (alternative)
+xcodebuild -project OxVCS-App/OxVCS.xcodeproj -scheme OxVCS -configuration Release
 ```
 
 ### LaunchAgent Management
 
 ```bash
-# Load agent for testing
+# View logs (most useful for debugging)
+log show --predicate 'process == "OxVCS-LaunchAgent"' --last 1h --style syslog
+
+# Service control
 launchctl load ~/Library/LaunchAgents/com.oxenvcs.agent.plist
-
-# Unload agent
 launchctl unload ~/Library/LaunchAgents/com.oxenvcs.agent.plist
-
-# View logs
-log show --predicate 'process == "OxVCS-LaunchAgent"' --last 1h
-```
-
-### Linting & Formatting
-
-```bash
-# Swift (using SwiftLint if configured)
-swiftlint lint
-swiftlint autocorrect
-
-# Rust
-cargo fmt
-cargo clippy -- -D warnings
+launchctl list | grep com.oxenvcs
 ```
 
 ---
@@ -844,44 +774,32 @@ func testDraftCommitWorkflow() async throws {
 
 ---
 
-## Implementation Phases
+## Implementation Status
 
-### Phase 1: MVP (8-10 weeks)
-**Goal**: Functional single-user rollback system
+**All three phases are code-complete** (see [Project Status](#project-status--reality-check) for details).
 
-- [ ] Folder structure enforcement
-- [ ] .oxenignore integration
-- [ ] Basic Oxen command wrapper
-- [ ] Simple FSEvents watcher
-- [ ] Minimal UI (commit history, rollback)
-- [ ] Manual commit workflow
+### Phase 1: Core Data Management (MVP) - ✅ CODE COMPLETE
+- ✅ Logic Pro project detection, .oxenignore generation, Oxen subprocess wrapper
+- ✅ Core operations (init, add, commit, log, restore)
+- ✅ Structured commit metadata (BPM, sample rate, key)
+- ✅ 85% test coverage (121 tests)
+- 🟡 **Blocker**: Needs macOS integration testing
 
-**Deliverable**: Single user can version projects and rollback reliably.
+### Phase 2: Service Architecture - ✅ CODE COMPLETE
+- ✅ LaunchAgent with FSEvents monitoring
+- ✅ Power management (sleep/shutdown hooks)
+- ✅ XPC communication, multi-project support
+- 🟡 ~30% test coverage
+- 🟡 **Blocker**: Untested in production scenarios
 
-### Phase 2: Production Hardening (6-8 weeks)
-**Goal**: Robust, system-integrated daemon
+### Phase 3: UI & Collaboration - ✅ CODE COMPLETE
+- ✅ Native macOS AppKit application
+- ✅ Repository browser, milestone commits, rollback UI
+- ✅ Exclusive file locking system
+- 🔴 <10% test coverage
+- 🟡 **Blocker**: Never run with real Logic Pro projects
 
-- [ ] SMAppService LaunchAgent
-- [ ] Advanced debouncing
-- [ ] Power management hooks
-- [ ] Rust CLI wrapper optimization
-- [ ] Enhanced UI with branches
-- [ ] Draft pruning
-- [ ] Error recovery and logging
-
-**Deliverable**: Resilient background service for production environments.
-
-### Phase 3: Collaboration (6-8 weeks)
-**Goal**: Multi-user workflows
-
-- [ ] Exclusive file locking system
-- [ ] Lock manifest management
-- [ ] FCP XML merge protocol
-- [ ] Remote synchronization
-- [ ] Conflict resolution UI
-- [ ] Team permissions
-
-**Deliverable**: Full collaborative VCS for production teams.
+**Next Steps**: See [Production Readiness](#production-readiness) section for MVP shipping requirements.
 
 ---
 
@@ -908,41 +826,28 @@ func testDraftCommitWorkflow() async throws {
 
 ## Troubleshooting
 
-### LaunchAgent Not Starting
+> **Full troubleshooting guide**: See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
+
+**Quick Diagnostics:**
 ```bash
-# Check registration status
+# Check daemon status
 launchctl list | grep com.oxenvcs
 
-# View detailed error logs
-log show --predicate 'process == "OxVCS-LaunchAgent"' \
-         --style syslog \
-         --last 1h
+# View logs (most useful)
+log show --predicate 'process == "OxVCS-LaunchAgent"' --last 1h --style syslog
 
-# Manually load for debugging
-launchctl load -w ~/Library/LaunchAgents/com.oxenvcs.agent.plist
+# Verify Oxen CLI installation
+which oxen && oxen --version
+
+# Test Rust CLI wrapper
+cd OxVCS-CLI-Wrapper && cargo test
 ```
 
-### FSEvents Not Triggering
-```swift
-// Verify path is correctly monitored
-let path = "/path/to/Logic/Project.logicx"
-let url = URL(fileURLWithPath: path)
-
-// Check for .logicx bundle vs folder structure
-if url.pathExtension == "logicx" {
-    print("Error: Must use folder-based project, not bundle")
-}
-```
-
-### Rust FFI Crashes
-```bash
-# Enable debug symbols
-cargo build --release --features debug-symbols
-
-# Use lldb for debugging
-lldb target/release/oxenvcs-cli
-(lldb) run
-```
+**Common Issues:**
+- **LaunchAgent not starting**: Check logs, verify plist file, reload manually
+- **FSEvents not firing**: Ensure folder-based .logicx (not bundle), check permissions
+- **Oxen commands failing**: Install Oxen CLI (`pip3 install oxen-ai`)
+- **Swift compilation errors**: Requires macOS 14.0+ with Xcode 15+
 
 ---
 
@@ -988,12 +893,36 @@ Architectural patterns extensible to:
 
 ---
 
-## Contact & Support
+## Additional Resources
 
-**GitHub**: https://github.com/jbacus/oxen-vcs-logic  
-**Issues**: [Create an issue](https://github.com/jbacus/oxen-vcs-logic/issues)  
-**Oxen.ai Community**: hello@oxen.ai
+### External Documentation
+- [Oxen.ai Docs](https://docs.oxen.ai/) - Oxen VCS documentation
+- [Logic Pro Project Format](https://www.loc.gov/preservation/digital/formats/fdd/fdd000640.shtml) - Technical specification
+- [FSEvents Programming Guide](https://developer.apple.com/library/archive/documentation/Darwin/Conceptual/FSEvents_ProgGuide/) - File monitoring API
+- [SMAppService API](https://developer.apple.com/documentation/servicemanagement/smappservice) - macOS daemon management
+
+### Related Projects
+- [Perforce Helix Core](https://www.perforce.com/products/helix-core) - Inspiration for pessimistic locking model
+- [DVC](https://dvc.org/) - Data versioning comparison point
+
+### Contact & Support
+- **GitHub Repository**: https://github.com/jbacus/oxen-vcs-logic
+- **Issue Tracker**: [Create an issue](https://github.com/jbacus/oxen-vcs-logic/issues)
+- **Oxen.ai Community**: hello@oxen.ai
 
 ---
 
-*Last Updated: 2025-10-28*
+## Summary for Claude Code
+
+**When starting work on this codebase:**
+1. **Review** the [Quick Reference](#quick-reference) section first
+2. **Understand** the [Project Status](#project-status--reality-check) - code is complete but needs testing on macOS
+3. **Key blocker**: Oxen integration via subprocess wrapper needs macOS testing
+4. **Testing**: Use `./run_all_tests.sh` before committing
+5. **Critical files**: `oxen_subprocess.rs` (Oxen CLI integration), `Daemon.swift` (LaunchAgent), `AppDelegate.swift` (UI)
+
+**Development environment constraint**: This project requires macOS 14.0+ for building/testing Swift components. Current Linux environment can only handle Rust development.
+
+---
+
+*Last Updated: 2025-10-29*
