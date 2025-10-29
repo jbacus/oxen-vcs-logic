@@ -74,41 +74,40 @@ class MainViewController: NSViewController {
         let listContainer = NSView()
         listContainer.wantsLayer = true
         listContainer.layer?.backgroundColor = NSColor.controlBackgroundColor.cgColor
-        listContainer.addSubview(projectListView)
-        projectListView.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            projectListView.topAnchor.constraint(equalTo: listContainer.topAnchor),
-            projectListView.bottomAnchor.constraint(equalTo: listContainer.bottomAnchor),
-            projectListView.leadingAnchor.constraint(equalTo: listContainer.leadingAnchor),
-            projectListView.trailingAnchor.constraint(equalTo: listContainer.trailingAnchor)
-        ])
 
-        // Set explicit frame for list container (don't use width constraints with NSSplitView)
+        // IMPORTANT: Set autoresizing mask, NOT auto-layout constraints
+        // NSSplitView manages its own subview sizing
+        listContainer.autoresizingMask = [.height]
+        projectListView.autoresizingMask = [.width, .height]
+
         listContainer.frame = NSRect(x: 0, y: 0, width: 300, height: 800)
+        listContainer.addSubview(projectListView)
+        projectListView.frame = listContainer.bounds
+
         splitView.addArrangedSubview(listContainer)
 
         // Add placeholder for detail view
         let placeholderView = NSView()
         placeholderView.wantsLayer = true
         placeholderView.layer?.backgroundColor = NSColor.textBackgroundColor.cgColor
+        placeholderView.autoresizingMask = [.width, .height]
+        placeholderView.frame = NSRect(x: 0, y: 0, width: 900, height: 800)
+
         let label = NSTextField(labelWithString: "Select a project to view details")
         label.font = NSFont.systemFont(ofSize: 16)
         label.textColor = .secondaryLabelColor
-        label.translatesAutoresizingMaskIntoConstraints = false
+        label.autoresizingMask = [.minXMargin, .maxXMargin, .minYMargin, .maxYMargin]
+        label.sizeToFit()
+        label.frame.origin = NSPoint(
+            x: (placeholderView.frame.width - label.frame.width) / 2,
+            y: (placeholderView.frame.height - label.frame.height) / 2
+        )
         placeholderView.addSubview(label)
-        NSLayoutConstraint.activate([
-            label.centerXAnchor.constraint(equalTo: placeholderView.centerXAnchor),
-            label.centerYAnchor.constraint(equalTo: placeholderView.centerYAnchor)
-        ])
 
-        // Set explicit frame for placeholder (don't use width constraints with NSSplitView)
-        placeholderView.frame = NSRect(x: 300, y: 0, width: 900, height: 800)
         splitView.addArrangedSubview(placeholderView)
 
         // Set initial split position AFTER adding both subviews
-        DispatchQueue.main.async { [weak self] in
-            self?.splitView.setPosition(300, ofDividerAt: 0)
-        }
+        splitView.setPosition(300, ofDividerAt: 0)
     }
 
     private func bindViewModel() {
