@@ -92,11 +92,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         window.title = "OxVCS - Logic Pro Version Control"
         window.minSize = NSSize(width: 800, height: 600)
 
+        // Ensure window has proper background
+        window.backgroundColor = .windowBackgroundColor
+        window.isOpaque = true
+
         // Set frame autosave name to persist window position (but respect minSize)
         window.setFrameAutosaveName("MainWindow")
 
         mainViewController = MainViewController()
         window.contentViewController = mainViewController
+
+        // Force window to display its content
+        window.display()
 
         // Ensure window respects minimum size on first launch
         var frame = window.frame
@@ -106,10 +113,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if frame.size.height < 600 {
             frame.size.height = 800
         }
-        window.setFrame(frame, display: false)
+        window.setFrame(frame, display: true)
 
         window.center()
         window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
         self.mainWindow = window
     }
 

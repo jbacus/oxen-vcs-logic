@@ -20,6 +20,14 @@ Professional DAW projects contain massive binary assets that overwhelm tradition
 
 ## Recent Updates
 
+### 🎨 GUI App Rendering Fix (October 29, 2025)
+
+Fixed black screen rendering issue in OxVCS.app:
+- **Added**: Proper `.app` bundle creation with `Info.plist`
+- **Fixed**: View background colors and window activation
+- **Added**: `create-app-bundle.sh` script for proper macOS app structure
+- **Updated**: Install script now creates fully functional GUI app
+
 ### 📚 Documentation Consolidation (October 29, 2025)
 
 Project documentation has been streamlined and organized:

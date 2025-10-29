@@ -116,8 +116,12 @@ The installation script installs the following components:
 - `/usr/local/bin/oxenvcs-cli` - Command-line interface for Oxen operations
 - `/usr/local/bin/oxvcs-daemon` - Background daemon for automatic tracking
 
+### Application
+- `/Applications/OxVCS.app` - Native macOS GUI application (if installed)
+
 ### Configuration
 - `~/Library/LaunchAgents/com.oxen.logic.daemon.plist` - LaunchAgent configuration
+- `/Applications/OxVCS.app/Contents/Info.plist` - App bundle metadata
 
 ### Logs (created at runtime)
 - `/tmp/com.oxen.logic.daemon.stdout` - Standard output log
@@ -141,7 +145,10 @@ swift build -c release
 # Build Swift app (optional)
 cd ../OxVCS-App
 swift build -c release
+./create-app-bundle.sh  # Creates OxVCS.app bundle
 ```
+
+**Note**: The app requires a proper `.app` bundle structure to render correctly. The `create-app-bundle.sh` script creates the bundle with the necessary `Info.plist` and directory structure.
 
 ### 2. Install Binaries
 

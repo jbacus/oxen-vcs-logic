@@ -32,6 +32,11 @@ class MainViewController: NSViewController {
     override func viewDidAppear() {
         super.viewDidAppear()
         setupToolbar()
+
+        // Force view to display
+        view.needsDisplay = true
+        view.needsLayout = true
+        view.layoutSubtreeIfNeeded()
     }
 
     deinit {

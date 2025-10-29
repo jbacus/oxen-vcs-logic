@@ -51,6 +51,12 @@ cd OxVCS-CLI-Wrapper && cargo build --release && cargo test
 cd OxVCS-LaunchAgent && swift build
 cd OxVCS-App && swift build
 
+# Build and create app bundle (REQUIRED for GUI app)
+cd OxVCS-App && swift build -c release && ./create-app-bundle.sh
+
+# Run the app bundle
+open OxVCS-App/OxVCS.app
+
 # Run specific test suites
 cd OxVCS-CLI-Wrapper && cargo test                    # Rust unit tests
 cd OxVCS-LaunchAgent && swift test                    # LaunchAgent tests
@@ -136,13 +142,16 @@ cd OxVCS-CLI-Wrapper && cargo test --test oxen_subprocess_integration_test
 
 **Building for Distribution:**
 ```bash
-# Use the automated installer script
+# Use the automated installer script (recommended)
 ./install.sh
 
 # Or manually build release versions
 cd OxVCS-CLI-Wrapper && cargo build --release
 cd OxVCS-LaunchAgent && swift build -c release
-cd OxVCS-App && swift build -c release
+cd OxVCS-App && swift build -c release && ./create-app-bundle.sh
+
+# The create-app-bundle.sh script creates a proper macOS .app bundle
+# with Info.plist and correct directory structure for GUI rendering
 ```
 
 ---
@@ -185,6 +194,7 @@ cd OxVCS-App && swift build -c release
 - ✅ Rollback/restore UI
 - ✅ Lock management views
 - ✅ Merge helper window
+- ✅ **FIXED (2025-10-29)**: App bundle creation with proper Info.plist for GUI rendering
 - ❌ **NOT TESTED**: With actual .logicx files, XPC communication, user workflows
 
 ### Critical Gaps & Blockers
