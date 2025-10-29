@@ -39,6 +39,7 @@ class MainViewController: NSViewController {
         // Setup split view
         splitView.isVertical = true
         splitView.dividerStyle = .thin
+        splitView.delegate = self
         splitView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(splitView)
 
@@ -65,7 +66,9 @@ class MainViewController: NSViewController {
             projectListView.topAnchor.constraint(equalTo: listContainer.topAnchor),
             projectListView.bottomAnchor.constraint(equalTo: listContainer.bottomAnchor),
             projectListView.leadingAnchor.constraint(equalTo: listContainer.leadingAnchor),
-            projectListView.trailingAnchor.constraint(equalTo: listContainer.trailingAnchor)
+            projectListView.trailingAnchor.constraint(equalTo: listContainer.trailingAnchor),
+            // Set minimum width for project list panel
+            listContainer.widthAnchor.constraint(greaterThanOrEqualToConstant: 250)
         ])
 
         splitView.addArrangedSubview(listContainer)
@@ -79,12 +82,14 @@ class MainViewController: NSViewController {
         placeholderView.addSubview(label)
         NSLayoutConstraint.activate([
             label.centerXAnchor.constraint(equalTo: placeholderView.centerXAnchor),
-            label.centerYAnchor.constraint(equalTo: placeholderView.centerYAnchor)
+            label.centerYAnchor.constraint(equalTo: placeholderView.centerYAnchor),
+            // Set minimum width for detail panel
+            placeholderView.widthAnchor.constraint(greaterThanOrEqualToConstant: 500)
         ])
 
         splitView.addArrangedSubview(placeholderView)
 
-        // Set initial split position (30% / 70%)
+        // Set initial split position (300px for left panel, rest for right panel)
         splitView.setPosition(300, ofDividerAt: 0)
     }
 
@@ -222,6 +227,24 @@ extension MainViewController: ProjectListViewDelegate {
 
 protocol ProjectListViewDelegate: AnyObject {
     func projectListView(_ view: ProjectListView, didSelectProject project: Project)
+}
+
+// MARK: - Split View Delegate
+extension MainViewController: NSSplitViewDelegate {
+    func splitView(_ splitView: NSSplitView, constrainMinCoordinate proposedMinimumPosition: CGFloat, ofSubviewAt dividerIndex: Int) -> CGFloat {
+        // Minimum width for left panel (project list)
+        return 250
+    }
+
+    func splitView(_ splitView: NSSplitView, constrainMaxCoordinate proposedMaximumPosition: CGFloat, ofSubviewAt dividerIndex: Int) -> CGFloat {
+        // Maximum width for left panel (ensure right panel has at least 500px)
+        return splitView.bounds.width - 500
+    }
+
+    func splitView(_ splitView: NSSplitView, canCollapseSubview subview: NSView) -> Bool {
+        // Don't allow collapsing either panel
+        return false
+    }
 }
 
 // MARK: - Toolbar Item Identifiers

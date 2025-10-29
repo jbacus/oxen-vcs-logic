@@ -90,12 +90,25 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             defer: false
         )
         window.title = "OxVCS - Logic Pro Version Control"
-        window.center()
         window.minSize = NSSize(width: 800, height: 600)
+
+        // Set frame autosave name to persist window position (but respect minSize)
+        window.setFrameAutosaveName("MainWindow")
 
         mainViewController = MainViewController()
         window.contentViewController = mainViewController
 
+        // Ensure window respects minimum size on first launch
+        var frame = window.frame
+        if frame.size.width < 800 {
+            frame.size.width = 1200
+        }
+        if frame.size.height < 600 {
+            frame.size.height = 800
+        }
+        window.setFrame(frame, display: false)
+
+        window.center()
         window.makeKeyAndOrderFront(nil)
         self.mainWindow = window
     }
