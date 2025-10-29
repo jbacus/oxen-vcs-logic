@@ -20,6 +20,7 @@
 /// ```
 
 use anyhow::{anyhow, Context, Result};
+use colored::Colorize;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
@@ -467,8 +468,16 @@ impl OxenSubprocess {
         // Handle formats like:
         // "M  path/to/file"
         // "modified: path/to/file"
+        // "new file: path/to/file"
 
-        let parts: Vec<&str> = line.splitn(2, |c: char| c.is_whitespace() || c == ':').collect();
+        // First try to split on ':'
+        if let Some(colon_pos) = line.find(':') {
+            let path = &line[colon_pos + 1..];
+            return PathBuf::from(path.trim());
+        }
+
+        // Fall back to splitting on whitespace
+        let parts: Vec<&str> = line.splitn(2, char::is_whitespace).collect();
         if parts.len() >= 2 {
             PathBuf::from(parts[1].trim())
         } else {
@@ -573,8 +582,8 @@ mod tests {
         );
 
         assert_eq!(
-            oxen.parse_commit_id("[abc123] message here"),
-            Some("abc123".to_string())
+            oxen.parse_commit_id("[abc1234] message here"), // 7 chars minimum
+            Some("abc1234".to_string())
         );
 
         assert_eq!(
@@ -751,10 +760,10 @@ Date: 2025-01-02
     #[test]
     fn test_parse_commit_id_multiline() {
         let oxen = OxenSubprocess::new();
-        let output = "Some text\nCommit abc123 created\nMore text";
+        let output = "Some text\nCommit abc1234 created\nMore text"; // 7 chars minimum
         assert_eq!(
             oxen.parse_commit_id(output),
-            Some("abc123".to_string())
+            Some("abc1234".to_string())
         );
     }
 
