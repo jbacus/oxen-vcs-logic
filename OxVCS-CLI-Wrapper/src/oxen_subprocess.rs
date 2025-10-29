@@ -25,12 +25,99 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 use crate::{vlog, info, error};
 
-/// Wrapper for oxen CLI subprocess operations
+/// Wrapper for executing Oxen CLI commands via subprocess.
+///
+/// This struct provides a Rust interface to the `oxen` command-line tool by executing
+/// commands as subprocesses and parsing their output. This is a production-ready
+/// solution until official Rust bindings (liboxen) become available.
+///
+/// # Architecture
+///
+/// - Executes `oxen` commands using `std::process::Command`
+/// - Parses stdout/stderr to extract structured data
+/// - Provides type-safe Rust API over CLI interface
+/// - Handles errors, timeouts, and edge cases
+///
+/// # Requirements
+///
+/// The `oxen` CLI must be installed and accessible in PATH:
+/// ```bash
+/// pip install oxen-ai    # Recommended for most users
+/// # or
+/// cargo install oxen     # Build from source
+/// ```
+///
+/// Verify installation:
+/// ```bash
+/// oxen --version
+/// ```
+///
+/// # Examples
+///
+/// ```no_run
+/// use oxenvcs_cli::OxenSubprocess;
+/// use std::path::Path;
+///
+/// let oxen = OxenSubprocess::new();
+///
+/// // Check if oxen is available
+/// if !oxen.is_available() {
+///     eprintln!("oxen CLI not found. Install: pip install oxen-ai");
+///     return;
+/// }
+///
+/// // Initialize repository
+/// let project = Path::new("/path/to/project.logicx");
+/// oxen.init(project)?;
+///
+/// // Add and commit files
+/// oxen.add_all(project)?;
+/// oxen.commit(project, "Initial commit")?;
+///
+/// // View history
+/// let commits = oxen.log(project, Some(10))?;
+/// for commit in commits {
+///     println!("{}: {}", commit.id, commit.message);
+/// }
+/// # Ok::<(), anyhow::Error>(())
+/// ```
+///
+/// # Performance
+///
+/// Each method call spawns a subprocess with typical overhead:
+/// - Startup: ~10-50ms per command
+/// - Command execution: Depends on operation (init: ~100ms, commit: ~500ms)
+/// - Output parsing: <5ms for typical outputs
+///
+/// For high-frequency operations, consider batching or caching.
+///
+/// # Error Handling
+///
+/// All methods return `Result<T, anyhow::Error>` with descriptive error messages:
+/// - Command not found: "oxen command not found in PATH"
+/// - Non-zero exit: Includes stderr output from oxen
+/// - Parse errors: "Failed to parse oxen output: ..."
+///
+/// # Verbose Mode
+///
+/// Enable verbose logging to see executed commands and output:
+/// ```no_run
+/// use oxenvcs_cli::OxenSubprocess;
+///
+/// let oxen = OxenSubprocess::new().verbose(true);
+/// // Will log all executed commands and their output
+/// ```
+///
+/// # See Also
+///
+/// - `CommitInfo` - Parsed commit information
+/// - `StatusInfo` - File status information
+/// - `BranchInfo` - Branch details
 #[derive(Debug, Clone)]
 pub struct OxenSubprocess {
     /// Path to oxen executable (defaults to "oxen" in PATH)
     oxen_path: String,
-    /// Enable verbose output
+    /// Enable verbose logging of commands and output
     verbose: bool,
 }
 

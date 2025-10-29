@@ -1,10 +1,115 @@
 use crate::logic_project::LogicProject;
 
-/// Generates a .oxenignore file content with asset classification rules
+/// Generates a complete `.oxenignore` file template for Logic Pro projects.
 ///
-/// The template organizes ignored files into categories:
-/// - Volatile/Generated: Temporary files created during project work
-/// - System: OS-specific metadata files
+/// Creates a well-organized ignore file with comprehensive patterns for files
+/// that should NOT be version controlled. The template includes four main sections:
+/// volatile/generated files, system files, cache files, and a custom section for
+/// user additions.
+///
+/// # Purpose
+///
+/// The `.oxenignore` file prevents version control bloat and conflicts by excluding:
+/// - **Generated audio** (bounces, freeze files) - Large, regenerable files
+/// - **Volatile data** (autosaves, temp files) - Creates noisy, conflicting commits
+/// - **System metadata** (.DS_Store, etc.) - User/machine-specific, no value in VCS
+///
+/// # Template Structure
+///
+/// ```text
+/// # Oxen VCS - Logic Pro Ignore Rules
+///
+/// # Volatile/Generated Files
+/// Bounces/
+/// Freeze Files/
+/// Autosave/
+/// *.nosync
+///
+/// # System Files
+/// .DS_Store
+/// *.smbdelete*
+/// .Trashes
+///
+/// # Cache and Temporary Files
+/// *.cache
+/// *.tmp
+/// *~
+///
+/// # Custom Ignore Patterns
+/// (empty for user to fill)
+/// ```
+///
+/// # Returns
+///
+/// Complete `.oxenignore` file content as a String, ready to write to disk.
+///
+/// # Pattern Sources
+///
+/// All patterns are consistent with `LogicProject::ignored_patterns()` and include:
+/// - Directory patterns (trailing slash): `Bounces/`, `Freeze Files/`
+/// - Wildcard patterns: `*.nosync`, `*.cache`, `*~`
+/// - Exact filenames: `.DS_Store`, `.Trashes`
+///
+/// # Examples
+///
+/// ```
+/// use oxenvcs_cli::generate_oxenignore;
+/// use std::fs;
+///
+/// // Generate and write to disk
+/// let content = generate_oxenignore();
+/// fs::write("/path/to/project.logicx/.oxenignore", content)?;
+/// # Ok::<(), std::io::Error>(())
+/// ```
+///
+/// ```
+/// use oxenvcs_cli::generate_oxenignore;
+///
+/// // Verify essential patterns are present
+/// let content = generate_oxenignore();
+/// assert!(content.contains("Bounces/"));
+/// assert!(content.contains("Freeze Files/"));
+/// assert!(content.contains(".DS_Store"));
+/// ```
+///
+/// # Integration
+///
+/// This function is called automatically during repository initialization:
+/// 1. User runs `oxenvcs init /path/to/project.logicx`
+/// 2. `.oxenignore` file is created in project root
+/// 3. Oxen uses patterns to exclude files from tracking
+///
+/// Users can customize by editing the "Custom Ignore Patterns" section.
+///
+/// # Idempotence
+///
+/// This function is deterministic - multiple calls return identical output.
+/// Safe to regenerate if `.oxenignore` is accidentally deleted.
+///
+/// # Design Rationale
+///
+/// **Why exclude Bounces/ and Freeze Files/?**
+/// - Large files (100MB+ common) that bloat repository
+/// - Easily regenerable from project state
+/// - Frequent changes cause merge conflicts
+/// - Users intentionally export when needed
+///
+/// **Why exclude Autosave/?**
+/// - Creates commits every few minutes (too granular)
+/// - Not intentional save points
+/// - Can conflict with manual saves
+/// - Users rarely want to revert to autosaves
+///
+/// **Why exclude .DS_Store?**
+/// - macOS Finder metadata (no value in Logic Pro context)
+/// - Differs per machine/user
+/// - Changes on every directory access
+/// - Creates noisy, meaningless commits
+///
+/// # See Also
+///
+/// - `LogicProject::ignored_patterns()` - Source of truth for patterns
+/// - `.oxenignore` documentation: https://docs.oxen.ai/concepts/oxenignore
 pub fn generate_oxenignore() -> String {
     let patterns = LogicProject::ignored_patterns();
 
