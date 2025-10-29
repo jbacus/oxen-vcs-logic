@@ -1,30 +1,109 @@
 use serde::{Deserialize, Serialize};
 
-/// Structured commit metadata for Logic Pro projects
+/// Structured metadata for Logic Pro project commits.
+///
+/// Enhances standard commit messages with DAW-specific metadata including tempo,
+/// sample rate, and musical key. This enables rich searching, filtering, and
+/// context when browsing project history.
+///
+/// Metadata is embedded in commit messages in a structured format and can be
+/// parsed back for display in UIs and reporting tools.
+///
+/// # Format
+///
+/// Commits are formatted as:
+/// ```text
+/// <message>
+///
+/// BPM: <tempo>
+/// Sample Rate: <rate> Hz
+/// Key: <key_signature>
+/// Tags: <tag1>, <tag2>, ...
+/// ```
+///
+/// # Examples
+///
+/// ```
+/// use oxenvcs_cli::CommitMetadata;
+///
+/// // Create milestone commit with full metadata
+/// let commit = CommitMetadata::new("Final mix - ready for mastering")
+///     .with_bpm(128.0)
+///     .with_sample_rate(48000)
+///     .with_key_signature("A Minor")
+///     .with_tag("milestone")
+///     .with_tag("mix-v3");
+///
+/// let formatted = commit.format_commit_message();
+/// assert!(formatted.contains("BPM: 128"));
+/// assert!(formatted.contains("A Minor"));
+///
+/// // Parse it back
+/// let parsed = CommitMetadata::parse_commit_message(&formatted);
+/// assert_eq!(parsed.bpm, Some(128.0));
+/// ```
+///
+/// # Serialization
+///
+/// Supports JSON serialization via Serde for storage and IPC:
+///
+/// ```
+/// use oxenvcs_cli::CommitMetadata;
+///
+/// let metadata = CommitMetadata::new("Test")
+///     .with_bpm(120.0);
+///
+/// let json = serde_json::to_string(&metadata)?;
+/// let deserialized: CommitMetadata = serde_json::from_str(&json)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CommitMetadata {
-    /// User-provided commit message
+    /// User-provided commit message (primary description)
     pub message: String,
 
-    /// Beats per minute (optional)
+    /// Beats per minute (tempo). Supports decimal values (e.g., 120.5, 128.0)
     pub bpm: Option<f32>,
 
-    /// Sample rate in Hz (e.g., 44100, 48000, 96000)
+    /// Sample rate in Hz (e.g., 44100, 48000, 96000, 192000)
     pub sample_rate: Option<u32>,
 
-    /// Musical key signature (e.g., "C Major", "A Minor")
+    /// Musical key signature (e.g., "C Major", "A Minor", "F# Major")
     pub key_signature: Option<String>,
 
-    /// Optional tags for categorization
+    /// Optional tags for categorization (e.g., "draft", "mix", "mastered")
     pub tags: Vec<String>,
 
-    /// Timestamp (will be auto-set)
+    /// Unix timestamp (auto-set by daemon, not user-provided)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub timestamp: Option<i64>,
 }
 
 impl CommitMetadata {
-    /// Creates a new CommitMetadata with just a message
+    /// Creates a new CommitMetadata with just a message.
+    ///
+    /// This is the primary constructor. Use builder methods to add optional metadata.
+    ///
+    /// # Arguments
+    ///
+    /// * `message` - Commit message (can be String, &str, or any Into<String>)
+    ///
+    /// # Returns
+    ///
+    /// CommitMetadata with all optional fields set to None/empty
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use oxenvcs_cli::CommitMetadata;
+    ///
+    /// // From &str
+    /// let commit = CommitMetadata::new("Initial version");
+    ///
+    /// // From String
+    /// let message = String::from("Working draft");
+    /// let commit = CommitMetadata::new(message);
+    /// ```
     pub fn new(message: impl Into<String>) -> Self {
         Self {
             message: message.into(),
@@ -36,40 +115,156 @@ impl CommitMetadata {
         }
     }
 
-    /// Sets the BPM
+    /// Sets the BPM (beats per minute).
+    ///
+    /// Builder pattern method that consumes and returns self.
+    ///
+    /// # Arguments
+    ///
+    /// * `bpm` - Tempo in beats per minute (supports decimals like 120.5)
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use oxenvcs_cli::CommitMetadata;
+    ///
+    /// let commit = CommitMetadata::new("Uptempo mix")
+    ///     .with_bpm(140.0);
+    /// assert_eq!(commit.bpm, Some(140.0));
+    /// ```
     pub fn with_bpm(mut self, bpm: f32) -> Self {
         self.bpm = Some(bpm);
         self
     }
 
-    /// Sets the sample rate
+    /// Sets the sample rate in Hz.
+    ///
+    /// Builder pattern method that consumes and returns self.
+    ///
+    /// # Arguments
+    ///
+    /// * `sample_rate` - Sample rate in Hz (typical: 44100, 48000, 96000, 192000)
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use oxenvcs_cli::CommitMetadata;
+    ///
+    /// let commit = CommitMetadata::new("High-res recording")
+    ///     .with_sample_rate(96000);
+    /// assert_eq!(commit.sample_rate, Some(96000));
+    /// ```
     pub fn with_sample_rate(mut self, sample_rate: u32) -> Self {
         self.sample_rate = Some(sample_rate);
         self
     }
 
-    /// Sets the key signature
+    /// Sets the musical key signature.
+    ///
+    /// Builder pattern method that consumes and returns self.
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - Musical key (e.g., "C Major", "A Minor", "F# Major")
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use oxenvcs_cli::CommitMetadata;
+    ///
+    /// let commit = CommitMetadata::new("Melody draft")
+    ///     .with_key_signature("D Minor");
+    /// assert_eq!(commit.key_signature, Some("D Minor".to_string()));
+    /// ```
     pub fn with_key_signature(mut self, key: impl Into<String>) -> Self {
         self.key_signature = Some(key.into());
         self
     }
 
-    /// Adds a tag
+    /// Adds a tag for categorization.
+    ///
+    /// Builder pattern method that consumes and returns self. Can be called
+    /// multiple times to add multiple tags.
+    ///
+    /// # Arguments
+    ///
+    /// * `tag` - Tag string (e.g., "draft", "mix", "mastered", "milestone")
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use oxenvcs_cli::CommitMetadata;
+    ///
+    /// let commit = CommitMetadata::new("Pre-master version")
+    ///     .with_tag("mix")
+    ///     .with_tag("review")
+    ///     .with_tag("v3");
+    ///
+    /// assert_eq!(commit.tags.len(), 3);
+    /// assert!(commit.tags.contains(&"mix".to_string()));
+    /// ```
     pub fn with_tag(mut self, tag: impl Into<String>) -> Self {
         self.tags.push(tag.into());
         self
     }
 
-    /// Formats the commit metadata as a structured message for Oxen
+    /// Formats the metadata as a structured commit message for version control.
     ///
-    /// Format:
-    /// ```
+    /// Generates a multi-line string with the message followed by metadata fields.
+    /// Only includes fields that have been set (omits None values).
+    ///
+    /// # Format
+    ///
+    /// ```text
     /// <message>
     ///
     /// BPM: <bpm>
     /// Sample Rate: <sample_rate> Hz
     /// Key: <key_signature>
-    /// Tags: <tags>
+    /// Tags: <tag1>, <tag2>, ...
+    /// ```
+    ///
+    /// If no metadata fields are set, returns just the message (no extra newlines).
+    ///
+    /// # Returns
+    ///
+    /// Formatted String ready for commit
+    ///
+    /// # Field Order
+    ///
+    /// Metadata always appears in this order: BPM, Sample Rate, Key, Tags
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use oxenvcs_cli::CommitMetadata;
+    ///
+    /// // With full metadata
+    /// let commit = CommitMetadata::new("Final mix")
+    ///     .with_bpm(120.0)
+    ///     .with_sample_rate(48000)
+    ///     .with_key_signature("C Major");
+    ///
+    /// let formatted = commit.format_commit_message();
+    /// assert!(formatted.contains("Final mix\n\nBPM: 120"));
+    ///
+    /// // With no metadata (just message)
+    /// let simple = CommitMetadata::new("Quick save");
+    /// assert_eq!(simple.format_commit_message(), "Quick save");
+    /// ```
+    ///
+    /// # Round-Trip Compatibility
+    ///
+    /// Output is guaranteed to be parseable by `parse_commit_message()`:
+    ///
+    /// ```
+    /// use oxenvcs_cli::CommitMetadata;
+    ///
+    /// let original = CommitMetadata::new("Test").with_bpm(128.0);
+    /// let formatted = original.format_commit_message();
+    /// let parsed = CommitMetadata::parse_commit_message(&formatted);
+    ///
+    /// assert_eq!(parsed.bpm, original.bpm);
     /// ```
     pub fn format_commit_message(&self) -> String {
         let mut msg = self.message.clone();
@@ -100,7 +295,76 @@ impl CommitMetadata {
         msg
     }
 
-    /// Parses metadata from a commit message
+    /// Parses structured metadata from a commit message string.
+    ///
+    /// Extracts BPM, sample rate, key signature, and tags from a formatted commit
+    /// message. Handles messages created by `format_commit_message()` and also
+    /// plain text messages (returning metadata with no optional fields).
+    ///
+    /// # Parsing Rules
+    ///
+    /// - Lines starting with `BPM:` are parsed as tempo (float)
+    /// - Lines starting with `Sample Rate:` are parsed as Hz (u32, "Hz" suffix optional)
+    /// - Lines starting with `Key:` are parsed as key signature (string)
+    /// - Lines starting with `Tags:` are parsed as comma-separated list
+    /// - All other lines (before metadata section) are treated as the message
+    /// - Parsing is lenient: invalid values result in None, not errors
+    ///
+    /// # Arguments
+    ///
+    /// * `message` - Formatted commit message string
+    ///
+    /// # Returns
+    ///
+    /// CommitMetadata with parsed fields (None for unparseable values)
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use oxenvcs_cli::CommitMetadata;
+    ///
+    /// // Parse formatted message
+    /// let msg = "Mix v3\n\nBPM: 120\nSample Rate: 48000 Hz\nKey: A Minor";
+    /// let parsed = CommitMetadata::parse_commit_message(msg);
+    ///
+    /// assert_eq!(parsed.message, "Mix v3");
+    /// assert_eq!(parsed.bpm, Some(120.0));
+    /// assert_eq!(parsed.sample_rate, Some(48000));
+    /// assert_eq!(parsed.key_signature, Some("A Minor".to_string()));
+    ///
+    /// // Parse plain message (no metadata)
+    /// let plain = "Just a commit message";
+    /// let parsed = CommitMetadata::parse_commit_message(plain);
+    /// assert_eq!(parsed.message, "Just a commit message");
+    /// assert_eq!(parsed.bpm, None);
+    /// ```
+    ///
+    /// # Error Handling
+    ///
+    /// Invalid metadata values are silently ignored (set to None):
+    ///
+    /// ```
+    /// use oxenvcs_cli::CommitMetadata;
+    ///
+    /// let msg = "Test\n\nBPM: not_a_number\nSample Rate: invalid";
+    /// let parsed = CommitMetadata::parse_commit_message(msg);
+    ///
+    /// assert_eq!(parsed.message, "Test");
+    /// assert_eq!(parsed.bpm, None); // Invalid, not an error
+    /// assert_eq!(parsed.sample_rate, None);
+    /// ```
+    ///
+    /// # Multiline Messages
+    ///
+    /// Preserves newlines in the message portion:
+    ///
+    /// ```
+    /// use oxenvcs_cli::CommitMetadata;
+    ///
+    /// let msg = "Line 1\nLine 2\nLine 3\n\nBPM: 130";
+    /// let parsed = CommitMetadata::parse_commit_message(msg);
+    /// assert_eq!(parsed.message, "Line 1\nLine 2\nLine 3");
+    /// ```
     pub fn parse_commit_message(message: &str) -> Self {
         let lines: Vec<&str> = message.lines().collect();
 

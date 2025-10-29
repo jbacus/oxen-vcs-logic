@@ -3,19 +3,95 @@ use colored::Colorize;
 use std::path::{Path, PathBuf};
 use crate::{vlog, info};
 
-/// Represents a Logic Pro folder project structure
+/// Represents a Logic Pro folder project structure.
+///
+/// Logic Pro projects use a `.logicx` folder structure containing:
+/// - `Alternatives/###/ProjectData` - Core project state (binary, non-mergeable)
+/// - `Resources/` - Audio files and assets
+/// - Various system and cache files (excluded from versioning)
+///
+/// This struct validates the project structure and provides access to key paths
+/// that should be tracked by version control.
+///
+/// # Examples
+///
+/// ```no_run
+/// use oxenvcs_cli::LogicProject;
+///
+/// let project = LogicProject::detect("/path/to/MyProject.logicx")?;
+/// println!("Project name: {}", project.name());
+/// println!("ProjectData at: {}", project.project_data_path.display());
+/// # Ok::<(), anyhow::Error>(())
+/// ```
 #[derive(Debug, Clone)]
 pub struct LogicProject {
+    /// Canonical absolute path to the .logicx project directory
     pub path: PathBuf,
+    /// Path to the ProjectData file (in Alternatives/###/ or root)
     pub project_data_path: PathBuf,
 }
 
 impl LogicProject {
-    /// Detects if the given path is a valid Logic Pro folder project
+    /// Detects and validates a Logic Pro folder project at the given path.
+    ///
+    /// This is the primary entry point for Logic Pro project detection. It performs
+    /// comprehensive validation including path existence, directory structure, extension
+    /// checking, and ProjectData file location.
+    ///
+    /// # Requirements
     ///
     /// A valid Logic Pro folder project must:
-    /// - Be a directory ending with .logicx
-    /// - Contain a projectData file
+    /// - Exist on the filesystem
+    /// - Be a directory (not a file or symlink to a file)
+    /// - Have a `.logicx` extension
+    /// - Contain a `ProjectData` file in one of these locations:
+    ///   - `Alternatives/###/ProjectData` (standard, numbered alternatives)
+    ///   - `ProjectData` (root level, older format)
+    ///   - `projectData` (root level, case variation)
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - Path to the .logicx directory (can be relative or absolute)
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(LogicProject)` - Valid project with canonicalized paths
+    /// * `Err(anyhow::Error)` - Invalid project or filesystem error
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if:
+    /// - Path does not exist
+    /// - Path is a file, not a directory
+    /// - Directory doesn't have `.logicx` extension
+    /// - No `ProjectData` file found in any expected location
+    /// - Filesystem permissions prevent access
+    /// - Path cannot be canonicalized
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use oxenvcs_cli::LogicProject;
+    ///
+    /// // Detect with absolute path
+    /// let project = LogicProject::detect("/Users/producer/MyProject.logicx")?;
+    ///
+    /// // Detect with relative path
+    /// let project = LogicProject::detect("../MyProject.logicx")?;
+    ///
+    /// // Detect from within the project directory
+    /// let project = LogicProject::detect(".")?;
+    /// # Ok::<(), anyhow::Error>(())
+    /// ```
+    ///
+    /// # Performance
+    ///
+    /// This function performs filesystem I/O including:
+    /// - Path canonicalization
+    /// - Directory traversal (if searching Alternatives/)
+    /// - Multiple file existence checks
+    ///
+    /// Typical execution time: < 10ms for standard projects
     pub fn detect(path: impl AsRef<Path>) -> Result<Self> {
         let path = path.as_ref();
 
@@ -75,12 +151,31 @@ impl LogicProject {
         })
     }
 
-    /// Finds the ProjectData file in a Logic Pro project
+    /// Finds the ProjectData file within a Logic Pro project directory.
     ///
-    /// Logic Pro stores project data in various locations:
-    /// 1. Alternatives/###/ProjectData (most common, numbered alternatives)
-    /// 2. ProjectData (root level, older format)
-    /// 3. projectData (root level, case variation)
+    /// Searches for the ProjectData file in priority order:
+    /// 1. `Alternatives/###/ProjectData` (standard, numbered alternatives like 001, 002, etc.)
+    /// 2. `ProjectData` (root level, older Logic Pro format)
+    /// 3. `projectData` (root level, case variation)
+    /// 4. `Project Data` (root level, with space)
+    ///
+    /// The function stops at the first match and returns immediately.
+    ///
+    /// # Arguments
+    ///
+    /// * `project_path` - Absolute path to the .logicx directory
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(PathBuf)` - Path to the ProjectData file (guaranteed to exist)
+    /// * `Err(anyhow::Error)` - No ProjectData file found in any location
+    ///
+    /// # Implementation Notes
+    ///
+    /// - Uses verbose logging to track search progress
+    /// - When Alternatives/ exists, scans all subdirectories
+    /// - Returns the first ProjectData found (usually lowest-numbered alternative)
+    /// - Helpful error message lists all checked locations
     fn find_project_data(project_path: &Path) -> Result<PathBuf> {
         vlog!("--- Searching for ProjectData file ---");
 
@@ -159,7 +254,24 @@ impl LogicProject {
         ))
     }
 
-    /// Returns the name of the Logic Pro project
+    /// Returns the human-readable name of the Logic Pro project.
+    ///
+    /// Extracts the project name from the directory name by removing the
+    /// `.logicx` extension. This is the name users see in Finder and Logic Pro.
+    ///
+    /// # Returns
+    ///
+    /// Project name as a String (without .logicx extension)
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use oxenvcs_cli::LogicProject;
+    ///
+    /// let project = LogicProject::detect("/path/to/My Song.logicx")?;
+    /// assert_eq!(project.name(), "My Song");
+    /// # Ok::<(), anyhow::Error>(())
+    /// ```
     pub fn name(&self) -> String {
         self.path
             .file_stem()
@@ -168,7 +280,34 @@ impl LogicProject {
             .to_string()
     }
 
-    /// Lists all key paths in the Logic Pro project that should be tracked
+    /// Returns paths within the project that should be tracked by version control.
+    ///
+    /// These paths contain essential project data that should be versioned:
+    /// - `Alternatives/` - Project state, MIDI data, automation
+    /// - `Resources/` - Audio files and other media assets
+    ///
+    /// Paths returned are absolute, derived from the canonicalized project path.
+    ///
+    /// # Returns
+    ///
+    /// Vector of absolute PathBuf instances for key directories
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use oxenvcs_cli::LogicProject;
+    ///
+    /// let project = LogicProject::detect("/path/to/Project.logicx")?;
+    /// for path in project.tracked_paths() {
+    ///     println!("Should track: {}", path.display());
+    /// }
+    /// # Ok::<(), anyhow::Error>(())
+    /// ```
+    ///
+    /// # Note
+    ///
+    /// This list is intentionally conservative. Generated files (Bounces/, Freeze Files/)
+    /// are handled by `.oxenignore` patterns, not excluded here.
     pub fn tracked_paths(&self) -> Vec<PathBuf> {
         vec![
             self.path.join("Alternatives"),
@@ -176,7 +315,53 @@ impl LogicProject {
         ]
     }
 
-    /// Lists paths that should be ignored
+    /// Returns glob patterns for files and directories that should NOT be versioned.
+    ///
+    /// These patterns identify volatile, generated, or system files that:
+    /// - Can be regenerated (bounces, freeze files)
+    /// - Change frequently and cause conflicts (autosaves, caches)
+    /// - Are system-specific (.DS_Store, SMB metadata)
+    ///
+    /// # Pattern Types
+    ///
+    /// - Directory patterns: `Bounces/`, `Freeze Files/` (trailing slash)
+    /// - Wildcard patterns: `*.nosync`, `*.smbdelete*`
+    /// - Exact filenames: `.DS_Store`
+    ///
+    /// # Returns
+    ///
+    /// Vector of static string slices suitable for .oxenignore generation
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use oxenvcs_cli::LogicProject;
+    ///
+    /// let patterns = LogicProject::ignored_patterns();
+    /// assert!(patterns.contains(&"Bounces/"));
+    /// assert!(patterns.contains(&"Freeze Files/"));
+    /// assert!(patterns.contains(&".DS_Store"));
+    /// ```
+    ///
+    /// # Rationale
+    ///
+    /// **Generated Audio:**
+    /// - `Bounces/` - User-exported audio (regenerable, often large)
+    /// - `Freeze Files/` - Rendered track freezes (volatile, causes conflicts)
+    ///
+    /// **Volatile System Data:**
+    /// - `Autosave/` - Automatic backup copies (creates noisy commits)
+    /// - `*.nosync` - iCloud exclusion marker (user/system specific)
+    ///
+    /// **macOS System Files:**
+    /// - `.DS_Store` - Finder metadata
+    /// - `*.smbdelete*` - SMB network share deletion markers
+    /// - `Media.localized/` - System-localized folder names
+    ///
+    /// # Integration
+    ///
+    /// These patterns are used by `ignore_template::generate_oxenignore()` to create
+    /// the initial .oxenignore file for new repositories.
     pub fn ignored_patterns() -> Vec<&'static str> {
         vec![
             "Bounces/",
