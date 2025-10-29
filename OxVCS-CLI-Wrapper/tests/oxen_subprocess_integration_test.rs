@@ -447,7 +447,7 @@ mod tests {
 
         oxen.init(fixture.path()).unwrap();
 
-        let result = oxen.branches(fixture.path());
+        let result = oxen.list_branches(fixture.path());
         assert!(result.is_ok(), "List branches should succeed");
 
         let branches = result.unwrap();
@@ -470,7 +470,7 @@ mod tests {
 
         oxen.init(fixture.path()).unwrap();
 
-        let result = oxen.branches(fixture.path());
+        let result = oxen.list_branches(fixture.path());
         assert!(result.is_ok(), "List branches should succeed");
 
         let branches = result.unwrap();
@@ -492,7 +492,7 @@ mod tests {
         oxen.add(fixture.path(), &[".".as_ref()]).unwrap();
         oxen.commit(fixture.path(), "Commit").unwrap();
 
-        let result = oxen.push(fixture.path());
+        let result = oxen.push(fixture.path(), None, None);
         assert!(result.is_err(), "Push without remote should fail");
     }
 
@@ -581,7 +581,7 @@ mod tests {
         skip_if_no_oxen!();
 
         let fixture = TestFixture::new();
-        let oxen = OxenSubprocess::new_verbose();
+        let oxen = OxenSubprocess::new().verbose(true);
 
         // Verbose mode should not change behavior, just output
         oxen.init(fixture.path()).unwrap();

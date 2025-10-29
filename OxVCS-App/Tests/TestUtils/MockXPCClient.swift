@@ -103,9 +103,9 @@ public struct LockStatus: Codable {
 
 /// Daemon status information
 public struct DaemonStatus: Codable {
-    public let isRunning: Bool
-    public let monitoredProjectsCount: Int
-    public let isMonitoring: Bool
+    public var isRunning: Bool
+    public var monitoredProjectsCount: Int
+    public var isMonitoring: Bool
 
     public init(isRunning: Bool, monitoredProjectsCount: Int, isMonitoring: Bool) {
         self.isRunning = isRunning

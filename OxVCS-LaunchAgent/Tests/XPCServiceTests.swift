@@ -92,6 +92,63 @@ class MockXPCService: NSObject, OxenDaemonXPCProtocol {
         pingCalled = true
         reply(true)
     }
+
+    // MARK: - Lock Management Methods
+
+    func acquireLock(
+        for projectPath: String,
+        timeoutHours: Int,
+        withReply reply: @escaping (Bool, String?) -> Void
+    ) {
+        lastProjectPath = projectPath
+        reply(true, nil)
+    }
+
+    func releaseLock(
+        for projectPath: String,
+        withReply reply: @escaping (Bool, String?) -> Void
+    ) {
+        lastProjectPath = projectPath
+        reply(true, nil)
+    }
+
+    func forceBreakLock(
+        for projectPath: String,
+        withReply reply: @escaping (Bool, String?) -> Void
+    ) {
+        lastProjectPath = projectPath
+        reply(true, nil)
+    }
+
+    func getLockInfo(
+        for projectPath: String,
+        withReply reply: @escaping ([String: Any]?) -> Void
+    ) {
+        lastProjectPath = projectPath
+        reply(nil)
+    }
+
+    // MARK: - Configuration Methods
+
+    func getConfiguration(
+        withReply reply: @escaping ([String: Any]) -> Void
+    ) {
+        reply(["debounceTime": 30, "lockTimeout": 24])
+    }
+
+    func setDebounceTime(
+        _ seconds: Int,
+        withReply reply: @escaping (Bool) -> Void
+    ) {
+        reply(true)
+    }
+
+    func setLockTimeout(
+        _ hours: Int,
+        withReply reply: @escaping (Bool) -> Void
+    ) {
+        reply(true)
+    }
 }
 
 final class XPCServiceTests: XCTestCase {
