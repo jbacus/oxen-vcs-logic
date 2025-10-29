@@ -80,11 +80,11 @@ class MainViewController: NSViewController {
             projectListView.topAnchor.constraint(equalTo: listContainer.topAnchor),
             projectListView.bottomAnchor.constraint(equalTo: listContainer.bottomAnchor),
             projectListView.leadingAnchor.constraint(equalTo: listContainer.leadingAnchor),
-            projectListView.trailingAnchor.constraint(equalTo: listContainer.trailingAnchor),
-            // Set minimum width for project list panel
-            listContainer.widthAnchor.constraint(greaterThanOrEqualToConstant: 250)
+            projectListView.trailingAnchor.constraint(equalTo: listContainer.trailingAnchor)
         ])
 
+        // Set explicit frame for list container (don't use width constraints with NSSplitView)
+        listContainer.frame = NSRect(x: 0, y: 0, width: 300, height: 800)
         splitView.addArrangedSubview(listContainer)
 
         // Add placeholder for detail view
@@ -98,15 +98,17 @@ class MainViewController: NSViewController {
         placeholderView.addSubview(label)
         NSLayoutConstraint.activate([
             label.centerXAnchor.constraint(equalTo: placeholderView.centerXAnchor),
-            label.centerYAnchor.constraint(equalTo: placeholderView.centerYAnchor),
-            // Set minimum width for detail panel
-            placeholderView.widthAnchor.constraint(greaterThanOrEqualToConstant: 500)
+            label.centerYAnchor.constraint(equalTo: placeholderView.centerYAnchor)
         ])
 
+        // Set explicit frame for placeholder (don't use width constraints with NSSplitView)
+        placeholderView.frame = NSRect(x: 300, y: 0, width: 900, height: 800)
         splitView.addArrangedSubview(placeholderView)
 
-        // Set initial split position (300px for left panel, rest for right panel)
-        splitView.setPosition(300, ofDividerAt: 0)
+        // Set initial split position AFTER adding both subviews
+        DispatchQueue.main.async { [weak self] in
+            self?.splitView.setPosition(300, ofDividerAt: 0)
+        }
     }
 
     private func bindViewModel() {

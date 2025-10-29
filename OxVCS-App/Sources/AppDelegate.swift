@@ -85,6 +85,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func setupMainWindow() {
         // Create window with explicit size
         let windowRect = NSRect(x: 0, y: 0, width: 1200, height: 800)
+        print("🪟 Creating window with rect: \(windowRect)")
+
         let window = NSWindow(
             contentRect: windowRect,
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
@@ -93,43 +95,44 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         )
         window.title = "OxVCS - Logic Pro Version Control"
 
+        print("🪟 Window frame after creation: \(window.frame)")
+
         // Set size constraints
         window.minSize = NSSize(width: 800, height: 600)
-        window.maxSize = NSSize(width: 4096, height: 2160)  // Reasonable maximum
         window.contentMinSize = NSSize(width: 800, height: 600)
 
         // Ensure window has proper background
         window.backgroundColor = .windowBackgroundColor
         window.isOpaque = true
 
-        // Create and set view controller BEFORE autosave
+        // DISABLE autosave for now to prevent bad state
+        // TODO: Re-enable with a new name once app is stable
+        // window.setFrameAutosaveName("MainWindow-v2")
+
+        // Create and set view controller
         mainViewController = MainViewController()
         window.contentViewController = mainViewController
 
-        // Force the content view to have the correct size
-        mainViewController!.view.frame = NSRect(x: 0, y: 0, width: 1200, height: 800)
-        mainViewController!.view.needsLayout = true
-        mainViewController!.view.layoutSubtreeIfNeeded()
+        print("🪟 Window frame after setting view controller: \(window.frame)")
 
-        // Now set autosave name (after content is set)
-        window.setFrameAutosaveName("MainWindow")
+        // Force explicit frame size (do NOT rely on constraints initially)
+        window.setFrame(windowRect, display: false)
+        print("🪟 Window frame after setFrame: \(window.frame)")
 
-        // Ensure window has correct frame (override any bad saved state)
-        var currentFrame = window.frame
-        if currentFrame.size.width < 800 || currentFrame.size.height < 600 {
-            // Reset to default size if saved frame is too small
-            currentFrame.size.width = 1200
-            currentFrame.size.height = 800
-            window.setFrame(currentFrame, display: false)
-        }
-
-        // Center and show
+        // Center on screen
         window.center()
+        print("🪟 Window frame after center: \(window.frame)")
+
+        // Make visible
         window.makeKeyAndOrderFront(nil)
-        window.display()
+        print("🪟 Window frame after makeKeyAndOrderFront: \(window.frame)")
+
         NSApp.activate(ignoringOtherApps: true)
 
         self.mainWindow = window
+
+        print("🪟 Final window frame: \(window.frame)")
+        print("🪟 Final window content view frame: \(window.contentView?.frame ?? .zero)")
     }
 
     @objc private func showAbout() {
