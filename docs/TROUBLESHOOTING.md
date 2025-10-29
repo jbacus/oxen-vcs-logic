@@ -836,7 +836,7 @@ chmod +x diagnostic-script.sh
 
 - **User Guide:** [USER_GUIDE.md](USER_GUIDE.md)
 - **FAQ:** [FAQ.md](FAQ.md)
-- **Quick Start:** [QUICKSTART_GUIDE.md](QUICKSTART_GUIDE.md)
+- **Quick Start:** [USER_GUIDE.md](USER_GUIDE.md)
 - **GitHub Issues:** [https://github.com/jbacus/oxen-vcs-logic/issues](https://github.com/jbacus/oxen-vcs-logic/issues)
 
 **Emergency Contact:** support@oxen-vcs.com

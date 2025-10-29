@@ -66,11 +66,10 @@ swiftlint lint && swiftlint autocorrect               # Swift (if configured)
 - **[README.md](README.md)** - Project overview and status
 - **[INSTALL.md](INSTALL.md)** - Installation instructions
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** - Code style, testing requirements
-- **[docs/QUICKSTART.md](docs/QUICKSTART.md)** - Get started in 5 minutes
+- **[docs/USER_GUIDE.md](docs/USER_GUIDE.md)** - Complete user guide with quick start section
 - **[docs/TESTING_STRATEGY.md](docs/TESTING_STRATEGY.md)** - Testing approach
 - **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** - Full technical specification
 - **[docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)** - Common issues and solutions
-- **[docs/USER_GUIDE.md](docs/USER_GUIDE.md)** - End-user documentation
 
 ### Critical Source Files
 
@@ -150,7 +149,7 @@ cd OxVCS-App && swift build -c release
 
 ## Project Status & Reality Check
 
-**Last Updated**: 2025-10-28
+**Last Updated**: 2025-10-29
 **Development Environment**: Linux 4.4.0 (cannot compile/test Swift components)
 **Required for Production**: macOS 14.0+ with Logic Pro 11.x
 
@@ -922,6 +921,8 @@ Architectural patterns extensible to:
 5. **Critical files**: `oxen_subprocess.rs` (Oxen CLI integration), `Daemon.swift` (LaunchAgent), `AppDelegate.swift` (UI)
 
 **Development environment constraint**: This project requires macOS 14.0+ for building/testing Swift components. Current Linux environment can only handle Rust development.
+
+**Documentation status**: All markdown documentation consolidated and streamlined (42 files → 23 essential files) on 2025-10-29.
 
 ---
 

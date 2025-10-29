@@ -419,8 +419,7 @@ See `Cargo.toml` for complete dependency list.
 
 - [USAGE.md](USAGE.md) - Complete CLI reference
 - [TESTING_STRATEGY.md](../docs/TESTING_STRATEGY.md) - Testing approach
-- [IMPLEMENTATION_PLAN.md](../docs/IMPLEMENTATION_PLAN.md) - Development roadmap
-- [PHASE1_COMPLETE.md](../docs/PHASE1_COMPLETE.md) - Phase 1 implementation details
+- [IMPLEMENTATION_PLAN.md](../docs/IMPLEMENTATION_PLAN.md) - Development roadmap (all phases complete)
 
 ## Contributing
 

@@ -246,7 +246,6 @@ lldb /Applications/OxVCS.app/Contents/MacOS/OxVCS
 ## Related Documentation
 
 - [OxVCS-App README](README.md) - Complete app documentation
-- [Phase 3 Completion](../PHASE3_COMPLETE.md) - Implementation details
 - [Installation Guide](../INSTALL.md) - Full installation instructions
 
 ## Technical Details

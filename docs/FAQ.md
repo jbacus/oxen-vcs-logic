@@ -659,7 +659,7 @@ See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for comprehensive solutions.
 **Documentation:**
 - [User Guide](USER_GUIDE.md)
 - [Troubleshooting](TROUBLESHOOTING.md)
-- [Quick Start](QUICKSTART_GUIDE.md)
+- [Quick Start](USER_GUIDE.md)
 
 **Support:**
 - GitHub Issues: [https://github.com/jbacus/oxen-vcs-logic/issues](https://github.com/jbacus/oxen-vcs-logic/issues)

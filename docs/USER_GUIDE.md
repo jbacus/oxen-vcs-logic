@@ -8,16 +8,101 @@
 
 ## Table of Contents
 
-1. [Introduction](#introduction)
-2. [What is Oxen-VCS?](#what-is-oxen-vcs)
-3. [Why Use Oxen-VCS for Logic Pro?](#why-use-oxen-vcs-for-logic-pro)
-4. [Getting Started](#getting-started)
-5. [Daily Workflows](#daily-workflows)
-6. [Collaboration](#collaboration)
-7. [Best Practices](#best-practices)
-8. [Understanding .oxenignore](#understanding-oxenignore)
-9. [Advanced Topics](#advanced-topics)
-10. [Troubleshooting](#troubleshooting)
+1. [Quick Start (5 Minutes)](#quick-start-5-minutes)
+2. [Introduction](#introduction)
+3. [What is Oxen-VCS?](#what-is-oxen-vcs)
+4. [Why Use Oxen-VCS for Logic Pro?](#why-use-oxen-vcs-for-logic-pro)
+5. [Getting Started](#getting-started)
+6. [Daily Workflows](#daily-workflows)
+7. [Collaboration](#collaboration)
+8. [Best Practices](#best-practices)
+9. [Understanding .oxenignore](#understanding-oxenignore)
+10. [Advanced Topics](#advanced-topics)
+11. [Troubleshooting](#troubleshooting)
+
+---
+
+## Quick Start (5 Minutes)
+
+Get version control running for your Logic Pro project in minutes.
+
+### Prerequisites
+
+- macOS 14.0+ with Logic Pro 11.x (folder-based .logicx projects)
+- Rust toolchain: `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
+- Oxen CLI: `pip3 install oxen-ai`
+
+### Installation
+
+**Automated (Recommended):**
+```bash
+git clone https://github.com/jbacus/oxen-vcs-logic.git
+cd oxen-vcs-logic
+./install.sh
+```
+
+The installer builds all components and configures the daemon. **Skip to step 2** below.
+
+**Manual Build (Development):**
+
+See [INSTALL.md](../INSTALL.md) for detailed build instructions.
+
+### Step 1: Initialize Your First Project
+
+```bash
+cd ~/Music/MyTrack.logicx
+oxenvcs-cli init --logic .
+```
+
+### Step 2: Create Your First Commit
+
+```bash
+oxenvcs-cli add --all
+oxenvcs-cli commit \
+  -m "Initial project setup" \
+  --bpm 120 \
+  --sample-rate 48000 \
+  --key "C Major"
+```
+
+### Step 3: Work Normally
+
+Make changes in Logic Pro, save (⌘S), and the daemon auto-commits after 30 seconds of inactivity.
+
+### Common Commands
+
+| Command | Purpose |
+|---------|---------|
+| `oxenvcs-cli status` | Check what changed |
+| `oxenvcs-cli log` | View commit history |
+| `oxenvcs-cli restore <id>` | Rollback to version |
+
+### What Gets Tracked
+
+✅ **Tracked:** `ProjectData`, `Resources/`, `Alternatives/`
+❌ **Ignored:** `Bounces/`, `Freeze Files/`, `Autosave/`, `.DS_Store`
+
+### Daily Workflow
+
+```bash
+# Morning: Check status
+oxenvcs-cli status
+
+# Work in Logic Pro (auto-commits every 30-60s)
+
+# End of session: Create milestone
+oxenvcs-cli add --all
+oxenvcs-cli commit -m "Final mix adjustments" --tags "mix,final"
+```
+
+### Tips for Success
+
+1. **Commit often** - Milestones after significant changes
+2. **Use descriptive messages** - Explain what you did
+3. **Add metadata** - BPM, key, tags help organize
+4. **Check status first** - Always verify changes before committing
+
+**For full details, continue reading below or see [Getting Started](#getting-started).**
 
 ---
 
@@ -885,7 +970,6 @@ launchctl load ~/Library/LaunchAgents/com.oxenvcs.agent.plist
 - **Documentation:** [https://github.com/jbacus/oxen-vcs-logic/docs](https://github.com/jbacus/oxen-vcs-logic/docs)
 - **FAQ:** [FAQ.md](FAQ.md)
 - **Troubleshooting:** [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
-- **Quick Start:** [QUICKSTART_GUIDE.md](QUICKSTART_GUIDE.md)
 
 ### Support Channels
 

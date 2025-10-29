@@ -106,7 +106,7 @@ cd ~/Music/YourProject.logicx
 oxenvcs-cli init --logic .
 ```
 
-See [Quick Start Guide](docs/QUICKSTART.md) for detailed usage instructions.
+See [User Guide](docs/USER_GUIDE.md) for detailed usage instructions.
 
 ## What Gets Installed
 
@@ -270,10 +270,15 @@ oxvcs-daemon --daemon
 
 **Error**: Can't download Rust dependencies
 
-**Solution**: See [BUILD_ISSUES.md](BUILD_ISSUES.md) for solutions including:
-- Requesting crates.io allowlist from network admin
-- Using vendored dependencies
-- Building in a different environment
+**Solutions**:
+1. Request crates.io allowlist from network admin
+2. Use vendored dependencies: `cargo vendor` in the Rust project directory
+3. Build in a different environment (home network, etc.)
+4. Configure cargo to use a proxy: add to `~/.cargo/config.toml`:
+   ```toml
+   [http]
+   proxy = "http://your-proxy:port"
+   ```
 
 ## Uninstallation
 
@@ -352,7 +357,7 @@ After installation, verify everything is working:
 
 Once installation is complete:
 
-1. **Read the Quick Start Guide**: [docs/QUICKSTART.md](docs/QUICKSTART.md)
+1. **Read the Quick Start Guide**: [docs/USER_GUIDE.md](docs/USER_GUIDE.md)
 2. **Initialize your first project**: `oxenvcs-cli init --logic ~/Music/YourProject.logicx`
 3. **Learn the CLI**: [OxVCS-CLI-Wrapper/USAGE.md](OxVCS-CLI-Wrapper/USAGE.md)
 4. **Understand the architecture**: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
