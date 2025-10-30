@@ -17,6 +17,8 @@ anyhow = "1.0"
 clap = { version = "4.0", features = ["derive"] }
 chrono = "0.4.42"
 colored = "2.0"
+atty = "0.2"
+log = "0.4"
 
 [dev-dependencies]
 criterion = "0.5"

@@ -8,14 +8,18 @@ pub mod commit_metadata;
 pub mod draft_manager;
 pub mod ignore_template;
 pub mod logger;
+pub mod logic_parser;
 pub mod logic_project;
+pub mod metadata_diff;
 pub mod oxen_ops;
 pub mod oxen_subprocess;
 
 pub use commit_metadata::CommitMetadata;
 pub use draft_manager::{DraftManager, DraftStats};
 pub use ignore_template::generate_oxenignore;
+pub use logic_parser::{LogicParser, LogicProjectData};
 pub use logic_project::LogicProject;
+pub use metadata_diff::{MetadataDiff, MetadataDiffer, ReportGenerator};
 pub use oxen_ops::OxenRepository;
 pub use oxen_subprocess::{
     BranchInfo, CommitInfo as SubprocessCommitInfo, OxenSubprocess, StatusInfo,

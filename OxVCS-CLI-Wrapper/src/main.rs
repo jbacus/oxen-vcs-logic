@@ -235,6 +235,62 @@ EXAMPLES:
     # Check repository status
     oxenvcs-cli status")]
     Status,
+
+    /// Compare metadata between two Logic Pro project versions
+    #[command(name = "metadata-diff")]
+    #[command(long_about = "Compare metadata between two Logic Pro project versions
+
+USAGE:
+    oxenvcs-cli metadata-diff <PROJECT_A> <PROJECT_B>
+    oxenvcs-cli metadata-diff <PROJECT_A> <PROJECT_B> --output json
+
+DESCRIPTION:
+    Analyzes and compares the metadata of two Logic Pro project versions,
+    generating a detailed report of what changed. Detects:
+      • Global changes (tempo, sample rate, key signature)
+      • Track additions, removals, and modifications
+      • EQ changes (frequency, gain, Q factor)
+      • Compressor changes (threshold, ratio, attack, release)
+      • Volume and pan adjustments
+      • Automation curve changes
+      • Plugin parameter changes
+
+    The output is a human-readable report showing exactly what changed
+    between versions, making it easy to understand project evolution.
+
+EXAMPLES:
+    # Compare two project versions
+    oxenvcs-cli metadata-diff Project_v1.logicx Project_v2.logicx
+
+    # Output as JSON for programmatic use
+    oxenvcs-cli metadata-diff Project_v1.logicx Project_v2.logicx --output json
+
+    # Compare with colored output
+    oxenvcs-cli metadata-diff Project_v1.logicx Project_v2.logicx --color
+
+    # Verbose mode with technical details
+    oxenvcs-cli metadata-diff Project_v1.logicx Project_v2.logicx --verbose")]
+    MetadataDiff {
+        #[arg(value_name = "PROJECT_A", help = "First Logic Pro project (.logicx)")]
+        project_a: PathBuf,
+
+        #[arg(value_name = "PROJECT_B", help = "Second Logic Pro project (.logicx)")]
+        project_b: PathBuf,
+
+        #[arg(
+            long,
+            value_name = "FORMAT",
+            default_value = "text",
+            help = "Output format (text or json)"
+        )]
+        output: String,
+
+        #[arg(long, help = "Use colored output (default: auto-detect)")]
+        color: bool,
+
+        #[arg(long, short, help = "Include technical details in output")]
+        verbose: bool,
+    },
 }
 
 #[tokio::main]
@@ -387,6 +443,66 @@ async fn main() -> anyhow::Result<()> {
                 println!("Working directory clean");
             }
 
+            Ok(())
+        }
+
+        Commands::MetadataDiff {
+            project_a,
+            project_b,
+            output,
+            color,
+            verbose: verbose_flag,
+        } => {
+            use oxenvcs_cli::{LogicParser, MetadataDiffer};
+
+            vlog!("Parsing project A: {}", project_a.display());
+
+            // Validate paths
+            if !LogicParser::is_valid_project(&project_a) {
+                anyhow::bail!("Invalid Logic Pro project: {}", project_a.display());
+            }
+
+            if !LogicParser::is_valid_project(&project_b) {
+                anyhow::bail!("Invalid Logic Pro project: {}", project_b.display());
+            }
+
+            // Parse both projects
+            let data_a = LogicParser::parse(&project_a)
+                .map_err(|e| anyhow::anyhow!("Failed to parse project A: {}", e))?;
+
+            vlog!("Parsing project B: {}", project_b.display());
+            let data_b = LogicParser::parse(&project_b)
+                .map_err(|e| anyhow::anyhow!("Failed to parse project B: {}", e))?;
+
+            // Generate diff
+            vlog!("Computing metadata diff");
+            let diff = MetadataDiffer::compare(&data_a, &data_b);
+
+            // Output result
+            match output.as_str() {
+                "json" => {
+                    let json = MetadataDiffer::to_json(&diff)?;
+                    println!("{}", json);
+                }
+                "text" | _ => {
+                    // Determine color usage
+                    let use_color = if color {
+                        true
+                    } else {
+                        // Auto-detect TTY
+                        atty::is(atty::Stream::Stdout)
+                    };
+
+                    let report = MetadataDiffer::generate_report_with_options(
+                        &diff,
+                        use_color,
+                        verbose_flag || cli.verbose,
+                    );
+                    println!("{}", report);
+                }
+            }
+
+            success!("Metadata diff completed");
             Ok(())
         }
     }
