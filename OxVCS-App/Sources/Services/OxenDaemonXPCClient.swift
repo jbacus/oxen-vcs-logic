@@ -87,6 +87,19 @@ class OxenDaemonXPCClient {
         })
     }
 
+    func unregisterProject(path: String, completion: @escaping (Bool) -> Void) {
+        guard let proxy = getProxy() else {
+            completion(false)
+            return
+        }
+        proxy.unregisterProject(path, withReply: { success, error in
+            if let error = error {
+                print("XPC unregisterProject error: \(error)")
+            }
+            completion(success)
+        })
+    }
+
     func getMonitoredProjects(completion: @escaping ([String]) -> Void) {
         guard let proxy = getProxy() else {
             completion([])

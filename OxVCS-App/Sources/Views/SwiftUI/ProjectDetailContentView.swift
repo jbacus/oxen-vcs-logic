@@ -4,6 +4,7 @@ struct ProjectDetailContentView: View {
     let project: Project
     @State private var commits: [CommitInfo] = []
     @State private var isLoading = false
+    @State private var showingMilestoneCommit = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -35,11 +36,21 @@ struct ProjectDetailContentView: View {
         .navigationSubtitle(project.path)
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
+                Button {
+                    openInLogic()
+                } label: {
+                    Label("Open in Logic Pro", systemImage: "music.note")
+                }
+                .buttonStyle(.bordered)
+
                 Button("Create Milestone") {
-                    // TODO: Show milestone commit sheet
+                    showingMilestoneCommit = true
                 }
                 .buttonStyle(.borderedProminent)
             }
+        }
+        .sheet(isPresented: $showingMilestoneCommit) {
+            MilestoneCommitView(project: project)
         }
         .onAppear {
             loadCommits()
@@ -48,12 +59,50 @@ struct ProjectDetailContentView: View {
 
     private func loadCommits() {
         isLoading = true
-        // TODO: Load commits from service
-        // For now, just use empty array
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            commits = []
-            isLoading = false
+
+        OxenDaemonXPCClient.shared.getCommitHistory(path: project.path, limit: 50) { commitData in
+            DispatchQueue.main.async {
+                // Parse commit history from XPC response
+                var loadedCommits: [CommitInfo] = []
+
+                for commit in commitData {
+                    guard let id = commit["id"] as? String,
+                          let message = commit["message"] as? String,
+                          let timestamp = commit["timestamp"] as? Date,
+                          let author = commit["author"] as? String else {
+                        continue
+                    }
+
+                    // Parse metadata if available
+                    var metadata: CommitMetadata? = nil
+                    if let metadataDict = commit["metadata"] as? [String: Any] {
+                        metadata = CommitMetadata(
+                            bpm: metadataDict["bpm"] as? Double,
+                            sampleRate: metadataDict["sample_rate"] as? Int,
+                            keySignature: metadataDict["key_signature"] as? String,
+                            timeSignature: metadataDict["time_signature"] as? String,
+                            tags: metadataDict["tags"] as? [String]
+                        )
+                    }
+
+                    loadedCommits.append(CommitInfo(
+                        id: id,
+                        message: message,
+                        timestamp: timestamp,
+                        author: author,
+                        metadata: metadata
+                    ))
+                }
+
+                commits = loadedCommits
+                isLoading = false
+            }
         }
+    }
+
+    private func openInLogic() {
+        let projectURL = URL(fileURLWithPath: project.path)
+        NSWorkspace.shared.open(projectURL)
     }
 }
 

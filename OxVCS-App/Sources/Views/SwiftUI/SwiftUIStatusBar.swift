@@ -48,6 +48,13 @@ struct SwiftUIStatusBar: View {
                 }
             }
         }
+
+        // Update project count
+        OxenDaemonXPCClient.shared.getMonitoredProjects { projects in
+            DispatchQueue.main.async {
+                projectCount = projects.count
+            }
+        }
     }
 
     private func startTimer() {
