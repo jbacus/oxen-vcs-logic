@@ -1,7 +1,7 @@
 {
-  "acquiredAt" : "2025-10-29T22:00:02Z",
-  "expiresAt" : "2025-10-30T22:00:02Z",
-  "lockId" : "F2C63732-B84C-49D1-83F1-2BE9588F92B7",
-  "lockedBy" : "johnbacus@m4-mini.local",
+  "acquiredAt" : "2025-10-30T02:48:28Z",
+  "expiresAt" : "2025-10-31T02:48:28Z",
+  "lockId" : "230C97FB-63A0-4656-B8EE-FDA7464F185B",
+  "lockedBy" : "johnbacus@mac.lan",
   "projectPath" : ".\/TestProject.logicx"
 }
