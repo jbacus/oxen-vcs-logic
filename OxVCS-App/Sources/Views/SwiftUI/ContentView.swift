@@ -4,6 +4,7 @@ struct ContentView: View {
     @StateObject private var viewModel = ProjectListViewModel()
     @State private var selectedProject: Project?
     @State private var showingMergeHelper = false
+    @State private var showingProjectWizard = false
 
     var body: some View {
         NavigationSplitView {
@@ -31,9 +32,7 @@ struct ContentView: View {
         .toolbar {
             ToolbarItemGroup(placement: .automatic) {
                 Button(action: {
-                    if let appDelegate = NSApplication.shared.delegate as? AppDelegate {
-                        appDelegate.showProjectWizard()
-                    }
+                    showingProjectWizard = true
                 }) {
                     Label("Add Project", systemImage: "plus.circle")
                 }
@@ -50,6 +49,9 @@ struct ContentView: View {
                 MergeHelperView(project: project)
             }
         }
+        .sheet(isPresented: $showingProjectWizard) {
+            ProjectWizardView()
+        }
         .onAppear {
             viewModel.loadProjects()
         }
@@ -62,6 +64,9 @@ struct ContentView: View {
             } else {
                 showNoProjectAlert()
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .showProjectWizard)) { _ in
+            showingProjectWizard = true
         }
         .overlay(alignment: .bottom) {
             SwiftUIStatusBar()

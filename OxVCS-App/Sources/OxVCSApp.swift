@@ -42,4 +42,5 @@ struct OxVCSApp: App {
 extension Notification.Name {
     static let refreshProjects = Notification.Name("refreshProjects")
     static let showMergeHelper = Notification.Name("showMergeHelper")
+    static let showProjectWizard = Notification.Name("showProjectWizard")
 }

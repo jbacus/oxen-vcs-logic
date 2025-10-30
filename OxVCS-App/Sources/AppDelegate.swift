@@ -32,8 +32,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc func showProjectWizard() {
-        let wizard = ProjectWizardWindow()
-        wizard.show()
+        NotificationCenter.default.post(name: .showProjectWizard, object: nil)
     }
 
     @objc func showMergeHelperFromMenu() {

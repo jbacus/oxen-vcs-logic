@@ -234,16 +234,25 @@ public class OxenDaemonXPCService: NSObject, OxenDaemonXPCProtocol {
         // Check if already initialized
         let oxenDir = (projectPath as NSString).appendingPathComponent(".oxen")
         if FileManager.default.fileExists(atPath: oxenDir) {
-            print("XPC: Project already initialized, registering for monitoring")
+            print("✓ Project already initialized, registering for monitoring")
+
+            // Verify it's a valid Oxen repository
+            let configPath = (oxenDir as NSString).appendingPathComponent("config.toml")
+            guard FileManager.default.fileExists(atPath: configPath) else {
+                print("⚠️  .oxen directory exists but appears corrupted")
+                reply(false, "Project appears to have a corrupted Oxen repository. Please remove the .oxen directory and try again.")
+                return
+            }
+
             orchestrator.registerProject(projectPath)
-            reply(true, nil)
+            reply(true, "already_initialized")
             return
         }
 
         // Call CLI to initialize the Oxen repository
         let task = Process()
         task.executableURL = URL(fileURLWithPath: "/usr/local/bin/oxenvcs-cli")
-        task.arguments = ["init", "--project", projectPath]
+        task.arguments = ["init", "--logic", projectPath]
 
         let outputPipe = Pipe()
         let errorPipe = Pipe()

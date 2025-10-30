@@ -203,7 +203,8 @@ public class CommitOrchestrator {
     private func checkForChanges(at projectPath: String) async -> Bool {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: cliPath)
-        process.arguments = ["status", "--project", projectPath, "--porcelain"]
+        process.currentDirectoryURL = URL(fileURLWithPath: projectPath)
+        process.arguments = ["status", "--porcelain"]
 
         let pipe = Pipe()
         process.standardOutput = pipe
@@ -231,7 +232,8 @@ public class CommitOrchestrator {
     ) async -> (success: Bool, commitId: String?, message: String) {
         // First, stage all changes
         let stageResult = await runCliCommand(
-            arguments: ["add", "--project", projectPath, "--all"]
+            projectPath: projectPath,
+            arguments: ["add", "--all"]
         )
 
         guard stageResult.success else {
@@ -240,7 +242,8 @@ public class CommitOrchestrator {
 
         // Then commit
         let commitResult = await runCliCommand(
-            arguments: ["commit", "--project", projectPath, "--message", message]
+            projectPath: projectPath,
+            arguments: ["commit", "--message", message]
         )
 
         if commitResult.success {
@@ -253,10 +256,12 @@ public class CommitOrchestrator {
     }
 
     private func runCliCommand(
+        projectPath: String,
         arguments: [String]
     ) async -> (success: Bool, output: String) {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: cliPath)
+        process.currentDirectoryURL = URL(fileURLWithPath: projectPath)
         process.arguments = arguments
 
         let pipe = Pipe()
@@ -348,7 +353,8 @@ public class CommitOrchestrator {
 
         // Check if draft branch exists
         let branchCheckResult = await runCliCommand(
-            arguments: ["branch", "--project", normalizedPath, "--list"]
+            projectPath: normalizedPath,
+            arguments: ["branch", "--list"]
         )
 
         let hasDraftBranch = branchCheckResult.output.contains("draft")
@@ -357,7 +363,8 @@ public class CommitOrchestrator {
             // Create draft branch
             print("Creating draft branch for: \(projectPath)")
             let createResult = await runCliCommand(
-                arguments: ["branch", "--project", normalizedPath, "draft"]
+                projectPath: normalizedPath,
+                arguments: ["branch", "draft"]
             )
 
             guard createResult.success else {
@@ -368,7 +375,8 @@ public class CommitOrchestrator {
 
         // Switch to draft branch
         let checkoutResult = await runCliCommand(
-            arguments: ["checkout", "--project", normalizedPath, "draft"]
+            projectPath: normalizedPath,
+            arguments: ["checkout", "draft"]
         )
 
         if checkoutResult.success {
