@@ -16,58 +16,111 @@ class MainViewController: NSViewController {
     private var statusUpdateTimer: Timer?
 
     override func loadView() {
-        let mainView = NSView(frame: NSRect(x: 0, y: 0, width: 1200, height: 800))
-        mainView.wantsLayer = true
-        mainView.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
-        view = mainView
+        // Create view with explicit frame
+        view = NSView(frame: NSRect(x: 0, y: 0, width: 1200, height: 800))
+        view.wantsLayer = true
+        view.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
+    }
+
+    // CRITICAL: Override this to prevent NSWindow from auto-sizing
+    override var preferredContentSize: NSSize {
+        get {
+            return NSSize(width: 1200, height: 800)
+        }
+        set {
+            // Ignore any attempts to change preferred size
+            print("⚠️ Attempted to set preferredContentSize to \(newValue) - IGNORED")
+        }
     }
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        setupUI()
+        print("🎯 preferredContentSize: \(preferredContentSize)")
+        setupSimpleSplitView()
         bindViewModel()
         startStatusUpdates()
     }
 
     override func viewDidAppear() {
         super.viewDidAppear()
-        setupToolbar()
-
-        // Force view to display
-        view.needsDisplay = true
-        view.needsLayout = true
-        view.layoutSubtreeIfNeeded()
+        // TODO: Re-enable toolbar
+        // setupToolbar()
     }
 
     deinit {
         statusUpdateTimer?.invalidate()
     }
 
+    private func setupSimpleSplitView() {
+        print("📏 View bounds in setupSimpleSplitView: \(view.bounds)")
+
+        // Force view to have correct size BEFORE adding subviews
+        view.frame = NSRect(x: 0, y: 0, width: 1200, height: 800)
+
+        print("📏 View frame after forcing: \(view.frame)")
+
+        // Add status bar at bottom - EXPLICIT SIZE
+        statusBar.autoresizingMask = [.width, .maxYMargin]
+        statusBar.frame = NSRect(x: 0, y: 0, width: 1200, height: 24)
+        view.addSubview(statusBar)
+
+        // Left panel - EXPLICIT SIZE
+        let leftPanel = NSView(frame: NSRect(x: 0, y: 24, width: 300, height: 776))
+        leftPanel.wantsLayer = true
+        leftPanel.layer?.backgroundColor = NSColor.controlBackgroundColor.cgColor
+        leftPanel.autoresizingMask = [.height, .maxXMargin]
+
+        let leftLabel = NSTextField(labelWithString: "Project List (No SplitView)")
+        leftLabel.font = NSFont.systemFont(ofSize: 14)
+        leftLabel.frame = NSRect(x: 10, y: 746, width: 280, height: 20)
+        leftLabel.autoresizingMask = [.minYMargin]
+        leftPanel.addSubview(leftLabel)
+
+        view.addSubview(leftPanel)
+        print("📏 Left panel frame: \(leftPanel.frame)")
+
+        // Right panel - EXPLICIT SIZE with BRIGHT COLOR for testing
+        let rightPanel = NSView(frame: NSRect(x: 300, y: 24, width: 900, height: 776))
+        rightPanel.wantsLayer = true
+        rightPanel.layer?.backgroundColor = NSColor.systemRed.cgColor  // BRIGHT RED for testing
+        rightPanel.autoresizingMask = [.width, .height]
+
+        let rightLabel = NSTextField(labelWithString: "RIGHT PANEL - Should be RED")
+        rightLabel.font = NSFont.boldSystemFont(ofSize: 20)
+        rightLabel.textColor = .white
+        rightLabel.frame = NSRect(x: 10, y: 746, width: 500, height: 30)
+        rightLabel.autoresizingMask = [.minYMargin]
+        rightPanel.addSubview(rightLabel)
+
+        // Add a second label in the middle to verify panel size
+        let centerLabel = NSTextField(labelWithString: "CENTER OF RIGHT PANEL")
+        centerLabel.font = NSFont.boldSystemFont(ofSize: 24)
+        centerLabel.textColor = .white
+        centerLabel.frame = NSRect(x: 350, y: 370, width: 400, height: 40)
+        rightPanel.addSubview(centerLabel)
+
+        view.addSubview(rightPanel)
+        print("📏 Right panel frame: \(rightPanel.frame)")
+        print("📏 Right panel superview: \(rightPanel.superview?.frame ?? .zero)")
+        print("📏 Right panel in window: \(rightPanel.window != nil)")
+    }
+
     private func setupUI() {
+        // Use FRAME-BASED layout for all views (not Auto Layout)
+        // Auto Layout + NSSplitView = width collapse bug
+
         // Add status bar at bottom
-        statusBar.translatesAutoresizingMaskIntoConstraints = false
+        statusBar.autoresizingMask = [.width, .maxYMargin]
+        statusBar.frame = NSRect(x: 0, y: 0, width: view.bounds.width, height: 24)
         view.addSubview(statusBar)
 
         // Setup split view
         splitView.isVertical = true
         splitView.dividerStyle = .thin
         splitView.delegate = self
-        splitView.translatesAutoresizingMaskIntoConstraints = false
+        splitView.autoresizingMask = [.width, .height]
+        splitView.frame = NSRect(x: 0, y: 24, width: view.bounds.width, height: view.bounds.height - 24)
         view.addSubview(splitView)
-
-        NSLayoutConstraint.activate([
-            // Status bar at bottom
-            statusBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            statusBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            statusBar.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            statusBar.heightAnchor.constraint(equalToConstant: 24),
-
-            // Split view fills remaining space
-            splitView.topAnchor.constraint(equalTo: view.topAnchor),
-            splitView.bottomAnchor.constraint(equalTo: statusBar.topAnchor),
-            splitView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            splitView.trailingAnchor.constraint(equalTo: view.trailingAnchor)
-        ])
 
         // Add project list to left side
         projectListView.delegate = self

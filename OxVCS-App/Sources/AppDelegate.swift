@@ -83,56 +83,58 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func setupMainWindow() {
-        // Create window with explicit size
-        let windowRect = NSRect(x: 0, y: 0, width: 1200, height: 800)
-        print("🪟 Creating window with rect: \(windowRect)")
-
+        // Create window
         let window = NSWindow(
-            contentRect: windowRect,
+            contentRect: NSRect(x: 100, y: 100, width: 1200, height: 800),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
         )
+
         window.title = "OxVCS - Logic Pro Version Control"
-
-        print("🪟 Window frame after creation: \(window.frame)")
-
-        // Set size constraints
         window.minSize = NSSize(width: 800, height: 600)
-        window.contentMinSize = NSSize(width: 800, height: 600)
-
-        // Ensure window has proper background
         window.backgroundColor = .windowBackgroundColor
-        window.isOpaque = true
 
-        // DISABLE autosave for now to prevent bad state
-        // TODO: Re-enable with a new name once app is stable
-        // window.setFrameAutosaveName("MainWindow-v2")
-
-        // Create and set view controller
+        // Create view controller
         mainViewController = MainViewController()
+
+        // CRITICAL: Set content view controller
         window.contentViewController = mainViewController
 
-        print("🪟 Window frame after setting view controller: \(window.frame)")
+        print("📐 Window frame after contentViewController: \(window.frame)")
 
-        // Force explicit frame size (do NOT rely on constraints initially)
-        window.setFrame(windowRect, display: false)
-        print("🪟 Window frame after setFrame: \(window.frame)")
-
-        // Center on screen
+        // Show the window FIRST, then force frame
         window.center()
-        print("🪟 Window frame after center: \(window.frame)")
-
-        // Make visible
         window.makeKeyAndOrderFront(nil)
-        print("🪟 Window frame after makeKeyAndOrderFront: \(window.frame)")
+
+        print("📐 Window frame after makeKeyAndOrderFront: \(window.frame)")
+
+        // FORCE the frame AFTER the window is visible
+        // This is the LAST operation to override any auto-sizing
+        let desiredFrame = NSRect(x: window.frame.origin.x, y: window.frame.origin.y, width: 1200, height: 832)
+        window.setFrame(desiredFrame, display: true)
+
+        // FORCE contentView to resize to match window
+        window.contentView?.frame = NSRect(x: 0, y: 0, width: 1200, height: 800)
+        window.contentView?.needsLayout = true
+        window.contentView?.layoutSubtreeIfNeeded()
+
+        // Force mainViewController view to match
+        mainViewController?.view.frame = NSRect(x: 0, y: 0, width: 1200, height: 800)
+        mainViewController?.view.needsLayout = true
+        mainViewController?.view.layoutSubtreeIfNeeded()
+
+        // Force complete redisplay
+        window.display()
+        window.contentView?.display()
 
         NSApp.activate(ignoringOtherApps: true)
 
         self.mainWindow = window
 
-        print("🪟 Final window frame: \(window.frame)")
-        print("🪟 Final window content view frame: \(window.contentView?.frame ?? .zero)")
+        print("✅ Final window frame: \(window.frame)")
+        print("✅ Content view frame: \(window.contentView?.frame ?? .zero)")
+        print("✅ ViewController view frame: \(mainViewController?.view.frame ?? .zero)")
     }
 
     @objc private func showAbout() {

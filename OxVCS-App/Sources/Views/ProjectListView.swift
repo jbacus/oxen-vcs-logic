@@ -17,8 +17,9 @@ class ProjectListView: NSView {
     }
 
     private func setupUI() {
-        // Setup scroll view
-        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        // Setup scroll view with FRAME-BASED layout (not Auto Layout)
+        // This is critical for NSSplitView subviews
+        scrollView.autoresizingMask = [.width, .height]
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = false
         scrollView.borderType = .noBorder
@@ -39,14 +40,8 @@ class ProjectListView: NSView {
         tableView.addTableColumn(column)
 
         scrollView.documentView = tableView
+        scrollView.frame = bounds
         addSubview(scrollView)
-
-        NSLayoutConstraint.activate([
-            scrollView.topAnchor.constraint(equalTo: topAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: bottomAnchor),
-            scrollView.leadingAnchor.constraint(equalTo: leadingAnchor),
-            scrollView.trailingAnchor.constraint(equalTo: trailingAnchor)
-        ])
     }
 
     func updateProjects(_ projects: [Project]) {
