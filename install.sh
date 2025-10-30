@@ -149,10 +149,11 @@ build_daemon() {
 # Function to build Swift app
 build_app() {
     print_header "Building OxVCS Application Bundle"
+    # Note: OxVCS-App uses SwiftUI (migrated from AppKit 2025-10-29)
 
     cd "$PROJECT_ROOT/OxVCS-App"
 
-    print_info "Building OxVCS-App in release mode..."
+    print_info "Building OxVCS-App (SwiftUI) in release mode..."
     if swift build -c release; then
         print_success "App built successfully"
     else

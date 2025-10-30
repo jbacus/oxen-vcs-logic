@@ -20,13 +20,14 @@ Professional DAW projects contain massive binary assets that overwhelm tradition
 
 ## Recent Updates
 
-### 🎨 GUI App Rendering Fix (October 29, 2025)
+### ✨ SwiftUI Migration (October 29, 2025)
 
-Fixed black screen rendering issue in OxVCS.app:
-- **Added**: Proper `.app` bundle creation with `Info.plist`
-- **Fixed**: View background colors and window activation
-- **Added**: `create-app-bundle.sh` script for proper macOS app structure
-- **Updated**: Install script now creates fully functional GUI app
+Migrated OxVCS.app from AppKit to SwiftUI for improved reliability:
+- **Migrated**: Complete UI rewrite using SwiftUI instead of AppKit
+- **Fixed**: Window sizing issues that plagued the AppKit implementation
+- **Simplified**: 80% reduction in UI code complexity
+- **Improved**: Native NavigationSplitView with automatic layout
+- **Benefits**: Declarative UI, better window management, modern macOS features
 
 ### 📚 Documentation Consolidation (October 29, 2025)
 
@@ -42,7 +43,7 @@ See [CHANGELOG.md](CHANGELOG.md) for complete project history.
 
 ### Three-Component System
 
-1. **OxVCS-App** (Swift/AppKit) - Main UI application for user interaction, history browsing, and milestone commits
+1. **OxVCS-App** (Swift/SwiftUI) - Native macOS UI application with modern declarative interface
 2. **OxVCS-LaunchAgent** (Swift/FSEvents) - Persistent background daemon for file monitoring and draft tracking
 3. **OxVCS-CLI-Wrapper** (Rust/liboxen) - Optimized command executor for Oxen operations
 

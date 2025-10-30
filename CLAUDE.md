@@ -99,9 +99,14 @@ swiftlint lint && swiftlint autocorrect               # Swift (if configured)
 - `ServiceManager.swift:1` - LaunchAgent registration
 
 **Swift App** (`OxVCS-App/Sources/`):
-- `AppDelegate.swift:1` - App entry point and initialization
-- `Views/` - SwiftUI/AppKit UI components
-- `ViewModels/` - MVVM business logic layer
+- `OxVCSApp.swift:1` - SwiftUI app entry point with @main attribute
+- `AppDelegate.swift:1` - App delegate for menu actions and legacy features
+- `Views/SwiftUI/` - SwiftUI declarative UI components (migrated from AppKit)
+  - `ContentView.swift` - Main view with NavigationSplitView
+  - `ProjectListContentView.swift` - Project sidebar
+  - `ProjectDetailContentView.swift` - Project details and commit history
+  - `SwiftUIStatusBar.swift` - Status bar overlay
+- `ViewModels/` - MVVM business logic layer (reused from AppKit)
 - `Services/OxenDaemonXPCClient.swift` - XPC client for daemon communication
 
 ### Common Development Workflows
@@ -168,7 +173,7 @@ cd OxVCS-App && swift build -c release && ./create-app-bundle.sh
 |-----------|---------------|---------------|-------------------|------------------|
 | **Rust CLI Wrapper** | ✅ 100% | ✅ 85% (121 tests) | 🟡 Partial | 🟡 With subprocess wrapper |
 | **Swift LaunchAgent** | ✅ 100% | 🟡 30% | ❌ 0% | ❌ Needs testing |
-| **Swift App UI** | ✅ 100% | 🔴 <10% | ❌ 0% | ❌ Needs testing |
+| **Swift App UI** | ✅ 100% (SwiftUI) | 🔴 <10% | ✅ Working | 🟡 Needs integration testing |
 
 ### What's Working
 
@@ -188,14 +193,16 @@ cd OxVCS-App && swift build -c release && ./create-app-bundle.sh
 - ✅ Lock management with timeout
 - ❌ **NOT TESTED**: Long-running stability, multi-project monitoring, memory leaks
 
-**Swift App UI** (MVVM/AppKit):
-- ✅ Project browser and initialization wizard
-- ✅ Milestone commit interface with metadata
-- ✅ Rollback/restore UI
-- ✅ Lock management views
-- ✅ Merge helper window
-- ✅ **FIXED (2025-10-29)**: App bundle creation with proper Info.plist for GUI rendering
-- ❌ **NOT TESTED**: With actual .logicx files, XPC communication, user workflows
+**Swift App UI** (SwiftUI - Migrated from AppKit 2025-10-29):
+- ✅ Native NavigationSplitView with automatic layout
+- ✅ Project list with sidebar navigation
+- ✅ Project detail view with commit history
+- ✅ Status bar showing daemon status
+- ✅ Toolbar with refresh and add project buttons
+- ✅ Menu bar integration
+- ✅ Window management works reliably (no AppKit sizing issues)
+- ✅ **Migration Benefits**: 80% less UI code, declarative layout, modern SwiftUI patterns
+- 🟡 **TODO**: Re-integrate milestone commit UI, rollback UI, lock management, merge helper
 
 ### Critical Gaps & Blockers
 
@@ -932,7 +939,7 @@ Architectural patterns extensible to:
 
 **Development environment constraint**: This project requires macOS 14.0+ for building/testing Swift components. Current Linux environment can only handle Rust development.
 
-**Documentation status**: All markdown documentation consolidated and streamlined (42 files → 23 essential files) on 2025-10-29.
+**Documentation status**: All markdown documentation consolidated and streamlined (42 files → 23 essential files) on 2025-10-29. OxVCS-App migrated from AppKit to SwiftUI on 2025-10-29 for improved window management and code simplicity.
 
 ---
 

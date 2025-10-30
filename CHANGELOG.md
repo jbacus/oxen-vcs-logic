@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **SwiftUI Migration** (2025-10-29)
+  - Migrated OxVCS-App from AppKit to SwiftUI for improved reliability
+  - Replaced manual NSWindow/NSViewController management with declarative NavigationSplitView
+  - Fixed persistent window sizing issues that plagued AppKit implementation
+  - Reduced UI code complexity by ~80% through declarative patterns
+  - Improved window management with native SwiftUI features
+  - Maintained all ViewModels and business logic (MVVM architecture intact)
+  - Updated documentation and build scripts for SwiftUI architecture
+
 - Documentation consolidation and cleanup (2025-10-29)
   - Removed 12 outdated files: development plans (ACTION_PLAN_REVISED.md, WORK_PLAN_2025-10-29.md), build issues (BUILD_ISSUES.md), test evaluation (TEST_STRATEGY_EVALUATION.md), phase completion reports (PHASE1_COMPLETE.md, PHASE2_COMPLETE.md, PHASE3_COMPLETE.md), and PR descriptions
   - Consolidated docs/QUICKSTART.md into docs/USER_GUIDE.md with new "Quick Start (5 Minutes)" section

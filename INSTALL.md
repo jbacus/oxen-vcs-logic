@@ -150,6 +150,8 @@ swift build -c release
 
 **Note**: The app requires a proper `.app` bundle structure to render correctly. The `create-app-bundle.sh` script creates the bundle with the necessary `Info.plist` and directory structure.
 
+**SwiftUI Migration**: As of October 29, 2025, OxVCS-App uses SwiftUI instead of AppKit for improved window management and simplified UI code. No additional configuration is needed.
+
 ### 2. Install Binaries
 
 ```bash
