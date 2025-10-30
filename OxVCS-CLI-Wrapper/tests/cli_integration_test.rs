@@ -42,8 +42,14 @@ mod cli_tests {
 
         assert!(command_succeeded(&output), "Help should succeed");
         assert!(stdout.contains("oxenvcs-cli"), "Should show program name");
-        assert!(stdout.contains("USAGE") || stdout.contains("Usage"), "Should show usage");
-        assert!(stdout.contains("COMMANDS") || stdout.contains("Commands"), "Should list commands");
+        assert!(
+            stdout.contains("USAGE") || stdout.contains("Usage"),
+            "Should show usage"
+        );
+        assert!(
+            stdout.contains("COMMANDS") || stdout.contains("Commands"),
+            "Should list commands"
+        );
     }
 
     #[test]
@@ -61,7 +67,10 @@ mod cli_tests {
         let stdout = get_stdout(&output);
 
         assert!(command_succeeded(&output), "Short help should succeed");
-        assert!(stdout.contains("oxenvcs-cli") || !stdout.is_empty(), "Should show help text");
+        assert!(
+            stdout.contains("oxenvcs-cli") || !stdout.is_empty(),
+            "Should show help text"
+        );
     }
 
     #[test]
@@ -75,7 +84,10 @@ mod cli_tests {
     fn test_short_verbose_flag() {
         let output = run_cli(&["-v", "--help"]);
         // Short verbose flag should be recognized
-        assert!(command_succeeded(&output), "Short verbose flag should be valid");
+        assert!(
+            command_succeeded(&output),
+            "Short verbose flag should be valid"
+        );
     }
 
     // MARK: - Init Command Tests
@@ -86,7 +98,10 @@ mod cli_tests {
         let stdout = get_stdout(&output);
 
         assert!(command_succeeded(&output), "Init help should succeed");
-        assert!(stdout.contains("init") || stdout.contains("Initialize"), "Should describe init");
+        assert!(
+            stdout.contains("init") || stdout.contains("Initialize"),
+            "Should describe init"
+        );
         assert!(stdout.contains("PATH"), "Should mention path argument");
     }
 
@@ -103,7 +118,10 @@ mod cli_tests {
         let output = run_cli(&["init", "--help"]);
         let stdout = get_stdout(&output);
 
-        assert!(stdout.contains("--logic") || stdout.contains("Logic"), "Should document logic flag");
+        assert!(
+            stdout.contains("--logic") || stdout.contains("Logic"),
+            "Should document logic flag"
+        );
     }
 
     // MARK: - Add Command Tests
@@ -114,7 +132,10 @@ mod cli_tests {
         let stdout = get_stdout(&output);
 
         assert!(command_succeeded(&output), "Add help should succeed");
-        assert!(stdout.contains("add") || stdout.contains("Stage"), "Should describe add");
+        assert!(
+            stdout.contains("add") || stdout.contains("Stage"),
+            "Should describe add"
+        );
     }
 
     #[test]
@@ -130,7 +151,10 @@ mod cli_tests {
         let output = run_cli(&["add", "--help"]);
         let stdout = get_stdout(&output);
 
-        assert!(stdout.contains("PATHS") || stdout.contains("path"), "Should document paths argument");
+        assert!(
+            stdout.contains("PATHS") || stdout.contains("path"),
+            "Should document paths argument"
+        );
     }
 
     // MARK: - Commit Command Tests
@@ -141,8 +165,14 @@ mod cli_tests {
         let stdout = get_stdout(&output);
 
         assert!(command_succeeded(&output), "Commit help should succeed");
-        assert!(stdout.contains("commit") || stdout.contains("Commit"), "Should describe commit");
-        assert!(stdout.contains("--message") || stdout.contains("-m"), "Should document message flag");
+        assert!(
+            stdout.contains("commit") || stdout.contains("Commit"),
+            "Should describe commit"
+        );
+        assert!(
+            stdout.contains("--message") || stdout.contains("-m"),
+            "Should document message flag"
+        );
     }
 
     #[test]
@@ -150,7 +180,10 @@ mod cli_tests {
         let output = run_cli(&["commit"]);
 
         // Should fail without message
-        assert!(!command_succeeded(&output), "Commit without message should fail");
+        assert!(
+            !command_succeeded(&output),
+            "Commit without message should fail"
+        );
     }
 
     #[test]
@@ -166,7 +199,10 @@ mod cli_tests {
         let output = run_cli(&["commit", "--help"]);
         let stdout = get_stdout(&output);
 
-        assert!(stdout.contains("--sample-rate"), "Should document sample rate flag");
+        assert!(
+            stdout.contains("--sample-rate"),
+            "Should document sample rate flag"
+        );
     }
 
     #[test]
@@ -193,7 +229,10 @@ mod cli_tests {
         let stdout = get_stdout(&output);
 
         assert!(command_succeeded(&output), "Log help should succeed");
-        assert!(stdout.contains("log") || stdout.contains("history"), "Should describe log");
+        assert!(
+            stdout.contains("log") || stdout.contains("history"),
+            "Should describe log"
+        );
     }
 
     #[test]
@@ -201,14 +240,20 @@ mod cli_tests {
         let output = run_cli(&["log", "--help"]);
         let stdout = get_stdout(&output);
 
-        assert!(stdout.contains("--limit") || stdout.contains("-l"), "Should document limit flag");
+        assert!(
+            stdout.contains("--limit") || stdout.contains("-l"),
+            "Should document limit flag"
+        );
     }
 
     #[test]
     fn test_log_command_works_without_limit() {
         // This tests that log command is recognized even without --limit
         let output = run_cli(&["log", "--help"]);
-        assert!(command_succeeded(&output), "Log command should be recognized");
+        assert!(
+            command_succeeded(&output),
+            "Log command should be recognized"
+        );
     }
 
     // MARK: - Restore Command Tests
@@ -219,8 +264,14 @@ mod cli_tests {
         let stdout = get_stdout(&output);
 
         assert!(command_succeeded(&output), "Restore help should succeed");
-        assert!(stdout.contains("restore") || stdout.contains("Restore"), "Should describe restore");
-        assert!(stdout.contains("COMMIT") || stdout.contains("commit"), "Should mention commit ID");
+        assert!(
+            stdout.contains("restore") || stdout.contains("Restore"),
+            "Should describe restore"
+        );
+        assert!(
+            stdout.contains("COMMIT") || stdout.contains("commit"),
+            "Should mention commit ID"
+        );
     }
 
     #[test]
@@ -228,7 +279,10 @@ mod cli_tests {
         let output = run_cli(&["restore"]);
 
         // Should fail without commit ID
-        assert!(!command_succeeded(&output), "Restore without commit ID should fail");
+        assert!(
+            !command_succeeded(&output),
+            "Restore without commit ID should fail"
+        );
     }
 
     // MARK: - Status Command Tests
@@ -239,14 +293,20 @@ mod cli_tests {
         let stdout = get_stdout(&output);
 
         assert!(command_succeeded(&output), "Status help should succeed");
-        assert!(stdout.contains("status") || stdout.contains("Status"), "Should describe status");
+        assert!(
+            stdout.contains("status") || stdout.contains("Status"),
+            "Should describe status"
+        );
     }
 
     #[test]
     fn test_status_command_no_args_required() {
         // Status should be recognized without additional arguments
         let output = run_cli(&["status", "--help"]);
-        assert!(command_succeeded(&output), "Status should not require arguments");
+        assert!(
+            command_succeeded(&output),
+            "Status should not require arguments"
+        );
     }
 
     // MARK: - Invalid Command Tests
@@ -267,7 +327,11 @@ mod cli_tests {
         let stderr = get_stderr(&output);
 
         assert!(
-            stdout.contains("USAGE") || stdout.contains("Usage") || stderr.contains("required") || stderr.contains("USAGE") || stderr.contains("Usage"),
+            stdout.contains("USAGE")
+                || stdout.contains("Usage")
+                || stderr.contains("required")
+                || stderr.contains("USAGE")
+                || stderr.contains("Usage"),
             "Should show usage or error message"
         );
     }
@@ -277,7 +341,10 @@ mod cli_tests {
     #[test]
     fn test_verbose_with_version() {
         let output = run_cli(&["--verbose", "--version"]);
-        assert!(command_succeeded(&output), "Verbose with version should work");
+        assert!(
+            command_succeeded(&output),
+            "Verbose with version should work"
+        );
     }
 
     #[test]
@@ -334,7 +401,10 @@ mod cli_tests {
     fn test_mixed_case_commands() {
         // Commands should be case-sensitive
         let output = run_cli(&["INIT", "--help"]);
-        assert!(!command_succeeded(&output), "Commands should be case-sensitive");
+        assert!(
+            !command_succeeded(&output),
+            "Commands should be case-sensitive"
+        );
     }
 
     #[test]

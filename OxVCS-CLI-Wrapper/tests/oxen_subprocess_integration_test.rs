@@ -9,7 +9,6 @@
 ///   cargo test --test oxen_subprocess_integration_test -- --nocapture
 ///
 /// Note: These tests will be skipped if oxen is not available
-
 #[cfg(test)]
 mod common;
 
@@ -108,7 +107,11 @@ mod tests {
 
         let result = oxen.add(
             fixture.path(),
-            &["file1.txt".as_ref(), "file2.txt".as_ref(), "file3.txt".as_ref()],
+            &[
+                "file1.txt".as_ref(),
+                "file2.txt".as_ref(),
+                "file3.txt".as_ref(),
+            ],
         );
         assert!(result.is_ok(), "Adding multiple files should succeed");
     }
@@ -282,7 +285,8 @@ mod tests {
         for i in 1..=5 {
             fixture.add_text_file(&format!("file{}.txt", i), &format!("content{}", i));
             oxen.add(fixture.path(), &[".".as_ref()]).unwrap();
-            oxen.commit(fixture.path(), &format!("Commit {}", i)).unwrap();
+            oxen.commit(fixture.path(), &format!("Commit {}", i))
+                .unwrap();
         }
 
         let result = oxen.log(fixture.path(), Some(3));
@@ -303,8 +307,7 @@ mod tests {
 
         let result = oxen.log(fixture.path(), None);
         // Empty repo log might succeed with empty list or fail - both valid
-        if result.is_ok() {
-            let commits = result.unwrap();
+        if let Ok(commits) = result {
             assert_eq!(commits.len(), 0, "Empty repo should have no commits");
         }
     }
@@ -352,8 +355,10 @@ mod tests {
 
         // Debug: print status if empty
         if status.untracked.is_empty() {
-            eprintln!("No untracked files found. Modified: {:?}, Staged: {:?}",
-                     status.modified, status.staged);
+            eprintln!(
+                "No untracked files found. Modified: {:?}, Staged: {:?}",
+                status.modified, status.staged
+            );
         }
 
         assert!(
@@ -362,7 +367,10 @@ mod tests {
         );
         // Oxen reports directories, not individual files
         assert!(
-            status.untracked.iter().any(|p| p.to_string_lossy().contains("Media")),
+            status
+                .untracked
+                .iter()
+                .any(|p| p.to_string_lossy().contains("Media")),
             "Should contain Media directory with untracked files"
         );
     }
@@ -477,7 +485,9 @@ mod tests {
             "Should have at least one branch (main)"
         );
         assert!(
-            branches.iter().any(|b| b.name == "main" || b.name == "master"),
+            branches
+                .iter()
+                .any(|b| b.name == "main" || b.name == "master"),
             "Should have main or master branch"
         );
     }

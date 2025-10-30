@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
 use colored::Colorize;
-use oxenvcs_cli::{logger, CommitMetadata, OxenRepository, vlog, success};
+use oxenvcs_cli::{logger, success, vlog, CommitMetadata, OxenRepository};
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -73,7 +73,10 @@ EXAMPLES:
         #[arg(value_name = "PATH", help = "Path to the project directory")]
         path: PathBuf,
 
-        #[arg(long, help = "Initialize for Logic Pro project (auto-detect and configure)")]
+        #[arg(
+            long,
+            help = "Initialize for Logic Pro project (auto-detect and configure)"
+        )]
         logic: bool,
     },
 
@@ -150,7 +153,10 @@ EXAMPLES:
         #[arg(long, help = "Key signature (e.g., 'C Major', 'A Minor', 'F# Minor')")]
         key: Option<String>,
 
-        #[arg(long, help = "Tags for categorization (comma-separated, e.g., 'mixing,draft')")]
+        #[arg(
+            long,
+            help = "Tags for categorization (comma-separated, e.g., 'mixing,draft')"
+        )]
         tags: Option<String>,
     },
 
@@ -204,7 +210,10 @@ EXAMPLES:
     # Restore to a commit (full hash)
     oxenvcs-cli restore abc123def456789012345678901234567890")]
     Restore {
-        #[arg(value_name = "COMMIT_ID", help = "Commit ID to restore to (from 'log' command)")]
+        #[arg(
+            value_name = "COMMIT_ID",
+            help = "Commit ID to restore to (from 'log' command)"
+        )]
         commit_id: String,
     },
 
@@ -247,7 +256,10 @@ async fn main() -> anyhow::Result<()> {
             } else {
                 vlog!("Initializing generic Oxen repository...");
                 let _repo = OxenRepository::init(&path).await?;
-                success!("Successfully initialized Oxen repository at: {}", path.display());
+                success!(
+                    "Successfully initialized Oxen repository at: {}",
+                    path.display()
+                );
             }
             Ok(())
         }
@@ -319,7 +331,10 @@ async fn main() -> anyhow::Result<()> {
                 println!("Commit: {}", commit.id);
                 println!("Author: {}", commit.author);
                 println!("Date:   {}", commit.timestamp);
-                println!("\n    {}\n", commit.message.lines().collect::<Vec<_>>().join("\n    "));
+                println!(
+                    "\n    {}\n",
+                    commit.message.lines().collect::<Vec<_>>().join("\n    ")
+                );
                 println!("{}", "─".repeat(80));
             }
 

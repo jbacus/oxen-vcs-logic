@@ -1,7 +1,7 @@
+use crate::{info, vlog};
 use anyhow::{anyhow, Context, Result};
 use colored::Colorize;
 use std::path::{Path, PathBuf};
-use crate::{vlog, info};
 
 /// Represents a Logic Pro folder project structure.
 ///
@@ -117,13 +117,13 @@ impl LogicProject {
         // Canonicalize the path to resolve relative paths like "." to absolute paths
         // This ensures we can properly check the extension even when running from inside the .logicx directory
         vlog!("Canonicalizing path to resolve relative paths...");
-        let canonical_path = std::fs::canonicalize(path)
-            .context("Failed to canonicalize path")?;
+        let canonical_path = std::fs::canonicalize(path).context("Failed to canonicalize path")?;
         vlog!("Canonical path: {}", canonical_path.display());
 
         // Check if it has .logicx extension
         vlog!("Checking for .logicx extension...");
-        let extension = canonical_path.extension()
+        let extension = canonical_path
+            .extension()
             .and_then(|e| e.to_str())
             .unwrap_or("");
         vlog!("Found extension: '{}'", extension);
@@ -142,7 +142,10 @@ impl LogicProject {
         vlog!("Searching for ProjectData file...");
         let project_data_path = Self::find_project_data(&canonical_path)?;
 
-        info!("Successfully detected Logic Pro project: {}", canonical_path.display());
+        info!(
+            "Successfully detected Logic Pro project: {}",
+            canonical_path.display()
+        );
         vlog!("ProjectData location: {}", project_data_path.display());
 
         Ok(LogicProject {
@@ -181,7 +184,10 @@ impl LogicProject {
 
         // First, check for Alternatives directory (standard Logic Pro structure)
         let alternatives_path = project_path.join("Alternatives");
-        vlog!("Checking for Alternatives directory: {}", alternatives_path.display());
+        vlog!(
+            "Checking for Alternatives directory: {}",
+            alternatives_path.display()
+        );
 
         if alternatives_path.exists() && alternatives_path.is_dir() {
             vlog!("✓ Alternatives directory exists");
@@ -194,7 +200,8 @@ impl LogicProject {
                 for entry in entries.flatten() {
                     let entry_path = entry.path();
                     if entry_path.is_dir() {
-                        let dir_name = entry_path.file_name()
+                        let dir_name = entry_path
+                            .file_name()
                             .and_then(|n| n.to_str())
                             .unwrap_or("?");
                         found_dirs.push(dir_name.to_string());
@@ -215,7 +222,11 @@ impl LogicProject {
                 }
 
                 if !found_dirs.is_empty() {
-                    vlog!("Found {} subdirectories: {}", found_dirs.len(), found_dirs.join(", "));
+                    vlog!(
+                        "Found {} subdirectories: {}",
+                        found_dirs.len(),
+                        found_dirs.join(", ")
+                    );
                 } else {
                     vlog!("No subdirectories found in Alternatives/");
                 }
@@ -309,10 +320,7 @@ impl LogicProject {
     /// This list is intentionally conservative. Generated files (Bounces/, Freeze Files/)
     /// are handled by `.oxenignore` patterns, not excluded here.
     pub fn tracked_paths(&self) -> Vec<PathBuf> {
-        vec![
-            self.path.join("Alternatives"),
-            self.path.join("Resources"),
-        ]
+        vec![self.path.join("Alternatives"), self.path.join("Resources")]
     }
 
     /// Returns glob patterns for files and directories that should NOT be versioned.
@@ -378,8 +386,8 @@ impl LogicProject {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs;
     use std::env;
+    use std::fs;
 
     // Helper function to create a temporary .logicx project
     fn create_test_project(name: &str) -> PathBuf {
@@ -400,7 +408,10 @@ mod tests {
 
         let result = LogicProject::detect(&temp_dir);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("not a Logic Pro folder project"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("not a Logic Pro folder project"));
 
         let _ = fs::remove_dir_all(&temp_dir);
     }
@@ -433,7 +444,10 @@ mod tests {
 
         let result = LogicProject::detect(&temp_dir);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("No ProjectData file found"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("No ProjectData file found"));
 
         let _ = fs::remove_dir_all(&temp_dir);
     }
@@ -463,7 +477,10 @@ mod tests {
         assert!(result.is_ok());
         if let Ok(project) = result {
             assert!(project.project_data_path.exists());
-            assert!(project.project_data_path.to_string_lossy().contains("ProjectData"));
+            assert!(project
+                .project_data_path
+                .to_string_lossy()
+                .contains("ProjectData"));
         }
 
         // Cleanup
@@ -509,7 +526,10 @@ mod tests {
 
         if let Ok(project) = result {
             assert!(project.project_data_path.ends_with("ProjectData"));
-            assert_eq!(project.project_data_path.parent().unwrap(), temp_dir.canonicalize().unwrap());
+            assert_eq!(
+                project.project_data_path.parent().unwrap(),
+                temp_dir.canonicalize().unwrap()
+            );
         }
 
         let _ = fs::remove_dir_all(&temp_dir);
@@ -616,7 +636,9 @@ mod tests {
         assert!(patterns.iter().any(|p| p.contains('*')));
 
         // Should contain exact filename patterns
-        assert!(patterns.iter().any(|p| !p.contains('*') && !p.ends_with('/')));
+        assert!(patterns
+            .iter()
+            .any(|p| !p.contains('*') && !p.ends_with('/')));
     }
 
     #[test]

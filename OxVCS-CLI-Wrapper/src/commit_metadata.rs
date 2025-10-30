@@ -457,8 +457,7 @@ mod tests {
 
     #[test]
     fn test_format_commit_message_partial() {
-        let metadata = CommitMetadata::new("Work in progress")
-            .with_bpm(128.0);
+        let metadata = CommitMetadata::new("Work in progress").with_bpm(128.0);
 
         let formatted = metadata.format_commit_message();
 
@@ -492,8 +491,7 @@ mod tests {
 
     #[test]
     fn test_format_multiline_message() {
-        let metadata = CommitMetadata::new("First line\nSecond line\nThird line")
-            .with_bpm(120.0);
+        let metadata = CommitMetadata::new("First line\nSecond line\nThird line").with_bpm(120.0);
 
         let formatted = metadata.format_commit_message();
 
@@ -623,9 +621,7 @@ mod tests {
 
     #[test]
     fn test_with_empty_tag() {
-        let metadata = CommitMetadata::new("Test")
-            .with_tag("")
-            .with_tag("valid");
+        let metadata = CommitMetadata::new("Test").with_tag("").with_tag("valid");
 
         assert_eq!(metadata.tags.len(), 2);
         assert!(metadata.tags.contains(&"".to_string()));
@@ -633,8 +629,7 @@ mod tests {
 
     #[test]
     fn test_bpm_decimal_values() {
-        let metadata = CommitMetadata::new("Test")
-            .with_bpm(120.5);
+        let metadata = CommitMetadata::new("Test").with_bpm(120.5);
 
         let formatted = metadata.format_commit_message();
         assert!(formatted.contains("BPM: 120.5"));
@@ -648,8 +643,7 @@ mod tests {
         let rates = vec![44100, 48000, 88200, 96000, 192000];
 
         for rate in rates {
-            let metadata = CommitMetadata::new("Test")
-                .with_sample_rate(rate);
+            let metadata = CommitMetadata::new("Test").with_sample_rate(rate);
 
             let formatted = metadata.format_commit_message();
             assert!(formatted.contains(&format!("Sample Rate: {} Hz", rate)));
@@ -661,8 +655,7 @@ mod tests {
         let keys = vec!["C Major", "A Minor", "F# Major", "Bb Minor", "Db Major"];
 
         for key in keys {
-            let metadata = CommitMetadata::new("Test")
-                .with_key_signature(key);
+            let metadata = CommitMetadata::new("Test").with_key_signature(key);
 
             let formatted = metadata.format_commit_message();
             assert!(formatted.contains(&format!("Key: {}", key)));

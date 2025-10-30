@@ -32,6 +32,10 @@ pub async fn status(repo: &LocalRepository) -> Result<StagedData> {
 
 pub async fn checkout(repo: &LocalRepository, commit_id: &str) -> Result<()> {
     // STUB: In real implementation, this would checkout a commit
-    println!("[STUB] Would checkout {} in: {}", commit_id, repo.path.display());
+    println!(
+        "[STUB] Would checkout {} in: {}",
+        commit_id,
+        repo.path.display()
+    );
     Ok(())
 }

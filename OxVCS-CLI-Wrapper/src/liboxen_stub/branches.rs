@@ -9,14 +9,20 @@ pub struct Branch {
 pub fn list(_repo: &LocalRepository) -> Result<Vec<Branch>> {
     // STUB: In real implementation, this would list branches
     Ok(vec![
-        Branch { name: "main".to_string() },
-        Branch { name: "draft".to_string() },
+        Branch {
+            name: "main".to_string(),
+        },
+        Branch {
+            name: "draft".to_string(),
+        },
     ])
 }
 
 pub fn current_branch(_repo: &LocalRepository) -> Result<Branch> {
     // STUB: In real implementation, this would get current branch
-    Ok(Branch { name: "draft".to_string() })
+    Ok(Branch {
+        name: "draft".to_string(),
+    })
 }
 
 pub fn create_from_head(_repo: &LocalRepository, branch_name: &str) -> Result<()> {

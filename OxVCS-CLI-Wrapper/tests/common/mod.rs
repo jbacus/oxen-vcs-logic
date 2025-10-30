@@ -73,8 +73,7 @@ impl TestFixture {
             bpm, sample_rate, key_element
         );
 
-        fs::write(self.project_path.join("projectData"), xml)
-            .expect("Failed to write projectData");
+        fs::write(self.project_path.join("projectData"), xml).expect("Failed to write projectData");
     }
 
     /// Get the path to the project

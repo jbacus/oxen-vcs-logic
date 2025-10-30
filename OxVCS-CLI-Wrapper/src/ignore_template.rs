@@ -264,7 +264,9 @@ mod tests {
         let content = generate_oxenignore();
 
         // Should have patterns with wildcards
-        assert!(content.lines().any(|l| !l.starts_with('#') && l.contains('*')));
+        assert!(content
+            .lines()
+            .any(|l| !l.starts_with('#') && l.contains('*')));
     }
 
     #[test]

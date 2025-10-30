@@ -1,5 +1,5 @@
-use anyhow::{Context, Result};
 use crate::liboxen_stub as liboxen;
+use anyhow::{Context, Result};
 use liboxen::api;
 use liboxen::command;
 use std::path::Path;
@@ -79,8 +79,7 @@ impl DraftManager {
 
     /// Check if draft branch exists
     pub fn draft_branch_exists(&self) -> Result<bool> {
-        let branches = api::local::branches::list(&self.repo)
-            .context("Failed to list branches")?;
+        let branches = api::local::branches::list(&self.repo).context("Failed to list branches")?;
 
         Ok(branches.iter().any(|b| b.name == self.draft_branch_name))
     }
@@ -153,8 +152,7 @@ impl DraftManager {
 
     /// Count commits on draft branch since divergence from main
     pub fn draft_commit_count(&self) -> Result<usize> {
-        let commits = api::local::commits::list(&self.repo)
-            .context("Failed to list commits")?;
+        let commits = api::local::commits::list(&self.repo).context("Failed to list commits")?;
 
         // This is a simplified count - in reality you'd want to count
         // commits since the branch diverged from main
@@ -186,7 +184,10 @@ impl DraftManager {
         // 3. Reset branch to new history
 
         println!("⚠️  Draft pruning not fully implemented yet");
-        println!("   Would squash commits beyond the {} most recent", self.max_draft_commits / 2);
+        println!(
+            "   Would squash commits beyond the {} most recent",
+            self.max_draft_commits / 2
+        );
 
         Ok(())
     }
@@ -203,7 +204,10 @@ impl DraftManager {
         // Merge draft branch
         // Note: liboxen may not have direct merge support, so this is simplified
         println!("⚠️  Merge functionality requires liboxen merge support");
-        println!("   Manual merge required: oxen merge {}", self.draft_branch_name);
+        println!(
+            "   Manual merge required: oxen merge {}",
+            self.draft_branch_name
+        );
 
         Ok("merge-placeholder".to_string())
     }
@@ -261,7 +265,10 @@ impl DraftStats {
         println!("Draft Branch Statistics:");
         println!("  Current branch:  {}", self.current_branch);
         println!("  Draft branch:    {}", self.draft_branch_name);
-        println!("  On draft:        {}", if self.is_on_draft { "Yes" } else { "No" });
+        println!(
+            "  On draft:        {}",
+            if self.is_on_draft { "Yes" } else { "No" }
+        );
         println!("  Commit count:    {}", self.commit_count);
         println!("  Max commits:     {}", self.max_commits);
 
@@ -279,7 +286,7 @@ mod tests {
     fn test_constants() {
         assert_eq!(DraftManager::DEFAULT_DRAFT_BRANCH, "draft");
         assert_eq!(DraftManager::MAIN_BRANCH, "main");
-        assert!(DraftManager::DEFAULT_MAX_COMMITS > 0);
+        // Note: DEFAULT_MAX_COMMITS is a const, no need to assert > 0
     }
 
     #[test]
@@ -294,9 +301,8 @@ mod tests {
 
     #[test]
     fn test_default_max_commits_reasonable() {
-        // Should be a reasonable number (not too small, not ridiculously large)
-        assert!(DraftManager::DEFAULT_MAX_COMMITS >= 50);
-        assert!(DraftManager::DEFAULT_MAX_COMMITS <= 1000);
+        // The specific value is verified in test_default_max_commits_value
+        // No need to assert ranges on constants
     }
 
     #[test]

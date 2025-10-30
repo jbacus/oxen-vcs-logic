@@ -1,3 +1,4 @@
+use crate::{error, info, vlog};
 /// Oxen subprocess wrapper for executing actual oxen CLI commands
 ///
 /// This module provides a wrapper around the oxen CLI tool, executing
@@ -18,13 +19,11 @@
 /// let oxen = OxenSubprocess::new();
 /// let result = oxen.init(Path::new("my_project.logicx"));
 /// ```
-
 use anyhow::{anyhow, Context, Result};
 use colored::Colorize;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
-use crate::{vlog, info, error};
 
 /// Wrapper for executing Oxen CLI commands via subprocess.
 ///
@@ -218,7 +217,8 @@ impl OxenSubprocess {
 
         // Parse commit hash from output
         // Typical output: "Commit abc123def created"
-        let commit_id = self.parse_commit_id(&output)
+        let commit_id = self
+            .parse_commit_id(&output)
             .unwrap_or_else(|| "unknown".to_string());
 
         info!("Created commit: {}", commit_id);
@@ -256,8 +256,11 @@ impl OxenSubprocess {
 
         let status = self.parse_status_output(&output)?;
 
-        vlog!("Status: {} modified, {} untracked",
-              status.modified.len(), status.untracked.len());
+        vlog!(
+            "Status: {} modified, {} untracked",
+            status.modified.len(),
+            status.untracked.len()
+        );
         Ok(status)
     }
 
@@ -385,10 +388,11 @@ impl OxenSubprocess {
             // Look for hexadecimal strings that might be commit hashes
             for word in line.split_whitespace() {
                 let cleaned = word.trim_matches(|c| !char::is_alphanumeric(c));
-                if cleaned.len() >= 7 && cleaned.len() <= 40 {
-                    if cleaned.chars().all(|c| c.is_ascii_hexdigit()) {
-                        return Some(cleaned.to_string());
-                    }
+                if cleaned.len() >= 7
+                    && cleaned.len() <= 40
+                    && cleaned.chars().all(|c| c.is_ascii_hexdigit())
+                {
+                    return Some(cleaned.to_string());
                 }
             }
         }
@@ -406,7 +410,7 @@ impl OxenSubprocess {
             let trimmed = line.trim();
 
             // Look for commit hash line
-            if trimmed.starts_with("commit ") {
+            if let Some(hash) = trimmed.strip_prefix("commit ") {
                 // Save previous commit if exists
                 if let Some(id) = current_id.take() {
                     commits.push(CommitInfo {
@@ -417,8 +421,11 @@ impl OxenSubprocess {
                 }
 
                 // Extract new commit hash
-                current_id = Some(trimmed[7..].trim().to_string());
-            } else if !trimmed.is_empty() && !trimmed.starts_with("Author:") && !trimmed.starts_with("Date:") {
+                current_id = Some(hash.trim().to_string());
+            } else if !trimmed.is_empty()
+                && !trimmed.starts_with("Author:")
+                && !trimmed.starts_with("Date:")
+            {
                 // This is part of the commit message
                 if !current_message.is_empty() {
                     current_message.push('\n');
@@ -450,19 +457,26 @@ impl OxenSubprocess {
             let trimmed = line.trim();
 
             // Check for section headers
-            if trimmed.starts_with("Untracked Files") || trimmed.starts_with("Untracked Directories") {
+            if trimmed.starts_with("Untracked Files")
+                || trimmed.starts_with("Untracked Directories")
+            {
                 current_section = Some("untracked");
                 continue;
-            } else if trimmed.starts_with("Modified Files") || trimmed.starts_with("Changes not staged") {
+            } else if trimmed.starts_with("Modified Files")
+                || trimmed.starts_with("Changes not staged")
+            {
                 current_section = Some("modified");
                 continue;
-            } else if trimmed.starts_with("Staged Files") || trimmed.starts_with("Changes to be committed") {
+            } else if trimmed.starts_with("Staged Files")
+                || trimmed.starts_with("Changes to be committed")
+            {
                 current_section = Some("staged");
                 continue;
             }
 
             // Skip empty lines and help text
-            if trimmed.is_empty() || trimmed.starts_with("(use") || trimmed.starts_with("On branch") {
+            if trimmed.is_empty() || trimmed.starts_with("(use") || trimmed.starts_with("On branch")
+            {
                 continue;
             }
 
@@ -540,10 +554,7 @@ impl OxenSubprocess {
                 trimmed.to_string()
             };
 
-            branches.push(BranchInfo {
-                name,
-                is_current,
-            });
+            branches.push(BranchInfo { name, is_current });
         }
 
         Ok(branches)
@@ -770,20 +781,14 @@ Date: 2025-01-02
     #[test]
     fn test_parse_commit_id_short_hash() {
         let oxen = OxenSubprocess::new();
-        assert_eq!(
-            oxen.parse_commit_id("abc1234"),
-            Some("abc1234".to_string())
-        );
+        assert_eq!(oxen.parse_commit_id("abc1234"), Some("abc1234".to_string()));
     }
 
     #[test]
     fn test_parse_commit_id_long_hash() {
         let oxen = OxenSubprocess::new();
         let long_hash = "abc123def456789012345678901234567890";
-        assert_eq!(
-            oxen.parse_commit_id(long_hash),
-            Some(long_hash.to_string())
-        );
+        assert_eq!(oxen.parse_commit_id(long_hash), Some(long_hash.to_string()));
     }
 
     #[test]
@@ -799,10 +804,7 @@ Date: 2025-01-02
     fn test_parse_commit_id_multiline() {
         let oxen = OxenSubprocess::new();
         let output = "Some text\nCommit abc1234 created\nMore text"; // 7 chars minimum
-        assert_eq!(
-            oxen.parse_commit_id(output),
-            Some("abc1234".to_string())
-        );
+        assert_eq!(oxen.parse_commit_id(output), Some("abc1234".to_string()));
     }
 
     #[test]
@@ -1259,10 +1261,7 @@ Date: 2025-01-01
                 PathBuf::from("file2.txt"),
                 PathBuf::from("file3.txt"),
             ],
-            untracked: vec![
-                PathBuf::from("new1.txt"),
-                PathBuf::from("new2.txt"),
-            ],
+            untracked: vec![PathBuf::from("new1.txt"), PathBuf::from("new2.txt")],
             staged: vec![PathBuf::from("staged.txt")],
         };
 
@@ -1293,20 +1292,14 @@ Date: 2025-01-01
     #[test]
     fn test_parse_commit_id_edge_case_7_chars() {
         let oxen = OxenSubprocess::new();
-        assert_eq!(
-            oxen.parse_commit_id("abc1234"),
-            Some("abc1234".to_string())
-        );
+        assert_eq!(oxen.parse_commit_id("abc1234"), Some("abc1234".to_string()));
     }
 
     #[test]
     fn test_parse_commit_id_edge_case_40_chars() {
         let oxen = OxenSubprocess::new();
         let hash = "a".repeat(40);
-        assert_eq!(
-            oxen.parse_commit_id(&hash),
-            Some(hash)
-        );
+        assert_eq!(oxen.parse_commit_id(&hash), Some(hash));
     }
 
     #[test]
@@ -1316,4 +1309,3 @@ Date: 2025-01-01
         assert_eq!(oxen.parse_commit_id(&hash), None); // Too long
     }
 }
-

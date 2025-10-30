@@ -10,7 +10,10 @@ pub mod local {
 
         pub fn init(path: &Path) -> Result<LocalRepository> {
             // STUB: In real implementation, this would initialize an Oxen repository
-            println!("[STUB] Would initialize Oxen repository at: {}", path.display());
+            println!(
+                "[STUB] Would initialize Oxen repository at: {}",
+                path.display()
+            );
             Ok(LocalRepository {
                 path: path.to_path_buf(),
             })

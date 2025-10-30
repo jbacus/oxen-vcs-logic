@@ -1,16 +1,16 @@
+use crate::liboxen_stub as liboxen;
 use anyhow::{anyhow, Context, Result};
 use colored::Colorize;
-use crate::liboxen_stub as liboxen;
 use liboxen::api;
 use liboxen::command;
 use liboxen::opts::AddOpts;
 use std::path::{Path, PathBuf};
 
 use crate::commit_metadata::CommitMetadata;
+use crate::draft_manager::DraftManager;
 use crate::ignore_template::generate_oxenignore;
 use crate::logic_project::LogicProject;
-use crate::draft_manager::DraftManager;
-use crate::{vlog, info};
+use crate::{info, vlog};
 
 /// Wrapper for Oxen repository operations
 pub struct OxenRepository {
@@ -39,16 +39,16 @@ impl OxenRepository {
 
         // Detect Logic Pro project
         vlog!("Step 1: Detecting Logic Pro project structure...");
-        let logic_project = LogicProject::detect(path)
-            .context("Failed to detect Logic Pro project")?;
+        let logic_project =
+            LogicProject::detect(path).context("Failed to detect Logic Pro project")?;
 
         info!("Detected Logic Pro project: {}", logic_project.name());
         vlog!("Project name: {}", logic_project.name());
 
         // Initialize Oxen repository
         vlog!("Step 2: Initializing Oxen repository...");
-        let _repo = api::local::repositories::init(path)
-            .context("Failed to initialize Oxen repository")?;
+        let _repo =
+            api::local::repositories::init(path).context("Failed to initialize Oxen repository")?;
 
         info!("Initialized Oxen repository at: {}", path.display());
 
@@ -75,10 +75,11 @@ impl OxenRepository {
         vlog!("Step 4: Initializing draft branch workflow...");
         info!("Initializing draft branch workflow...");
 
-        let draft_manager = DraftManager::new(path)
-            .context("Failed to create draft manager")?;
+        let draft_manager = DraftManager::new(path).context("Failed to create draft manager")?;
 
-        draft_manager.initialize().await
+        draft_manager
+            .initialize()
+            .await
             .context("Failed to initialize draft branch")?;
 
         vlog!("Draft branch initialized successfully");
@@ -91,8 +92,8 @@ impl OxenRepository {
     pub async fn init(path: impl AsRef<Path>) -> Result<Self> {
         let path = path.as_ref();
 
-        let _repo = api::local::repositories::init(path)
-            .context("Failed to initialize Oxen repository")?;
+        let _repo =
+            api::local::repositories::init(path).context("Failed to initialize Oxen repository")?;
 
         Ok(Self {
             path: path.to_path_buf(),
@@ -172,8 +173,8 @@ impl OxenRepository {
     pub async fn get_history(&self, limit: Option<usize>) -> Result<Vec<liboxen::model::Commit>> {
         let repo = self.get_repo()?;
 
-        let mut commits = api::local::commits::list(&repo)
-            .context("Failed to get commit history")?;
+        let mut commits =
+            api::local::commits::list(&repo).context("Failed to get commit history")?;
 
         if let Some(limit) = limit {
             commits.truncate(limit);
@@ -524,8 +525,7 @@ mod tests {
 
     #[test]
     fn test_commit_metadata_format_integration() {
-        let metadata = CommitMetadata::new("Integration test")
-            .with_bpm(140.0);
+        let metadata = CommitMetadata::new("Integration test").with_bpm(140.0);
 
         let formatted = metadata.format_commit_message();
         assert!(formatted.contains("Integration test"));
