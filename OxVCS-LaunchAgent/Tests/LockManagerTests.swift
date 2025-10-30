@@ -175,7 +175,10 @@ final class LockManagerTests: XCTestCase {
         // Read lock file
         let lockFilePath = (testProjectPath as NSString).appendingPathComponent(".oxen/locks.json")
         let data = try Data(contentsOf: URL(fileURLWithPath: lockFilePath))
-        let lock = try JSONDecoder().decode(ProjectLock.self, from: data)
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let lock = try decoder.decode(ProjectLock.self, from: data)
 
         // Verify lock structure
         XCTAssertEqual(lock.projectPath, testProjectPath)
@@ -188,15 +191,16 @@ final class LockManagerTests: XCTestCase {
 
     func testConcurrentLockAttempts() {
         let expectation = XCTestExpectation(description: "Concurrent lock attempts")
+        let queue = DispatchQueue(label: "test.counter")
         var successCount = 0
         var failureCount = 0
         let totalAttempts = 10
 
         DispatchQueue.concurrentPerform(iterations: totalAttempts) { _ in
             if LockManager.shared.acquireLock(projectPath: testProjectPath) {
-                successCount += 1
+                queue.sync { successCount += 1 }
             } else {
-                failureCount += 1
+                queue.sync { failureCount += 1 }
             }
         }
 
@@ -254,7 +258,7 @@ final class LockManagerTests: XCTestCase {
 
     func testAcquireLockEmptyPath() {
         let success = LockManager.shared.acquireLock(projectPath: "")
-        XCTAssertTrue(success, "Should handle empty path")
+        XCTAssertFalse(success, "Should reject empty path")
     }
 
     func testAcquireLockPathWithSpaces() {
@@ -360,11 +364,13 @@ final class LockManagerTests: XCTestCase {
 
     func testLockAcquiredAtTimestamp() {
         let beforeAcquire = Date()
+        usleep(100000) // 100ms to ensure different second if needed
         _ = LockManager.shared.acquireLock(projectPath: testProjectPath)
         let afterAcquire = Date()
 
         if let lock = LockManager.shared.getLockInfo(projectPath: testProjectPath) {
-            XCTAssertGreaterThanOrEqual(lock.acquiredAt, beforeAcquire, "Acquired time should be after start")
+            // Allow 1-second tolerance for ISO8601 second-precision rounding
+            XCTAssertGreaterThanOrEqual(lock.acquiredAt.timeIntervalSince1970, beforeAcquire.timeIntervalSince1970 - 1, "Acquired time should be after start")
             XCTAssertLessThanOrEqual(lock.acquiredAt, afterAcquire, "Acquired time should be before end")
         } else {
             XCTFail("Should have lock info")
@@ -389,14 +395,14 @@ final class LockManagerTests: XCTestCase {
         _ = LockManager.shared.acquireLock(projectPath: testProjectPath, timeoutHours: 1)
 
         if let lock1 = LockManager.shared.getLockInfo(projectPath: testProjectPath) {
-            let remaining1 = lock1.remainingHours
+            let remaining1 = lock1.remainingTime
 
             sleep(2)
 
             if let lock2 = LockManager.shared.getLockInfo(projectPath: testProjectPath) {
-                let remaining2 = lock2.remainingHours
+                let remaining2 = lock2.remainingTime
 
-                XCTAssertLessThan(remaining2, remaining1, "Remaining hours should decrease over time")
+                XCTAssertLessThan(remaining2, remaining1, "Remaining time should decrease over time")
             }
         }
     }

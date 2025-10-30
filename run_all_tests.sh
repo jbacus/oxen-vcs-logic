@@ -96,14 +96,16 @@ echo -e "${BLUE}[3/4] Running Swift LaunchAgent Tests...${NC}"
 if [ "$CAN_RUN_SWIFT" = true ]; then
     cd "OxVCS-LaunchAgent" || exit 1
 
-    if swift test 2>&1 | tee /tmp/swift_agent_tests.log | grep -q "Test Suite.*passed"; then
+    swift test 2>&1 | tee /tmp/swift_agent_tests.log
+    if grep -q "Test Suite 'All tests' passed" /tmp/swift_agent_tests.log; then
         echo -e "${GREEN}✓ LaunchAgent tests passed${NC}"
-        TEST_COUNT=$(grep -oE 'executed [0-9]+ tests' /tmp/swift_agent_tests.log | grep -oE '[0-9]+' || echo "?")
+        TEST_COUNT=$(grep -oE 'Executed [0-9]+ tests' /tmp/swift_agent_tests.log | tail -1 | grep -oE '[0-9]+' || echo "?")
         echo -e "  ${TEST_COUNT} tests executed"
         ((PASSED_SUITES++))
     else
         echo -e "${RED}✗ LaunchAgent tests failed${NC}"
-        tail -50 /tmp/swift_agent_tests.log
+        echo -e "${RED}Failures summary:${NC}"
+        grep -E "Test Suite.*failed|Executed.*failures" /tmp/swift_agent_tests.log | tail -10
         ((FAILED_SUITES++))
     fi
     ((TOTAL_SUITES++))
@@ -125,14 +127,17 @@ echo -e "${BLUE}[4/4] Running Swift App Tests...${NC}"
 if [ "$CAN_RUN_SWIFT" = true ]; then
     cd "OxVCS-App" || exit 1
 
-    if swift test 2>&1 | tee /tmp/swift_app_tests.log | grep -q "Test Suite.*passed"; then
+    swift test 2>&1 | tee /tmp/swift_app_tests.log
+    if grep -q "Test Suite 'All tests' passed" /tmp/swift_app_tests.log; then
         echo -e "${GREEN}✓ App tests passed${NC}"
-        TEST_COUNT=$(grep -oE 'executed [0-9]+ tests' /tmp/swift_app_tests.log | grep -oE '[0-9]+' || echo "?")
+        TEST_COUNT=$(grep -oE 'Executed [0-9]+ tests' /tmp/swift_app_tests.log | tail -1 | grep -oE '[0-9]+' || echo "?")
         echo -e "  ${TEST_COUNT} tests executed"
         ((PASSED_SUITES++))
     else
-        echo -e "${YELLOW}⊘ App tests failed (expected - minimal coverage)${NC}"
-        tail -20 /tmp/swift_app_tests.log
+        echo -e "${RED}✗ App tests failed${NC}"
+        echo -e "${RED}Failures summary:${NC}"
+        grep -E "Test Suite.*failed|Executed.*failures" /tmp/swift_app_tests.log | tail -10
+        ((FAILED_SUITES++))
     fi
     ((TOTAL_SUITES++))
 

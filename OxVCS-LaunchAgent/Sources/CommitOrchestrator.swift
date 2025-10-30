@@ -80,7 +80,7 @@ public class CommitOrchestrator {
         let startTime = Date()
         let normalizedPath = (projectPath as NSString).standardizingPath
 
-        // Check for lock before committing
+        // Check for lock before committing (highest priority check)
         if LockManager.shared.isLocked(projectPath: normalizedPath) {
             if let lock = LockManager.shared.getLockInfo(projectPath: normalizedPath) {
                 print("🔒 Project is locked by \(lock.lockedBy)")
@@ -90,7 +90,26 @@ public class CommitOrchestrator {
                     message: "Project is locked by \(lock.lockedBy). Lock expires in \(lock.remainingHours) hours.",
                     duration: 0
                 )
+            } else {
+                // Lock exists but couldn't get info - still prevent commit
+                print("🔒 Project is locked (info unavailable)")
+                return CommitResult(
+                    success: false,
+                    commitId: nil,
+                    message: "Project is locked",
+                    duration: 0
+                )
             }
+        }
+
+        // Verify CLI exists before attempting commit
+        guard FileManager.default.fileExists(atPath: cliPath) else {
+            return CommitResult(
+                success: false,
+                commitId: nil,
+                message: "CLI binary not found at: \(cliPath)",
+                duration: Date().timeIntervalSince(startTime)
+            )
         }
 
         // Prevent concurrent commits

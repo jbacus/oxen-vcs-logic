@@ -7,6 +7,7 @@ class LockManager {
 
     private let fileManager = FileManager.default
     private let lockFileName = "locks.json"
+    private let lockQueue = DispatchQueue(label: "com.oxenvcs.lockmanager", attributes: .concurrent)
 
     private init() {}
 
@@ -15,28 +16,30 @@ class LockManager {
     /// Attempts to acquire a lock for a project
     /// Returns true if lock acquired, false if already locked by someone else
     func acquireLock(projectPath: String, timeoutHours: Int = 24) -> Bool {
-        // Check if project is already locked
-        if let existingLock = readLock(projectPath: projectPath) {
-            if existingLock.isExpired {
-                // Lock has expired, remove it and acquire new lock
-                NSLog("[LockManager] Lock expired for \(projectPath), removing stale lock")
-                _ = releaseLock(projectPath: projectPath)
-            } else {
-                NSLog("[LockManager] Project already locked by \(existingLock.lockedBy)")
-                return false
+        return lockQueue.sync(flags: .barrier) {
+            // Check if project is already locked
+            if let existingLock = readLock(projectPath: projectPath) {
+                if existingLock.isExpired {
+                    // Lock has expired, remove it and acquire new lock
+                    NSLog("[LockManager] Lock expired for \(projectPath), removing stale lock")
+                    _ = releaseLock(projectPath: projectPath)
+                } else {
+                    NSLog("[LockManager] Project already locked by \(existingLock.lockedBy)")
+                    return false
+                }
             }
+
+            // Create new lock
+            let lock = ProjectLock(
+                projectPath: projectPath,
+                lockedBy: getCurrentUserIdentifier(),
+                lockId: UUID().uuidString,
+                acquiredAt: Date(),
+                expiresAt: Date().addingTimeInterval(TimeInterval(timeoutHours * 3600))
+            )
+
+            return writeLock(lock, projectPath: projectPath)
         }
-
-        // Create new lock
-        let lock = ProjectLock(
-            projectPath: projectPath,
-            lockedBy: getCurrentUserIdentifier(),
-            lockId: UUID().uuidString,
-            acquiredAt: Date(),
-            expiresAt: Date().addingTimeInterval(TimeInterval(timeoutHours * 3600))
-        )
-
-        return writeLock(lock, projectPath: projectPath)
     }
 
     /// Releases a lock for a project
@@ -123,8 +126,14 @@ class LockManager {
 
     private func readLockFromFile(_ path: String) -> ProjectLock? {
         guard fileManager.fileExists(atPath: path),
-              let data = try? Data(contentsOf: URL(fileURLWithPath: path)),
-              let lock = try? JSONDecoder().decode(ProjectLock.self, from: data) else {
+              let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else {
+            return nil
+        }
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+
+        guard let lock = try? decoder.decode(ProjectLock.self, from: data) else {
             return nil
         }
         return lock

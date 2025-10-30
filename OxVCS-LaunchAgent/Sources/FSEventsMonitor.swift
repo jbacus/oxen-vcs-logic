@@ -47,6 +47,15 @@ public class FSEventsMonitor {
             return
         }
 
+        // Validate path
+        guard !path.isEmpty else {
+            throw NSError(domain: "FSEventsMonitor", code: 1, userInfo: [NSLocalizedDescriptionKey: "Path cannot be empty"])
+        }
+
+        guard FileManager.default.fileExists(atPath: path) else {
+            throw NSError(domain: "FSEventsMonitor", code: 2, userInfo: [NSLocalizedDescriptionKey: "Path does not exist: \(path)"])
+        }
+
         self.watchedPath = path
 
         // Create FSEvents stream
