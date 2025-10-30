@@ -317,15 +317,18 @@ final class FSEventsMonitorTests: XCTestCase {
     func testDeinitStopsMonitoring() async {
         var tempMonitor: FSEventsMonitor? = FSEventsMonitor()
 
-        let startTask = Task {
-            try? await tempMonitor?.start(watchingPath: testProjectPath)
+        // Capture monitor in Task before it can be mutated
+        if let monitor = tempMonitor {
+            let startTask = Task {
+                try? await monitor.start(watchingPath: testProjectPath)
+            }
+
+            try? await Task.sleep(nanoseconds: 500_000_000)
+
+            // Deinit should call stop()
+            tempMonitor = nil
+            startTask.cancel()
         }
-
-        try? await Task.sleep(nanoseconds: 500_000_000)
-
-        // Deinit should call stop()
-        tempMonitor = nil
-        startTask.cancel()
 
         XCTAssertNil(tempMonitor, "Monitor should be deallocated")
     }
@@ -391,6 +394,6 @@ final class FSEventsMonitorTests: XCTestCase {
         monitor.stop()
         startTask.cancel()
 
-        wait(for: [expectation], timeout: 1.0)
+        await fulfillment(of: [expectation], timeout: 1.0)
     }
 }
