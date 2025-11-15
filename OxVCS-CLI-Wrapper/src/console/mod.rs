@@ -1848,4 +1848,479 @@ mod tests {
         assert_eq!(status.modified, 3);
         assert_eq!(status.untracked, 1);
     }
+
+    // CompareState Tests
+
+    #[test]
+    fn test_compare_state_default() {
+        let state = CompareState::default();
+        assert_eq!(state.commits.len(), 0);
+        assert_eq!(state.selected_a, 0);
+        assert_eq!(state.selected_b, 0);
+        assert_eq!(state.active_selector, 0);
+        assert!(state.diff_result.is_none());
+    }
+
+    #[test]
+    fn test_compare_mode_initialization() {
+        let console = Console::new(PathBuf::from("/test/project.logicx"));
+        assert_eq!(console.compare_state.commits.len(), 0);
+        assert_eq!(console.compare_state.active_selector, 0);
+    }
+
+    #[test]
+    fn test_compare_state_selector_switching() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+        console.mode = ConsoleMode::Compare;
+
+        // Initially on selector 0
+        assert_eq!(console.compare_state.active_selector, 0);
+
+        // Simulate Tab key to switch
+        console.handle_compare_mode_key(KeyCode::Tab, KeyModifiers::empty()).unwrap();
+        assert_eq!(console.compare_state.active_selector, 1);
+
+        // Tab again to switch back
+        console.handle_compare_mode_key(KeyCode::Tab, KeyModifiers::empty()).unwrap();
+        assert_eq!(console.compare_state.active_selector, 0);
+    }
+
+    #[test]
+    fn test_compare_mode_navigation() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+        console.mode = ConsoleMode::Compare;
+
+        // Add some test commits
+        console.compare_state.commits = vec![
+            CommitEntry {
+                id: "abc123".to_string(),
+                short_id: "abc123".to_string(),
+                message: "Commit 1".to_string(),
+                timestamp: "now".to_string(),
+            },
+            CommitEntry {
+                id: "def456".to_string(),
+                short_id: "def456".to_string(),
+                message: "Commit 2".to_string(),
+                timestamp: "now".to_string(),
+            },
+            CommitEntry {
+                id: "ghi789".to_string(),
+                short_id: "ghi789".to_string(),
+                message: "Commit 3".to_string(),
+                timestamp: "now".to_string(),
+            },
+        ];
+
+        // Navigate selector A down
+        console.compare_state.active_selector = 0;
+        console.compare_state.selected_a = 0;
+        console.handle_compare_mode_key(KeyCode::Down, KeyModifiers::empty()).unwrap();
+        assert_eq!(console.compare_state.selected_a, 1);
+
+        // Navigate selector A up
+        console.handle_compare_mode_key(KeyCode::Up, KeyModifiers::empty()).unwrap();
+        assert_eq!(console.compare_state.selected_a, 0);
+
+        // Switch to selector B
+        console.compare_state.active_selector = 1;
+        console.compare_state.selected_b = 0;
+        console.handle_compare_mode_key(KeyCode::Down, KeyModifiers::empty()).unwrap();
+        assert_eq!(console.compare_state.selected_b, 1);
+    }
+
+    #[test]
+    fn test_compare_mode_navigation_boundaries() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+        console.mode = ConsoleMode::Compare;
+
+        // Add commits
+        console.compare_state.commits = vec![
+            CommitEntry {
+                id: "abc123".to_string(),
+                short_id: "abc123".to_string(),
+                message: "Commit 1".to_string(),
+                timestamp: "now".to_string(),
+            },
+            CommitEntry {
+                id: "def456".to_string(),
+                short_id: "def456".to_string(),
+                message: "Commit 2".to_string(),
+                timestamp: "now".to_string(),
+            },
+        ];
+
+        // Try to navigate up from 0 (should stay at 0)
+        console.compare_state.active_selector = 0;
+        console.compare_state.selected_a = 0;
+        console.handle_compare_mode_key(KeyCode::Up, KeyModifiers::empty()).unwrap();
+        assert_eq!(console.compare_state.selected_a, 0);
+
+        // Navigate to last item
+        console.compare_state.selected_a = 1;
+        // Try to navigate down from last (should stay at last)
+        console.handle_compare_mode_key(KeyCode::Down, KeyModifiers::empty()).unwrap();
+        assert_eq!(console.compare_state.selected_a, 1);
+    }
+
+    #[test]
+    fn test_compare_mode_exit() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+        console.mode = ConsoleMode::Compare;
+
+        console.handle_compare_mode_key(KeyCode::Esc, KeyModifiers::empty()).unwrap();
+        assert_eq!(console.mode, ConsoleMode::Normal);
+    }
+
+    // SearchState Tests
+
+    #[test]
+    fn test_search_state_default() {
+        let state = SearchState::default();
+        assert_eq!(state.query, "");
+        assert_eq!(state.results.len(), 0);
+        assert_eq!(state.selected_index, 0);
+    }
+
+    #[test]
+    fn test_search_mode_initialization() {
+        let console = Console::new(PathBuf::from("/test/project.logicx"));
+        assert_eq!(console.search_state.query, "");
+        assert_eq!(console.search_state.results.len(), 0);
+    }
+
+    #[test]
+    fn test_search_mode_query_input() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+        console.mode = ConsoleMode::Search;
+
+        // Type some characters
+        console.handle_search_mode_key(KeyCode::Char('b'), KeyModifiers::empty()).unwrap();
+        console.handle_search_mode_key(KeyCode::Char('p'), KeyModifiers::empty()).unwrap();
+        console.handle_search_mode_key(KeyCode::Char('m'), KeyModifiers::empty()).unwrap();
+
+        assert_eq!(console.search_state.query, "bpm");
+    }
+
+    #[test]
+    fn test_search_mode_backspace() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+        console.mode = ConsoleMode::Search;
+
+        // Type and delete
+        console.handle_search_mode_key(KeyCode::Char('t'), KeyModifiers::empty()).unwrap();
+        console.handle_search_mode_key(KeyCode::Char('e'), KeyModifiers::empty()).unwrap();
+        console.handle_search_mode_key(KeyCode::Char('s'), KeyModifiers::empty()).unwrap();
+        console.handle_search_mode_key(KeyCode::Char('t'), KeyModifiers::empty()).unwrap();
+        assert_eq!(console.search_state.query, "test");
+
+        console.handle_search_mode_key(KeyCode::Backspace, KeyModifiers::empty()).unwrap();
+        assert_eq!(console.search_state.query, "tes");
+
+        console.handle_search_mode_key(KeyCode::Backspace, KeyModifiers::empty()).unwrap();
+        assert_eq!(console.search_state.query, "te");
+    }
+
+    #[test]
+    fn test_search_mode_results_navigation() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+        console.mode = ConsoleMode::Search;
+
+        // Add test results
+        console.search_state.results = vec![
+            CommitEntry {
+                id: "abc123".to_string(),
+                short_id: "abc123".to_string(),
+                message: "Result 1".to_string(),
+                timestamp: "now".to_string(),
+            },
+            CommitEntry {
+                id: "def456".to_string(),
+                short_id: "def456".to_string(),
+                message: "Result 2".to_string(),
+                timestamp: "now".to_string(),
+            },
+            CommitEntry {
+                id: "ghi789".to_string(),
+                short_id: "ghi789".to_string(),
+                message: "Result 3".to_string(),
+                timestamp: "now".to_string(),
+            },
+        ];
+
+        console.search_state.selected_index = 0;
+
+        // Navigate down
+        console.handle_search_mode_key(KeyCode::Down, KeyModifiers::empty()).unwrap();
+        assert_eq!(console.search_state.selected_index, 1);
+
+        console.handle_search_mode_key(KeyCode::Down, KeyModifiers::empty()).unwrap();
+        assert_eq!(console.search_state.selected_index, 2);
+
+        // Navigate up
+        console.handle_search_mode_key(KeyCode::Up, KeyModifiers::empty()).unwrap();
+        assert_eq!(console.search_state.selected_index, 1);
+    }
+
+    #[test]
+    fn test_search_mode_navigation_boundaries() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+        console.mode = ConsoleMode::Search;
+
+        console.search_state.results = vec![
+            CommitEntry {
+                id: "abc123".to_string(),
+                short_id: "abc123".to_string(),
+                message: "Result 1".to_string(),
+                timestamp: "now".to_string(),
+            },
+        ];
+
+        console.search_state.selected_index = 0;
+
+        // Try to go up from 0
+        console.handle_search_mode_key(KeyCode::Up, KeyModifiers::empty()).unwrap();
+        assert_eq!(console.search_state.selected_index, 0);
+
+        // Try to go down from last
+        console.handle_search_mode_key(KeyCode::Down, KeyModifiers::empty()).unwrap();
+        assert_eq!(console.search_state.selected_index, 0);
+    }
+
+    #[test]
+    fn test_search_mode_exit() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+        console.mode = ConsoleMode::Search;
+
+        console.handle_search_mode_key(KeyCode::Esc, KeyModifiers::empty()).unwrap();
+        assert_eq!(console.mode, ConsoleMode::Normal);
+    }
+
+    #[test]
+    fn test_search_mode_clears_results_on_query_change() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+        console.mode = ConsoleMode::Search;
+
+        // Add some results
+        console.search_state.results = vec![
+            CommitEntry {
+                id: "abc123".to_string(),
+                short_id: "abc123".to_string(),
+                message: "Result 1".to_string(),
+                timestamp: "now".to_string(),
+            },
+        ];
+
+        // Type a character - should clear results
+        console.handle_search_mode_key(KeyCode::Char('a'), KeyModifiers::empty()).unwrap();
+        assert_eq!(console.search_state.results.len(), 0);
+
+        // Add results again
+        console.search_state.results = vec![
+            CommitEntry {
+                id: "abc123".to_string(),
+                short_id: "abc123".to_string(),
+                message: "Result 1".to_string(),
+                timestamp: "now".to_string(),
+            },
+        ];
+
+        // Backspace - should also clear results
+        console.handle_search_mode_key(KeyCode::Backspace, KeyModifiers::empty()).unwrap();
+        assert_eq!(console.search_state.results.len(), 0);
+    }
+
+    // HooksState Tests
+
+    #[test]
+    fn test_hooks_state_default() {
+        let state = HooksState::default();
+        assert_eq!(state.hooks.len(), 0);
+        assert_eq!(state.selected_index, 0);
+    }
+
+    #[test]
+    fn test_hooks_mode_initialization() {
+        let console = Console::new(PathBuf::from("/test/project.logicx"));
+        assert_eq!(console.hooks_state.hooks.len(), 0);
+        assert_eq!(console.hooks_state.selected_index, 0);
+    }
+
+    #[test]
+    fn test_hooks_mode_navigation() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+        console.mode = ConsoleMode::Hooks;
+
+        // Add test hooks
+        console.hooks_state.hooks = vec![
+            ("pre-commit".to_string(), "validate-metadata".to_string()),
+            ("post-commit".to_string(), "notify".to_string()),
+            ("pre-commit".to_string(), "check-file-sizes".to_string()),
+        ];
+
+        console.hooks_state.selected_index = 0;
+
+        // Navigate down
+        console.handle_hooks_mode_key(KeyCode::Down, KeyModifiers::empty()).unwrap();
+        assert_eq!(console.hooks_state.selected_index, 1);
+
+        console.handle_hooks_mode_key(KeyCode::Down, KeyModifiers::empty()).unwrap();
+        assert_eq!(console.hooks_state.selected_index, 2);
+
+        // Navigate up
+        console.handle_hooks_mode_key(KeyCode::Up, KeyModifiers::empty()).unwrap();
+        assert_eq!(console.hooks_state.selected_index, 1);
+    }
+
+    #[test]
+    fn test_hooks_mode_navigation_boundaries() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+        console.mode = ConsoleMode::Hooks;
+
+        console.hooks_state.hooks = vec![
+            ("pre-commit".to_string(), "hook1".to_string()),
+            ("post-commit".to_string(), "hook2".to_string()),
+        ];
+
+        console.hooks_state.selected_index = 0;
+
+        // Try to go up from 0
+        console.handle_hooks_mode_key(KeyCode::Up, KeyModifiers::empty()).unwrap();
+        assert_eq!(console.hooks_state.selected_index, 0);
+
+        // Go to last
+        console.hooks_state.selected_index = 1;
+        // Try to go down from last
+        console.handle_hooks_mode_key(KeyCode::Down, KeyModifiers::empty()).unwrap();
+        assert_eq!(console.hooks_state.selected_index, 1);
+    }
+
+    #[test]
+    fn test_hooks_mode_exit() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+        console.mode = ConsoleMode::Hooks;
+
+        console.handle_hooks_mode_key(KeyCode::Esc, KeyModifiers::empty()).unwrap();
+        assert_eq!(console.mode, ConsoleMode::Normal);
+    }
+
+    // Mode Transition Tests
+
+    #[test]
+    fn test_mode_transition_to_compare() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+        assert_eq!(console.mode, ConsoleMode::Normal);
+
+        // Press 'd' to enter compare mode
+        console.handle_normal_mode_key(KeyCode::Char('d'), KeyModifiers::empty()).unwrap();
+        assert_eq!(console.mode, ConsoleMode::Compare);
+    }
+
+    #[test]
+    fn test_mode_transition_to_search() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+        assert_eq!(console.mode, ConsoleMode::Normal);
+
+        // Press 's' to enter search mode
+        console.handle_normal_mode_key(KeyCode::Char('s'), KeyModifiers::empty()).unwrap();
+        assert_eq!(console.mode, ConsoleMode::Search);
+    }
+
+    #[test]
+    fn test_mode_transition_to_hooks() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+        assert_eq!(console.mode, ConsoleMode::Normal);
+
+        // Press 'k' to enter hooks mode
+        console.handle_normal_mode_key(KeyCode::Char('k'), KeyModifiers::empty()).unwrap();
+        assert_eq!(console.mode, ConsoleMode::Hooks);
+    }
+
+    #[test]
+    fn test_mode_transition_resets_state() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+
+        // Enter search mode and type a query
+        console.handle_normal_mode_key(KeyCode::Char('s'), KeyModifiers::empty()).unwrap();
+        console.search_state.query = "old query".to_string();
+
+        // Exit and re-enter search mode
+        console.handle_search_mode_key(KeyCode::Esc, KeyModifiers::empty()).unwrap();
+        console.handle_normal_mode_key(KeyCode::Char('s'), KeyModifiers::empty()).unwrap();
+
+        // State should be reset
+        assert_eq!(console.search_state.query, "");
+    }
+
+    #[test]
+    fn test_quit_keyboard_shortcut() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+        assert!(!console.should_quit);
+
+        console.handle_normal_mode_key(KeyCode::Char('q'), KeyModifiers::empty()).unwrap();
+        assert!(console.should_quit);
+    }
+
+    #[test]
+    fn test_ctrl_c_keyboard_shortcut() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+        assert!(!console.should_quit);
+
+        console.handle_normal_mode_key(KeyCode::Char('c'), KeyModifiers::CONTROL).unwrap();
+        assert!(console.should_quit);
+    }
+
+    #[test]
+    fn test_help_mode_transitions() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+
+        // Enter help mode with '?'
+        console.handle_normal_mode_key(KeyCode::Char('?'), KeyModifiers::empty()).unwrap();
+        assert_eq!(console.mode, ConsoleMode::Help);
+
+        // Any key exits help mode
+        console.handle_help_mode_key(KeyCode::Char('x'), KeyModifiers::empty()).unwrap();
+        assert_eq!(console.mode, ConsoleMode::Normal);
+
+        // Enter help mode with 'h'
+        console.handle_normal_mode_key(KeyCode::Char('h'), KeyModifiers::empty()).unwrap();
+        assert_eq!(console.mode, ConsoleMode::Help);
+    }
+
+    // CommitEntry Tests
+
+    #[test]
+    fn test_commit_entry_creation() {
+        let entry = CommitEntry {
+            id: "abc123def456".to_string(),
+            short_id: "abc123d".to_string(),
+            message: "Test commit".to_string(),
+            timestamp: "2 hours ago".to_string(),
+        };
+
+        assert_eq!(entry.id, "abc123def456");
+        assert_eq!(entry.short_id, "abc123d");
+        assert_eq!(entry.message, "Test commit");
+        assert_eq!(entry.timestamp, "2 hours ago");
+    }
+
+    // format_timestamp Tests
+
+    #[test]
+    fn test_format_timestamp() {
+        use std::time::UNIX_EPOCH;
+
+        // Test known timestamp
+        let time = UNIX_EPOCH + std::time::Duration::from_secs(3661); // 1 hour, 1 minute, 1 second
+        let formatted = format_timestamp(time);
+        assert_eq!(formatted, "01:01:01");
+    }
+
+    #[test]
+    fn test_format_timestamp_zero() {
+        use std::time::UNIX_EPOCH;
+
+        let formatted = format_timestamp(UNIX_EPOCH);
+        assert_eq!(formatted, "00:00:00");
+    }
 }
