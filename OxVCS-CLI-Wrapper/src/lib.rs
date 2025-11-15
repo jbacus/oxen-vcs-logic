@@ -13,6 +13,7 @@ pub mod logic_project;
 pub mod metadata_diff;
 pub mod oxen_ops;
 pub mod oxen_subprocess;
+pub mod progress;
 
 pub use commit_metadata::CommitMetadata;
 pub use draft_manager::{DraftManager, DraftStats};

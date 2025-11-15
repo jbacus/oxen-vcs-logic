@@ -20,6 +20,11 @@ colored = "2.0"
 atty = "0.2"
 log = "0.4"
 
+# Visual feedback and interactivity
+indicatif = "0.17"     # Progress bars and spinners
+console = "0.15"       # Terminal utilities
+dialoguer = "0.11"     # Interactive prompts
+
 [dev-dependencies]
 criterion = "0.5"
 tempfile = "3.8"

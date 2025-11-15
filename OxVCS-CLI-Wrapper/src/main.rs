@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand};
 use colored::Colorize;
-use oxenvcs_cli::{logger, success, vlog, CommitMetadata, OxenRepository};
+use oxenvcs_cli::{logger, progress, success, vlog, CommitMetadata, OxenRepository};
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -306,15 +306,28 @@ async fn main() -> anyhow::Result<()> {
             vlog!("Logic Pro mode: {}", logic);
 
             if logic {
+                // Multi-step initialization with progress feedback
+                let pb = progress::spinner("Validating Logic Pro project structure...");
+
                 vlog!("Initializing Logic Pro project repository...");
                 let _repo = OxenRepository::init_for_logic_project(&path).await?;
-                success!("Successfully initialized Logic Pro project repository");
+
+                progress::finish_success(&pb, "Logic Pro project repository initialized");
+                println!();
+                progress::success(&format!("Repository created at: {}", path.display()));
+                progress::info("Next steps:");
+                println!("  1. cd {}", path.display());
+                println!("  2. oxenvcs-cli add --all");
+                println!("  3. oxenvcs-cli commit -m \"Initial commit\"");
             } else {
+                let pb = progress::spinner(&format!("Initializing Oxen repository at {}...", path.display()));
+
                 vlog!("Initializing generic Oxen repository...");
                 let _repo = OxenRepository::init(&path).await?;
-                success!(
-                    "Successfully initialized Oxen repository at: {}",
-                    path.display()
+
+                progress::finish_success(
+                    &pb,
+                    &format!("Oxen repository initialized at: {}", path.display())
                 );
             }
             Ok(())
@@ -324,13 +337,19 @@ async fn main() -> anyhow::Result<()> {
             let repo = OxenRepository::new(".");
 
             if all {
+                let pb = progress::spinner("Staging all changes...");
                 repo.stage_all().await?;
+                progress::finish_success(&pb, "All changes staged");
+                println!();
+                progress::info("Next step: oxenvcs-cli commit -m \"Your message\"");
             } else {
                 if paths.is_empty() {
-                    eprintln!("Error: Please provide paths to stage or use --all");
+                    progress::error("Please provide paths to stage or use --all");
                     std::process::exit(1);
                 }
+                let pb = progress::spinner(&format!("Staging {} file(s)...", paths.len()));
                 repo.stage_changes(paths).await?;
+                progress::finish_success(&pb, "Files staged");
             }
 
             Ok(())
@@ -343,9 +362,10 @@ async fn main() -> anyhow::Result<()> {
             key,
             tags,
         } => {
+            let pb = progress::spinner("Preparing commit...");
             let repo = OxenRepository::new(".");
 
-            let mut metadata = CommitMetadata::new(message);
+            let mut metadata = CommitMetadata::new(message.clone());
 
             if let Some(bpm) = bpm {
                 metadata = metadata.with_bpm(bpm);
@@ -355,18 +375,37 @@ async fn main() -> anyhow::Result<()> {
                 metadata = metadata.with_sample_rate(sr);
             }
 
-            if let Some(key) = key {
-                metadata = metadata.with_key_signature(key);
+            if let Some(ref key_val) = key {
+                metadata = metadata.with_key_signature(key_val.clone());
             }
 
-            if let Some(tags_str) = tags {
+            if let Some(ref tags_str) = tags {
                 for tag in tags_str.split(',') {
                     metadata = metadata.with_tag(tag.trim());
                 }
             }
 
+            pb.set_message("Creating commit...");
             let commit_id = repo.create_commit(metadata).await?;
-            println!("✓ Commit created: {}", commit_id);
+
+            progress::finish_success(&pb, &format!("Commit created: {}", commit_id));
+
+            // Show commit details
+            println!();
+            progress::info("Commit Details:");
+            println!("  Message: {}", message);
+            if let Some(ref bpm_val) = bpm {
+                println!("  BPM: {}", bpm_val);
+            }
+            if let Some(ref sr_val) = sample_rate {
+                println!("  Sample Rate: {} Hz", sr_val);
+            }
+            if let Some(ref key_val) = key {
+                println!("  Key: {}", key_val);
+            }
+            if let Some(ref tags_val) = tags {
+                println!("  Tags: {}", tags_val);
+            }
 
             Ok(())
         }
@@ -377,28 +416,73 @@ async fn main() -> anyhow::Result<()> {
             let commits = repo.get_history(limit).await?;
 
             if commits.is_empty() {
-                println!("No commits yet");
+                println!();
+                progress::info("No commits yet");
+                println!();
+                progress::info("Create your first commit:");
+                println!("  oxenvcs-cli add --all");
+                println!("  oxenvcs-cli commit -m \"Initial commit\"");
                 return Ok(());
             }
 
-            println!("\nCommit History:\n");
-
-            for commit in commits {
-                println!("Commit: {}", commit.id);
-                println!(
-                    "\n    {}\n",
-                    commit.message.lines().collect::<Vec<_>>().join("\n    ")
-                );
-                println!("{}", "─".repeat(80));
+            println!();
+            println!("┌─ Commit History ────────────────────────────────────────┐");
+            if let Some(lim) = limit {
+                println!("│ Showing last {} commit(s)                               │", lim);
+            } else {
+                println!("│ Showing all {} commit(s)                                 │", commits.len());
             }
+            println!("└──────────────────────────────────────────────────────────┘");
+            println!();
+
+            for (idx, commit) in commits.iter().enumerate() {
+                let short_id = &commit.id[..7.min(commit.id.len())];
+
+                // Visual timeline with bullets
+                println!("{} {} - {}", "●".cyan(), short_id.bright_yellow(), "now".bright_black());
+
+                // Commit message (indented)
+                let lines: Vec<&str> = commit.message.lines().collect();
+                if let Some(first_line) = lines.first() {
+                    println!("  │ {}", first_line.bright_white());
+                }
+
+                // Additional metadata if present in message
+                for line in lines.iter().skip(1) {
+                    if !line.trim().is_empty() {
+                        if line.contains("BPM:") || line.contains("Sample Rate:") || line.contains("Key:") || line.contains("Tags:") {
+                            println!("  │ {}", line.trim().bright_black());
+                        } else {
+                            println!("  │ {}", line.trim());
+                        }
+                    }
+                }
+
+                // Add spacing between commits (except last one)
+                if idx < commits.len() - 1 {
+                    println!("  │");
+                }
+            }
+
+            println!();
+            progress::info(&format!("Total: {} commit(s)", commits.len()));
 
             Ok(())
         }
 
         Commands::Restore { commit_id } => {
+            let pb = progress::spinner(&format!("Restoring to commit {}...", &commit_id[..7.min(commit_id.len())]));
             let repo = OxenRepository::new(".");
 
+            pb.set_message("Checking out files...");
             repo.restore(&commit_id).await?;
+
+            progress::finish_success(&pb, &format!("Restored to commit {}", &commit_id[..7.min(commit_id.len())]));
+            println!();
+            progress::warning("Your working directory has been updated to match this commit");
+            progress::info("To create a new commit from here, use:");
+            println!("  oxenvcs-cli add --all");
+            println!("  oxenvcs-cli commit -m \"Your message\"");
 
             Ok(())
         }
@@ -408,35 +492,58 @@ async fn main() -> anyhow::Result<()> {
 
             let status = repo.status().await?;
 
-            println!("\nRepository Status:\n");
+            // Header
+            println!();
+            println!("┌─ Repository Status ─────────────────────────────────────┐");
+            println!("│                                                          │");
+
+            let total_changes = status.staged.len() + status.modified.len() + status.untracked.len();
+
+            if total_changes == 0 {
+                println!("│  ✓ Working directory clean                              │");
+            } else {
+                println!("│  Changes: {} staged, {} modified, {} untracked",
+                    status.staged.len().to_string().green(),
+                    status.modified.len().to_string().yellow(),
+                    status.untracked.len().to_string().cyan(),
+                );
+            }
+
+            println!("│                                                          │");
+            println!("└──────────────────────────────────────────────────────────┘");
+            println!();
 
             if !status.staged.is_empty() {
-                println!("Staged files:");
+                println!("{} Staged files ({}):", "●".green(), status.staged.len());
                 for path in &status.staged {
-                    println!("  + {}", path.display());
+                    println!("  {} {}", "+".green(), path.display());
                 }
                 println!();
             }
 
             if !status.modified.is_empty() {
-                println!("Modified files:");
+                println!("{} Modified files ({}):", "◆".yellow(), status.modified.len());
                 for path in &status.modified {
-                    println!("  M {}", path.display());
+                    println!("  {} {}", "M".yellow(), path.display());
                 }
                 println!();
             }
 
             if !status.untracked.is_empty() {
-                println!("Untracked files:");
+                println!("{} Untracked files ({}):", "?".cyan(), status.untracked.len());
                 for path in &status.untracked {
-                    println!("  ? {}", path.display());
+                    println!("  {} {}", "?".cyan(), path.display());
                 }
                 println!();
             }
 
-            if status.staged.is_empty() && status.modified.is_empty() && status.untracked.is_empty()
-            {
-                println!("Working directory clean");
+            // Next steps suggestion
+            if total_changes > 0 {
+                if status.staged.is_empty() && (!status.modified.is_empty() || !status.untracked.is_empty()) {
+                    progress::info("Next step: oxenvcs-cli add --all");
+                } else if !status.staged.is_empty() {
+                    progress::info("Next step: oxenvcs-cli commit -m \"Your message\"");
+                }
             }
 
             Ok(())
