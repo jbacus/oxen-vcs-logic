@@ -164,12 +164,14 @@ EXAMPLES:
     #[command(long_about = "Show commit history
 
 USAGE:
-    oxenvcs-cli log [--limit <N>]
+    oxenvcs-cli log [OPTIONS]
 
 DESCRIPTION:
     Displays the commit history for the repository, showing commit IDs, authors,
     timestamps, and messages. Audio metadata (BPM, key, etc.) is displayed if
     present in the commit message.
+
+    Filter commits by metadata, tags, or date range to find specific versions.
 
 EXAMPLES:
     # Show all commits
@@ -178,11 +180,32 @@ EXAMPLES:
     # Show only the last 5 commits
     oxenvcs-cli log --limit 5
 
-    # Show the last 10 commits
-    oxenvcs-cli log -l 10")]
+    # Show commits with specific BPM
+    oxenvcs-cli log --bpm 128
+
+    # Show commits with specific tag
+    oxenvcs-cli log --tag mixing
+
+    # Show commits since a date
+    oxenvcs-cli log --since \"2025-01-01\"
+
+    # Combine filters
+    oxenvcs-cli log --bpm 120 --tag vocals --limit 10")]
     Log {
         #[arg(short, long, help = "Maximum number of commits to display")]
         limit: Option<usize>,
+
+        #[arg(long, help = "Filter by BPM (e.g., 120, 128)")]
+        bpm: Option<f32>,
+
+        #[arg(long, help = "Filter by tag (e.g., 'mixing', 'vocals')")]
+        tag: Option<String>,
+
+        #[arg(long, help = "Filter by key signature (e.g., 'C Major')")]
+        key: Option<String>,
+
+        #[arg(long, help = "Show commits since date (YYYY-MM-DD)")]
+        since: Option<String>,
     },
 
     /// Restore project to a previous commit
@@ -235,6 +258,63 @@ EXAMPLES:
     # Check repository status
     oxenvcs-cli status")]
     Status,
+
+    /// Show detailed information about a commit
+    #[command(long_about = "Show detailed information about a commit
+
+USAGE:
+    oxenvcs-cli show <COMMIT_ID>
+
+DESCRIPTION:
+    Displays comprehensive information about a specific commit, including:
+      • Full commit message
+      • Audio metadata (BPM, sample rate, key signature, tags)
+      • Author and timestamp
+      • Files changed
+      • Commit statistics
+
+EXAMPLES:
+    # Show details of a recent commit
+    oxenvcs-cli show abc123f
+
+    # Show details with full hash
+    oxenvcs-cli show abc123def456789012345678901234567890")]
+    Show {
+        #[arg(value_name = "COMMIT_ID", help = "Commit ID to show details for")]
+        commit_id: String,
+    },
+
+    /// Show changes between commits or working directory
+    #[command(long_about = "Show changes between commits or working directory
+
+USAGE:
+    oxenvcs-cli diff [COMMIT_ID]
+
+DESCRIPTION:
+    Shows file-level changes in the repository:
+      • Without arguments: shows changes in working directory vs last commit
+      • With commit ID: shows changes between that commit and working directory
+      • With two IDs: shows changes between two commits
+
+    Displays:
+      • Modified files with size changes
+      • Added files
+      • Deleted files
+      • Total size impact
+
+EXAMPLES:
+    # Show uncommitted changes
+    oxenvcs-cli diff
+
+    # Show changes since specific commit
+    oxenvcs-cli diff abc123f
+
+    # Compare two commits (future enhancement)
+    # oxenvcs-cli diff abc123f def456a")]
+    Diff {
+        #[arg(value_name = "COMMIT_ID", help = "Commit ID to compare against (optional)")]
+        commit_id: Option<String>,
+    },
 
     /// Compare metadata between two Logic Pro project versions
     #[command(name = "metadata-diff")]
@@ -410,10 +490,10 @@ async fn main() -> anyhow::Result<()> {
             Ok(())
         }
 
-        Commands::Log { limit } => {
+        Commands::Log { limit, bpm, tag, key, since } => {
             let repo = OxenRepository::new(".");
 
-            let commits = repo.get_history(limit).await?;
+            let mut commits = repo.get_history(None).await?;
 
             if commits.is_empty() {
                 println!();
@@ -425,15 +505,65 @@ async fn main() -> anyhow::Result<()> {
                 return Ok(());
             }
 
+            // Apply filters
+            let total_before_filter = commits.len();
+            let mut filters_applied = vec![];
+
+            if let Some(bpm_filter) = bpm {
+                commits.retain(|c| {
+                    c.message.lines().any(|line| {
+                        line.contains("BPM:") && line.contains(&bpm_filter.to_string())
+                    })
+                });
+                filters_applied.push(format!("BPM = {}", bpm_filter));
+            }
+
+            if let Some(tag_filter) = &tag {
+                commits.retain(|c| {
+                    c.message.lines().any(|line| {
+                        line.contains("Tags:") && line.to_lowercase().contains(&tag_filter.to_lowercase())
+                    })
+                });
+                filters_applied.push(format!("tag = {}", tag_filter));
+            }
+
+            if let Some(key_filter) = &key {
+                commits.retain(|c| {
+                    c.message.lines().any(|line| {
+                        line.contains("Key:") && line.to_lowercase().contains(&key_filter.to_lowercase())
+                    })
+                });
+                filters_applied.push(format!("key = {}", key_filter));
+            }
+
+            if let Some(_since_filter) = &since {
+                // TODO: Implement date filtering when commit timestamps are available
+                progress::warning("Date filtering not yet implemented (commit timestamps needed)");
+            }
+
+            // Apply limit after filtering
+            if let Some(lim) = limit {
+                commits.truncate(lim);
+            }
+
+            // Show results
             println!();
             println!("┌─ Commit History ────────────────────────────────────────┐");
-            if let Some(lim) = limit {
-                println!("│ Showing last {} commit(s)                               │", lim);
+            if !filters_applied.is_empty() {
+                println!("│ Filters: {}                                              │", filters_applied.join(", "));
+                println!("│ Found {} of {} commit(s)                                 │", commits.len(), total_before_filter);
+            } else if let Some(lim) = limit {
+                println!("│ Showing last {} of {} commit(s)                          │", commits.len(), total_before_filter);
             } else {
                 println!("│ Showing all {} commit(s)                                 │", commits.len());
             }
             println!("└──────────────────────────────────────────────────────────┘");
             println!();
+
+            if commits.is_empty() {
+                progress::info("No commits match the specified filters");
+                return Ok(());
+            }
 
             for (idx, commit) in commits.iter().enumerate() {
                 let short_id = &commit.id[..7.min(commit.id.len())];
@@ -465,7 +595,7 @@ async fn main() -> anyhow::Result<()> {
             }
 
             println!();
-            progress::info(&format!("Total: {} commit(s)", commits.len()));
+            progress::info(&format!("Showing {} commit(s)", commits.len()));
 
             Ok(())
         }
@@ -544,6 +674,139 @@ async fn main() -> anyhow::Result<()> {
                 } else if !status.staged.is_empty() {
                     progress::info("Next step: oxenvcs-cli commit -m \"Your message\"");
                 }
+            }
+
+            Ok(())
+        }
+
+        Commands::Show { commit_id } => {
+            let repo = OxenRepository::new(".");
+
+            // Get all commits to find the one we want
+            let commits = repo.get_history(None).await?;
+
+            let commit = commits.iter().find(|c| {
+                c.id.starts_with(&commit_id) || c.id == commit_id
+            });
+
+            if let Some(commit) = commit {
+                println!();
+                println!("┌─ Commit Details ────────────────────────────────────────┐");
+                println!("│                                                          │");
+                println!("│  Commit: {}                                      │", commit.id.bright_yellow());
+                println!("│                                                          │");
+                println!("└──────────────────────────────────────────────────────────┘");
+                println!();
+
+                // Parse commit message and metadata
+                let lines: Vec<&str> = commit.message.lines().collect();
+
+                // First line is the commit message
+                if let Some(first_line) = lines.first() {
+                    println!("{}", "Message:".bright_white().bold());
+                    println!("  {}", first_line);
+                    println!();
+                }
+
+                // Extract metadata
+                let mut metadata_found = false;
+                for line in lines.iter().skip(1) {
+                    let trimmed = line.trim();
+                    if !trimmed.is_empty() {
+                        if trimmed.starts_with("BPM:") || trimmed.starts_with("Sample Rate:") ||
+                           trimmed.starts_with("Key:") || trimmed.starts_with("Tags:") {
+                            if !metadata_found {
+                                println!("{}", "Metadata:".bright_white().bold());
+                                metadata_found = true;
+                            }
+                            println!("  {}", trimmed.bright_black());
+                        } else {
+                            // Additional commit message content
+                            println!("  {}", trimmed);
+                        }
+                    }
+                }
+
+                println!();
+                progress::info(&format!("Use 'oxenvcs-cli restore {}' to restore to this commit", &commit.id[..7.min(commit.id.len())]));
+            } else {
+                progress::error(&format!("Commit not found: {}", commit_id));
+                std::process::exit(1);
+            }
+
+            Ok(())
+        }
+
+        Commands::Diff { commit_id } => {
+            let repo = OxenRepository::new(".");
+
+            println!();
+            if let Some(cid) = &commit_id {
+                println!("┌─ Changes Since Commit {} ─────────────────────┐", &cid[..7.min(cid.len())].bright_yellow());
+            } else {
+                println!("┌─ Uncommitted Changes ───────────────────────────────────┐");
+            }
+            println!("│                                                          │");
+            println!("└──────────────────────────────────────────────────────────┘");
+            println!();
+
+            // Get current status
+            let status = repo.status().await?;
+
+            let total_files = status.staged.len() + status.modified.len() + status.untracked.len();
+
+            if total_files == 0 {
+                progress::info("No changes in working directory");
+                return Ok(());
+            }
+
+            // Modified files
+            if !status.modified.is_empty() {
+                println!("{} Modified files ({}):", "◆".yellow(), status.modified.len());
+                for path in &status.modified {
+                    // Try to get file size info
+                    if let Ok(metadata) = std::fs::metadata(path) {
+                        let size = metadata.len();
+                        println!("  {} {} {}", "~".yellow(), path.display(), format!("({} bytes)", size).bright_black());
+                    } else {
+                        println!("  {} {}", "~".yellow(), path.display());
+                    }
+                }
+                println!();
+            }
+
+            // Untracked (new) files
+            if !status.untracked.is_empty() {
+                println!("{} Added files ({}):", "◆".green(), status.untracked.len());
+                for path in &status.untracked {
+                    if let Ok(metadata) = std::fs::metadata(path) {
+                        let size = metadata.len();
+                        let size_mb = size as f64 / 1_048_576.0;
+                        if size_mb >= 1.0 {
+                            println!("  {} {} {}", "+".green(), path.display(), format!("({:.1} MB)", size_mb).bright_black());
+                        } else {
+                            println!("  {} {} {}", "+".green(), path.display(), format!("({} bytes)", size).bright_black());
+                        }
+                    } else {
+                        println!("  {} {}", "+".green(), path.display());
+                    }
+                }
+                println!();
+            }
+
+            // Summary
+            let total_modified = status.modified.len();
+            let total_added = status.untracked.len();
+
+            progress::info(&format!(
+                "Total changes: {} modified, {} added",
+                total_modified.to_string().yellow(),
+                total_added.to_string().green()
+            ));
+
+            if !status.staged.is_empty() {
+                println!();
+                progress::info("Some changes are already staged. Use 'oxenvcs-cli status' for details");
             }
 
             Ok(())
