@@ -1,7 +1,7 @@
 # OxVCS Cloud Sharing Guide
 
 **Last Updated**: 2025-11-15
-**Status**: Phase 1 (Authentication) Complete, Phases 2-4 In Development
+**Status**: Phases 1-3 Complete (Authentication, Locks, Collaboration), Phase 4+ In Development
 
 ---
 
@@ -252,6 +252,65 @@ oxen push origin main
 oxenvcs-cli lock release
 ```
 
+### Communication & Tracking
+
+**View Project Activity:**
+```bash
+# See what the team has been working on
+oxenvcs-cli activity --limit 20
+```
+
+**Output:**
+```
+┌─ Recent Activity ────────────────────────────────────────┐
+│                                                           │
+│  ● Commit by john@laptop                                 │
+│    "Mixed vocals, added reverb"                          │
+│    BPM: 120                                              │
+│                                                           │
+│  🔒 Lock Acquired by sarah@studio                        │
+│    Locked for editing (4 hours)                          │
+│                                                           │
+│  ● Commit by sarah@studio                                │
+│    "Recorded vocals"                                     │
+│    BPM: 120, Sample Rate: 48000Hz                        │
+└───────────────────────────────────────────────────────────┘
+```
+
+**Discover Team Members:**
+```bash
+# See who's contributing to the project
+oxenvcs-cli team
+```
+
+**Output:**
+```
+┌─ Team Members ───────────────────────────────────────────┐
+│                                                           │
+│  sarah@studio                                            │
+│    15 commits  ████████████████████████░░░░░  62%       │
+│    Last active: 2 hours ago                              │
+│                                                           │
+│  john@laptop                                             │
+│    9 commits   ██████████████░░░░░░░░░░░░░░░  38%       │
+│    Last active: 5 hours ago                              │
+└───────────────────────────────────────────────────────────┘
+```
+
+**Add Comments to Commits:**
+```bash
+# Provide feedback on a specific commit
+oxenvcs-cli comment add abc123 "Love the vocal processing! Can we try more compression?"
+
+# View comments on a commit
+oxenvcs-cli comment list abc123
+
+# Share comments with team (must commit and push)
+oxen add .oxen/comments/
+oxen commit -m "Add review comments"
+oxen push origin main
+```
+
 ---
 
 ## Lock Management
@@ -374,16 +433,48 @@ oxenvcs-cli lock break --force
 
 **Completed**: 2025-11-15
 
-### 🚧 Phase 3: Collaboration Features (PLANNED)
+### ✅ Phase 3: Collaboration Features (COMPLETE)
 
-**Planned Features:**
-- Activity feed with commit timeline
-- Team member roster
-- Comment system on commits
-- @mention notifications
-- Branch visualization
+**Features Implemented:**
+- ✅ Activity feed with commit timeline
+- ✅ Team member discovery from commit history
+- ✅ Comment system on commits (stored in `.oxen/comments/`)
+- ✅ CLI commands: `activity`, `team`, `comment add`, `comment list`
+- ✅ 7 unit tests passing
 
-**Target**: 3-4 weeks
+**Usage:**
+```bash
+# View recent project activity
+oxenvcs-cli activity --limit 10
+
+# Discover team members and contributions
+oxenvcs-cli team
+
+# Add comment to a commit
+oxenvcs-cli comment add <commit-id> "Great mix on the drums!"
+
+# View comments on a commit
+oxenvcs-cli comment list <commit-id>
+```
+
+**Activity Feed Features:**
+- Commit timeline with author, message, and metadata (BPM, sample rate)
+- Activity type icons (● commits, 🔒 locks, 💬 comments)
+- Configurable limit for recent activities
+
+**Team Discovery:**
+- Automatic extraction from commit history
+- Contribution statistics (commit count, percentage)
+- Last activity timestamp per member
+- Sorted by most active contributors
+
+**Comment System:**
+- Comments stored locally in `.oxen/comments/<commit_hash>.json`
+- Must be committed and pushed to share with team
+- Supports multiple comments per commit
+- Includes author, timestamp, and unique comment ID
+
+**Completed**: 2025-11-15
 
 ### 🚧 Phase 4: Network Resilience & Safety (PLANNED)
 
@@ -593,10 +684,10 @@ oxen config remote.hub_url https://your-oxen-server.com
 
 ### Completed
 - ✅ Phase 1: Authentication system (2025-11-15)
+- ✅ Phase 2: Distributed lock management (2025-11-15)
+- ✅ Phase 3: Collaboration features (2025-11-15)
 
 ### In Development
-- 🚧 Phase 2: Distributed lock management
-- 🚧 Phase 3: Collaboration features
 - 🚧 Phase 4: Network resilience
 
 ### Future

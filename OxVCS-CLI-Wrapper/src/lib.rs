@@ -5,6 +5,7 @@ pub mod liboxen_stub;
 use liboxen_stub as liboxen;
 
 pub mod auth;
+pub mod collaboration;
 pub mod commit_metadata;
 pub mod console;
 pub mod daemon_client;
@@ -21,6 +22,9 @@ pub mod progress;
 pub mod remote_lock;
 
 pub use auth::{AuthManager, Credentials};
+pub use collaboration::{
+    Activity, ActivityFeed, ActivityType, Comment, CommentManager, TeamManager, TeamMember,
+};
 pub use commit_metadata::CommitMetadata;
 pub use draft_manager::{DraftManager, DraftStats};
 pub use ignore_template::generate_oxenignore;
