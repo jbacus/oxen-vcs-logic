@@ -243,6 +243,76 @@ See the [Installation Guide](../INSTALL.md) for detailed manual installation.
 
 ---
 
+## Using OxVCS from Terminal (Alternative to GUI)
+
+**Note:** The GUI app (above) and command line tool do the exact same thing. Pick whichever you prefer!
+
+### Why Use Terminal?
+
+**You might prefer the command line if you:**
+- Like keyboard shortcuts more than clicking
+- Work on remote servers (SSH access)
+- Want to script repetitive tasks
+- Are comfortable with Terminal already
+
+**Quick Start Example:**
+
+```bash
+# Initialize your project (one time only)
+cd ~/Music/MyProject.logicx
+oxenvcs-cli init --logic .
+
+# Daily workflow after working in Logic Pro
+oxenvcs-cli status              # See what changed
+oxenvcs-cli add --all           # Stage your changes
+oxenvcs-cli commit -m "Finished vocals" --bpm 120 --tags "vocals"
+
+# View history and restore
+oxenvcs-cli log --limit 10      # See recent versions
+oxenvcs-cli restore abc123f     # Go back to a version
+```
+
+**What You'll See:**
+
+The CLI has beautiful visual output with colors and progress indicators:
+
+```
+┌─ Repository Status ─────────────────────────────────────┐
+│                                                          │
+│  Changes: 2 staged, 3 modified, 1 untracked             │
+│                                                          │
+└──────────────────────────────────────────────────────────┘
+
+● Staged files (2):
+  + projectData
+  + Resources/vocals.wav
+
+ℹ Next step: oxenvcs-cli commit -m "Your message"
+```
+
+**Full CLI Guide:** See [CLI Examples for Musicians](CLI_EXAMPLES.md) for detailed examples, real production scenarios, and team workflows.
+
+**GUI vs CLI - Which Should I Use?**
+
+| Feature | GUI App | Terminal (CLI) |
+|---------|---------|----------------|
+| Ease of Use | ✅ Point and click | 🟡 Type commands |
+| Speed | 🟡 Click through menus | ✅ Instant (keyboard) |
+| Remote Access | ❌ Not possible | ✅ Works over SSH |
+| Visual Feedback | ✅ Windows and dialogs | ✅ Beautiful text output |
+| Automation | ❌ Manual only | ✅ Can script |
+| Learning Curve | ✅ Easy (5 minutes) | 🟡 Medium (10 minutes) |
+
+**Recommendation:**
+- **New to version control?** Start with the GUI app
+- **Comfortable with Terminal?** CLI is faster for daily use
+- **Working remotely?** CLI is your only option
+- **Not sure?** Try the GUI first, switch to CLI later if you want
+
+Both methods work equally well and use the same underlying system!
+
+---
+
 ## Common Questions
 
 ### "Will this slow down Logic Pro?"

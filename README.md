@@ -78,7 +78,7 @@ See [Installation Guide](INSTALL.md) for step-by-step manual installation instru
 
 ## Quick Start
 
-### Using the GUI Application
+### Option A: GUI Application (Point and Click)
 
 After installation, launch the double-clickable app:
 
@@ -88,17 +88,40 @@ After installation, launch the double-clickable app:
 4. Create milestone commits with rich metadata (BPM, sample rate, tags)
 5. Browse history and rollback to any previous version
 
-### Using the Command Line
+### Option B: Command Line (Fast and Powerful) ✨ NEW!
+
+**Enhanced with beautiful visual feedback and progress indicators:**
 
 ```bash
 # Initialize a Logic Pro project
 cd ~/Music/YourProject.logicx
 oxenvcs-cli init --logic .
+# ⠹ Validating Logic Pro project structure...
+# ✓ Logic Pro project repository initialized
 
-# Stage and commit
+# Check what changed
+oxenvcs-cli status
+# Shows: staged, modified, and untracked files with color coding
+
+# Stage and commit with metadata
 oxenvcs-cli add --all
-oxenvcs-cli commit -m "Initial commit" --bpm 120 --sample-rate 48000
+oxenvcs-cli commit -m "Vocal tracking done" --bpm 120 --tags "vocals"
+# ✓ Commit created: abc123f
+
+# View history with filtering
+oxenvcs-cli log --bpm 120 --tag vocals --limit 10
+# Shows: filtered commits with metadata
+
+# Restore to previous version
+oxenvcs-cli restore abc123f
 ```
+
+**See:** [CLI Examples](docs/CLI_EXAMPLES.md) for real production scenarios and team workflows.
+
+**Which should you use?** Both work equally well! Choose based on preference:
+- **New to version control?** Start with GUI
+- **Comfortable with Terminal?** CLI is faster
+- **Working remotely?** CLI works over SSH
 
 See [User Guide for Musicians](docs/FOR_MUSICIANS.md) for detailed usage instructions.
 
@@ -200,7 +223,8 @@ oxen-vcs-logic/
 ## Documentation
 
 ### User Guides
-- [For Musicians](docs/FOR_MUSICIANS.md) - Complete guide for music producers (non-technical)
+- [For Musicians](docs/FOR_MUSICIANS.md) - Complete guide for music producers (non-technical, covers both GUI and CLI)
+- [CLI Examples](docs/CLI_EXAMPLES.md) - Real-world command line examples with visual output
 - [Installation Guide](INSTALL.md) - Complete installation instructions
 - [App Bundle Guide](OxVCS-App/APP_BUNDLE.md) - Double-clickable app creation
 - [CLI Usage Guide](OxVCS-CLI-Wrapper/USAGE.md) - Complete CLI reference
@@ -209,6 +233,7 @@ oxen-vcs-logic/
 - [For Developers](docs/FOR_DEVELOPERS.md) - Full technical specification, architecture, and API reference
 - [Testing Strategy](docs/TESTING_STRATEGY.md) - Comprehensive testing approach
 - [Contributing Guidelines](CONTRIBUTING.md) - Code style, testing, and PR process
+- [Week 1 Progress](WEEK1_PROGRESS.md) - CLI enhancement progress report
 
 ## License
 
