@@ -1,20 +1,21 @@
-use crate::liboxen_stub as liboxen;
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result};
 use colored::Colorize;
-use liboxen::api;
-use liboxen::command;
-use liboxen::opts::AddOpts;
 use std::path::{Path, PathBuf};
 
 use crate::commit_metadata::CommitMetadata;
 use crate::draft_manager::DraftManager;
 use crate::ignore_template::generate_oxenignore;
 use crate::logic_project::LogicProject;
+use crate::oxen_subprocess::OxenSubprocess;
 use crate::{info, vlog};
 
-/// Wrapper for Oxen repository operations
+/// High-level wrapper for Oxen repository operations
+///
+/// This struct provides a convenient API for managing Oxen repositories,
+/// using OxenSubprocess as the backend to execute Oxen CLI commands.
 pub struct OxenRepository {
     pub path: PathBuf,
+    oxen: OxenSubprocess,
 }
 
 impl OxenRepository {
@@ -22,6 +23,15 @@ impl OxenRepository {
     pub fn new(path: impl AsRef<Path>) -> Self {
         Self {
             path: path.as_ref().to_path_buf(),
+            oxen: OxenSubprocess::new(),
+        }
+    }
+
+    /// Creates a new OxenRepository instance with verbose logging
+    pub fn new_verbose(path: impl AsRef<Path>) -> Self {
+        Self {
+            path: path.as_ref().to_path_buf(),
+            oxen: OxenSubprocess::new().verbose(true),
         }
     }
 
@@ -31,6 +41,7 @@ impl OxenRepository {
     /// 1. Detect if the path is a valid Logic Pro project
     /// 2. Initialize an Oxen repository
     /// 3. Create a .oxenignore file with Logic Pro-specific patterns
+    /// 4. Initialize draft branch workflow
     pub async fn init_for_logic_project(path: impl AsRef<Path>) -> Result<Self> {
         let path = path.as_ref();
 
@@ -45,10 +56,18 @@ impl OxenRepository {
         info!("Detected Logic Pro project: {}", logic_project.name());
         vlog!("Project name: {}", logic_project.name());
 
-        // Initialize Oxen repository
+        // Initialize Oxen repository using subprocess
         vlog!("Step 2: Initializing Oxen repository...");
-        let _repo =
-            api::local::repositories::init(path).context("Failed to initialize Oxen repository")?;
+        let oxen = OxenSubprocess::new();
+
+        if !oxen.is_available() {
+            return Err(anyhow::anyhow!(
+                "oxen CLI not found. Please install: pip install oxen-ai"
+            ));
+        }
+
+        oxen.init(path)
+            .context("Failed to initialize Oxen repository")?;
 
         info!("Initialized Oxen repository at: {}", path.display());
 
@@ -69,6 +88,7 @@ impl OxenRepository {
         // Create repository instance
         let repo_instance = Self {
             path: path.to_path_buf(),
+            oxen: OxenSubprocess::new(),
         };
 
         // Initialize draft branch workflow
@@ -92,38 +112,36 @@ impl OxenRepository {
     pub async fn init(path: impl AsRef<Path>) -> Result<Self> {
         let path = path.as_ref();
 
-        let _repo =
-            api::local::repositories::init(path).context("Failed to initialize Oxen repository")?;
+        let oxen = OxenSubprocess::new();
+
+        if !oxen.is_available() {
+            return Err(anyhow::anyhow!(
+                "oxen CLI not found. Please install: pip install oxen-ai"
+            ));
+        }
+
+        oxen.init(path)
+            .context("Failed to initialize Oxen repository")?;
 
         Ok(Self {
             path: path.to_path_buf(),
+            oxen: OxenSubprocess::new(),
         })
-    }
-
-    /// Gets the repository instance
-    pub fn get_repo(&self) -> Result<liboxen::model::LocalRepository> {
-        api::local::repositories::get(&self.path)
-            .ok_or_else(|| anyhow!("Repository not found at: {}", self.path.display()))
     }
 
     /// Stages changes to the repository
     ///
     /// This wraps `oxen add`
     pub async fn stage_changes(&self, files: Vec<PathBuf>) -> Result<()> {
-        let repo = self.get_repo()?;
-
         for file in &files {
             println!("Staging: {}", file.display());
         }
 
-        let opts = AddOpts {
-            paths: files,
-            is_remote: false,
-            directory: None,
-        };
+        // Convert PathBuf to &Path references
+        let file_refs: Vec<&Path> = files.iter().map(|p| p.as_path()).collect();
 
-        command::add(&repo, &opts)
-            .await
+        self.oxen
+            .add(&self.path, &file_refs)
             .context("Failed to stage changes")?;
 
         println!("Successfully staged changes");
@@ -133,18 +151,10 @@ impl OxenRepository {
 
     /// Stages all changes in the repository
     pub async fn stage_all(&self) -> Result<()> {
-        let repo = self.get_repo()?;
-
         println!("Staging all changes...");
 
-        let opts = AddOpts {
-            paths: vec![self.path.clone()],
-            is_remote: false,
-            directory: None,
-        };
-
-        command::add(&repo, &opts)
-            .await
+        self.oxen
+            .add_all(&self.path)
             .context("Failed to stage all changes")?;
 
         println!("Successfully staged all changes");
@@ -154,43 +164,39 @@ impl OxenRepository {
 
     /// Creates a commit with metadata
     pub async fn create_commit(&self, metadata: CommitMetadata) -> Result<String> {
-        let repo = self.get_repo()?;
-
         let message = metadata.format_commit_message();
 
         println!("Creating commit with message:\n{}", message);
 
-        let commit = command::commit(&repo, &message)
-            .await
+        let commit_info = self
+            .oxen
+            .commit(&self.path, &message)
             .context("Failed to create commit")?;
 
-        println!("Commit created: {}", commit.id);
+        println!("Commit created: {}", commit_info.id);
 
-        Ok(commit.id)
+        Ok(commit_info.id)
     }
 
     /// Gets the commit history
-    pub async fn get_history(&self, limit: Option<usize>) -> Result<Vec<liboxen::model::Commit>> {
-        let repo = self.get_repo()?;
-
-        let mut commits =
-            api::local::commits::list(&repo).context("Failed to get commit history")?;
-
-        if let Some(limit) = limit {
-            commits.truncate(limit);
-        }
+    pub async fn get_history(
+        &self,
+        limit: Option<usize>,
+    ) -> Result<Vec<crate::oxen_subprocess::CommitInfo>> {
+        let commits = self
+            .oxen
+            .log(&self.path, limit)
+            .context("Failed to get commit history")?;
 
         Ok(commits)
     }
 
     /// Restores the repository to a specific commit
     pub async fn restore(&self, commit_id: &str) -> Result<()> {
-        let repo = self.get_repo()?;
-
         println!("Restoring to commit: {}", commit_id);
 
-        command::checkout(&repo, commit_id)
-            .await
+        self.oxen
+            .checkout(&self.path, commit_id)
             .context("Failed to restore to commit")?;
 
         println!("Successfully restored to commit: {}", commit_id);
@@ -199,11 +205,10 @@ impl OxenRepository {
     }
 
     /// Gets the status of the repository
-    pub async fn status(&self) -> Result<liboxen::model::StagedData> {
-        let repo = self.get_repo()?;
-
-        let status = command::status(&repo)
-            .await
+    pub async fn status(&self) -> Result<crate::oxen_subprocess::StatusInfo> {
+        let status = self
+            .oxen
+            .status(&self.path)
             .context("Failed to get repository status")?;
 
         Ok(status)
@@ -213,11 +218,9 @@ impl OxenRepository {
     pub async fn has_changes(&self) -> Result<bool> {
         let status = self.status().await?;
 
-        Ok(!status.staged_files.is_empty()
-            || !status.staged_dirs.is_empty()
-            || !status.untracked_files.is_empty()
-            || !status.untracked_dirs.is_empty()
-            || !status.modified_files.is_empty())
+        Ok(!status.staged.is_empty()
+            || !status.untracked.is_empty()
+            || !status.modified.is_empty())
     }
 
     /// Get the draft manager for this repository
@@ -374,30 +377,8 @@ mod tests {
         assert!(content.contains(".DS_Store"));
     }
 
-    // Error path tests (testing with invalid paths)
-
-    #[test]
-    #[ignore = "Requires real Oxen implementation - stub always returns success"]
-    fn test_get_repo_with_nonexistent_path() {
-        let repo = OxenRepository::new("/nonexistent/path/that/does/not/exist");
-        let result = repo.get_repo();
-
-        // Should return an error since the repository doesn't exist
-        assert!(result.is_err());
-    }
-
-    #[test]
-    #[ignore = "Requires real Oxen implementation - stub always returns success"]
-    fn test_get_repo_error_message() {
-        let path = "/nonexistent/repo";
-        let repo = OxenRepository::new(path);
-        let result = repo.get_repo();
-
-        assert!(result.is_err());
-        let err_msg = format!("{}", result.unwrap_err());
-        assert!(err_msg.contains("Repository not found"));
-        assert!(err_msg.contains(path));
-    }
+    // Error path tests have been removed since we now use OxenSubprocess
+    // which validates repository existence via the oxen CLI itself
 
     // Struct field access tests
 

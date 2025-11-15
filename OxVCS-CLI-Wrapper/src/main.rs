@@ -385,8 +385,6 @@ async fn main() -> anyhow::Result<()> {
 
             for commit in commits {
                 println!("Commit: {}", commit.id);
-                println!("Author: {}", commit.author);
-                println!("Date:   {}", commit.timestamp);
                 println!(
                     "\n    {}\n",
                     commit.message.lines().collect::<Vec<_>>().join("\n    ")
@@ -412,33 +410,31 @@ async fn main() -> anyhow::Result<()> {
 
             println!("\nRepository Status:\n");
 
-            if !status.staged_files.is_empty() {
+            if !status.staged.is_empty() {
                 println!("Staged files:");
-                for entry in &status.staged_files {
-                    println!("  + {}", entry.filename);
+                for path in &status.staged {
+                    println!("  + {}", path.display());
                 }
                 println!();
             }
 
-            if !status.modified_files.is_empty() {
+            if !status.modified.is_empty() {
                 println!("Modified files:");
-                for entry in &status.modified_files {
-                    println!("  M {}", entry.filename);
+                for path in &status.modified {
+                    println!("  M {}", path.display());
                 }
                 println!();
             }
 
-            if !status.untracked_files.is_empty() {
+            if !status.untracked.is_empty() {
                 println!("Untracked files:");
-                for path in &status.untracked_files {
+                for path in &status.untracked {
                     println!("  ? {}", path.display());
                 }
                 println!();
             }
 
-            if status.staged_files.is_empty()
-                && status.modified_files.is_empty()
-                && status.untracked_files.is_empty()
+            if status.staged.is_empty() && status.modified.is_empty() && status.untracked.is_empty()
             {
                 println!("Working directory clean");
             }
