@@ -65,15 +65,17 @@ Logic Pro projects consist of:
 
 ### Project Statistics
 
-**Production Code:** ~5,500 lines
-- Rust: 1,900 lines (CLI wrapper)
-- Swift: 3,600 lines (Daemon + App)
+**Production Code:** ~6,500 lines
+- Rust: 2,800 lines (CLI wrapper with Week 3 features)
+- Swift: 3,700 lines (Daemon + App)
 
-**Test Code:** ~400 lines (335 tests passing)
-- Unit tests: 215
-- Integration tests: 120
+**Test Code:** ~1,200 lines (349 tests passing ✅)
+- Unit tests: 274 (Rust)
+- Integration tests: 49 (Rust)
+- Doctests: 26 (Rust)
+- Swift tests: Minimal coverage (needs expansion)
 
-**Documentation:** ~10,000+ lines across 23 markdown files
+**Documentation:** ~15,000+ lines across 12 essential markdown files
 
 ---
 
@@ -197,9 +199,15 @@ src/
 ├── oxen_subprocess.rs  # 🔥 Oxen CLI subprocess wrapper
 ├── oxen_ops.rs         # High-level operations
 ├── logic_project.rs    # Logic Pro detection
-├── commit_metadata.rs  # Structured metadata
+├── commit_metadata.rs  # Structured metadata (with semantic diff)
 ├── draft_manager.rs    # Draft branch management
-└── ignore_template.rs  # .oxenignore generation
+├── ignore_template.rs  # .oxenignore generation
+├── search.rs           # ✨ AI-powered search engine (Week 3)
+├── hooks.rs            # ✨ Pre/post-commit automation (Week 3)
+├── console/
+│   └── mod.rs          # ✨ Interactive TUI (Week 3)
+├── metadata_diff/      # Semantic diff engine
+└── logic_parser/       # Logic Pro XML parsing
 ```
 
 **Key Responsibilities:**
@@ -208,6 +216,11 @@ src/
 - Generate .oxenignore templates
 - Manage draft branch workflow
 - Format commit messages with metadata
+- **Week 3 Features:**
+  - Semantic diff comparison of commits
+  - Natural language search across commit history
+  - Workflow automation with hooks (pre/post-commit)
+  - Interactive full-screen TUI with 7 modes
 
 **Critical Implementation: OxenSubprocess**
 
@@ -243,8 +256,17 @@ impl OxenSubprocess {
 ```
 
 **Testing:**
-- 215 unit tests covering core functionality
-- 120 integration tests with real Oxen repos
+- 274 unit tests covering core functionality
+  - Console TUI: 34 tests (state management, keyboard handlers, mode transitions)
+  - Search engine: 11 tests (query parsing, filtering, relevance scoring)
+  - Hooks system: 7 tests (installation, execution, management)
+  - Commit metadata: 27 tests (parsing, formatting, semantic diff)
+  - Other modules: 195 tests
+- 49 integration tests with real Oxen repos
+  - Oxen subprocess: 31 tests
+  - Restore workflow: 11 tests
+  - Other workflows: 7 tests
+- 26 doctests embedded in source documentation
 - Test fixtures for Logic Pro project simulation
 
 **Performance:**
@@ -635,15 +657,22 @@ swift run
 
 ### Test Suite Overview
 
-**Rust (335 total tests)**
-- 215 unit tests (data structures, logic)
-- 13 draft manager integration tests
-- 11 restore command integration tests
-- 31 Oxen subprocess integration tests
-- 34 CLI integration tests
-- 31 other integration tests
+**Rust (349 total tests) ✅**
+- **274 unit tests:**
+  - Console TUI: 34 tests (state, keyboard handlers, mode transitions)
+  - Commit metadata: 27 tests (parsing, formatting, semantic diff)
+  - Oxen subprocess: 67 tests (CLI integration, parsing, error handling)
+  - Logic project: 20+ tests (detection, validation)
+  - Search engine: 11 tests (query parsing, filtering, scoring)
+  - Hooks system: 7 tests (installation, execution, management)
+  - Other modules: 108+ tests
+- **49 integration tests:**
+  - Oxen subprocess workflow: 31 tests
+  - Restore workflow: 11 tests
+  - Other integration tests: 7 tests
+- **26 doctests** embedded in source documentation
 
-**Swift (Pending)**
+**Swift (Minimal)**
 - LockManager: ~90% coverage (comprehensive)
 - Other components: Minimal coverage
 - Integration tests: Not yet implemented
