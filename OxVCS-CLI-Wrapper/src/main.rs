@@ -240,6 +240,80 @@ EXAMPLES:
 }
 
 #[derive(Subcommand)]
+enum AuthCommands {
+    /// Login to Oxen Hub with API credentials
+    #[command(long_about = "Login to Oxen Hub with API credentials
+
+USAGE:
+    oxenvcs-cli auth login
+
+DESCRIPTION:
+    Authenticate with Oxen Hub by providing your username and API key.
+    Credentials are securely stored in the system keychain via oxen config.
+
+    To get your API key:
+      1. Visit https://hub.oxen.ai
+      2. Sign in or create an account
+      3. Go to Settings → API Keys
+      4. Copy your API key
+
+    After login, you can push/pull projects to/from Oxen Hub.
+
+EXAMPLES:
+    # Interactive login (prompts for credentials)
+    oxenvcs-cli auth login")]
+    Login,
+
+    /// Logout from Oxen Hub
+    #[command(long_about = "Logout from Oxen Hub
+
+USAGE:
+    oxenvcs-cli auth logout
+
+DESCRIPTION:
+    Remove stored Oxen Hub credentials from the system.
+    After logout, push/pull operations will fail until you login again.
+
+EXAMPLES:
+    # Logout
+    oxenvcs-cli auth logout")]
+    Logout,
+
+    /// Show current authentication status
+    #[command(long_about = "Show current authentication status
+
+USAGE:
+    oxenvcs-cli auth status
+
+DESCRIPTION:
+    Display information about the currently authenticated user:
+      • Username
+      • Oxen Hub URL
+      • Authentication status
+
+EXAMPLES:
+    # Check auth status
+    oxenvcs-cli auth status")]
+    Status,
+
+    /// Test authentication with Oxen Hub
+    #[command(long_about = "Test authentication with Oxen Hub
+
+USAGE:
+    oxenvcs-cli auth test
+
+DESCRIPTION:
+    Verify that your stored credentials are valid by testing
+    connection to Oxen Hub. This is useful for troubleshooting
+    authentication issues.
+
+EXAMPLES:
+    # Test authentication
+    oxenvcs-cli auth test")]
+    Test,
+}
+
+#[derive(Subcommand)]
 enum Commands {
     /// Initialize a new Oxen repository for a Logic Pro project
     #[command(long_about = "Initialize a new Oxen repository for a Logic Pro project
@@ -521,6 +595,10 @@ EXAMPLES:
     /// Manage project locks for team collaboration
     #[command(subcommand)]
     Lock(LockCommands),
+
+    /// Authenticate with Oxen Hub for remote collaboration
+    #[command(subcommand)]
+    Auth(AuthCommands),
 
     /// Compare metadata between two Logic Pro project versions
     #[command(name = "metadata-diff")]
@@ -1156,6 +1234,151 @@ async fn main() -> anyhow::Result<()> {
 
                     println!();
                     progress::warning("Note: Lock management requires daemon integration (coming soon)");
+                }
+            }
+
+            Ok(())
+        }
+
+        Commands::Auth(auth_cmd) => {
+            use oxenvcs_cli::AuthManager;
+
+            let auth = AuthManager::new();
+
+            match auth_cmd {
+                AuthCommands::Login => {
+                    use std::io::{self, Write};
+
+                    println!();
+                    println!("┌─ Oxen Hub Authentication ──────────────────────────────┐");
+                    println!("│                                                          │");
+                    println!("│  Login to Oxen Hub to enable remote collaboration       │");
+                    println!("│                                                          │");
+                    println!("│  Get your API key from: https://hub.oxen.ai             │");
+                    println!("│  Settings → API Keys → Create New Key                   │");
+                    println!("│                                                          │");
+                    println!("└──────────────────────────────────────────────────────────┘");
+                    println!();
+
+                    // Prompt for username
+                    print!("Username: ");
+                    io::stdout().flush()?;
+                    let mut username = String::new();
+                    io::stdin().read_line(&mut username)?;
+                    let username = username.trim();
+
+                    if username.is_empty() {
+                        progress::error("Username cannot be empty");
+                        std::process::exit(1);
+                    }
+
+                    // Prompt for API key (hidden input would be better, but keep it simple for now)
+                    print!("API Key: ");
+                    io::stdout().flush()?;
+                    let mut api_key = String::new();
+                    io::stdin().read_line(&mut api_key)?;
+                    let api_key = api_key.trim();
+
+                    if api_key.is_empty() {
+                        progress::error("API key cannot be empty");
+                        std::process::exit(1);
+                    }
+
+                    // Store credentials
+                    let pb = progress::spinner("Storing credentials...");
+
+                    match auth.store_credentials(username, api_key) {
+                        Ok(_) => {
+                            progress::finish_success(&pb, "Credentials stored");
+                            println!();
+                            progress::success(&format!("Authenticated as: {}", username));
+                            progress::info("You can now push/pull projects to Oxen Hub");
+                            println!();
+                            progress::info("Test authentication with: oxenvcs-cli auth test");
+                        }
+                        Err(e) => {
+                            progress::finish_error(&pb, "Failed to store credentials");
+                            progress::error(&format!("Error: {}", e));
+                            std::process::exit(1);
+                        }
+                    }
+                }
+
+                AuthCommands::Logout => {
+                    let pb = progress::spinner("Clearing credentials...");
+
+                    match auth.clear_credentials() {
+                        Ok(_) => {
+                            progress::finish_success(&pb, "Logged out");
+                            println!();
+                            progress::success("Credentials removed");
+                            progress::info("You are now logged out from Oxen Hub");
+                        }
+                        Err(e) => {
+                            progress::finish_error(&pb, "Failed to clear credentials");
+                            progress::error(&format!("Error: {}", e));
+                            std::process::exit(1);
+                        }
+                    }
+                }
+
+                AuthCommands::Status => {
+                    println!();
+                    println!("┌─ Authentication Status ─────────────────────────────────┐");
+                    println!("│                                                          │");
+
+                    match auth.get_credentials() {
+                        Ok(Some(creds)) => {
+                            println!("│  Status: {} Authenticated                            │", "●".green());
+                            println!("│                                                          │");
+                            println!("│  Username: {}                                    │", creds.username);
+                            println!("│  Hub URL:  {}                      │", creds.hub_url);
+                            println!("│                                                          │");
+                            println!("└──────────────────────────────────────────────────────────┘");
+                            println!();
+                            progress::info("Run 'oxenvcs-cli auth test' to verify connection");
+                        }
+                        Ok(None) => {
+                            println!("│  Status: {} Not authenticated                        │", "○".yellow());
+                            println!("│                                                          │");
+                            println!("│  You need to login to use remote features               │");
+                            println!("│                                                          │");
+                            println!("└──────────────────────────────────────────────────────────┘");
+                            println!();
+                            progress::info("Login with: oxenvcs-cli auth login");
+                        }
+                        Err(e) => {
+                            println!("│  Status: {} Error                                    │", "✗".red());
+                            println!("│                                                          │");
+                            println!("│  Error reading credentials                               │");
+                            println!("│                                                          │");
+                            println!("└──────────────────────────────────────────────────────────┘");
+                            println!();
+                            progress::error(&format!("Error: {}", e));
+                        }
+                    }
+                }
+
+                AuthCommands::Test => {
+                    let pb = progress::spinner("Testing authentication...");
+
+                    match auth.test_authentication() {
+                        Ok(username) => {
+                            progress::finish_success(&pb, "Authentication verified");
+                            println!();
+                            progress::success(&format!("Successfully authenticated as: {}", username));
+                            progress::info("Your credentials are valid");
+                        }
+                        Err(e) => {
+                            progress::finish_error(&pb, "Authentication failed");
+                            println!();
+                            progress::error("Unable to verify authentication");
+                            progress::info(&format!("Error: {}", e));
+                            println!();
+                            progress::info("Try logging in again: oxenvcs-cli auth login");
+                            std::process::exit(1);
+                        }
+                    }
                 }
             }
 

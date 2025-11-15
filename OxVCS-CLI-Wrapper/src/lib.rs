@@ -4,6 +4,7 @@ pub mod liboxen_stub;
 #[allow(unused_imports)] // Used by other modules via the alias
 use liboxen_stub as liboxen;
 
+pub mod auth;
 pub mod commit_metadata;
 pub mod console;
 pub mod daemon_client;
@@ -17,6 +18,7 @@ pub mod oxen_ops;
 pub mod oxen_subprocess;
 pub mod progress;
 
+pub use auth::{AuthManager, Credentials};
 pub use commit_metadata::CommitMetadata;
 pub use draft_manager::{DraftManager, DraftStats};
 pub use ignore_template::generate_oxenignore;
