@@ -240,6 +240,36 @@ EXAMPLES:
 }
 
 #[derive(Subcommand)]
+enum HooksCommands {
+    /// Initialize hooks directory
+    Init,
+
+    /// List all installed hooks
+    List,
+
+    /// List available built-in hooks
+    Builtins,
+
+    /// Install a built-in hook
+    Install {
+        #[arg(value_name = "HOOK_NAME", help = "Name of built-in hook to install")]
+        name: String,
+
+        #[arg(long, value_name = "TYPE", default_value = "pre-commit", help = "Hook type (pre-commit or post-commit)")]
+        hook_type: String,
+    },
+
+    /// Remove an installed hook
+    Remove {
+        #[arg(value_name = "HOOK_NAME", help = "Name of hook to remove")]
+        name: String,
+
+        #[arg(long, value_name = "TYPE", default_value = "pre-commit", help = "Hook type (pre-commit or post-commit)")]
+        hook_type: String,
+    },
+}
+
+#[derive(Subcommand)]
 enum Commands {
     /// Initialize a new Oxen repository for a Logic Pro project
     #[command(long_about = "Initialize a new Oxen repository for a Logic Pro project
@@ -690,6 +720,51 @@ EXAMPLES:
     /// Control the background daemon service
     #[command(subcommand)]
     Daemon(DaemonCommands),
+
+    /// Manage workflow automation hooks
+    #[command(long_about = "Manage workflow automation hooks
+
+USAGE:
+    oxenvcs-cli hooks init
+    oxenvcs-cli hooks list
+    oxenvcs-cli hooks install <HOOK_NAME>
+
+DESCRIPTION:
+    Workflow automation hooks allow you to run custom scripts before and after
+    commits. Use hooks for:
+
+    Pre-commit hooks (run before creating commit):
+      • Validate metadata completeness
+      • Check file sizes
+      • Run linting or formatting
+      • Verify project structure
+
+    Post-commit hooks (run after successful commit):
+      • Send notifications
+      • Create backups
+      • Trigger CI/CD pipelines
+      • Update tracking systems
+
+EXAMPLES:
+    # Initialize hooks directory
+    oxenvcs-cli hooks init
+
+    # List all installed hooks
+    oxenvcs-cli hooks list
+
+    # List available built-in hooks
+    oxenvcs-cli hooks builtins
+
+    # Install a built-in hook
+    oxenvcs-cli hooks install validate-metadata
+
+    # Install a post-commit hook
+    oxenvcs-cli hooks install backup --hook-type post-commit
+
+    # Remove a hook
+    oxenvcs-cli hooks remove validate-metadata")]
+    #[command(subcommand)]
+    Hooks(HooksCommands),
 
     /// Launch interactive console for real-time monitoring
     #[command(long_about = "Launch interactive console for real-time monitoring
@@ -1672,6 +1747,143 @@ async fn main() -> anyhow::Result<()> {
                             println!("{}", line);
                         }
                     }
+
+                    Ok(())
+                }
+            }
+        }
+
+        Commands::Hooks(hooks_cmd) => {
+            use oxenvcs_cli::hooks::{HookManager, HookType};
+
+            let repo_path = std::env::current_dir()?;
+            let manager = HookManager::new(&repo_path);
+
+            match hooks_cmd {
+                HooksCommands::Init => {
+                    let pb = progress::spinner("Initializing hooks directory...");
+                    manager.init()?;
+                    progress::finish_success(&pb, "Hooks directory initialized");
+
+                    println!();
+                    println!("┌─ Hooks Initialized ─────────────────────────────────────┐");
+                    println!("│                                                          │");
+                    println!("│  Created:                                                │");
+                    println!("│    .oxen/hooks/pre-commit/                               │");
+                    println!("│    .oxen/hooks/post-commit/                              │");
+                    println!("│    .oxen/hooks/README.md                                 │");
+                    println!("│                                                          │");
+                    println!("└──────────────────────────────────────────────────────────┘");
+                    println!();
+                    progress::info("See .oxen/hooks/README.md for documentation");
+                    progress::info("Install built-in hooks with: oxenvcs-cli hooks install <name>");
+
+                    Ok(())
+                }
+
+                HooksCommands::List => {
+                    let hooks = manager.list_hooks()?;
+
+                    println!();
+                    println!("┌─ Installed Hooks ───────────────────────────────────────┐");
+                    println!("│                                                          │");
+
+                    if hooks.is_empty() {
+                        println!("│  No hooks installed                                      │");
+                    } else {
+                        let pre_commit: Vec<_> = hooks
+                            .iter()
+                            .filter(|(t, _)| matches!(t, HookType::PreCommit))
+                            .collect();
+                        let post_commit: Vec<_> = hooks
+                            .iter()
+                            .filter(|(t, _)| matches!(t, HookType::PostCommit))
+                            .collect();
+
+                        if !pre_commit.is_empty() {
+                            println!("│  Pre-commit hooks:                                       │");
+                            for (_, name) in pre_commit {
+                                println!("│    • {:<51} │", name);
+                            }
+                            println!("│                                                          │");
+                        }
+
+                        if !post_commit.is_empty() {
+                            println!("│  Post-commit hooks:                                      │");
+                            for (_, name) in post_commit {
+                                println!("│    • {:<51} │", name);
+                            }
+                        }
+                    }
+
+                    println!("│                                                          │");
+                    println!("└──────────────────────────────────────────────────────────┘");
+                    println!();
+
+                    Ok(())
+                }
+
+                HooksCommands::Builtins => {
+                    let builtins = HookManager::list_builtins();
+
+                    println!();
+                    println!("┌─ Available Built-in Hooks ──────────────────────────────┐");
+                    println!("│                                                          │");
+
+                    for hook in builtins {
+                        let type_str = match hook.hook_type {
+                            HookType::PreCommit => "pre-commit",
+                            HookType::PostCommit => "post-commit",
+                        };
+                        println!("│  {} ({})                                 ", hook.name.bright_yellow(), type_str.dimmed());
+                        println!("│    {:<55} │", hook.description);
+                        println!("│                                                          │");
+                    }
+
+                    println!("└──────────────────────────────────────────────────────────┘");
+                    println!();
+                    progress::info("Install with: oxenvcs-cli hooks install <name>");
+
+                    Ok(())
+                }
+
+                HooksCommands::Install { name, hook_type } => {
+                    // Parse hook type
+                    let hook_type = match hook_type.as_str() {
+                        "pre-commit" => HookType::PreCommit,
+                        "post-commit" => HookType::PostCommit,
+                        _ => {
+                            anyhow::bail!("Invalid hook type: {}. Use 'pre-commit' or 'post-commit'", hook_type);
+                        }
+                    };
+
+                    // Ensure hooks directory exists
+                    manager.init()?;
+
+                    let pb = progress::spinner(&format!("Installing {} hook...", name));
+                    manager.install_builtin(&name, hook_type)?;
+                    progress::finish_success(&pb, &format!("Installed {} hook", name));
+
+                    println!();
+                    progress::success(&format!("Hook '{}' installed successfully", name));
+                    progress::info(&format!("Edit at: .oxen/hooks/{}/{}", hook_type.dir_name(), name));
+
+                    Ok(())
+                }
+
+                HooksCommands::Remove { name, hook_type } => {
+                    // Parse hook type
+                    let hook_type = match hook_type.as_str() {
+                        "pre-commit" => HookType::PreCommit,
+                        "post-commit" => HookType::PostCommit,
+                        _ => {
+                            anyhow::bail!("Invalid hook type: {}. Use 'pre-commit' or 'post-commit'", hook_type);
+                        }
+                    };
+
+                    let pb = progress::spinner(&format!("Removing {} hook...", name));
+                    manager.remove_hook(&name, hook_type)?;
+                    progress::finish_success(&pb, &format!("Removed {} hook", name));
 
                     Ok(())
                 }

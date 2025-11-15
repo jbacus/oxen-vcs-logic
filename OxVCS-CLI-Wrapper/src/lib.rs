@@ -8,6 +8,7 @@ pub mod commit_metadata;
 pub mod console;
 pub mod daemon_client;
 pub mod draft_manager;
+pub mod hooks;
 pub mod ignore_template;
 pub mod logger;
 pub mod logic_parser;
