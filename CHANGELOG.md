@@ -39,6 +39,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Keyboard shortcuts: i=commit, l=log, d=diff, s=search, k=hooks, r=refresh, ?=help
     - 34 comprehensive tests for TUI (state management, keyboard handlers, mode transitions)
 
+### Fixed
+- **Draft Branch Initialization** (2025-11-15)
+  - Fixed "HeadNotFound" error during `init --logic` command
+  - Root cause: Draft branch creation requires HEAD (at least one commit) to exist
+  - Solution: Automatically create initial commit with .oxenignore before draft branch setup
+  - Improved UX: Users no longer need manual "git init" workflow, repository is immediately ready to use
+  - Updated success messages to reflect automatic setup completion
+
 ### Changed
 - **Test Coverage Expansion** (2025-11-15)
   - Increased from 245 to 349 total tests (+104 tests, +42%)
