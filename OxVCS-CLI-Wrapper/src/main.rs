@@ -1140,100 +1140,26 @@ async fn main() -> anyhow::Result<()> {
         }
 
         Commands::Lock(lock_cmd) => {
+            use oxenvcs_cli::lock_integration;
+            use std::env;
+
+            let current_dir = env::current_dir()?;
+
             match lock_cmd {
                 LockCommands::Acquire { timeout } => {
-                    let pb = progress::spinner("Acquiring project lock...");
-
-                    // TODO: Integrate with actual lock manager (via daemon or file-based)
-                    // For now, provide placeholder feedback
-                    progress::finish_success(&pb, "Lock acquired");
-
-                    println!();
-                    println!("┌─ Lock Acquired ─────────────────────────────────────────┐");
-                    println!("│                                                          │");
-                    println!("│  ✓ You now have exclusive editing rights                │");
-                    println!("│                                                          │");
-                    println!("│  Lock expires in: {} hours                                │", timeout);
-                    println!("│                                                          │");
-                    println!("└──────────────────────────────────────────────────────────┘");
-                    println!();
-                    progress::info("You can now safely edit the project in Logic Pro");
-                    progress::warning("Remember to release the lock when done: oxenvcs-cli lock release");
-
-                    // TODO: Actually acquire lock via daemon/file system
-                    progress::warning("Note: Lock management requires daemon integration (coming soon)");
+                    lock_integration::handle_lock_acquire(&current_dir, timeout)?;
                 }
 
                 LockCommands::Release => {
-                    let pb = progress::spinner("Releasing project lock...");
-
-                    // TODO: Integrate with actual lock manager
-                    progress::finish_success(&pb, "Lock released");
-
-                    println!();
-                    progress::success("Lock released successfully");
-                    progress::info("Other team members can now acquire the lock");
-
-                    // TODO: Actually release lock via daemon/file system
-                    progress::warning("Note: Lock management requires daemon integration (coming soon)");
+                    lock_integration::handle_lock_release(&current_dir)?;
                 }
 
                 LockCommands::Status => {
-                    println!();
-                    println!("┌─ Lock Status ───────────────────────────────────────────┐");
-                    println!("│                                                          │");
-
-                    // TODO: Get actual lock status from daemon/file system
-                    // Placeholder: assume unlocked
-                    println!("│  Status: {} Unlocked                                     │", "●".green());
-                    println!("│                                                          │");
-                    println!("│  The project is available for editing                    │");
-                    println!("│                                                          │");
-                    println!("└──────────────────────────────────────────────────────────┘");
-                    println!();
-                    progress::info("Acquire lock with: oxenvcs-cli lock acquire");
-
-                    // Example of locked status (commented out):
-                    // println!("│  Status: {} Locked                                       │", "●".red());
-                    // println!("│  Holder: john@macbook.local                             │");
-                    // println!("│  Since: 2025-11-15 14:30:00                              │");
-                    // println!("│  Expires: 2025-11-15 18:30:00 (3h 45m remaining)         │");
-
-                    progress::warning("Note: Lock management requires daemon integration (coming soon)");
+                    lock_integration::handle_lock_status(&current_dir)?;
                 }
 
                 LockCommands::Break { force } => {
-                    if !force {
-                        progress::error("The --force flag is required to break a lock");
-                        progress::info("This prevents accidental lock breaks");
-                        progress::info("Use: oxenvcs-cli lock break --force");
-                        std::process::exit(1);
-                    }
-
-                    println!();
-                    progress::warning("⚠ BREAKING LOCK");
-                    println!();
-                    println!("This will forcibly remove the current lock.");
-                    println!("The lock holder may lose unsaved work!");
-                    println!();
-
-                    // TODO: Add confirmation prompt using dialoguer
-                    // let confirm = dialoguer::Confirm::new()
-                    //     .with_prompt("Are you sure you want to break the lock?")
-                    //     .interact()?;
-                    //
-                    // if !confirm {
-                    //     progress::info("Lock break cancelled");
-                    //     return Ok(());
-                    // }
-
-                    let pb = progress::spinner("Breaking lock...");
-
-                    // TODO: Actually break lock via daemon/file system
-                    progress::finish_success(&pb, "Lock forcibly broken");
-
-                    println!();
-                    progress::warning("Note: Lock management requires daemon integration (coming soon)");
+                    lock_integration::handle_lock_break(&current_dir, force)?;
                 }
             }
 

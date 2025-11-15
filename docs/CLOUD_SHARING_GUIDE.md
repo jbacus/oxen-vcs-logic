@@ -338,16 +338,41 @@ oxenvcs-cli auth test       # Verify connection
 oxenvcs-cli auth logout     # Sign out
 ```
 
-### 🚧 Phase 2: Distributed Lock Management (IN DEVELOPMENT)
+### ✅ Phase 2: Distributed Lock Management (COMPLETE)
 
-**Planned Features:**
-- Remote lock storage (`.oxen/locks.json` tracked file)
-- Atomic lock acquisition via commit + force-push
-- Lock heartbeat mechanism (renew every 10 minutes)
-- Race condition detection
-- Stale lock cleanup (>48h)
+**Features Implemented:**
+- ✅ Remote lock storage in dedicated "locks" branch
+- ✅ Atomic lock acquisition via fetch → check → commit → push → verify
+- ✅ Lock heartbeat mechanism (renew to extend expiration)
+- ✅ Race condition detection (polls after push to verify ownership)
+- ✅ Stale lock detection (>1 hour no heartbeat)
+- ✅ Automatic expiration (configurable timeout)
+- ✅ Force break for emergencies
+- ✅ CLI commands: `lock acquire`, `lock release`, `lock status`, `lock break`
+- ✅ 10+ unit tests passing
 
-**Target**: 2-3 weeks
+**Usage:**
+```bash
+# Acquire exclusive lock (4 hour timeout)
+oxenvcs-cli lock acquire --timeout 4
+
+# Check lock status
+oxenvcs-cli lock status
+
+# Release lock when done
+oxenvcs-cli lock release
+
+# Emergency break (with confirmation)
+oxenvcs-cli lock break --force
+```
+
+**Lock Storage:**
+- Locks stored in separate `locks` branch (orphan)
+- Lock files: `.oxen/locks/<project>.json`
+- JSON schema: lock_id, user, machine_id, timestamps
+- Atomic operations via Git/Oxen commit+push
+
+**Completed**: 2025-11-15
 
 ### 🚧 Phase 3: Collaboration Features (PLANNED)
 

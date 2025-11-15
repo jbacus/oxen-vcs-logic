@@ -10,6 +10,7 @@ pub mod console;
 pub mod daemon_client;
 pub mod draft_manager;
 pub mod ignore_template;
+pub mod lock_integration;
 pub mod logger;
 pub mod logic_parser;
 pub mod logic_project;
