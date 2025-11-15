@@ -1,3 +1,4 @@
+use anyhow::Context;
 use clap::{Parser, Subcommand};
 use colored::Colorize;
 use oxenvcs_cli::{logger, progress, success, vlog, CommitMetadata, OxenRepository};
@@ -472,6 +473,45 @@ EXAMPLES:
         #[arg(long, short, help = "Include technical details in output")]
         verbose: bool,
     },
+
+    /// Launch interactive console for real-time monitoring
+    #[command(long_about = "Launch interactive console for real-time monitoring
+
+USAGE:
+    oxenvcs-cli console [PATH]
+
+DESCRIPTION:
+    Launches a full-screen interactive TUI (Terminal User Interface) that provides
+    real-time monitoring and control of your Logic Pro project version control.
+
+    Features:
+      • Live daemon status display
+      • Real-time activity log with auto-updates
+      • Repository status (staged, modified, untracked files)
+      • Keyboard shortcuts for common operations
+      • Color-coded output for clarity
+
+    The console runs until you press 'q' to quit.
+
+KEYBOARD SHORTCUTS:
+    q       - Quit console
+    r       - Refresh status
+    c       - Clear activity log
+    ? or h  - Show help
+
+EXAMPLES:
+    # Launch console in current directory
+    oxenvcs-cli console
+
+    # Launch console for specific project
+    oxenvcs-cli console ~/Music/MyProject.logicx")]
+    Console {
+        #[arg(
+            value_name = "PATH",
+            help = "Path to Logic Pro project (default: current directory)"
+        )]
+        path: Option<PathBuf>,
+    },
 }
 
 #[tokio::main]
@@ -653,7 +693,7 @@ async fn main() -> anyhow::Result<()> {
             if !filters_applied.is_empty() {
                 println!("│ Filters: {}                                              │", filters_applied.join(", "));
                 println!("│ Found {} of {} commit(s)                                 │", commits.len(), total_before_filter);
-            } else if let Some(lim) = limit {
+            } else if let Some(_lim) = limit {
                 println!("│ Showing last {} of {} commit(s)                          │", commits.len(), total_before_filter);
             } else {
                 println!("│ Showing all {} commit(s)                                 │", commits.len());
@@ -1071,6 +1111,34 @@ async fn main() -> anyhow::Result<()> {
             }
 
             success!("Metadata diff completed");
+            Ok(())
+        }
+
+        Commands::Console { path } => {
+            use oxenvcs_cli::console::Console;
+
+            // Determine project path
+            let project_path = match path {
+                Some(p) => p,
+                None => std::env::current_dir()
+                    .context("Failed to get current directory")?,
+            };
+
+            vlog!("Launching console for project: {}", project_path.display());
+
+            // Validate it's a Logic Pro project or Oxen repository
+            // TODO: Add validation once we have repository detection
+
+            // Create and run console
+            let mut console = Console::new(project_path);
+
+            // Set initial status (placeholder until daemon integration)
+            console.set_daemon_status(oxenvcs_cli::console::DaemonStatus::Unknown);
+
+            // Run the console
+            console.run().await?;
+
+            success!("Console exited");
             Ok(())
         }
     }
