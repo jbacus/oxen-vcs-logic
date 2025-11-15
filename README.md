@@ -29,12 +29,12 @@ Migrated OxVCS.app from AppKit to SwiftUI for improved reliability:
 - **Improved**: Native NavigationSplitView with automatic layout
 - **Benefits**: Declarative UI, better window management, modern macOS features
 
-### 📚 Documentation Consolidation (October 29, 2025)
+### 📚 Documentation Consolidation (November 15, 2025)
 
 Project documentation has been streamlined and organized:
-- **Removed**: 12 outdated development plans and phase reports
-- **Consolidated**: Quick start guide merged into comprehensive USER_GUIDE.md
-- **Cleaned**: 42 markdown files reduced to 23 essential documents
+- **Removed**: 23 outdated development plans, phase reports, and session summaries
+- **Consolidated**: Created two audience-specific guides (FOR_MUSICIANS.md and FOR_DEVELOPERS.md)
+- **Cleaned**: 42 markdown files reduced to 8 essential documents
 - **Updated**: All references and dates refreshed
 
 See [CHANGELOG.md](CHANGELOG.md) for complete project history.
@@ -100,7 +100,7 @@ oxenvcs-cli add --all
 oxenvcs-cli commit -m "Initial commit" --bpm 120 --sample-rate 48000
 ```
 
-See [User Guide](docs/USER_GUIDE.md) for detailed usage instructions.
+See [User Guide for Musicians](docs/FOR_MUSICIANS.md) for detailed usage instructions.
 
 ## Testing
 
@@ -139,7 +139,7 @@ For manual build instructions, see [Installation Guide](INSTALL.md).
 
 ## Implementation Status
 
-See [IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) for detailed roadmap.
+All three development phases are complete. See [Developer Guide](docs/FOR_DEVELOPERS.md) for detailed architecture and roadmap.
 
 - [x] **Phase 1: Core Data Management (MVP)** - ✅ COMPLETE
   - Logic Pro project detection and validation
@@ -187,30 +187,27 @@ System power observers force immediate draft commits before sleep/shutdown to pr
 
 ```
 oxen-vcs-logic/
-├── OxVCS-App/              # Swift/AppKit UI application
+├── OxVCS-App/              # Swift/SwiftUI UI application
 ├── OxVCS-LaunchAgent/      # Background monitoring daemon
-├── OxVCS-CLI-Wrapper/      # Rust FFI wrapper for Oxen
-├── docs/                   # Architecture and API documentation
-│   ├── ARCHITECTURE.md
-│   └── IMPLEMENTATION_PLAN.md
+├── OxVCS-CLI-Wrapper/      # Rust wrapper for Oxen CLI
+├── docs/                   # User and developer documentation
+│   ├── FOR_MUSICIANS.md    # User guide for music producers
+│   ├── FOR_DEVELOPERS.md   # Technical guide for contributors
+│   └── TESTING_STRATEGY.md # Testing approach and coverage
 └── tests/                  # Unit and integration tests
 ```
 
 ## Documentation
 
 ### User Guides
-- [User Guide](docs/USER_GUIDE.md) - Complete guide with quick start section
+- [For Musicians](docs/FOR_MUSICIANS.md) - Complete guide for music producers (non-technical)
 - [Installation Guide](INSTALL.md) - Complete installation instructions
 - [App Bundle Guide](OxVCS-App/APP_BUNDLE.md) - Double-clickable app creation
-- [Usage Guide](OxVCS-CLI-Wrapper/USAGE.md) - Complete CLI reference
+- [CLI Usage Guide](OxVCS-CLI-Wrapper/USAGE.md) - Complete CLI reference
 
 ### Technical Documentation
+- [For Developers](docs/FOR_DEVELOPERS.md) - Full technical specification, architecture, and API reference
 - [Testing Strategy](docs/TESTING_STRATEGY.md) - Comprehensive testing approach
-- [Implementation Plan](docs/IMPLEMENTATION_PLAN.md) - Development roadmap (all phases complete)
-- [Architecture Blueprint](docs/ARCHITECTURE.md) - Full technical specification (TBD)
-- [API Reference](docs/API.md) - Component interfaces (TBD)
-
-### Developer Resources
 - [Contributing Guidelines](CONTRIBUTING.md) - Code style, testing, and PR process
 
 ## License

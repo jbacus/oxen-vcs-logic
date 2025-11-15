@@ -54,7 +54,7 @@ Examples:
 
 We have a comprehensive testing strategy to ensure quality and reliability. Please refer to:
 - **[Testing Strategy](docs/TESTING_STRATEGY.md)** - Overall testing philosophy and approach
-- **[Test Implementation Plan](docs/TEST_IMPLEMENTATION_PLAN.md)** - Phased implementation roadmap
+- **[Developer Guide](docs/FOR_DEVELOPERS.md)** - Technical architecture and development roadmap
 
 ### Running Tests
 
@@ -212,7 +212,7 @@ cargo bench -- --baseline main
 
 ## Architecture Decisions
 
-Major architectural changes should be discussed in an issue before implementation. Reference the [Architecture Blueprint](docs/ARCHITECTURE.md) for design rationale.
+Major architectural changes should be discussed in an issue before implementation. Reference the [Developer Guide](docs/FOR_DEVELOPERS.md) for system architecture and design rationale.
 
 ## License
 
