@@ -362,6 +362,50 @@ impl OxenSubprocess {
         let stdout = String::from_utf8_lossy(&output.stdout).to_string();
         let stderr = String::from_utf8_lossy(&output.stderr).to_string();
 
+        // IMPORTANT: Check both stdout AND stderr for error messages even if exit code is 0
+        // Oxen CLI has TWO bugs:
+        // 1. It returns exit code 0 even on failures
+        // 2. It sometimes writes errors to stdout instead of stderr
+        // (e.g., "Revision not found" during checkout goes to stdout!)
+
+        let stdout_lower = stdout.to_lowercase();
+        let stderr_lower = stderr.to_lowercase();
+
+        // Known error patterns from Oxen CLI (check both stdout and stderr)
+        let has_error = stdout_lower.contains("revision not found")
+            || stdout_lower.contains("not found")
+            || stdout_lower.contains("error:")
+            || stdout_lower.contains("fatal:")
+            || stdout_lower.contains("failed to")
+            || stderr_lower.contains("revision not found")
+            || stderr_lower.contains("not found")
+            || stderr_lower.contains("error:")
+            || stderr_lower.contains("fatal:")
+            || stderr_lower.contains("failed to");
+
+        if has_error {
+            error!("Command failed: oxen {}", args.join(" "));
+            if !stderr.is_empty() {
+                error!("stderr: {}", stderr);
+            }
+            if !stdout.is_empty() {
+                error!("stdout: {}", stdout);
+            }
+
+            let error_output = if !stderr.is_empty() {
+                stderr.trim()
+            } else {
+                stdout.trim()
+            };
+
+            return Err(anyhow!(
+                "oxen command failed: {}\n{}",
+                args.join(" "),
+                error_output
+            ));
+        }
+
+        // Also check exit code (for well-behaved commands)
         if !output.status.success() {
             error!("Command failed: oxen {}", args.join(" "));
             error!("stderr: {}", stderr);

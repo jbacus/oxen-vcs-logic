@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use colored::Colorize;
 use std::path::{Path, PathBuf};
 
@@ -192,16 +192,62 @@ impl OxenRepository {
     }
 
     /// Restores the repository to a specific commit
+    ///
+    /// Supports both full commit hashes (32+ chars) and short hashes (7+ chars).
+    /// Short hashes are automatically expanded by searching the commit history.
     pub async fn restore(&self, commit_id: &str) -> Result<()> {
-        println!("Restoring to commit: {}", commit_id);
+        vlog!("Restore requested for: {}", commit_id);
+
+        // If short hash (< 32 chars), expand to full hash
+        let full_hash = if commit_id.len() < 32 {
+            vlog!(
+                "Short hash detected ({} chars), expanding to full hash",
+                commit_id.len()
+            );
+            self.find_commit_by_prefix(commit_id).await?
+        } else {
+            commit_id.to_string()
+        };
+
+        vlog!("Restoring to full hash: {}", full_hash);
+        println!("Restoring to commit: {}", full_hash);
 
         self.oxen
-            .checkout(&self.path, commit_id)
-            .context("Failed to restore to commit")?;
+            .checkout(&self.path, &full_hash)
+            .with_context(|| format!("Failed to restore to commit {}", full_hash))?;
 
-        println!("Successfully restored to commit: {}", commit_id);
+        println!("Successfully restored to commit: {}", full_hash);
 
         Ok(())
+    }
+
+    /// Find a commit by prefix (short hash)
+    ///
+    /// Returns the full commit hash if exactly one commit matches the prefix.
+    /// Returns an error if no commits match or if the prefix is ambiguous.
+    async fn find_commit_by_prefix(&self, prefix: &str) -> Result<String> {
+        vlog!("Searching for commits matching prefix: {}", prefix);
+
+        let commits = self.get_history(None).await?;
+
+        let matches: Vec<_> = commits
+            .iter()
+            .filter(|c| c.id.starts_with(prefix))
+            .collect();
+
+        match matches.len() {
+            0 => Err(anyhow!("No commit found matching prefix: {}", prefix)),
+            1 => {
+                let full_hash = matches[0].id.clone();
+                vlog!("Found unique match: {}", full_hash);
+                Ok(full_hash)
+            }
+            n => Err(anyhow!(
+                "Ambiguous commit prefix '{}': matches {} commits. Please provide more characters.",
+                prefix,
+                n
+            )),
+        }
     }
 
     /// Gets the status of the repository

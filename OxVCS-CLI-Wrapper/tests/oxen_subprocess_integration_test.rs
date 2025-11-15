@@ -446,7 +446,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // Oxen treats any string as a valid branch name, so this test doesn't apply
     fn test_checkout_invalid_commit() {
         skip_if_no_oxen!();
 
@@ -455,9 +454,27 @@ mod tests {
 
         oxen.init(fixture.path()).unwrap();
 
-        // Use a hash-like string that looks like a commit ID but doesn't exist
-        let result = oxen.checkout(fixture.path(), "0000000000000000000000000000000000000000");
-        assert!(result.is_err(), "Checkout invalid commit should fail");
+        // Create a commit first so we have a repository
+        fixture.add_text_file("test.txt", "content");
+        oxen.add(fixture.path(), &[".".as_ref()]).unwrap();
+        oxen.commit(fixture.path(), "Initial").unwrap();
+
+        // Try to checkout a non-existent commit using a hash-like string
+        // With our new stderr parsing, this should properly detect the error
+        let result = oxen.checkout(fixture.path(), "ffffffffffffffffffffffffffffffff");
+        assert!(
+            result.is_err(),
+            "Checkout invalid commit should fail with error detection"
+        );
+
+        // Verify error message contains helpful information
+        let err = result.unwrap_err();
+        let err_msg = err.to_string().to_lowercase();
+        assert!(
+            err_msg.contains("not found") || err_msg.contains("revision"),
+            "Error should mention 'not found' or 'revision': {}",
+            err
+        );
     }
 
     // Branch tests
