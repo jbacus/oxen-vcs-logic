@@ -136,6 +136,110 @@ EXAMPLES:
 }
 
 #[derive(Subcommand)]
+enum DaemonCommands {
+    /// Check daemon status
+    #[command(long_about = "Check daemon status
+
+USAGE:
+    oxenvcs-cli daemon status
+
+DESCRIPTION:
+    Displays the current status of the OxVCS background daemon, including:
+      • Whether the daemon is running
+      • Process ID (if running)
+      • Number of monitored projects
+      • Uptime information
+
+EXAMPLES:
+    # Check daemon status
+    oxenvcs-cli daemon status")]
+    Status,
+
+    /// Start the daemon service
+    #[command(long_about = "Start the daemon service
+
+USAGE:
+    oxenvcs-cli daemon start
+
+DESCRIPTION:
+    Starts the OxVCS background daemon service using launchctl.
+    The daemon provides:
+      • Automatic file monitoring for Logic Pro projects
+      • Auto-commit on file changes (with debounce)
+      • Power management (save before sleep/shutdown)
+      • Lock management for team collaboration
+
+    The daemon runs in the background and starts automatically on login.
+
+EXAMPLES:
+    # Start the daemon
+    oxenvcs-cli daemon start")]
+    Start,
+
+    /// Stop the daemon service
+    #[command(long_about = "Stop the daemon service
+
+USAGE:
+    oxenvcs-cli daemon stop
+
+DESCRIPTION:
+    Stops the OxVCS background daemon service.
+    This will:
+      • Stop file monitoring for all projects
+      • Disable auto-commits
+      • Stop power management hooks
+
+    Note: Projects remain tracked; monitoring resumes when daemon restarts.
+
+EXAMPLES:
+    # Stop the daemon
+    oxenvcs-cli daemon stop")]
+    Stop,
+
+    /// Restart the daemon service
+    #[command(long_about = "Restart the daemon service
+
+USAGE:
+    oxenvcs-cli daemon restart
+
+DESCRIPTION:
+    Stops and then starts the daemon service.
+    Useful after:
+      • Updating the daemon binary
+      • Changing configuration settings
+      • Recovering from errors
+
+EXAMPLES:
+    # Restart the daemon
+    oxenvcs-cli daemon restart")]
+    Restart,
+
+    /// Show daemon logs
+    #[command(long_about = "Show daemon logs
+
+USAGE:
+    oxenvcs-cli daemon logs [--lines <N>]
+
+DESCRIPTION:
+    Displays recent entries from the daemon log file.
+    Useful for debugging and monitoring daemon activity.
+
+OPTIONS:
+    --lines <N>    Number of recent log lines to show (default: 50)
+
+EXAMPLES:
+    # Show last 50 log lines
+    oxenvcs-cli daemon logs
+
+    # Show last 100 log lines
+    oxenvcs-cli daemon logs --lines 100")]
+    Logs {
+        #[arg(long, default_value = "50", help = "Number of log lines to show")]
+        lines: usize,
+    },
+}
+
+#[derive(Subcommand)]
 enum Commands {
     /// Initialize a new Oxen repository for a Logic Pro project
     #[command(long_about = "Initialize a new Oxen repository for a Logic Pro project
@@ -473,6 +577,10 @@ EXAMPLES:
         #[arg(long, short, help = "Include technical details in output")]
         verbose: bool,
     },
+
+    /// Control the background daemon service
+    #[command(subcommand)]
+    Daemon(DaemonCommands),
 
     /// Launch interactive console for real-time monitoring
     #[command(long_about = "Launch interactive console for real-time monitoring
@@ -1114,8 +1222,139 @@ async fn main() -> anyhow::Result<()> {
             Ok(())
         }
 
+        Commands::Daemon(daemon_cmd) => {
+            use oxenvcs_cli::daemon_client::DaemonClient;
+
+            let client = DaemonClient::new();
+
+            match daemon_cmd {
+                DaemonCommands::Status => {
+                    let pb = progress::spinner("Checking daemon status...");
+                    let status = client.status()?;
+                    pb.finish_and_clear();
+
+                    println!();
+                    println!("┌─ Daemon Status ─────────────────────────────────────────┐");
+
+                    if status.is_running {
+                        println!("│  Status: {} Running", "●".green());
+                        if let Some(pid) = status.pid {
+                            println!("│  PID: {}", pid.to_string().bright_yellow());
+                        }
+                    } else {
+                        println!("│  Status: {} Stopped", "●".red());
+                    }
+
+                    if let Some(count) = status.project_count {
+                        println!("│  Monitored Projects: {}", count);
+                    }
+                    if let Some(version) = status.version {
+                        println!("│  Version: {}", version);
+                    }
+                    if let Some(uptime) = status.uptime {
+                        println!("│  Uptime: {:.1} hours", uptime / 3600.0);
+                    }
+
+                    println!("└──────────────────────────────────────────────────────────┘");
+                    println!();
+
+                    if !status.is_running {
+                        progress::info("Start the daemon with: oxenvcs-cli daemon start");
+                    }
+
+                    Ok(())
+                }
+
+                DaemonCommands::Start => {
+                    // Check if already running
+                    let status = client.status()?;
+                    if status.is_running {
+                        progress::warning("Daemon is already running");
+                        if let Some(pid) = status.pid {
+                            println!("  PID: {}", pid);
+                        }
+                        return Ok(());
+                    }
+
+                    // Check if installed
+                    if !client.is_installed() {
+                        progress::error("Daemon is not installed");
+                        progress::info("Please run the installer: ./install.sh");
+                        anyhow::bail!("Daemon not installed");
+                    }
+
+                    let pb = progress::spinner("Starting daemon...");
+                    client.start()?;
+                    progress::finish_success(&pb, "Daemon started");
+
+                    // Show updated status
+                    let status = client.status()?;
+                    if let Some(pid) = status.pid {
+                        println!();
+                        progress::info(&format!("Daemon running with PID: {}", pid));
+                    }
+
+                    Ok(())
+                }
+
+                DaemonCommands::Stop => {
+                    // Check if running
+                    let status = client.status()?;
+                    if !status.is_running {
+                        progress::warning("Daemon is not running");
+                        return Ok(());
+                    }
+
+                    let pb = progress::spinner("Stopping daemon...");
+                    client.stop()?;
+                    progress::finish_success(&pb, "Daemon stopped");
+
+                    Ok(())
+                }
+
+                DaemonCommands::Restart => {
+                    let pb = progress::spinner("Restarting daemon...");
+                    client.restart()?;
+                    progress::finish_success(&pb, "Daemon restarted");
+
+                    // Show updated status
+                    let status = client.status()?;
+                    if let Some(pid) = status.pid {
+                        println!();
+                        progress::info(&format!("Daemon running with PID: {}", pid));
+                    }
+
+                    Ok(())
+                }
+
+                DaemonCommands::Logs { lines } => {
+                    let log_path = client.log_path()?;
+
+                    println!();
+                    println!("┌─ Daemon Logs ───────────────────────────────────────────┐");
+                    println!("│  Path: {}", log_path);
+                    println!("│  Lines: {}", lines);
+                    println!("└──────────────────────────────────────────────────────────┘");
+                    println!();
+
+                    let log_lines = client.tail_logs(lines)?;
+
+                    if log_lines.is_empty() {
+                        progress::info("No log entries found");
+                    } else {
+                        for line in log_lines {
+                            println!("{}", line);
+                        }
+                    }
+
+                    Ok(())
+                }
+            }
+        }
+
         Commands::Console { path } => {
-            use oxenvcs_cli::console::Console;
+            use oxenvcs_cli::console::{Console, DaemonStatus as ConsoleDaemonStatus};
+            use oxenvcs_cli::daemon_client::DaemonClient;
 
             // Determine project path
             let project_path = match path {
@@ -1132,8 +1371,25 @@ async fn main() -> anyhow::Result<()> {
             // Create and run console
             let mut console = Console::new(project_path);
 
-            // Set initial status (placeholder until daemon integration)
-            console.set_daemon_status(oxenvcs_cli::console::DaemonStatus::Unknown);
+            // Check daemon status
+            let daemon_client = DaemonClient::new();
+            let status = daemon_client.status().unwrap_or_else(|_| {
+                oxenvcs_cli::daemon_client::DaemonStatus {
+                    is_running: false,
+                    pid: None,
+                    project_count: None,
+                    version: None,
+                    uptime: None,
+                }
+            });
+
+            // Set initial daemon status
+            let console_status = if status.is_running {
+                ConsoleDaemonStatus::Running
+            } else {
+                ConsoleDaemonStatus::Stopped
+            };
+            console.set_daemon_status(console_status);
 
             // Run the console
             console.run().await?;

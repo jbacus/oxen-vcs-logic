@@ -6,6 +6,7 @@ use liboxen_stub as liboxen;
 
 pub mod commit_metadata;
 pub mod console;
+pub mod daemon_client;
 pub mod draft_manager;
 pub mod ignore_template;
 pub mod logger;
