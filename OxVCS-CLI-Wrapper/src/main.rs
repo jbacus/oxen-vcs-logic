@@ -518,6 +518,54 @@ EXAMPLES:
         commit_id: Option<String>,
     },
 
+    /// Compare metadata between two commits
+    #[command(long_about = "Compare metadata between two commits
+
+USAGE:
+    oxenvcs-cli compare <COMMIT_A> <COMMIT_B>
+    oxenvcs-cli compare <COMMIT_A> <COMMIT_B> --format json
+
+DESCRIPTION:
+    Performs semantic diff between two commits, showing changes in:
+      • Commit message
+      • BPM (tempo)
+      • Sample rate
+      • Key signature
+      • Tags
+
+    This helps understand what changed in the project's audio characteristics
+    between versions, beyond just file changes.
+
+OPTIONS:
+    --format <FORMAT>    Output format: text (default), colored, json, compact
+    --plain              Disable colored output
+
+EXAMPLES:
+    # Compare two commits with colored output
+    oxenvcs-cli compare abc123f def456a
+
+    # Compare with plain text (no colors)
+    oxenvcs-cli compare abc123f def456a --plain
+
+    # Compare with JSON output
+    oxenvcs-cli compare abc123f def456a --format json
+
+    # Compare with compact one-line summary
+    oxenvcs-cli compare abc123f def456a --format compact")]
+    Compare {
+        #[arg(value_name = "COMMIT_A", help = "First commit ID (older)")]
+        commit_a: String,
+
+        #[arg(value_name = "COMMIT_B", help = "Second commit ID (newer)")]
+        commit_b: String,
+
+        #[arg(long, value_name = "FORMAT", default_value = "colored", help = "Output format (text, colored, json, compact)")]
+        format: String,
+
+        #[arg(long, help = "Disable colored output")]
+        plain: bool,
+    },
+
     /// Manage project locks for team collaboration
     #[command(subcommand)]
     Lock(LockCommands),
@@ -1056,6 +1104,86 @@ async fn main() -> anyhow::Result<()> {
             if !status.staged.is_empty() {
                 println!();
                 progress::info("Some changes are already staged. Use 'oxenvcs-cli status' for details");
+            }
+
+            Ok(())
+        }
+
+        Commands::Compare {
+            commit_a,
+            commit_b,
+            format,
+            plain,
+        } => {
+            use oxenvcs_cli::CommitMetadata;
+
+            let repo = OxenRepository::new(".");
+
+            vlog!("Fetching commit A: {}", commit_a);
+            vlog!("Fetching commit B: {}", commit_b);
+
+            // Get commit history to find the two commits
+            let commits = repo.get_history(None).await?;
+
+            // Find commit A
+            let commit_a_info = commits
+                .iter()
+                .find(|c| c.id.starts_with(&commit_a))
+                .ok_or_else(|| anyhow::anyhow!("Commit not found: {}", commit_a))?;
+
+            // Find commit B
+            let commit_b_info = commits
+                .iter()
+                .find(|c| c.id.starts_with(&commit_b))
+                .ok_or_else(|| anyhow::anyhow!("Commit not found: {}", commit_b))?;
+
+            vlog!("Found commit A: {}", commit_a_info.id);
+            vlog!("Found commit B: {}", commit_b_info.id);
+
+            // Parse commit metadata
+            let metadata_a = CommitMetadata::parse_commit_message(&commit_a_info.message);
+            let metadata_b = CommitMetadata::parse_commit_message(&commit_b_info.message);
+
+            println!();
+            println!(
+                "┌─ Comparing {} → {} ─────────────┐",
+                &commit_a_info.id[..7].bright_cyan(),
+                &commit_b_info.id[..7].bright_cyan()
+            );
+            println!("│                                                          │");
+            println!("└──────────────────────────────────────────────────────────┘");
+            println!();
+
+            // Output based on format
+            match format.as_str() {
+                "json" => {
+                    // Create a simple JSON structure
+                    let json_output = serde_json::json!({
+                        "commit_a": {
+                            "id": &commit_a_info.id,
+                            "metadata": &metadata_a
+                        },
+                        "commit_b": {
+                            "id": &commit_b_info.id,
+                            "metadata": &metadata_b
+                        }
+                    });
+                    println!("{}", serde_json::to_string_pretty(&json_output)?);
+                }
+                "compact" => {
+                    let summary = metadata_a.compare_compact(&metadata_b);
+                    println!("{}", summary);
+                }
+                "text" => {
+                    println!("{}", metadata_a.compare_with_plain(&metadata_b));
+                }
+                "colored" | _ => {
+                    if plain {
+                        println!("{}", metadata_a.compare_with_plain(&metadata_b));
+                    } else {
+                        println!("{}", metadata_a.compare_with(&metadata_b));
+                    }
+                }
             }
 
             Ok(())

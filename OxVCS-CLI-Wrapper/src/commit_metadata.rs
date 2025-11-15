@@ -402,6 +402,196 @@ impl CommitMetadata {
         metadata.message = main_message;
         metadata
     }
+
+    /// Compare this metadata with another, returning a formatted diff
+    pub fn compare_with(&self, other: &CommitMetadata) -> String {
+        use colored::Colorize;
+
+        let mut output = String::new();
+
+        // Message diff
+        if self.message != other.message {
+            output.push_str(&"Message:\n".yellow().to_string());
+            output.push_str(&format!("  {} {}\n", "-".red(), self.message.red()));
+            output.push_str(&format!("  {} {}\n", "+".green(), other.message.green()));
+            output.push('\n');
+        }
+
+        // BPM diff
+        if self.bpm != other.bpm {
+            output.push_str(&"BPM:\n".yellow().to_string());
+            if let Some(old) = self.bpm {
+                output.push_str(&format!("  {} {}\n", "-".red(), format!("{}", old).red()));
+            }
+            if let Some(new) = other.bpm {
+                output.push_str(&format!("  {} {}\n", "+".green(), format!("{}", new).green()));
+            }
+            output.push('\n');
+        }
+
+        // Sample Rate diff
+        if self.sample_rate != other.sample_rate {
+            output.push_str(&"Sample Rate:\n".yellow().to_string());
+            if let Some(old) = self.sample_rate {
+                output.push_str(&format!("  {} {} Hz\n", "-".red(), format!("{}", old).red()));
+            }
+            if let Some(new) = other.sample_rate {
+                output.push_str(&format!("  {} {} Hz\n", "+".green(), format!("{}", new).green()));
+            }
+            output.push('\n');
+        }
+
+        // Key Signature diff
+        if self.key_signature != other.key_signature {
+            output.push_str(&"Key Signature:\n".yellow().to_string());
+            if let Some(ref old) = self.key_signature {
+                output.push_str(&format!("  {} {}\n", "-".red(), old.red()));
+            }
+            if let Some(ref new) = other.key_signature {
+                output.push_str(&format!("  {} {}\n", "+".green(), new.green()));
+            }
+            output.push('\n');
+        }
+
+        // Tags diff
+        let added_tags: Vec<_> = other.tags.iter().filter(|t| !self.tags.contains(t)).collect();
+        let removed_tags: Vec<_> = self.tags.iter().filter(|t| !other.tags.contains(t)).collect();
+
+        if !added_tags.is_empty() || !removed_tags.is_empty() {
+            output.push_str(&"Tags:\n".yellow().to_string());
+            for tag in &removed_tags {
+                output.push_str(&format!("  {} {}\n", "-".red(), tag.red()));
+            }
+            for tag in &added_tags {
+                output.push_str(&format!("  {} {}\n", "+".green(), tag.green()));
+            }
+            output.push('\n');
+        }
+
+        if output.is_empty() {
+            output.push_str(&"No metadata changes\n".dimmed().to_string());
+        }
+
+        output
+    }
+
+    /// Compare this metadata with another, returning plain text (no colors)
+    pub fn compare_with_plain(&self, other: &CommitMetadata) -> String {
+        let mut output = String::new();
+
+        // Message diff
+        if self.message != other.message {
+            output.push_str("Message:\n");
+            output.push_str(&format!("  - {}\n", self.message));
+            output.push_str(&format!("  + {}\n", other.message));
+            output.push('\n');
+        }
+
+        // BPM diff
+        if self.bpm != other.bpm {
+            output.push_str("BPM:\n");
+            if let Some(old) = self.bpm {
+                output.push_str(&format!("  - {}\n", old));
+            }
+            if let Some(new) = other.bpm {
+                output.push_str(&format!("  + {}\n", new));
+            }
+            output.push('\n');
+        }
+
+        // Sample Rate diff
+        if self.sample_rate != other.sample_rate {
+            output.push_str("Sample Rate:\n");
+            if let Some(old) = self.sample_rate {
+                output.push_str(&format!("  - {} Hz\n", old));
+            }
+            if let Some(new) = other.sample_rate {
+                output.push_str(&format!("  + {} Hz\n", new));
+            }
+            output.push('\n');
+        }
+
+        // Key Signature diff
+        if self.key_signature != other.key_signature {
+            output.push_str("Key Signature:\n");
+            if let Some(ref old) = self.key_signature {
+                output.push_str(&format!("  - {}\n", old));
+            }
+            if let Some(ref new) = other.key_signature {
+                output.push_str(&format!("  + {}\n", new));
+            }
+            output.push('\n');
+        }
+
+        // Tags diff
+        let added_tags: Vec<_> = other.tags.iter().filter(|t| !self.tags.contains(t)).collect();
+        let removed_tags: Vec<_> = self.tags.iter().filter(|t| !other.tags.contains(t)).collect();
+
+        if !added_tags.is_empty() || !removed_tags.is_empty() {
+            output.push_str("Tags:\n");
+            for tag in &removed_tags {
+                output.push_str(&format!("  - {}\n", tag));
+            }
+            for tag in &added_tags {
+                output.push_str(&format!("  + {}\n", tag));
+            }
+            output.push('\n');
+        }
+
+        if output.is_empty() {
+            output.push_str("No metadata changes\n");
+        }
+
+        output
+    }
+
+    /// Get a compact one-line summary of changes
+    pub fn compare_compact(&self, other: &CommitMetadata) -> String {
+        let mut parts = Vec::new();
+
+        if self.bpm != other.bpm {
+            match (self.bpm, other.bpm) {
+                (Some(old), Some(new)) => parts.push(format!("BPM: {}->{}", old, new)),
+                (None, Some(new)) => parts.push(format!("BPM: +{}", new)),
+                (Some(old), None) => parts.push(format!("BPM: -{}", old)),
+                _ => {}
+            }
+        }
+
+        if self.sample_rate != other.sample_rate {
+            match (self.sample_rate, other.sample_rate) {
+                (Some(old), Some(new)) => parts.push(format!("SR: {}->{}", old, new)),
+                (None, Some(new)) => parts.push(format!("SR: +{}", new)),
+                (Some(old), None) => parts.push(format!("SR: -{}", old)),
+                _ => {}
+            }
+        }
+
+        if self.key_signature != other.key_signature {
+            match (&self.key_signature, &other.key_signature) {
+                (Some(old), Some(new)) => parts.push(format!("Key: {}->{}", old, new)),
+                (None, Some(new)) => parts.push(format!("Key: +{}", new)),
+                (Some(old), None) => parts.push(format!("Key: -{}", old)),
+                _ => {}
+            }
+        }
+
+        let added_tags: Vec<_> = other.tags.iter().filter(|t| !self.tags.contains(t)).collect();
+        let removed_tags: Vec<_> = self.tags.iter().filter(|t| !other.tags.contains(t)).collect();
+
+        if !added_tags.is_empty() {
+            parts.push(format!("+{} tags", added_tags.len()));
+        }
+        if !removed_tags.is_empty() {
+            parts.push(format!("-{} tags", removed_tags.len()));
+        }
+
+        if parts.is_empty() {
+            "No changes".to_string()
+        } else {
+            parts.join(", ")
+        }
+    }
 }
 
 #[cfg(test)]
