@@ -17,12 +17,15 @@
 ///
 /// ```no_run
 /// use oxenvcs_cli::search::{SearchQuery, SearchEngine};
+/// use oxenvcs_cli::oxen_subprocess::CommitInfo;
 ///
-/// let mut query = SearchQuery::new();
-/// query.bpm_range(120.0, 140.0)
-///      .key_contains("minor")
-///      .tags_any(vec!["mixing", "vocals"]);
+/// let query = SearchQuery::new()
+///     .bpm_range(120.0, 140.0)
+///     .key_contains("minor")
+///     .tags_any(vec!["mixing".to_string(), "vocals".to_string()]);
 ///
+/// // Assuming you have a list of commits from somewhere
+/// let commits: Vec<CommitInfo> = vec![];
 /// let engine = SearchEngine::new();
 /// let results = engine.search(&commits, &query);
 /// ```

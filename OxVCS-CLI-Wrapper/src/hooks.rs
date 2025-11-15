@@ -24,14 +24,20 @@
 ///
 /// ```no_run
 /// use oxenvcs_cli::hooks::{HookManager, HookType};
+/// use oxenvcs_cli::CommitMetadata;
+/// # use anyhow::Result;
 ///
+/// # fn main() -> Result<()> {
 /// let manager = HookManager::new("/path/to/repo");
+/// let metadata = CommitMetadata::new("Test commit");
 ///
 /// // Run pre-commit hooks
 /// manager.run_hooks(HookType::PreCommit, &metadata)?;
 ///
 /// // Run post-commit hooks
 /// manager.run_hooks(HookType::PostCommit, &metadata)?;
+/// # Ok(())
+/// # }
 /// ```
 
 use crate::CommitMetadata;
