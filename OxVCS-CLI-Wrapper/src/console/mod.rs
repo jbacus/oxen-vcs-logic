@@ -24,6 +24,8 @@ use std::io;
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime};
 
+use crate::{CommitMetadata, OxenRepository};
+
 /// Maximum number of activity log entries to retain
 const MAX_LOG_ENTRIES: usize = 100;
 
@@ -452,56 +454,198 @@ impl Console {
 
     /// Refresh repository status
     fn refresh_repo_status(&mut self) {
-        // TODO: Call oxenvcs-cli status to get current repo state
-        // For now, just update the log
-        self.log(LogLevel::Info, "Repository status refreshed");
+        // Check if repository exists
+        let oxen_dir = self.project_path.join(".oxen");
+        if !oxen_dir.exists() {
+            self.log(LogLevel::Warning, "Not an Oxen repository");
+            return;
+        }
+
+        // Get repository status using async runtime
+        let project_path = self.project_path.clone();
+        match tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(async {
+                let repo = OxenRepository::new(&project_path);
+                repo.status().await
+            })
+        }) {
+            Ok(status) => {
+                self.set_repo_status(
+                    status.staged.len(),
+                    status.modified.len(),
+                    status.untracked.len(),
+                );
+                self.log(
+                    LogLevel::Success,
+                    format!(
+                        "Status: {} staged, {} modified, {} untracked",
+                        status.staged.len(),
+                        status.modified.len(),
+                        status.untracked.len()
+                    ),
+                );
+            }
+            Err(e) => {
+                self.log(LogLevel::Error, format!("Failed to get status: {}", e));
+            }
+        }
     }
 
     /// Load commit history
     fn load_commits(&mut self) {
-        // TODO: Call oxenvcs-cli log to get commits
-        // For now, add placeholder data
-        self.restore_browser.commits = vec![
-            CommitEntry {
-                id: "abc123def456".to_string(),
-                short_id: "abc123d".to_string(),
-                message: "Added vocals - BPM 120".to_string(),
-                timestamp: "2 hours ago".to_string(),
-            },
-            CommitEntry {
-                id: "def456ghi789".to_string(),
-                short_id: "def456g".to_string(),
-                message: "Drum tracking complete".to_string(),
-                timestamp: "5 hours ago".to_string(),
-            },
-            CommitEntry {
-                id: "ghi789jkl012".to_string(),
-                short_id: "ghi789j".to_string(),
-                message: "Initial project setup".to_string(),
-                timestamp: "1 day ago".to_string(),
-            },
-        ];
-        self.log(LogLevel::Info, format!("Loaded {} commits", self.restore_browser.commits.len()));
+        // Check if repository exists
+        let oxen_dir = self.project_path.join(".oxen");
+        if !oxen_dir.exists() {
+            self.log(LogLevel::Warning, "Not an Oxen repository");
+            return;
+        }
+
+        // Get commit history using async runtime
+        let project_path = self.project_path.clone();
+        match tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(async {
+                let repo = OxenRepository::new(&project_path);
+                repo.get_history(Some(20)).await // Limit to 20 commits
+            })
+        }) {
+            Ok(commits) => {
+                self.restore_browser.commits = commits
+                    .iter()
+                    .map(|commit| {
+                        let short_id = if commit.id.len() >= 7 {
+                            commit.id[..7].to_string()
+                        } else {
+                            commit.id.clone()
+                        };
+
+                        // Extract first line of message
+                        let first_line = commit
+                            .message
+                            .lines()
+                            .next()
+                            .unwrap_or(&commit.message)
+                            .to_string();
+
+                        CommitEntry {
+                            id: commit.id.clone(),
+                            short_id,
+                            message: first_line,
+                            timestamp: "now".to_string(), // TODO: Calculate relative time
+                        }
+                    })
+                    .collect();
+
+                self.log(
+                    LogLevel::Success,
+                    format!("Loaded {} commits", self.restore_browser.commits.len()),
+                );
+            }
+            Err(e) => {
+                self.log(LogLevel::Error, format!("Failed to load commits: {}", e));
+                // Show empty list on error
+                self.restore_browser.commits = vec![];
+            }
+        }
     }
 
     /// Execute commit with current dialog values
     fn execute_commit(&mut self) {
-        // TODO: Call oxenvcs-cli commit with parameters
-        let msg = format!(
-            "Creating commit: \"{}\" (BPM: {}, SR: {}, Key: {}, Tags: {})",
-            self.commit_dialog.message,
-            if self.commit_dialog.bpm.is_empty() { "none" } else { &self.commit_dialog.bpm },
-            if self.commit_dialog.sample_rate.is_empty() { "none" } else { &self.commit_dialog.sample_rate },
-            if self.commit_dialog.key.is_empty() { "none" } else { &self.commit_dialog.key },
-            if self.commit_dialog.tags.is_empty() { "none" } else { &self.commit_dialog.tags }
-        );
-        self.log(LogLevel::Success, msg);
+        // Check if repository exists
+        let oxen_dir = self.project_path.join(".oxen");
+        if !oxen_dir.exists() {
+            self.log(LogLevel::Error, "Not an Oxen repository");
+            return;
+        }
+
+        // Build commit metadata
+        let mut metadata = CommitMetadata::new(self.commit_dialog.message.clone());
+
+        // Add optional metadata
+        if !self.commit_dialog.bpm.is_empty() {
+            if let Ok(bpm) = self.commit_dialog.bpm.parse::<f32>() {
+                metadata = metadata.with_bpm(bpm);
+            }
+        }
+
+        if !self.commit_dialog.sample_rate.is_empty() {
+            if let Ok(sr) = self.commit_dialog.sample_rate.parse::<u32>() {
+                metadata = metadata.with_sample_rate(sr);
+            }
+        }
+
+        if !self.commit_dialog.key.is_empty() {
+            metadata = metadata.with_key_signature(self.commit_dialog.key.clone());
+        }
+
+        if !self.commit_dialog.tags.is_empty() {
+            for tag in self.commit_dialog.tags.split(',') {
+                metadata = metadata.with_tag(tag.trim().to_string());
+            }
+        }
+
+        // Create commit using async runtime
+        let project_path = self.project_path.clone();
+
+        self.log(LogLevel::Info, "Creating commit...");
+
+        match tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(async {
+                let repo = OxenRepository::new(&project_path);
+                repo.create_commit(metadata).await
+            })
+        }) {
+            Ok(commit_id) => {
+                let short_id = if commit_id.len() >= 7 {
+                    &commit_id[..7]
+                } else {
+                    &commit_id
+                };
+                self.log(
+                    LogLevel::Success,
+                    format!("Commit created: {}", short_id),
+                );
+                // Refresh status after commit
+                self.refresh_repo_status();
+            }
+            Err(e) => {
+                self.log(LogLevel::Error, format!("Failed to create commit: {}", e));
+            }
+        }
     }
 
     /// Execute restore to specified commit
     fn execute_restore(&mut self, commit_id: &str) {
-        // TODO: Call oxenvcs-cli restore
-        self.log(LogLevel::Success, format!("Restoring to commit: {}", commit_id));
+        // Check if repository exists
+        let oxen_dir = self.project_path.join(".oxen");
+        if !oxen_dir.exists() {
+            self.log(LogLevel::Error, "Not an Oxen repository");
+            return;
+        }
+
+        self.log(LogLevel::Info, format!("Restoring to commit {}...", &commit_id[..7.min(commit_id.len())]));
+
+        // Restore using async runtime
+        let project_path = self.project_path.clone();
+        let commit_id_owned = commit_id.to_string();
+
+        match tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(async {
+                let repo = OxenRepository::new(&project_path);
+                repo.restore(&commit_id_owned).await
+            })
+        }) {
+            Ok(_) => {
+                self.log(
+                    LogLevel::Success,
+                    format!("Restored to commit: {}", &commit_id[..7.min(commit_id.len())]),
+                );
+                // Refresh status after restore
+                self.refresh_repo_status();
+            }
+            Err(e) => {
+                self.log(LogLevel::Error, format!("Failed to restore: {}", e));
+            }
+        }
     }
 
     /// Render the UI
