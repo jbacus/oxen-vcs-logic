@@ -17,6 +17,7 @@ pub mod metadata_diff;
 pub mod oxen_ops;
 pub mod oxen_subprocess;
 pub mod progress;
+pub mod remote_lock;
 
 pub use auth::{AuthManager, Credentials};
 pub use commit_metadata::CommitMetadata;
@@ -29,3 +30,4 @@ pub use oxen_ops::OxenRepository;
 pub use oxen_subprocess::{
     BranchInfo, CommitInfo as SubprocessCommitInfo, OxenSubprocess, StatusInfo,
 };
+pub use remote_lock::{RemoteLock, RemoteLockManager};
