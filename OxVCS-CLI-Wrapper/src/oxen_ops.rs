@@ -381,10 +381,13 @@ mod tests {
         let _ = fs::remove_dir_all(&temp_dir);
         fs::create_dir_all(&temp_dir).unwrap();
 
+        // Create .oxen directory to simulate initialized repository
+        fs::create_dir_all(temp_dir.join(".oxen")).unwrap();
+
         let repo = OxenRepository::new(&temp_dir);
         let result = repo.draft_manager();
 
-        // Should return Ok since DraftManager::new doesn't fail
+        // Should return Ok now that .oxen directory exists
         assert!(result.is_ok());
 
         fs::remove_dir_all(&temp_dir).ok();
@@ -395,6 +398,9 @@ mod tests {
         let temp_dir = std::env::temp_dir().join("oxen_ops_test_draft2");
         let _ = fs::remove_dir_all(&temp_dir);
         fs::create_dir_all(&temp_dir).unwrap();
+
+        // Create .oxen directory to simulate initialized repository
+        fs::create_dir_all(temp_dir.join(".oxen")).unwrap();
 
         let repo = OxenRepository::new(&temp_dir);
         let _draft = repo.draft_manager().unwrap();

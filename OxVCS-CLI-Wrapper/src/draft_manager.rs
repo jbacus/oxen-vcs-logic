@@ -1,17 +1,16 @@
-use crate::liboxen_stub as liboxen;
 use anyhow::{Context, Result};
-use liboxen::api;
-use liboxen::command;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::commit_metadata::CommitMetadata;
+use crate::oxen_subprocess::OxenSubprocess;
 
 /// Manages the draft branch workflow for Logic Pro projects
 ///
 /// The draft branch serves as a working branch where auto-commits are made.
 /// This keeps the main branch clean while providing automatic version control.
 pub struct DraftManager {
-    repo: liboxen::model::LocalRepository,
+    repo_path: PathBuf,
+    oxen: OxenSubprocess,
     draft_branch_name: String,
     max_draft_commits: usize,
 }
@@ -26,11 +25,19 @@ impl DraftManager {
 
     /// Create a new draft manager for a repository
     pub fn new(repo_path: impl AsRef<Path>) -> Result<Self> {
-        let repo = api::local::repositories::get(repo_path.as_ref())
-            .ok_or_else(|| anyhow::anyhow!("Repository not found"))?;
+        let path = repo_path.as_ref().to_path_buf();
+
+        // Verify repository exists by checking for .oxen directory
+        if !path.join(".oxen").exists() {
+            return Err(anyhow::anyhow!(
+                "Repository not found at {}. Run 'oxenvcs-cli init' first.",
+                path.display()
+            ));
+        }
 
         Ok(Self {
-            repo,
+            repo_path: path,
+            oxen: OxenSubprocess::new(),
             draft_branch_name: Self::DEFAULT_DRAFT_BRANCH.to_string(),
             max_draft_commits: Self::DEFAULT_MAX_COMMITS,
         })
@@ -42,11 +49,16 @@ impl DraftManager {
         draft_branch_name: String,
         max_draft_commits: usize,
     ) -> Result<Self> {
-        let repo = api::local::repositories::get(repo_path.as_ref())
-            .ok_or_else(|| anyhow::anyhow!("Repository not found"))?;
+        let path = repo_path.as_ref().to_path_buf();
+
+        // Verify repository exists
+        if !path.join(".oxen").exists() {
+            return Err(anyhow::anyhow!("Repository not found at {}", path.display()));
+        }
 
         Ok(Self {
-            repo,
+            repo_path: path,
+            oxen: OxenSubprocess::new(),
             draft_branch_name,
             max_draft_commits,
         })
@@ -79,14 +91,18 @@ impl DraftManager {
 
     /// Check if draft branch exists
     pub fn draft_branch_exists(&self) -> Result<bool> {
-        let branches = api::local::branches::list(&self.repo).context("Failed to list branches")?;
+        let branches = self
+            .oxen
+            .list_branches(&self.repo_path)
+            .context("Failed to list branches")?;
 
         Ok(branches.iter().any(|b| b.name == self.draft_branch_name))
     }
 
     /// Create the draft branch from current HEAD
     async fn create_draft_branch(&self) -> Result<()> {
-        api::local::branches::create_from_head(&self.repo, &self.draft_branch_name)
+        self.oxen
+            .create_branch(&self.repo_path, &self.draft_branch_name)
             .context("Failed to create draft branch")?;
 
         Ok(())
@@ -94,8 +110,8 @@ impl DraftManager {
 
     /// Switch to the draft branch
     pub async fn switch_to_draft(&self) -> Result<()> {
-        command::checkout(&self.repo, &self.draft_branch_name)
-            .await
+        self.oxen
+            .checkout(&self.repo_path, &self.draft_branch_name)
             .context("Failed to switch to draft branch")?;
 
         println!("Switched to branch: {}", self.draft_branch_name);
@@ -105,8 +121,8 @@ impl DraftManager {
 
     /// Switch to main branch
     pub async fn switch_to_main(&self) -> Result<()> {
-        command::checkout(&self.repo, Self::MAIN_BRANCH)
-            .await
+        self.oxen
+            .checkout(&self.repo_path, Self::MAIN_BRANCH)
             .context("Failed to switch to main branch")?;
 
         println!("Switched to branch: {}", Self::MAIN_BRANCH);
@@ -116,8 +132,8 @@ impl DraftManager {
 
     /// Get the current branch name
     pub fn current_branch(&self) -> Result<String> {
-        api::local::branches::current_branch(&self.repo)
-            .map(|b| b.name)
+        self.oxen
+            .current_branch(&self.repo_path)
             .context("Failed to get current branch")
     }
 
@@ -138,21 +154,25 @@ impl DraftManager {
 
         // Create commit
         let message = metadata.format_commit_message();
-        let commit = command::commit(&self.repo, &message)
-            .await
+        let commit_info = self
+            .oxen
+            .commit(&self.repo_path, &message)
             .context("Failed to create auto-commit")?;
 
-        println!("Auto-commit created: {}", commit.id);
+        println!("Auto-commit created: {}", commit_info.id);
 
         // Check if pruning is needed
         self.prune_if_needed().await?;
 
-        Ok(commit.id)
+        Ok(commit_info.id)
     }
 
     /// Count commits on draft branch since divergence from main
     pub fn draft_commit_count(&self) -> Result<usize> {
-        let commits = api::local::commits::list(&self.repo).context("Failed to list commits")?;
+        let commits = self
+            .oxen
+            .log(&self.repo_path, None)
+            .context("Failed to list commits")?;
 
         // This is a simplified count - in reality you'd want to count
         // commits since the branch diverged from main
@@ -202,8 +222,8 @@ impl DraftManager {
         self.switch_to_main().await?;
 
         // Merge draft branch
-        // Note: liboxen may not have direct merge support, so this is simplified
-        println!("⚠️  Merge functionality requires liboxen merge support");
+        // Note: Oxen CLI merge support needs to be verified
+        println!("⚠️  Merge functionality requires Oxen merge support");
         println!(
             "   Manual merge required: oxen merge {}",
             self.draft_branch_name
@@ -222,7 +242,8 @@ impl DraftManager {
         self.switch_to_main().await?;
 
         // Delete and recreate draft branch
-        api::local::branches::delete(&self.repo, &self.draft_branch_name)
+        self.oxen
+            .delete_branch(&self.repo_path, &self.draft_branch_name)
             .context("Failed to delete draft branch")?;
 
         self.create_draft_branch().await?;
@@ -458,7 +479,7 @@ mod tests {
         assert!(stats.commit_count > stats.max_commits);
     }
 
-    // Note: Testing async methods and methods that depend on liboxen
+    // Note: Testing async methods and methods that depend on Oxen CLI
     // would require mocking or integration tests. For now, we test
     // the synchronous data structures and constants.
 

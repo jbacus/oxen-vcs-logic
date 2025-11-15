@@ -307,6 +307,16 @@ impl OxenSubprocess {
         Ok(branch)
     }
 
+    /// Delete a branch
+    pub fn delete_branch(&self, repo_path: &Path, branch_name: &str) -> Result<()> {
+        vlog!("Deleting branch: {}", branch_name);
+
+        self.run_command(&["branch", "-d", branch_name], Some(repo_path))?;
+
+        info!("Deleted branch: {}", branch_name);
+        Ok(())
+    }
+
     /// Push to remote
     pub fn push(&self, repo_path: &Path, remote: Option<&str>, branch: Option<&str>) -> Result<()> {
         vlog!("Pushing to remote");
