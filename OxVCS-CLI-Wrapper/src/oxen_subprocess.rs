@@ -307,11 +307,12 @@ impl OxenSubprocess {
         Ok(branch)
     }
 
-    /// Delete a branch
+    /// Delete a branch (force delete to allow removing unmerged branches)
     pub fn delete_branch(&self, repo_path: &Path, branch_name: &str) -> Result<()> {
         vlog!("Deleting branch: {}", branch_name);
 
-        self.run_command(&["branch", "-d", branch_name], Some(repo_path))?;
+        // Use -D (force delete) to allow deleting unmerged branches (e.g., draft branches)
+        self.run_command(&["branch", "-D", branch_name], Some(repo_path))?;
 
         info!("Deleted branch: {}", branch_name);
         Ok(())
