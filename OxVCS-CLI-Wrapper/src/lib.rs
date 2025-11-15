@@ -16,6 +16,7 @@ pub mod metadata_diff;
 pub mod oxen_ops;
 pub mod oxen_subprocess;
 pub mod progress;
+pub mod search;
 
 pub use commit_metadata::CommitMetadata;
 pub use draft_manager::{DraftManager, DraftStats};

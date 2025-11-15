@@ -566,6 +566,67 @@ EXAMPLES:
         plain: bool,
     },
 
+    /// Search commit history with advanced filtering
+    #[command(long_about = "Search commit history with advanced filtering
+
+USAGE:
+    oxenvcs-cli search <QUERY>
+    oxenvcs-cli search bpm:120-140 key:minor tag:mixing
+
+DESCRIPTION:
+    Smart search across commit history with metadata-based filtering.
+    Supports natural language-style queries with multiple criteria:
+
+    Query Syntax:
+      • bpm:120-140      - BPM range
+      • bpm:>120         - BPM greater than
+      • bpm:<140         - BPM less than
+      • sr:48000         - Exact sample rate
+      • key:minor        - Key signature (fuzzy match)
+      • tag:mixing       - Has tag (single)
+      • tag:mix,vocal    - Has any of these tags (OR logic)
+      • msg:final        - Message contains text
+      • limit:10         - Limit results
+
+    Multiple criteria can be combined (AND logic):
+      bpm:120-140 key:minor tag:mixing
+
+OPTIONS:
+    --format <FORMAT>    Output format: list (default), compact, json
+    --ranked             Sort by relevance score
+
+EXAMPLES:
+    # Find all commits between 120-140 BPM
+    oxenvcs-cli search \"bpm:120-140\"
+
+    # Find commits in minor keys with mixing tag
+    oxenvcs-cli search \"key:minor tag:mixing\"
+
+    # Find high BPM commits (>140)
+    oxenvcs-cli search \"bpm:>140\"
+
+    # Find commits with 'final' in message
+    oxenvcs-cli search \"msg:final\"
+
+    # Combined search with limit
+    oxenvcs-cli search \"bpm:120-140 key:minor tag:vocals limit:5\"
+
+    # Get compact one-line summaries
+    oxenvcs-cli search \"bpm:>128\" --format compact
+
+    # Ranked by relevance
+    oxenvcs-cli search \"bpm:120-140 tag:mixing\" --ranked")]
+    Search {
+        #[arg(value_name = "QUERY", help = "Search query string")]
+        query: String,
+
+        #[arg(long, value_name = "FORMAT", default_value = "list", help = "Output format (list, compact, json)")]
+        format: String,
+
+        #[arg(long, help = "Sort results by relevance score")]
+        ranked: bool,
+    },
+
     /// Manage project locks for team collaboration
     #[command(subcommand)]
     Lock(LockCommands),
@@ -1185,6 +1246,143 @@ async fn main() -> anyhow::Result<()> {
                     }
                 }
             }
+
+            Ok(())
+        }
+
+        Commands::Search {
+            query,
+            format,
+            ranked,
+        } => {
+            use oxenvcs_cli::search::SearchEngine;
+
+            let repo = OxenRepository::new(".");
+
+            vlog!("Parsing search query: {}", query);
+
+            // Parse the natural language query
+            let search_query = SearchEngine::parse_query(&query);
+
+            vlog!("Fetching commit history...");
+            let commits = repo.get_history(None).await?;
+
+            vlog!("Executing search...");
+            let engine = SearchEngine::new();
+            let mut results = engine.search(&commits, &search_query);
+
+            // Sort by relevance if requested
+            if ranked {
+                results.sort_by(|a, b| {
+                    let score_b = engine.relevance_score(b, &search_query);
+                    let score_a = engine.relevance_score(a, &search_query);
+                    score_b.partial_cmp(&score_a).unwrap_or(std::cmp::Ordering::Equal)
+                });
+            }
+
+            println!();
+            println!(
+                "┌─ Search Results ({} matches) ─────────────────────┐",
+                results.len().to_string().bright_cyan()
+            );
+            println!("│ Query: {:<49} │", query.bright_yellow());
+            println!("│                                                          │");
+            println!("└──────────────────────────────────────────────────────────┘");
+            println!();
+
+            if results.is_empty() {
+                progress::warning("No commits match your search criteria");
+                println!();
+                println!("Try:");
+                println!("  • Broadening your BPM range");
+                println!("  • Using partial key matches (e.g., 'minor' instead of 'A Minor')");
+                println!("  • Checking tag spellings");
+                return Ok(());
+            }
+
+            // Output based on format
+            match format.as_str() {
+                "json" => {
+                    let json = serde_json::to_string_pretty(&results)?;
+                    println!("{}", json);
+                }
+                "compact" => {
+                    for (i, commit) in results.iter().enumerate() {
+                        let metadata = CommitMetadata::parse_commit_message(&commit.message);
+                        let short_id = if commit.id.len() >= 7 {
+                            &commit.id[..7]
+                        } else {
+                            &commit.id
+                        };
+
+                        let mut parts = vec![format!("{}", short_id.bright_cyan())];
+
+                        if let Some(bpm) = metadata.bpm {
+                            parts.push(format!("{}BPM", bpm));
+                        }
+                        if let Some(sr) = metadata.sample_rate {
+                            parts.push(format!("{}Hz", sr));
+                        }
+                        if let Some(ref key) = metadata.key_signature {
+                            parts.push(key.clone());
+                        }
+
+                        let first_line = metadata.message.lines().next().unwrap_or(&metadata.message);
+                        parts.push(first_line.to_string());
+
+                        if ranked {
+                            let score = engine.relevance_score(commit, &search_query);
+                            parts.push(format!("(score: {:.1})", score).dimmed().to_string());
+                        }
+
+                        println!("{}. {}", i + 1, parts.join(" │ "));
+                    }
+                }
+                "list" | _ => {
+                    for (i, commit) in results.iter().enumerate() {
+                        let metadata = CommitMetadata::parse_commit_message(&commit.message);
+                        let short_id = if commit.id.len() >= 7 {
+                            &commit.id[..7]
+                        } else {
+                            &commit.id
+                        };
+
+                        println!("{}. {} {}",
+                            format!("{}", i + 1).dimmed(),
+                            "Commit".bright_black(),
+                            short_id.bright_cyan()
+                        );
+
+                        let first_line = metadata.message.lines().next().unwrap_or(&metadata.message);
+                        println!("   Message: {}", first_line);
+
+                        if let Some(bpm) = metadata.bpm {
+                            println!("   BPM: {}", format!("{}", bpm).yellow());
+                        }
+                        if let Some(sr) = metadata.sample_rate {
+                            println!("   Sample Rate: {} Hz", sr);
+                        }
+                        if let Some(ref key) = metadata.key_signature {
+                            println!("   Key: {}", key.green());
+                        }
+                        if !metadata.tags.is_empty() {
+                            println!("   Tags: {}", metadata.tags.join(", ").bright_black());
+                        }
+
+                        if ranked {
+                            let score = engine.relevance_score(commit, &search_query);
+                            println!("   Relevance: {:.1}", score);
+                        }
+
+                        println!();
+                    }
+                }
+            }
+
+            progress::success(&format!("Found {} matching commit{}",
+                results.len(),
+                if results.len() == 1 { "" } else { "s" }
+            ));
 
             Ok(())
         }
