@@ -56,6 +56,12 @@ pub struct SearchQuery {
     /// Filter by message content (case-insensitive)
     pub message_contains: Option<String>,
 
+    /// Filter by date range (start date)
+    pub date_after: Option<String>,
+
+    /// Filter by date range (end date)
+    pub date_before: Option<String>,
+
     /// Limit number of results
     pub limit: Option<usize>,
 }
@@ -121,6 +127,18 @@ impl SearchQuery {
         self
     }
 
+    /// Filter by date (after this date)
+    pub fn date_after(mut self, date: impl Into<String>) -> Self {
+        self.date_after = Some(date.into());
+        self
+    }
+
+    /// Filter by date (before this date)
+    pub fn date_before(mut self, date: impl Into<String>) -> Self {
+        self.date_before = Some(date.into());
+        self
+    }
+
     /// Limit number of results
     pub fn limit(mut self, limit: usize) -> Self {
         self.limit = Some(limit);
@@ -137,6 +155,8 @@ impl SearchQuery {
             || !self.tags_any.is_empty()
             || !self.tags_all.is_empty()
             || self.message_contains.is_some()
+            || self.date_after.is_some()
+            || self.date_before.is_some()
     }
 }
 
