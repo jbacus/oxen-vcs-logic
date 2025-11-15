@@ -91,8 +91,23 @@ impl OxenRepository {
             oxen: OxenSubprocess::new(),
         };
 
-        // Initialize draft branch workflow
-        vlog!("Step 4: Initializing draft branch workflow...");
+        // Step 4: Create initial commit (required before creating branches)
+        vlog!("Step 4: Creating initial commit...");
+        vlog!("Staging .oxenignore file...");
+
+        let ignore_file = Path::new(".oxenignore");
+        repo_instance.oxen.add(path, &[ignore_file])
+            .context("Failed to stage .oxenignore")?;
+
+        vlog!("Creating initial commit...");
+        let initial_commit_msg = "Initial commit\n\nInitialized Oxen repository for Logic Pro project with .oxenignore template.";
+        repo_instance.oxen.commit(path, initial_commit_msg)
+            .context("Failed to create initial commit")?;
+
+        info!("Created initial commit");
+
+        // Step 5: Initialize draft branch workflow (now that HEAD exists)
+        vlog!("Step 5: Initializing draft branch workflow...");
         info!("Initializing draft branch workflow...");
 
         let draft_manager = DraftManager::new(path).context("Failed to create draft manager")?;

@@ -828,10 +828,14 @@ async fn main() -> anyhow::Result<()> {
                 progress::finish_success(&pb, "Logic Pro project repository initialized");
                 println!();
                 progress::success(&format!("Repository created at: {}", path.display()));
-                progress::info("Next steps:");
-                println!("  1. cd {}", path.display());
-                println!("  2. oxenvcs-cli add --all");
-                println!("  3. oxenvcs-cli commit -m \"Initial commit\"");
+                progress::success("Initial commit created on main branch");
+                progress::success("Draft branch created and checked out");
+                println!();
+                progress::info("You're all set! Start working in Logic Pro:");
+                println!("  • Changes will be automatically tracked on the draft branch");
+                println!("  • Create milestone commits: oxenvcs-cli commit -m \"Your message\" --bpm 120");
+                println!("  • View history: oxenvcs-cli log");
+                println!("  • Restore to any commit: oxenvcs-cli restore <commit-id>");
             } else {
                 let pb = progress::spinner(&format!("Initializing Oxen repository at {}...", path.display()));
 
