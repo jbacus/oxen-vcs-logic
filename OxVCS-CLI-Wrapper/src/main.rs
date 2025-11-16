@@ -1,7 +1,7 @@
 use anyhow::Context;
 use clap::{Parser, Subcommand};
 use colored::Colorize;
-use oxenvcs_cli::{logger, progress, success, vlog, CommitMetadata, OxenRepository};
+use oxenvcs_cli::{lock_integration, logger, progress, success, vlog, CommitMetadata, OxenRepository};
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -237,6 +237,80 @@ EXAMPLES:
         #[arg(long, default_value = "50", help = "Number of log lines to show")]
         lines: usize,
     },
+}
+
+#[derive(Subcommand)]
+enum AuthCommands {
+    /// Login to Oxen Hub with API credentials
+    #[command(long_about = "Login to Oxen Hub with API credentials
+
+USAGE:
+    oxenvcs-cli auth login
+
+DESCRIPTION:
+    Authenticate with Oxen Hub by providing your username and API key.
+    Credentials are securely stored in the system keychain via oxen config.
+
+    To get your API key:
+      1. Visit https://hub.oxen.ai
+      2. Sign in or create an account
+      3. Go to Settings → API Keys
+      4. Copy your API key
+
+    After login, you can push/pull projects to/from Oxen Hub.
+
+EXAMPLES:
+    # Interactive login (prompts for credentials)
+    oxenvcs-cli auth login")]
+    Login,
+
+    /// Logout from Oxen Hub
+    #[command(long_about = "Logout from Oxen Hub
+
+USAGE:
+    oxenvcs-cli auth logout
+
+DESCRIPTION:
+    Remove stored Oxen Hub credentials from the system.
+    After logout, push/pull operations will fail until you login again.
+
+EXAMPLES:
+    # Logout
+    oxenvcs-cli auth logout")]
+    Logout,
+
+    /// Show current authentication status
+    #[command(long_about = "Show current authentication status
+
+USAGE:
+    oxenvcs-cli auth status
+
+DESCRIPTION:
+    Display information about the currently authenticated user:
+      • Username
+      • Oxen Hub URL
+      • Authentication status
+
+EXAMPLES:
+    # Check auth status
+    oxenvcs-cli auth status")]
+    Status,
+
+    /// Test authentication with Oxen Hub
+    #[command(long_about = "Test authentication with Oxen Hub
+
+USAGE:
+    oxenvcs-cli auth test
+
+DESCRIPTION:
+    Verify that your stored credentials are valid by testing
+    connection to Oxen Hub. This is useful for troubleshooting
+    authentication issues.
+
+EXAMPLES:
+    # Test authentication
+    oxenvcs-cli auth test")]
+    Test,
 }
 
 #[derive(Subcommand)]
@@ -661,6 +735,10 @@ EXAMPLES:
     #[command(subcommand)]
     Lock(LockCommands),
 
+    /// Authenticate with Oxen Hub for remote collaboration
+    #[command(subcommand)]
+    Auth(AuthCommands),
+
     /// Compare metadata between two Logic Pro project versions
     #[command(name = "metadata-diff")]
     #[command(long_about = "Compare metadata between two Logic Pro project versions
@@ -803,6 +881,116 @@ EXAMPLES:
             help = "Path to Logic Pro project (default: current directory)"
         )]
         path: Option<PathBuf>,
+    },
+
+    /// Show recent project activity timeline
+    #[command(long_about = "Show recent project activity timeline
+
+USAGE:
+    oxenvcs-cli activity [--limit <N>]
+
+DESCRIPTION:
+    Displays a timeline of recent project activity including commits,
+    lock operations, and comments. Helps teams stay synchronized on
+    project progress.
+
+    Activity types shown:
+      • Commits with metadata (BPM, sample rate, key)
+      • Lock acquisitions/releases
+      • Comments on commits
+      • Branch creations
+
+OPTIONS:
+    --limit <N>    Number of recent activities to show (default: 10)
+
+EXAMPLES:
+    # Show last 10 activities
+    oxenvcs-cli activity
+
+    # Show last 20 activities
+    oxenvcs-cli activity --limit 20")]
+    Activity {
+        #[arg(long, default_value = "10", help = "Number of activities to show")]
+        limit: usize,
+    },
+
+    /// Show team members and their contributions
+    #[command(long_about = "Show team members and their contributions
+
+USAGE:
+    oxenvcs-cli team
+
+DESCRIPTION:
+    Discovers team members from commit history and displays their
+    contribution statistics. Helps identify who's working on the project.
+
+    Information shown:
+      • Member name (username@hostname)
+      • Number of commits
+      • Last activity timestamp
+      • Contribution percentage
+
+EXAMPLES:
+    # Show team members
+    oxenvcs-cli team")]
+    Team,
+
+    /// Manage comments on commits
+    #[command(subcommand)]
+    Comment(CommentCommands),
+}
+
+#[derive(Subcommand)]
+enum CommentCommands {
+    /// Add a comment to a commit
+    #[command(long_about = "Add a comment to a commit
+
+USAGE:
+    oxenvcs-cli comment add <COMMIT_ID> <TEXT>
+
+DESCRIPTION:
+    Adds a comment to a specific commit. Comments are stored in the
+    repository and synced across team members.
+
+    Use cases:
+      • Code review feedback
+      • Mix notes for specific versions
+      • Questions about changes
+      • Track decisions
+
+EXAMPLES:
+    # Add comment to latest commit
+    oxenvcs-cli comment add HEAD \"Vocals need more reverb\"
+
+    # Add comment to specific commit
+    oxenvcs-cli comment add abc123 \"Great mix on this version!\"")]
+    Add {
+        #[arg(value_name = "COMMIT_ID", help = "Commit ID or HEAD")]
+        commit_id: String,
+
+        #[arg(value_name = "TEXT", help = "Comment text")]
+        text: String,
+    },
+
+    /// List comments on a commit
+    #[command(long_about = "List comments on a commit
+
+USAGE:
+    oxenvcs-cli comment list [COMMIT_ID]
+
+DESCRIPTION:
+    Shows all comments on a specific commit. If no commit ID is provided,
+    shows comments on the latest commit (HEAD).
+
+EXAMPLES:
+    # Show comments on latest commit
+    oxenvcs-cli comment list
+
+    # Show comments on specific commit
+    oxenvcs-cli comment list abc123")]
+    List {
+        #[arg(value_name = "COMMIT_ID", help = "Commit ID or HEAD (optional)")]
+        commit_id: Option<String>,
     },
 }
 
@@ -1467,100 +1655,171 @@ async fn main() -> anyhow::Result<()> {
         }
 
         Commands::Lock(lock_cmd) => {
+            use oxenvcs_cli::lock_integration;
+            use std::env;
+
+            let current_dir = env::current_dir()?;
+
             match lock_cmd {
                 LockCommands::Acquire { timeout } => {
-                    let pb = progress::spinner("Acquiring project lock...");
-
-                    // TODO: Integrate with actual lock manager (via daemon or file-based)
-                    // For now, provide placeholder feedback
-                    progress::finish_success(&pb, "Lock acquired");
-
-                    println!();
-                    println!("┌─ Lock Acquired ─────────────────────────────────────────┐");
-                    println!("│                                                          │");
-                    println!("│  ✓ You now have exclusive editing rights                │");
-                    println!("│                                                          │");
-                    println!("│  Lock expires in: {} hours                                │", timeout);
-                    println!("│                                                          │");
-                    println!("└──────────────────────────────────────────────────────────┘");
-                    println!();
-                    progress::info("You can now safely edit the project in Logic Pro");
-                    progress::warning("Remember to release the lock when done: oxenvcs-cli lock release");
-
-                    // TODO: Actually acquire lock via daemon/file system
-                    progress::warning("Note: Lock management requires daemon integration (coming soon)");
+                    lock_integration::handle_lock_acquire(&current_dir, timeout)?;
                 }
 
                 LockCommands::Release => {
-                    let pb = progress::spinner("Releasing project lock...");
-
-                    // TODO: Integrate with actual lock manager
-                    progress::finish_success(&pb, "Lock released");
-
-                    println!();
-                    progress::success("Lock released successfully");
-                    progress::info("Other team members can now acquire the lock");
-
-                    // TODO: Actually release lock via daemon/file system
-                    progress::warning("Note: Lock management requires daemon integration (coming soon)");
+                    lock_integration::handle_lock_release(&current_dir)?;
                 }
 
                 LockCommands::Status => {
-                    println!();
-                    println!("┌─ Lock Status ───────────────────────────────────────────┐");
-                    println!("│                                                          │");
-
-                    // TODO: Get actual lock status from daemon/file system
-                    // Placeholder: assume unlocked
-                    println!("│  Status: {} Unlocked                                     │", "●".green());
-                    println!("│                                                          │");
-                    println!("│  The project is available for editing                    │");
-                    println!("│                                                          │");
-                    println!("└──────────────────────────────────────────────────────────┘");
-                    println!();
-                    progress::info("Acquire lock with: oxenvcs-cli lock acquire");
-
-                    // Example of locked status (commented out):
-                    // println!("│  Status: {} Locked                                       │", "●".red());
-                    // println!("│  Holder: john@macbook.local                             │");
-                    // println!("│  Since: 2025-11-15 14:30:00                              │");
-                    // println!("│  Expires: 2025-11-15 18:30:00 (3h 45m remaining)         │");
-
-                    progress::warning("Note: Lock management requires daemon integration (coming soon)");
+                    lock_integration::handle_lock_status(&current_dir)?;
                 }
 
                 LockCommands::Break { force } => {
-                    if !force {
-                        progress::error("The --force flag is required to break a lock");
-                        progress::info("This prevents accidental lock breaks");
-                        progress::info("Use: oxenvcs-cli lock break --force");
+                    lock_integration::handle_lock_break(&current_dir, force)?;
+                }
+            }
+
+            Ok(())
+        }
+
+        Commands::Auth(auth_cmd) => {
+            use oxenvcs_cli::AuthManager;
+
+            let auth = AuthManager::new();
+
+            match auth_cmd {
+                AuthCommands::Login => {
+                    use std::io::{self, Write};
+
+                    println!();
+                    println!("┌─ Oxen Hub Authentication ──────────────────────────────┐");
+                    println!("│                                                          │");
+                    println!("│  Login to Oxen Hub to enable remote collaboration       │");
+                    println!("│                                                          │");
+                    println!("│  Get your API key from: https://hub.oxen.ai             │");
+                    println!("│  Settings → API Keys → Create New Key                   │");
+                    println!("│                                                          │");
+                    println!("└──────────────────────────────────────────────────────────┘");
+                    println!();
+
+                    // Prompt for username
+                    print!("Username: ");
+                    io::stdout().flush()?;
+                    let mut username = String::new();
+                    io::stdin().read_line(&mut username)?;
+                    let username = username.trim();
+
+                    if username.is_empty() {
+                        progress::error("Username cannot be empty");
                         std::process::exit(1);
                     }
 
-                    println!();
-                    progress::warning("⚠ BREAKING LOCK");
-                    println!();
-                    println!("This will forcibly remove the current lock.");
-                    println!("The lock holder may lose unsaved work!");
-                    println!();
+                    // Prompt for API key (hidden input would be better, but keep it simple for now)
+                    print!("API Key: ");
+                    io::stdout().flush()?;
+                    let mut api_key = String::new();
+                    io::stdin().read_line(&mut api_key)?;
+                    let api_key = api_key.trim();
 
-                    // TODO: Add confirmation prompt using dialoguer
-                    // let confirm = dialoguer::Confirm::new()
-                    //     .with_prompt("Are you sure you want to break the lock?")
-                    //     .interact()?;
-                    //
-                    // if !confirm {
-                    //     progress::info("Lock break cancelled");
-                    //     return Ok(());
-                    // }
+                    if api_key.is_empty() {
+                        progress::error("API key cannot be empty");
+                        std::process::exit(1);
+                    }
 
-                    let pb = progress::spinner("Breaking lock...");
+                    // Store credentials
+                    let pb = progress::spinner("Storing credentials...");
 
-                    // TODO: Actually break lock via daemon/file system
-                    progress::finish_success(&pb, "Lock forcibly broken");
+                    match auth.store_credentials(username, api_key) {
+                        Ok(_) => {
+                            progress::finish_success(&pb, "Credentials stored");
+                            println!();
+                            progress::success(&format!("Authenticated as: {}", username));
+                            progress::info("You can now push/pull projects to Oxen Hub");
+                            println!();
+                            progress::info("Test authentication with: oxenvcs-cli auth test");
+                        }
+                        Err(e) => {
+                            progress::finish_error(&pb, "Failed to store credentials");
+                            progress::error(&format!("Error: {}", e));
+                            std::process::exit(1);
+                        }
+                    }
+                }
 
+                AuthCommands::Logout => {
+                    let pb = progress::spinner("Clearing credentials...");
+
+                    match auth.clear_credentials() {
+                        Ok(_) => {
+                            progress::finish_success(&pb, "Logged out");
+                            println!();
+                            progress::success("Credentials removed");
+                            progress::info("You are now logged out from Oxen Hub");
+                        }
+                        Err(e) => {
+                            progress::finish_error(&pb, "Failed to clear credentials");
+                            progress::error(&format!("Error: {}", e));
+                            std::process::exit(1);
+                        }
+                    }
+                }
+
+                AuthCommands::Status => {
                     println!();
-                    progress::warning("Note: Lock management requires daemon integration (coming soon)");
+                    println!("┌─ Authentication Status ─────────────────────────────────┐");
+                    println!("│                                                          │");
+
+                    match auth.get_credentials() {
+                        Ok(Some(creds)) => {
+                            println!("│  Status: {} Authenticated                            │", "●".green());
+                            println!("│                                                          │");
+                            println!("│  Username: {}                                    │", creds.username);
+                            println!("│  Hub URL:  {}                      │", creds.hub_url);
+                            println!("│                                                          │");
+                            println!("└──────────────────────────────────────────────────────────┘");
+                            println!();
+                            progress::info("Run 'oxenvcs-cli auth test' to verify connection");
+                        }
+                        Ok(None) => {
+                            println!("│  Status: {} Not authenticated                        │", "○".yellow());
+                            println!("│                                                          │");
+                            println!("│  You need to login to use remote features               │");
+                            println!("│                                                          │");
+                            println!("└──────────────────────────────────────────────────────────┘");
+                            println!();
+                            progress::info("Login with: oxenvcs-cli auth login");
+                        }
+                        Err(e) => {
+                            println!("│  Status: {} Error                                    │", "✗".red());
+                            println!("│                                                          │");
+                            println!("│  Error reading credentials                               │");
+                            println!("│                                                          │");
+                            println!("└──────────────────────────────────────────────────────────┘");
+                            println!();
+                            progress::error(&format!("Error: {}", e));
+                        }
+                    }
+                }
+
+                AuthCommands::Test => {
+                    let pb = progress::spinner("Testing authentication...");
+
+                    match auth.test_authentication() {
+                        Ok(username) => {
+                            progress::finish_success(&pb, "Authentication verified");
+                            println!();
+                            progress::success(&format!("Successfully authenticated as: {}", username));
+                            progress::info("Your credentials are valid");
+                        }
+                        Err(e) => {
+                            progress::finish_error(&pb, "Authentication failed");
+                            println!();
+                            progress::error("Unable to verify authentication");
+                            progress::info(&format!("Error: {}", e));
+                            println!();
+                            progress::info("Try logging in again: oxenvcs-cli auth login");
+                            std::process::exit(1);
+                        }
+                    }
                 }
             }
 
@@ -1938,6 +2197,200 @@ async fn main() -> anyhow::Result<()> {
 
             success!("Console exited");
             Ok(())
+        }
+
+        Commands::Activity { limit } => {
+            use oxenvcs_cli::ActivityFeed;
+            use std::env;
+
+            let current_dir = env::current_dir()?;
+            let feed = ActivityFeed::new();
+
+            let pb = progress::spinner("Fetching project activity...");
+            let activities = feed.get_recent_activity(&current_dir, limit)?;
+            pb.finish_and_clear();
+
+            if activities.is_empty() {
+                println!();
+                progress::info("No activity found");
+                println!("This project has no commit history yet.");
+                println!();
+                progress::info("Create your first commit:");
+                println!("  oxenvcs-cli add --all");
+                println!("  oxenvcs-cli commit -m \"Initial commit\" --bpm 120");
+                return Ok(());
+            }
+
+            println!();
+            println!("┌─ Project Activity ──────────────────────────────────────┐");
+            println!("│                                                          │");
+            println!("│  Recent activity ({} commits)                            │", activities.len());
+            println!("│                                                          │");
+            println!("└──────────────────────────────────────────────────────────┘");
+            println!();
+
+            for (i, activity) in activities.iter().enumerate() {
+                let icon = activity.activity_type.icon();
+                let author = if activity.author.len() > 20 {
+                    format!("{}...", &activity.author[..17])
+                } else {
+                    activity.author.clone()
+                };
+
+                println!("{} {} {} - {}",
+                    (i + 1).to_string().bright_black(),
+                    icon,
+                    author.cyan(),
+                    activity.message.white()
+                );
+
+                // Show metadata if present
+                if !activity.metadata.is_empty() {
+                    for (key, value) in &activity.metadata {
+                        println!("    {} {}: {}", "│".bright_black(), key.bright_black(), value.bright_black());
+                    }
+                }
+            }
+
+            println!();
+            progress::info(&format!("Showing {} most recent activities", activities.len()));
+
+            Ok(())
+        }
+
+        Commands::Team => {
+            use oxenvcs_cli::TeamManager;
+            use std::env;
+
+            let current_dir = env::current_dir()?;
+            let team_mgr = TeamManager::new();
+
+            let pb = progress::spinner("Discovering team members...");
+            let members = team_mgr.discover_team_members(&current_dir)?;
+            pb.finish_and_clear();
+
+            if members.is_empty() {
+                println!();
+                progress::warning("No team members found");
+                println!("This project has no commit history with author information.");
+                return Ok(());
+            }
+
+            let total_commits: usize = members.iter().map(|m| m.commit_count).sum();
+
+            println!();
+            println!("┌─ Team Members ──────────────────────────────────────────┐");
+            println!("│                                                          │");
+            println!("│  {} members · {} total commits                           │",
+                members.len(), total_commits);
+            println!("│                                                          │");
+            println!("└──────────────────────────────────────────────────────────┘");
+            println!();
+
+            for (i, member) in members.iter().enumerate() {
+                let percentage = (member.commit_count as f64 / total_commits as f64 * 100.0) as usize;
+                let bar_length = (percentage / 5).min(20);
+                let bar = "█".repeat(bar_length);
+
+                println!("{} {} {} commits ({}%)",
+                    (i + 1).to_string().bright_black(),
+                    member.name.cyan(),
+                    member.commit_count.to_string().green(),
+                    percentage
+                );
+                println!("   {} {}", bar.green(), " ".repeat(20 - bar_length));
+            }
+
+            println!();
+            progress::success(&format!("Found {} team members", members.len()));
+
+            Ok(())
+        }
+
+        Commands::Comment(comment_cmd) => {
+            use oxenvcs_cli::CommentManager;
+            use std::env;
+
+            let current_dir = env::current_dir()?;
+            let comment_mgr = CommentManager::new();
+
+            match comment_cmd {
+                CommentCommands::Add { commit_id, text } => {
+                    let user = lock_integration::get_user_identifier();
+
+                    let pb = progress::spinner("Adding comment...");
+
+                    match comment_mgr.add_comment(&current_dir, &commit_id, &user, &text) {
+                        Ok(comment) => {
+                            progress::finish_success(&pb, "Comment added");
+                            println!();
+                            progress::success("Comment added successfully");
+                            println!();
+                            println!("  💬 {} said:", user.cyan());
+                            println!("     \"{}\"", text);
+                            println!();
+                            progress::info("Comment stored in .oxen/comments/");
+                            println!("  Commit and push to share with team:");
+                            println!("    oxen add .oxen/comments/");
+                            println!("    oxen commit -m \"Add comment\"");
+                            println!("    oxen push origin main");
+                        }
+                        Err(e) => {
+                            progress::finish_error(&pb, "Failed to add comment");
+                            println!();
+                            progress::error(&format!("{}", e));
+                            std::process::exit(1);
+                        }
+                    }
+
+                    Ok(())
+                }
+
+                CommentCommands::List { commit_id } => {
+                    let commit = commit_id.as_deref().unwrap_or("HEAD");
+
+                    let pb = progress::spinner("Fetching comments...");
+                    let comments = comment_mgr.get_comments(&current_dir, commit)?;
+                    pb.finish_and_clear();
+
+                    if comments.is_empty() {
+                        println!();
+                        progress::info("No comments on this commit");
+                        println!();
+                        progress::info("Add a comment:");
+                        println!("  oxenvcs-cli comment add {} \"Your comment here\"", commit);
+                        return Ok(());
+                    }
+
+                    println!();
+                    println!("┌─ Comments on {} ─────────────────────────────────┐",
+                        if commit.len() > 8 { &commit[..8] } else { commit });
+                    println!("│                                                          │");
+                    println!("│  {} comments                                              │", comments.len());
+                    println!("│                                                          │");
+                    println!("└──────────────────────────────────────────────────────────┘");
+                    println!();
+
+                    for (i, comment) in comments.iter().enumerate() {
+                        println!("{} 💬 {} said:",
+                            (i + 1).to_string().bright_black(),
+                            comment.author.cyan()
+                        );
+                        println!("   \"{}\"", comment.text);
+                        println!("   {}",
+                            comment.created_at.format("%Y-%m-%d %H:%M UTC").to_string().bright_black()
+                        );
+                        if i < comments.len() - 1 {
+                            println!();
+                        }
+                    }
+
+                    println!();
+                    progress::success(&format!("Showing {} comments", comments.len()));
+
+                    Ok(())
+                }
+            }
         }
     }
 }
