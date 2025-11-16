@@ -360,6 +360,41 @@ impl RemoteLockManager {
         Ok(())
     }
 
+    /// Emergency unlock: Break lock if expired or stale
+    pub fn emergency_unlock_if_expired(&self, repo_path: &Path) -> Result<bool> {
+        match self.get_lock(repo_path)? {
+            Some(lock) => {
+                if lock.is_expired() || lock.is_stale() {
+                    crate::info!("Lock is expired/stale, performing emergency unlock");
+                    self.force_break_lock(repo_path)?;
+                    Ok(true)
+                } else {
+                    Ok(false)
+                }
+            }
+            None => Ok(false),
+        }
+    }
+
+    /// Check if lock can be emergency unlocked
+    pub fn can_emergency_unlock(&self, repo_path: &Path) -> Result<bool> {
+        match self.get_lock(repo_path)? {
+            Some(lock) => Ok(lock.is_expired() || lock.is_stale()),
+            None => Ok(false),
+        }
+    }
+
+    /// Get lock age in hours
+    pub fn get_lock_age_hours(&self, repo_path: &Path) -> Result<Option<i64>> {
+        match self.get_lock(repo_path)? {
+            Some(lock) => {
+                let age = Utc::now() - lock.acquired_at;
+                Ok(Some(age.num_hours()))
+            }
+            None => Ok(None),
+        }
+    }
+
     // ========== Private Helper Methods ==========
 
     /// Ensure locks branch exists in repository

@@ -7,6 +7,7 @@ use liboxen_stub as liboxen;
 pub mod auth;
 pub mod collaboration;
 pub mod commit_metadata;
+pub mod conflict_detection;
 pub mod console;
 pub mod daemon_client;
 pub mod draft_manager;
@@ -17,6 +18,7 @@ pub mod logger;
 pub mod logic_parser;
 pub mod logic_project;
 pub mod metadata_diff;
+pub mod network_resilience;
 pub mod oxen_ops;
 pub mod oxen_subprocess;
 pub mod progress;
@@ -28,6 +30,7 @@ pub use collaboration::{
     Activity, ActivityFeed, ActivityType, Comment, CommentManager, TeamManager, TeamMember,
 };
 pub use commit_metadata::CommitMetadata;
+pub use conflict_detection::{ConflictCheckResult, ConflictDetector, ConflictRecommendation};
 pub use draft_manager::{DraftManager, DraftStats};
 pub use ignore_template::generate_oxenignore;
 pub use logic_parser::{LogicParser, LogicProjectData};
@@ -36,5 +39,8 @@ pub use metadata_diff::{MetadataDiff, MetadataDiffer, ReportGenerator};
 pub use oxen_ops::OxenRepository;
 pub use oxen_subprocess::{
     BranchInfo, CommitInfo as SubprocessCommitInfo, OxenSubprocess, StatusInfo,
+};
+pub use network_resilience::{
+    NetworkResilienceManager, OperationData, OperationType, QueuedOperation,
 };
 pub use remote_lock::{RemoteLock, RemoteLockManager};

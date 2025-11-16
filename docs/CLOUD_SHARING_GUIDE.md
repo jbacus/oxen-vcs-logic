@@ -1,7 +1,7 @@
 # OxVCS Cloud Sharing Guide
 
-**Last Updated**: 2025-11-15
-**Status**: Phases 1-3 Complete (Authentication, Locks, Collaboration), Phase 4+ In Development
+**Last Updated**: 2025-11-16
+**Status**: Phases 1-4 Complete (Authentication, Locks, Collaboration, Network Resilience), Phase 5 Planned
 
 ---
 
@@ -476,16 +476,60 @@ oxenvcs-cli comment list <commit-id>
 
 **Completed**: 2025-11-15
 
-### 🚧 Phase 4: Network Resilience & Safety (PLANNED)
+### ✅ Phase 4: Network Resilience & Safety (COMPLETE)
 
-**Planned Features:**
-- Offline mode with commit queue
-- Smart retry with exponential backoff
-- Partial push recovery
-- Pre-pull conflict detection
-- Emergency unlock protocol
+**Features Implemented:**
+- ✅ Offline mode with commit queue
+- ✅ Smart retry with exponential backoff (2s, 4s, 8s, 16s)
+- ✅ Transient error detection
+- ✅ Pre-pull/pre-push conflict detection
+- ✅ Emergency unlock protocol
+- ✅ Lock expiration and auto-unlock
+- ✅ 12 unit tests passing (7 network_resilience + 5 conflict_detection)
 
-**Target**: 2-3 weeks
+**Usage:**
+
+```bash
+# Operation queue is automatic - operations queue when offline
+# Check queue status
+ls ~/.oxenvcs/operation_queue.json
+
+# Conflict detection (automatic before push/pull)
+# Checks lock status and provides recommendations
+
+# Emergency unlock expired locks
+# (Automatically checked before lock operations)
+```
+
+**Network Resilience Features:**
+- **Offline Queue**: Failed operations automatically queued
+- **Persistent Storage**: Queue survives restarts (`~/.oxenvcs/operation_queue.json`)
+- **Smart Retry**: Exponential backoff with 4 max retries
+- **Transient Detection**: Distinguishes network errors from permanent failures
+- **Auto-Recovery**: Queued operations can be retried when network returns
+
+**Conflict Detection:**
+- **Pre-Pull Check**: Validates lock status before pulling
+- **Pre-Push Check**: Ensures lock is held before pushing
+- **Recommendations**: Provides actionable guidance
+  - `Safe`: Operation can proceed
+  - `AcquireLock`: Need to acquire lock first
+  - `CheckNetwork`: Network connectivity issues
+  - `ManualMergeRequired`: Diverged branches need manual resolution
+
+**Emergency Unlock:**
+- **Auto-Unlock**: Expired/stale locks automatically unlocked
+- **Lock Age Check**: View how long a lock has been held
+- **Force Break**: Admin can forcibly break any lock
+- **Audit Trail**: All lock operations logged
+
+**Error Handling:**
+- Network timeouts: Auto-retry with backoff
+- Connection refused: Queue for later retry
+- Authentication errors: Immediate failure (no retry)
+- Lock conflicts: Clear error messages with guidance
+
+**Completed**: 2025-11-16
 
 ---
 
@@ -686,9 +730,7 @@ oxen config remote.hub_url https://your-oxen-server.com
 - ✅ Phase 1: Authentication system (2025-11-15)
 - ✅ Phase 2: Distributed lock management (2025-11-15)
 - ✅ Phase 3: Collaboration features (2025-11-15)
-
-### In Development
-- 🚧 Phase 4: Network resilience
+- ✅ Phase 4: Network resilience & safety (2025-11-16)
 
 ### Future
 - 📅 Phase 5: Advanced features (semantic diff, audio preview, automated merge)
@@ -698,4 +740,4 @@ oxen config remote.hub_url https://your-oxen-server.com
 
 ---
 
-*Last updated: 2025-11-15 | OxVCS v0.1.0 | Oxen integration via subprocess wrapper*
+*Last updated: 2025-11-16 | OxVCS v0.1.0 | Oxen integration via subprocess wrapper*
