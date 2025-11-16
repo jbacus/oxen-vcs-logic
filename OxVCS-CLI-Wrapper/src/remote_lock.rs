@@ -148,6 +148,19 @@ impl RemoteLock {
         self.last_heartbeat = now;
         self.expires_at = now + Duration::hours(additional_hours as i64);
     }
+
+    /// Check if lock is expiring soon (within threshold minutes)
+    pub fn is_expiring_soon(&self, threshold_minutes: i64) -> bool {
+        let now = Utc::now();
+        let time_until_expiry = self.expires_at.signed_duration_since(now);
+        time_until_expiry < Duration::minutes(threshold_minutes)
+    }
+
+    /// Get minutes until lock expires
+    pub fn minutes_until_expiry(&self) -> i64 {
+        let now = Utc::now();
+        self.expires_at.signed_duration_since(now).num_minutes()
+    }
 }
 
 /// Manages distributed locks stored in Oxen repository
