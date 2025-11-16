@@ -24,6 +24,8 @@ use std::io;
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime};
 
+use crate::{CommitMetadata, OxenRepository};
+
 /// Maximum number of activity log entries to retain
 const MAX_LOG_ENTRIES: usize = 100;
 
@@ -39,6 +41,12 @@ enum ConsoleMode {
     CommitDialog,
     /// Interactive restore browser
     RestoreBrowser,
+    /// Compare commits (semantic diff)
+    Compare,
+    /// Search commits
+    Search,
+    /// Hooks management
+    Hooks,
     /// Help screen
     Help,
 }
@@ -61,6 +69,12 @@ pub struct Console {
     commit_dialog: CommitDialogState,
     /// Restore browser state
     restore_browser: RestoreBrowserState,
+    /// Compare mode state
+    compare_state: CompareState,
+    /// Search mode state
+    search_state: SearchState,
+    /// Hooks mode state
+    hooks_state: HooksState,
     /// Last daemon poll time
     last_poll: SystemTime,
 }
@@ -116,6 +130,62 @@ struct CommitEntry {
     timestamp: String,
 }
 
+/// State for compare mode (semantic diff)
+#[derive(Debug, Clone)]
+struct CompareState {
+    commits: Vec<CommitEntry>,
+    selected_a: usize,
+    selected_b: usize,
+    active_selector: u8, // 0=commit A, 1=commit B
+    diff_result: Option<String>,
+}
+
+impl Default for CompareState {
+    fn default() -> Self {
+        Self {
+            commits: Vec::new(),
+            selected_a: 0,
+            selected_b: 0,
+            active_selector: 0,
+            diff_result: None,
+        }
+    }
+}
+
+/// State for search mode
+#[derive(Debug, Clone)]
+struct SearchState {
+    query: String,
+    results: Vec<CommitEntry>,
+    selected_index: usize,
+}
+
+impl Default for SearchState {
+    fn default() -> Self {
+        Self {
+            query: String::new(),
+            results: Vec::new(),
+            selected_index: 0,
+        }
+    }
+}
+
+/// State for hooks mode
+#[derive(Debug, Clone)]
+struct HooksState {
+    hooks: Vec<(String, String)>, // (type, name)
+    selected_index: usize,
+}
+
+impl Default for HooksState {
+    fn default() -> Self {
+        Self {
+            hooks: Vec::new(),
+            selected_index: 0,
+        }
+    }
+}
+
 /// Single entry in the activity log
 #[derive(Debug, Clone)]
 pub struct LogEntry {
@@ -161,6 +231,9 @@ impl Console {
             mode: ConsoleMode::Normal,
             commit_dialog: CommitDialogState::default(),
             restore_browser: RestoreBrowserState::default(),
+            compare_state: CompareState::default(),
+            search_state: SearchState::default(),
+            hooks_state: HooksState::default(),
             last_poll: SystemTime::now(),
         }
     }
@@ -311,6 +384,9 @@ impl Console {
             ConsoleMode::Normal => self.handle_normal_mode_key(code, modifiers),
             ConsoleMode::CommitDialog => self.handle_commit_dialog_key(code, modifiers),
             ConsoleMode::RestoreBrowser => self.handle_restore_browser_key(code, modifiers),
+            ConsoleMode::Compare => self.handle_compare_mode_key(code, modifiers),
+            ConsoleMode::Search => self.handle_search_mode_key(code, modifiers),
+            ConsoleMode::Hooks => self.handle_hooks_mode_key(code, modifiers),
             ConsoleMode::Help => self.handle_help_mode_key(code, modifiers),
         }
     }
@@ -344,6 +420,26 @@ impl Console {
                 self.restore_browser = RestoreBrowserState::default();
                 self.log(LogLevel::Info, "Opened restore browser");
                 self.load_commits();
+            }
+            // Open compare mode on 'd'
+            (KeyCode::Char('d'), _) => {
+                self.mode = ConsoleMode::Compare;
+                self.compare_state = CompareState::default();
+                self.log(LogLevel::Info, "Opened compare mode");
+                self.load_commits_for_compare();
+            }
+            // Open search mode on 's'
+            (KeyCode::Char('s'), _) => {
+                self.mode = ConsoleMode::Search;
+                self.search_state = SearchState::default();
+                self.log(LogLevel::Info, "Opened search mode");
+            }
+            // Open hooks mode on 'k'
+            (KeyCode::Char('k'), _) => {
+                self.mode = ConsoleMode::Hooks;
+                self.hooks_state = HooksState::default();
+                self.log(LogLevel::Info, "Opened hooks manager");
+                self.load_hooks();
             }
             // Show help on '?' or 'h'
             (KeyCode::Char('?'), _) | (KeyCode::Char('h'), _) => {
@@ -438,6 +534,119 @@ impl Console {
         Ok(())
     }
 
+    /// Handle keyboard in compare mode
+    fn handle_compare_mode_key(&mut self, code: KeyCode, _modifiers: KeyModifiers) -> Result<()> {
+        match code {
+            // Cancel on Esc
+            KeyCode::Esc => {
+                self.mode = ConsoleMode::Normal;
+                self.log(LogLevel::Info, "Closed compare mode");
+            }
+            // Tab to switch active selector
+            KeyCode::Tab => {
+                self.compare_state.active_selector = 1 - self.compare_state.active_selector;
+            }
+            // Navigate up
+            KeyCode::Up => {
+                if self.compare_state.active_selector == 0 && self.compare_state.selected_a > 0 {
+                    self.compare_state.selected_a -= 1;
+                } else if self.compare_state.active_selector == 1 && self.compare_state.selected_b > 0 {
+                    self.compare_state.selected_b -= 1;
+                }
+            }
+            // Navigate down
+            KeyCode::Down => {
+                let max_idx = self.compare_state.commits.len().saturating_sub(1);
+                if self.compare_state.active_selector == 0 && self.compare_state.selected_a < max_idx {
+                    self.compare_state.selected_a += 1;
+                } else if self.compare_state.active_selector == 1 && self.compare_state.selected_b < max_idx {
+                    self.compare_state.selected_b += 1;
+                }
+            }
+            // Execute comparison on Enter
+            KeyCode::Enter => {
+                self.execute_compare();
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
+    /// Handle keyboard in search mode
+    fn handle_search_mode_key(&mut self, code: KeyCode, _modifiers: KeyModifiers) -> Result<()> {
+        match code {
+            // Cancel on Esc
+            KeyCode::Esc => {
+                self.mode = ConsoleMode::Normal;
+                self.log(LogLevel::Info, "Closed search mode");
+            }
+            // Execute search on Enter
+            KeyCode::Enter => {
+                self.execute_search();
+            }
+            // Navigate results with up/down
+            KeyCode::Up => {
+                if self.search_state.selected_index > 0 {
+                    self.search_state.selected_index -= 1;
+                }
+            }
+            KeyCode::Down => {
+                if self.search_state.selected_index < self.search_state.results.len().saturating_sub(1) {
+                    self.search_state.selected_index += 1;
+                }
+            }
+            // Backspace to delete
+            KeyCode::Backspace => {
+                self.search_state.query.pop();
+                // Clear results when query changes
+                self.search_state.results.clear();
+            }
+            // Type character
+            KeyCode::Char(c) => {
+                self.search_state.query.push(c);
+                // Clear results when query changes
+                self.search_state.results.clear();
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
+    /// Handle keyboard in hooks mode
+    fn handle_hooks_mode_key(&mut self, code: KeyCode, _modifiers: KeyModifiers) -> Result<()> {
+        match code {
+            // Cancel on Esc
+            KeyCode::Esc => {
+                self.mode = ConsoleMode::Normal;
+                self.log(LogLevel::Info, "Closed hooks manager");
+            }
+            // Navigate up
+            KeyCode::Up => {
+                if self.hooks_state.selected_index > 0 {
+                    self.hooks_state.selected_index -= 1;
+                }
+            }
+            // Navigate down
+            KeyCode::Down => {
+                if self.hooks_state.selected_index < self.hooks_state.hooks.len().saturating_sub(1) {
+                    self.hooks_state.selected_index += 1;
+                }
+            }
+            // Delete hook on 'd'
+            KeyCode::Char('d') => {
+                if !self.hooks_state.hooks.is_empty() {
+                    self.delete_selected_hook();
+                }
+            }
+            // Refresh hooks list on 'r'
+            KeyCode::Char('r') => {
+                self.load_hooks();
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
     /// Get mutable reference to active field in commit dialog
     fn get_active_field_mut(&mut self) -> &mut String {
         match self.commit_dialog.active_field {
@@ -452,56 +661,421 @@ impl Console {
 
     /// Refresh repository status
     fn refresh_repo_status(&mut self) {
-        // TODO: Call oxenvcs-cli status to get current repo state
-        // For now, just update the log
-        self.log(LogLevel::Info, "Repository status refreshed");
+        // Check if repository exists
+        let oxen_dir = self.project_path.join(".oxen");
+        if !oxen_dir.exists() {
+            self.log(LogLevel::Warning, "Not an Oxen repository");
+            return;
+        }
+
+        // Get repository status using async runtime
+        let project_path = self.project_path.clone();
+        match tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(async {
+                let repo = OxenRepository::new(&project_path);
+                repo.status().await
+            })
+        }) {
+            Ok(status) => {
+                self.set_repo_status(
+                    status.staged.len(),
+                    status.modified.len(),
+                    status.untracked.len(),
+                );
+                self.log(
+                    LogLevel::Success,
+                    format!(
+                        "Status: {} staged, {} modified, {} untracked",
+                        status.staged.len(),
+                        status.modified.len(),
+                        status.untracked.len()
+                    ),
+                );
+            }
+            Err(e) => {
+                self.log(LogLevel::Error, format!("Failed to get status: {}", e));
+            }
+        }
     }
 
     /// Load commit history
     fn load_commits(&mut self) {
-        // TODO: Call oxenvcs-cli log to get commits
-        // For now, add placeholder data
-        self.restore_browser.commits = vec![
-            CommitEntry {
-                id: "abc123def456".to_string(),
-                short_id: "abc123d".to_string(),
-                message: "Added vocals - BPM 120".to_string(),
-                timestamp: "2 hours ago".to_string(),
-            },
-            CommitEntry {
-                id: "def456ghi789".to_string(),
-                short_id: "def456g".to_string(),
-                message: "Drum tracking complete".to_string(),
-                timestamp: "5 hours ago".to_string(),
-            },
-            CommitEntry {
-                id: "ghi789jkl012".to_string(),
-                short_id: "ghi789j".to_string(),
-                message: "Initial project setup".to_string(),
-                timestamp: "1 day ago".to_string(),
-            },
-        ];
-        self.log(LogLevel::Info, format!("Loaded {} commits", self.restore_browser.commits.len()));
+        // Check if repository exists
+        let oxen_dir = self.project_path.join(".oxen");
+        if !oxen_dir.exists() {
+            self.log(LogLevel::Warning, "Not an Oxen repository");
+            return;
+        }
+
+        // Get commit history using async runtime
+        let project_path = self.project_path.clone();
+        match tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(async {
+                let repo = OxenRepository::new(&project_path);
+                repo.get_history(Some(20)).await // Limit to 20 commits
+            })
+        }) {
+            Ok(commits) => {
+                self.restore_browser.commits = commits
+                    .iter()
+                    .map(|commit| {
+                        let short_id = if commit.id.len() >= 7 {
+                            commit.id[..7].to_string()
+                        } else {
+                            commit.id.clone()
+                        };
+
+                        // Extract first line of message
+                        let first_line = commit
+                            .message
+                            .lines()
+                            .next()
+                            .unwrap_or(&commit.message)
+                            .to_string();
+
+                        CommitEntry {
+                            id: commit.id.clone(),
+                            short_id,
+                            message: first_line,
+                            timestamp: "now".to_string(), // TODO: Calculate relative time
+                        }
+                    })
+                    .collect();
+
+                self.log(
+                    LogLevel::Success,
+                    format!("Loaded {} commits", self.restore_browser.commits.len()),
+                );
+            }
+            Err(e) => {
+                self.log(LogLevel::Error, format!("Failed to load commits: {}", e));
+                // Show empty list on error
+                self.restore_browser.commits = vec![];
+            }
+        }
     }
 
     /// Execute commit with current dialog values
     fn execute_commit(&mut self) {
-        // TODO: Call oxenvcs-cli commit with parameters
-        let msg = format!(
-            "Creating commit: \"{}\" (BPM: {}, SR: {}, Key: {}, Tags: {})",
-            self.commit_dialog.message,
-            if self.commit_dialog.bpm.is_empty() { "none" } else { &self.commit_dialog.bpm },
-            if self.commit_dialog.sample_rate.is_empty() { "none" } else { &self.commit_dialog.sample_rate },
-            if self.commit_dialog.key.is_empty() { "none" } else { &self.commit_dialog.key },
-            if self.commit_dialog.tags.is_empty() { "none" } else { &self.commit_dialog.tags }
-        );
-        self.log(LogLevel::Success, msg);
+        // Check if repository exists
+        let oxen_dir = self.project_path.join(".oxen");
+        if !oxen_dir.exists() {
+            self.log(LogLevel::Error, "Not an Oxen repository");
+            return;
+        }
+
+        // Build commit metadata
+        let mut metadata = CommitMetadata::new(self.commit_dialog.message.clone());
+
+        // Add optional metadata
+        if !self.commit_dialog.bpm.is_empty() {
+            if let Ok(bpm) = self.commit_dialog.bpm.parse::<f32>() {
+                metadata = metadata.with_bpm(bpm);
+            }
+        }
+
+        if !self.commit_dialog.sample_rate.is_empty() {
+            if let Ok(sr) = self.commit_dialog.sample_rate.parse::<u32>() {
+                metadata = metadata.with_sample_rate(sr);
+            }
+        }
+
+        if !self.commit_dialog.key.is_empty() {
+            metadata = metadata.with_key_signature(self.commit_dialog.key.clone());
+        }
+
+        if !self.commit_dialog.tags.is_empty() {
+            for tag in self.commit_dialog.tags.split(',') {
+                metadata = metadata.with_tag(tag.trim().to_string());
+            }
+        }
+
+        // Create commit using async runtime
+        let project_path = self.project_path.clone();
+
+        self.log(LogLevel::Info, "Creating commit...");
+
+        match tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(async {
+                let repo = OxenRepository::new(&project_path);
+                repo.create_commit(metadata).await
+            })
+        }) {
+            Ok(commit_id) => {
+                let short_id = if commit_id.len() >= 7 {
+                    &commit_id[..7]
+                } else {
+                    &commit_id
+                };
+                self.log(
+                    LogLevel::Success,
+                    format!("Commit created: {}", short_id),
+                );
+                // Refresh status after commit
+                self.refresh_repo_status();
+            }
+            Err(e) => {
+                self.log(LogLevel::Error, format!("Failed to create commit: {}", e));
+            }
+        }
     }
 
     /// Execute restore to specified commit
     fn execute_restore(&mut self, commit_id: &str) {
-        // TODO: Call oxenvcs-cli restore
-        self.log(LogLevel::Success, format!("Restoring to commit: {}", commit_id));
+        // Check if repository exists
+        let oxen_dir = self.project_path.join(".oxen");
+        if !oxen_dir.exists() {
+            self.log(LogLevel::Error, "Not an Oxen repository");
+            return;
+        }
+
+        self.log(LogLevel::Info, format!("Restoring to commit {}...", &commit_id[..7.min(commit_id.len())]));
+
+        // Restore using async runtime
+        let project_path = self.project_path.clone();
+        let commit_id_owned = commit_id.to_string();
+
+        match tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(async {
+                let repo = OxenRepository::new(&project_path);
+                repo.restore(&commit_id_owned).await
+            })
+        }) {
+            Ok(_) => {
+                self.log(
+                    LogLevel::Success,
+                    format!("Restored to commit: {}", &commit_id[..7.min(commit_id.len())]),
+                );
+                // Refresh status after restore
+                self.refresh_repo_status();
+            }
+            Err(e) => {
+                self.log(LogLevel::Error, format!("Failed to restore: {}", e));
+            }
+        }
+    }
+
+    /// Load commits for compare mode
+    fn load_commits_for_compare(&mut self) {
+        // Check if repository exists
+        let oxen_dir = self.project_path.join(".oxen");
+        if !oxen_dir.exists() {
+            self.log(LogLevel::Warning, "Not an Oxen repository");
+            return;
+        }
+
+        // Get commit history using async runtime
+        let project_path = self.project_path.clone();
+        match tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(async {
+                let repo = OxenRepository::new(&project_path);
+                repo.get_history(Some(20)).await // Limit to 20 commits
+            })
+        }) {
+            Ok(commits) => {
+                self.compare_state.commits = commits
+                    .iter()
+                    .map(|commit| {
+                        let short_id = if commit.id.len() >= 7 {
+                            commit.id[..7].to_string()
+                        } else {
+                            commit.id.clone()
+                        };
+
+                        let first_line = commit
+                            .message
+                            .lines()
+                            .next()
+                            .unwrap_or(&commit.message)
+                            .to_string();
+
+                        CommitEntry {
+                            id: commit.id.clone(),
+                            short_id,
+                            message: first_line,
+                            timestamp: "now".to_string(),
+                        }
+                    })
+                    .collect();
+
+                self.log(
+                    LogLevel::Success,
+                    format!("Loaded {} commits for comparison", self.compare_state.commits.len()),
+                );
+            }
+            Err(e) => {
+                self.log(LogLevel::Error, format!("Failed to load commits: {}", e));
+                self.compare_state.commits = vec![];
+            }
+        }
+    }
+
+    /// Execute semantic comparison of two commits
+    fn execute_compare(&mut self) {
+        if self.compare_state.commits.is_empty() {
+            self.log(LogLevel::Warning, "No commits available to compare");
+            return;
+        }
+
+        let commit_a = &self.compare_state.commits[self.compare_state.selected_a];
+        let commit_b = &self.compare_state.commits[self.compare_state.selected_b];
+
+        // Parse metadata from both commits
+        let metadata_a = CommitMetadata::parse_commit_message(&commit_a.message);
+        let metadata_b = CommitMetadata::parse_commit_message(&commit_b.message);
+
+        // Generate colored diff
+        let diff = metadata_a.compare_with(&metadata_b);
+        self.compare_state.diff_result = Some(diff);
+
+        self.log(
+            LogLevel::Success,
+            format!("Compared {} vs {}", &commit_a.short_id, &commit_b.short_id),
+        );
+    }
+
+    /// Execute search query
+    fn execute_search(&mut self) {
+        use crate::search::SearchEngine;
+
+        if self.search_state.query.is_empty() {
+            self.log(LogLevel::Warning, "Search query is empty");
+            return;
+        }
+
+        // Check if repository exists
+        let oxen_dir = self.project_path.join(".oxen");
+        if !oxen_dir.exists() {
+            self.log(LogLevel::Error, "Not an Oxen repository");
+            return;
+        }
+
+        self.log(LogLevel::Info, format!("Searching: {}", self.search_state.query));
+
+        // Get all commits
+        let project_path = self.project_path.clone();
+        match tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(async {
+                let repo = OxenRepository::new(&project_path);
+                repo.get_history(None).await
+            })
+        }) {
+            Ok(commits) => {
+                // Parse and execute search
+                let query = SearchEngine::parse_query(&self.search_state.query);
+                let engine = SearchEngine::new();
+                let results = engine.search(&commits, &query);
+
+                self.search_state.results = results
+                    .iter()
+                    .map(|commit| {
+                        let short_id = if commit.id.len() >= 7 {
+                            commit.id[..7].to_string()
+                        } else {
+                            commit.id.clone()
+                        };
+
+                        let first_line = commit
+                            .message
+                            .lines()
+                            .next()
+                            .unwrap_or(&commit.message)
+                            .to_string();
+
+                        CommitEntry {
+                            id: commit.id.clone(),
+                            short_id,
+                            message: first_line,
+                            timestamp: "now".to_string(),
+                        }
+                    })
+                    .collect();
+
+                self.log(
+                    LogLevel::Success,
+                    format!("Found {} matching commits", self.search_state.results.len()),
+                );
+            }
+            Err(e) => {
+                self.log(LogLevel::Error, format!("Search failed: {}", e));
+                self.search_state.results = vec![];
+            }
+        }
+    }
+
+    /// Load hooks from repository
+    fn load_hooks(&mut self) {
+        use crate::hooks::HookManager;
+
+        // Check if repository exists
+        let oxen_dir = self.project_path.join(".oxen");
+        if !oxen_dir.exists() {
+            self.log(LogLevel::Warning, "Not an Oxen repository");
+            return;
+        }
+
+        let manager = HookManager::new(&self.project_path);
+
+        match manager.list_hooks() {
+            Ok(hooks) => {
+                self.hooks_state.hooks = hooks
+                    .iter()
+                    .map(|(hook_type, name)| {
+                        let type_str = match hook_type {
+                            crate::hooks::HookType::PreCommit => "pre-commit",
+                            crate::hooks::HookType::PostCommit => "post-commit",
+                        };
+                        (type_str.to_string(), name.clone())
+                    })
+                    .collect();
+
+                self.log(
+                    LogLevel::Success,
+                    format!("Loaded {} hooks", self.hooks_state.hooks.len()),
+                );
+            }
+            Err(e) => {
+                self.log(LogLevel::Error, format!("Failed to load hooks: {}", e));
+                self.hooks_state.hooks = vec![];
+            }
+        }
+    }
+
+    /// Delete the currently selected hook
+    fn delete_selected_hook(&mut self) {
+        use crate::hooks::{HookManager, HookType};
+
+        if self.hooks_state.hooks.is_empty() {
+            return;
+        }
+
+        let (hook_type_str, hook_name) = &self.hooks_state.hooks[self.hooks_state.selected_index];
+
+        let hook_type = match hook_type_str.as_str() {
+            "pre-commit" => HookType::PreCommit,
+            "post-commit" => HookType::PostCommit,
+            _ => {
+                self.log(LogLevel::Error, "Invalid hook type");
+                return;
+            }
+        };
+
+        let manager = HookManager::new(&self.project_path);
+
+        match manager.remove_hook(hook_name, hook_type) {
+            Ok(_) => {
+                self.log(LogLevel::Success, format!("Deleted hook: {}", hook_name));
+                // Reload hooks list
+                self.load_hooks();
+                // Adjust selection if needed
+                if self.hooks_state.selected_index >= self.hooks_state.hooks.len() && self.hooks_state.selected_index > 0 {
+                    self.hooks_state.selected_index -= 1;
+                }
+            }
+            Err(e) => {
+                self.log(LogLevel::Error, format!("Failed to delete hook: {}", e));
+            }
+        }
     }
 
     /// Render the UI
@@ -548,6 +1122,18 @@ impl Console {
             ConsoleMode::RestoreBrowser => {
                 // Render restore browser
                 self.render_restore_browser(f, chunks[1]);
+            }
+            ConsoleMode::Compare => {
+                // Render compare mode
+                self.render_compare_mode(f, chunks[1]);
+            }
+            ConsoleMode::Search => {
+                // Render search mode
+                self.render_search_mode(f, chunks[1]);
+            }
+            ConsoleMode::Hooks => {
+                // Render hooks mode
+                self.render_hooks_mode(f, chunks[1]);
             }
             ConsoleMode::Help => {
                 // Render help screen
@@ -695,8 +1281,12 @@ impl Console {
                 Span::raw(":Commit  "),
                 Span::styled("l", Style::default().fg(Color::Cyan)),
                 Span::raw(":Log  "),
-                Span::styled("r", Style::default().fg(Color::Cyan)),
-                Span::raw(":Refresh  "),
+                Span::styled("d", Style::default().fg(Color::Cyan)),
+                Span::raw(":Diff  "),
+                Span::styled("s", Style::default().fg(Color::Cyan)),
+                Span::raw(":Search  "),
+                Span::styled("k", Style::default().fg(Color::Cyan)),
+                Span::raw(":Hooks  "),
                 Span::styled("?", Style::default().fg(Color::Cyan)),
                 Span::raw(":Help"),
             ],
@@ -713,6 +1303,36 @@ impl Console {
                 Span::raw(":Navigate  "),
                 Span::styled("Enter", Style::default().fg(Color::Green)),
                 Span::raw(":Restore  "),
+                Span::styled("Esc", Style::default().fg(Color::Red)),
+                Span::raw(":Cancel"),
+            ],
+            ConsoleMode::Compare => vec![
+                Span::styled("Tab", Style::default().fg(Color::Cyan)),
+                Span::raw(":Switch  "),
+                Span::styled("↑↓", Style::default().fg(Color::Cyan)),
+                Span::raw(":Navigate  "),
+                Span::styled("Enter", Style::default().fg(Color::Green)),
+                Span::raw(":Compare  "),
+                Span::styled("Esc", Style::default().fg(Color::Red)),
+                Span::raw(":Cancel"),
+            ],
+            ConsoleMode::Search => vec![
+                Span::styled("Type", Style::default().fg(Color::Cyan)),
+                Span::raw(":Query  "),
+                Span::styled("Enter", Style::default().fg(Color::Green)),
+                Span::raw(":Search  "),
+                Span::styled("↑↓", Style::default().fg(Color::Cyan)),
+                Span::raw(":Navigate  "),
+                Span::styled("Esc", Style::default().fg(Color::Red)),
+                Span::raw(":Cancel"),
+            ],
+            ConsoleMode::Hooks => vec![
+                Span::styled("↑↓", Style::default().fg(Color::Cyan)),
+                Span::raw(":Navigate  "),
+                Span::styled("d", Style::default().fg(Color::Red)),
+                Span::raw(":Delete  "),
+                Span::styled("r", Style::default().fg(Color::Cyan)),
+                Span::raw(":Refresh  "),
                 Span::styled("Esc", Style::default().fg(Color::Red)),
                 Span::raw(":Cancel"),
             ],
@@ -875,6 +1495,9 @@ impl Console {
             Line::from("  q         - Quit console"),
             Line::from("  i         - Open commit dialog"),
             Line::from("  l         - Open restore browser (log)"),
+            Line::from("  d         - Open compare mode (semantic diff)"),
+            Line::from("  s         - Open search mode"),
+            Line::from("  k         - Open hooks manager"),
             Line::from("  r         - Refresh repository status"),
             Line::from("  c         - Clear activity log"),
             Line::from("  ?  or h   - Show this help"),
@@ -889,6 +1512,24 @@ impl Console {
             Line::from("  ↑ / ↓     - Navigate commit list"),
             Line::from("  Enter     - Restore selected commit"),
             Line::from("  Esc       - Close browser"),
+            Line::from(""),
+            Line::from("Compare Mode:"),
+            Line::from("  Tab       - Switch between commit A and B"),
+            Line::from("  ↑ / ↓     - Navigate commit list"),
+            Line::from("  Enter     - Execute comparison"),
+            Line::from("  Esc       - Close compare mode"),
+            Line::from(""),
+            Line::from("Search Mode:"),
+            Line::from("  Type      - Enter search query (e.g., bpm:120-140)"),
+            Line::from("  Enter     - Execute search"),
+            Line::from("  ↑ / ↓     - Navigate results"),
+            Line::from("  Esc       - Close search mode"),
+            Line::from(""),
+            Line::from("Hooks Mode:"),
+            Line::from("  ↑ / ↓     - Navigate hook list"),
+            Line::from("  d         - Delete selected hook"),
+            Line::from("  r         - Refresh hook list"),
+            Line::from("  Esc       - Close hooks mode"),
             Line::from(""),
             Line::from(Span::styled(
                 "Press any key to return to console",
@@ -906,6 +1547,238 @@ impl Console {
             .alignment(Alignment::Left);
 
         f.render_widget(help, area);
+    }
+
+    /// Render compare mode
+    fn render_compare_mode(&self, f: &mut Frame, area: Rect) {
+        // Split into two columns: commit selectors and diff result
+        let chunks = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Percentage(50), // Commit selectors
+                Constraint::Percentage(50), // Diff result
+            ])
+            .split(area);
+
+        // Left side: Two commit selectors
+        let selector_chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Percentage(50), // Commit A
+                Constraint::Percentage(50), // Commit B
+            ])
+            .split(chunks[0]);
+
+        // Render commit A selector
+        self.render_commit_selector(f, selector_chunks[0], "Commit A", self.compare_state.selected_a, self.compare_state.active_selector == 0);
+
+        // Render commit B selector
+        self.render_commit_selector(f, selector_chunks[1], "Commit B", self.compare_state.selected_b, self.compare_state.active_selector == 1);
+
+        // Right side: Diff result
+        let diff_text = if let Some(ref diff) = self.compare_state.diff_result {
+            diff.clone()
+        } else {
+            "Press Enter to compare selected commits".to_string()
+        };
+
+        let diff_paragraph = Paragraph::new(diff_text)
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(Color::White))
+                    .title("Semantic Diff"),
+            )
+            .wrap(Wrap { trim: false });
+
+        f.render_widget(diff_paragraph, chunks[1]);
+    }
+
+    /// Helper to render a commit selector
+    fn render_commit_selector(&self, f: &mut Frame, area: Rect, title: &str, selected_index: usize, is_active: bool) {
+        let items: Vec<ListItem> = self
+            .compare_state
+            .commits
+            .iter()
+            .enumerate()
+            .map(|(i, commit)| {
+                let style = if i == selected_index {
+                    Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+                } else {
+                    Style::default()
+                };
+
+                let content = Line::from(vec![
+                    Span::styled(&commit.short_id, Style::default().fg(Color::Cyan)),
+                    Span::raw(" - "),
+                    Span::styled(&commit.message, style),
+                ]);
+
+                ListItem::new(content)
+            })
+            .collect();
+
+        let border_color = if is_active { Color::Green } else { Color::White };
+
+        let list = List::new(items)
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(border_color))
+                    .title(title),
+            )
+            .highlight_symbol("► ");
+
+        f.render_widget(list, area);
+    }
+
+    /// Render search mode
+    fn render_search_mode(&self, f: &mut Frame, area: Rect) {
+        // Split into query input and results
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Length(3),  // Query input
+                Constraint::Min(0),     // Results
+            ])
+            .split(area);
+
+        // Query input
+        let query_text = format!("Query: {}", self.search_state.query);
+        let query_paragraph = Paragraph::new(query_text)
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(Color::Green))
+                    .title("Search (e.g., bpm:120-140 key:minor tag:mixing)"),
+            );
+
+        f.render_widget(query_paragraph, chunks[0]);
+
+        // Results list
+        if self.search_state.results.is_empty() {
+            let empty_text = if self.search_state.query.is_empty() {
+                "Enter a search query and press Enter to search"
+            } else {
+                "No results found. Press Enter to search."
+            };
+
+            let empty_paragraph = Paragraph::new(empty_text)
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .border_style(Style::default().fg(Color::White))
+                        .title("Search Results"),
+                )
+                .alignment(Alignment::Center);
+
+            f.render_widget(empty_paragraph, chunks[1]);
+        } else {
+            let items: Vec<ListItem> = self
+                .search_state
+                .results
+                .iter()
+                .enumerate()
+                .map(|(i, commit)| {
+                    let style = if i == self.search_state.selected_index {
+                        Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+                    } else {
+                        Style::default()
+                    };
+
+                    let content = Line::from(vec![
+                        Span::styled(&commit.short_id, Style::default().fg(Color::Cyan)),
+                        Span::raw(" - "),
+                        Span::styled(&commit.message, style),
+                    ]);
+
+                    ListItem::new(content)
+                })
+                .collect();
+
+            let list = List::new(items)
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .border_style(Style::default().fg(Color::White))
+                        .title(format!("Search Results ({} found)", self.search_state.results.len())),
+                )
+                .highlight_symbol("► ");
+
+            f.render_widget(list, chunks[1]);
+        }
+    }
+
+    /// Render hooks mode
+    fn render_hooks_mode(&self, f: &mut Frame, area: Rect) {
+        if self.hooks_state.hooks.is_empty() {
+            let empty_text = vec![
+                Line::from(""),
+                Line::from(Span::styled(
+                    "No hooks installed",
+                    Style::default().fg(Color::Yellow),
+                )),
+                Line::from(""),
+                Line::from("Install built-in hooks with:"),
+                Line::from("  oxenvcs-cli hooks install <name>"),
+                Line::from(""),
+                Line::from("Available built-in hooks:"),
+                Line::from("  validate-metadata (pre-commit)"),
+                Line::from("  check-file-sizes (pre-commit)"),
+                Line::from("  notify (post-commit)"),
+                Line::from("  backup (post-commit)"),
+            ];
+
+            let empty_paragraph = Paragraph::new(empty_text)
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .border_style(Style::default().fg(Color::White))
+                        .title("Hooks Manager"),
+                )
+                .alignment(Alignment::Center);
+
+            f.render_widget(empty_paragraph, area);
+        } else {
+            let items: Vec<ListItem> = self
+                .hooks_state
+                .hooks
+                .iter()
+                .enumerate()
+                .map(|(i, (hook_type, name))| {
+                    let style = if i == self.hooks_state.selected_index {
+                        Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+                    } else {
+                        Style::default()
+                    };
+
+                    let type_color = match hook_type.as_str() {
+                        "pre-commit" => Color::Green,
+                        "post-commit" => Color::Cyan,
+                        _ => Color::White,
+                    };
+
+                    let content = Line::from(vec![
+                        Span::styled(hook_type, Style::default().fg(type_color)),
+                        Span::raw(" / "),
+                        Span::styled(name, style),
+                    ]);
+
+                    ListItem::new(content)
+                })
+                .collect();
+
+            let list = List::new(items)
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .border_style(Style::default().fg(Color::White))
+                        .title(format!("Hooks Manager ({} hooks, press 'd' to delete)", self.hooks_state.hooks.len())),
+                )
+                .highlight_symbol("► ");
+
+            f.render_widget(list, area);
+        }
     }
 }
 
@@ -974,5 +1847,480 @@ mod tests {
         assert_eq!(status.staged, 2);
         assert_eq!(status.modified, 3);
         assert_eq!(status.untracked, 1);
+    }
+
+    // CompareState Tests
+
+    #[test]
+    fn test_compare_state_default() {
+        let state = CompareState::default();
+        assert_eq!(state.commits.len(), 0);
+        assert_eq!(state.selected_a, 0);
+        assert_eq!(state.selected_b, 0);
+        assert_eq!(state.active_selector, 0);
+        assert!(state.diff_result.is_none());
+    }
+
+    #[test]
+    fn test_compare_mode_initialization() {
+        let console = Console::new(PathBuf::from("/test/project.logicx"));
+        assert_eq!(console.compare_state.commits.len(), 0);
+        assert_eq!(console.compare_state.active_selector, 0);
+    }
+
+    #[test]
+    fn test_compare_state_selector_switching() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+        console.mode = ConsoleMode::Compare;
+
+        // Initially on selector 0
+        assert_eq!(console.compare_state.active_selector, 0);
+
+        // Simulate Tab key to switch
+        console.handle_compare_mode_key(KeyCode::Tab, KeyModifiers::empty()).unwrap();
+        assert_eq!(console.compare_state.active_selector, 1);
+
+        // Tab again to switch back
+        console.handle_compare_mode_key(KeyCode::Tab, KeyModifiers::empty()).unwrap();
+        assert_eq!(console.compare_state.active_selector, 0);
+    }
+
+    #[test]
+    fn test_compare_mode_navigation() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+        console.mode = ConsoleMode::Compare;
+
+        // Add some test commits
+        console.compare_state.commits = vec![
+            CommitEntry {
+                id: "abc123".to_string(),
+                short_id: "abc123".to_string(),
+                message: "Commit 1".to_string(),
+                timestamp: "now".to_string(),
+            },
+            CommitEntry {
+                id: "def456".to_string(),
+                short_id: "def456".to_string(),
+                message: "Commit 2".to_string(),
+                timestamp: "now".to_string(),
+            },
+            CommitEntry {
+                id: "ghi789".to_string(),
+                short_id: "ghi789".to_string(),
+                message: "Commit 3".to_string(),
+                timestamp: "now".to_string(),
+            },
+        ];
+
+        // Navigate selector A down
+        console.compare_state.active_selector = 0;
+        console.compare_state.selected_a = 0;
+        console.handle_compare_mode_key(KeyCode::Down, KeyModifiers::empty()).unwrap();
+        assert_eq!(console.compare_state.selected_a, 1);
+
+        // Navigate selector A up
+        console.handle_compare_mode_key(KeyCode::Up, KeyModifiers::empty()).unwrap();
+        assert_eq!(console.compare_state.selected_a, 0);
+
+        // Switch to selector B
+        console.compare_state.active_selector = 1;
+        console.compare_state.selected_b = 0;
+        console.handle_compare_mode_key(KeyCode::Down, KeyModifiers::empty()).unwrap();
+        assert_eq!(console.compare_state.selected_b, 1);
+    }
+
+    #[test]
+    fn test_compare_mode_navigation_boundaries() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+        console.mode = ConsoleMode::Compare;
+
+        // Add commits
+        console.compare_state.commits = vec![
+            CommitEntry {
+                id: "abc123".to_string(),
+                short_id: "abc123".to_string(),
+                message: "Commit 1".to_string(),
+                timestamp: "now".to_string(),
+            },
+            CommitEntry {
+                id: "def456".to_string(),
+                short_id: "def456".to_string(),
+                message: "Commit 2".to_string(),
+                timestamp: "now".to_string(),
+            },
+        ];
+
+        // Try to navigate up from 0 (should stay at 0)
+        console.compare_state.active_selector = 0;
+        console.compare_state.selected_a = 0;
+        console.handle_compare_mode_key(KeyCode::Up, KeyModifiers::empty()).unwrap();
+        assert_eq!(console.compare_state.selected_a, 0);
+
+        // Navigate to last item
+        console.compare_state.selected_a = 1;
+        // Try to navigate down from last (should stay at last)
+        console.handle_compare_mode_key(KeyCode::Down, KeyModifiers::empty()).unwrap();
+        assert_eq!(console.compare_state.selected_a, 1);
+    }
+
+    #[test]
+    fn test_compare_mode_exit() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+        console.mode = ConsoleMode::Compare;
+
+        console.handle_compare_mode_key(KeyCode::Esc, KeyModifiers::empty()).unwrap();
+        assert_eq!(console.mode, ConsoleMode::Normal);
+    }
+
+    // SearchState Tests
+
+    #[test]
+    fn test_search_state_default() {
+        let state = SearchState::default();
+        assert_eq!(state.query, "");
+        assert_eq!(state.results.len(), 0);
+        assert_eq!(state.selected_index, 0);
+    }
+
+    #[test]
+    fn test_search_mode_initialization() {
+        let console = Console::new(PathBuf::from("/test/project.logicx"));
+        assert_eq!(console.search_state.query, "");
+        assert_eq!(console.search_state.results.len(), 0);
+    }
+
+    #[test]
+    fn test_search_mode_query_input() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+        console.mode = ConsoleMode::Search;
+
+        // Type some characters
+        console.handle_search_mode_key(KeyCode::Char('b'), KeyModifiers::empty()).unwrap();
+        console.handle_search_mode_key(KeyCode::Char('p'), KeyModifiers::empty()).unwrap();
+        console.handle_search_mode_key(KeyCode::Char('m'), KeyModifiers::empty()).unwrap();
+
+        assert_eq!(console.search_state.query, "bpm");
+    }
+
+    #[test]
+    fn test_search_mode_backspace() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+        console.mode = ConsoleMode::Search;
+
+        // Type and delete
+        console.handle_search_mode_key(KeyCode::Char('t'), KeyModifiers::empty()).unwrap();
+        console.handle_search_mode_key(KeyCode::Char('e'), KeyModifiers::empty()).unwrap();
+        console.handle_search_mode_key(KeyCode::Char('s'), KeyModifiers::empty()).unwrap();
+        console.handle_search_mode_key(KeyCode::Char('t'), KeyModifiers::empty()).unwrap();
+        assert_eq!(console.search_state.query, "test");
+
+        console.handle_search_mode_key(KeyCode::Backspace, KeyModifiers::empty()).unwrap();
+        assert_eq!(console.search_state.query, "tes");
+
+        console.handle_search_mode_key(KeyCode::Backspace, KeyModifiers::empty()).unwrap();
+        assert_eq!(console.search_state.query, "te");
+    }
+
+    #[test]
+    fn test_search_mode_results_navigation() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+        console.mode = ConsoleMode::Search;
+
+        // Add test results
+        console.search_state.results = vec![
+            CommitEntry {
+                id: "abc123".to_string(),
+                short_id: "abc123".to_string(),
+                message: "Result 1".to_string(),
+                timestamp: "now".to_string(),
+            },
+            CommitEntry {
+                id: "def456".to_string(),
+                short_id: "def456".to_string(),
+                message: "Result 2".to_string(),
+                timestamp: "now".to_string(),
+            },
+            CommitEntry {
+                id: "ghi789".to_string(),
+                short_id: "ghi789".to_string(),
+                message: "Result 3".to_string(),
+                timestamp: "now".to_string(),
+            },
+        ];
+
+        console.search_state.selected_index = 0;
+
+        // Navigate down
+        console.handle_search_mode_key(KeyCode::Down, KeyModifiers::empty()).unwrap();
+        assert_eq!(console.search_state.selected_index, 1);
+
+        console.handle_search_mode_key(KeyCode::Down, KeyModifiers::empty()).unwrap();
+        assert_eq!(console.search_state.selected_index, 2);
+
+        // Navigate up
+        console.handle_search_mode_key(KeyCode::Up, KeyModifiers::empty()).unwrap();
+        assert_eq!(console.search_state.selected_index, 1);
+    }
+
+    #[test]
+    fn test_search_mode_navigation_boundaries() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+        console.mode = ConsoleMode::Search;
+
+        console.search_state.results = vec![
+            CommitEntry {
+                id: "abc123".to_string(),
+                short_id: "abc123".to_string(),
+                message: "Result 1".to_string(),
+                timestamp: "now".to_string(),
+            },
+        ];
+
+        console.search_state.selected_index = 0;
+
+        // Try to go up from 0
+        console.handle_search_mode_key(KeyCode::Up, KeyModifiers::empty()).unwrap();
+        assert_eq!(console.search_state.selected_index, 0);
+
+        // Try to go down from last
+        console.handle_search_mode_key(KeyCode::Down, KeyModifiers::empty()).unwrap();
+        assert_eq!(console.search_state.selected_index, 0);
+    }
+
+    #[test]
+    fn test_search_mode_exit() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+        console.mode = ConsoleMode::Search;
+
+        console.handle_search_mode_key(KeyCode::Esc, KeyModifiers::empty()).unwrap();
+        assert_eq!(console.mode, ConsoleMode::Normal);
+    }
+
+    #[test]
+    fn test_search_mode_clears_results_on_query_change() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+        console.mode = ConsoleMode::Search;
+
+        // Add some results
+        console.search_state.results = vec![
+            CommitEntry {
+                id: "abc123".to_string(),
+                short_id: "abc123".to_string(),
+                message: "Result 1".to_string(),
+                timestamp: "now".to_string(),
+            },
+        ];
+
+        // Type a character - should clear results
+        console.handle_search_mode_key(KeyCode::Char('a'), KeyModifiers::empty()).unwrap();
+        assert_eq!(console.search_state.results.len(), 0);
+
+        // Add results again
+        console.search_state.results = vec![
+            CommitEntry {
+                id: "abc123".to_string(),
+                short_id: "abc123".to_string(),
+                message: "Result 1".to_string(),
+                timestamp: "now".to_string(),
+            },
+        ];
+
+        // Backspace - should also clear results
+        console.handle_search_mode_key(KeyCode::Backspace, KeyModifiers::empty()).unwrap();
+        assert_eq!(console.search_state.results.len(), 0);
+    }
+
+    // HooksState Tests
+
+    #[test]
+    fn test_hooks_state_default() {
+        let state = HooksState::default();
+        assert_eq!(state.hooks.len(), 0);
+        assert_eq!(state.selected_index, 0);
+    }
+
+    #[test]
+    fn test_hooks_mode_initialization() {
+        let console = Console::new(PathBuf::from("/test/project.logicx"));
+        assert_eq!(console.hooks_state.hooks.len(), 0);
+        assert_eq!(console.hooks_state.selected_index, 0);
+    }
+
+    #[test]
+    fn test_hooks_mode_navigation() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+        console.mode = ConsoleMode::Hooks;
+
+        // Add test hooks
+        console.hooks_state.hooks = vec![
+            ("pre-commit".to_string(), "validate-metadata".to_string()),
+            ("post-commit".to_string(), "notify".to_string()),
+            ("pre-commit".to_string(), "check-file-sizes".to_string()),
+        ];
+
+        console.hooks_state.selected_index = 0;
+
+        // Navigate down
+        console.handle_hooks_mode_key(KeyCode::Down, KeyModifiers::empty()).unwrap();
+        assert_eq!(console.hooks_state.selected_index, 1);
+
+        console.handle_hooks_mode_key(KeyCode::Down, KeyModifiers::empty()).unwrap();
+        assert_eq!(console.hooks_state.selected_index, 2);
+
+        // Navigate up
+        console.handle_hooks_mode_key(KeyCode::Up, KeyModifiers::empty()).unwrap();
+        assert_eq!(console.hooks_state.selected_index, 1);
+    }
+
+    #[test]
+    fn test_hooks_mode_navigation_boundaries() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+        console.mode = ConsoleMode::Hooks;
+
+        console.hooks_state.hooks = vec![
+            ("pre-commit".to_string(), "hook1".to_string()),
+            ("post-commit".to_string(), "hook2".to_string()),
+        ];
+
+        console.hooks_state.selected_index = 0;
+
+        // Try to go up from 0
+        console.handle_hooks_mode_key(KeyCode::Up, KeyModifiers::empty()).unwrap();
+        assert_eq!(console.hooks_state.selected_index, 0);
+
+        // Go to last
+        console.hooks_state.selected_index = 1;
+        // Try to go down from last
+        console.handle_hooks_mode_key(KeyCode::Down, KeyModifiers::empty()).unwrap();
+        assert_eq!(console.hooks_state.selected_index, 1);
+    }
+
+    #[test]
+    fn test_hooks_mode_exit() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+        console.mode = ConsoleMode::Hooks;
+
+        console.handle_hooks_mode_key(KeyCode::Esc, KeyModifiers::empty()).unwrap();
+        assert_eq!(console.mode, ConsoleMode::Normal);
+    }
+
+    // Mode Transition Tests
+
+    #[test]
+    fn test_mode_transition_to_compare() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+        assert_eq!(console.mode, ConsoleMode::Normal);
+
+        // Press 'd' to enter compare mode
+        console.handle_normal_mode_key(KeyCode::Char('d'), KeyModifiers::empty()).unwrap();
+        assert_eq!(console.mode, ConsoleMode::Compare);
+    }
+
+    #[test]
+    fn test_mode_transition_to_search() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+        assert_eq!(console.mode, ConsoleMode::Normal);
+
+        // Press 's' to enter search mode
+        console.handle_normal_mode_key(KeyCode::Char('s'), KeyModifiers::empty()).unwrap();
+        assert_eq!(console.mode, ConsoleMode::Search);
+    }
+
+    #[test]
+    fn test_mode_transition_to_hooks() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+        assert_eq!(console.mode, ConsoleMode::Normal);
+
+        // Press 'k' to enter hooks mode
+        console.handle_normal_mode_key(KeyCode::Char('k'), KeyModifiers::empty()).unwrap();
+        assert_eq!(console.mode, ConsoleMode::Hooks);
+    }
+
+    #[test]
+    fn test_mode_transition_resets_state() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+
+        // Enter search mode and type a query
+        console.handle_normal_mode_key(KeyCode::Char('s'), KeyModifiers::empty()).unwrap();
+        console.search_state.query = "old query".to_string();
+
+        // Exit and re-enter search mode
+        console.handle_search_mode_key(KeyCode::Esc, KeyModifiers::empty()).unwrap();
+        console.handle_normal_mode_key(KeyCode::Char('s'), KeyModifiers::empty()).unwrap();
+
+        // State should be reset
+        assert_eq!(console.search_state.query, "");
+    }
+
+    #[test]
+    fn test_quit_keyboard_shortcut() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+        assert!(!console.should_quit);
+
+        console.handle_normal_mode_key(KeyCode::Char('q'), KeyModifiers::empty()).unwrap();
+        assert!(console.should_quit);
+    }
+
+    #[test]
+    fn test_ctrl_c_keyboard_shortcut() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+        assert!(!console.should_quit);
+
+        console.handle_normal_mode_key(KeyCode::Char('c'), KeyModifiers::CONTROL).unwrap();
+        assert!(console.should_quit);
+    }
+
+    #[test]
+    fn test_help_mode_transitions() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+
+        // Enter help mode with '?'
+        console.handle_normal_mode_key(KeyCode::Char('?'), KeyModifiers::empty()).unwrap();
+        assert_eq!(console.mode, ConsoleMode::Help);
+
+        // Any key exits help mode
+        console.handle_help_mode_key(KeyCode::Char('x'), KeyModifiers::empty()).unwrap();
+        assert_eq!(console.mode, ConsoleMode::Normal);
+
+        // Enter help mode with 'h'
+        console.handle_normal_mode_key(KeyCode::Char('h'), KeyModifiers::empty()).unwrap();
+        assert_eq!(console.mode, ConsoleMode::Help);
+    }
+
+    // CommitEntry Tests
+
+    #[test]
+    fn test_commit_entry_creation() {
+        let entry = CommitEntry {
+            id: "abc123def456".to_string(),
+            short_id: "abc123d".to_string(),
+            message: "Test commit".to_string(),
+            timestamp: "2 hours ago".to_string(),
+        };
+
+        assert_eq!(entry.id, "abc123def456");
+        assert_eq!(entry.short_id, "abc123d");
+        assert_eq!(entry.message, "Test commit");
+        assert_eq!(entry.timestamp, "2 hours ago");
+    }
+
+    // format_timestamp Tests
+
+    #[test]
+    fn test_format_timestamp() {
+        use std::time::UNIX_EPOCH;
+
+        // Test known timestamp
+        let time = UNIX_EPOCH + std::time::Duration::from_secs(3661); // 1 hour, 1 minute, 1 second
+        let formatted = format_timestamp(time);
+        assert_eq!(formatted, "01:01:01");
+    }
+
+    #[test]
+    fn test_format_timestamp_zero() {
+        use std::time::UNIX_EPOCH;
+
+        let formatted = format_timestamp(UNIX_EPOCH);
+        assert_eq!(formatted, "00:00:00");
     }
 }

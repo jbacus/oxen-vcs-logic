@@ -689,6 +689,252 @@ oxenvcs-cli restore [correct-id]
 
 ---
 
+## 🚀 Advanced Features (Week 3)
+
+### 🔍 Scenario 19: Compare Two Mix Approaches
+
+**Problem:** You tried two different approaches and want to see what changed (BPM, key, effects).
+
+**Solution:** Use semantic diff to compare commits:
+
+```bash
+# View your recent commits
+oxenvcs-cli log --limit 5
+
+# Compare two commits
+oxenvcs-cli compare abc123f def456g
+```
+
+**What you'll see:**
+```
+Message:
+  - Vocal mix attempt 1
+  + Vocal mix attempt 2
+
+BPM:
+  - 120
+  + 128
+
+Key Signature:
+  - A Minor
+  + C Major
+
+Tags:
+  - mixing
+  + mixing, vocals, final
+```
+
+**Different formats:**
+```bash
+# Compact one-line summary
+oxenvcs-cli compare abc123f def456g --format compact
+# Output: BPM: 120->128, Key: A Minor->C Major
+
+# Plain text (no colors)
+oxenvcs-cli compare abc123f def456g --format plain
+
+# JSON (for scripts)
+oxenvcs-cli compare abc123f def456g --format json
+```
+
+**Why:** See exactly what changed between versions without opening Logic Pro!
+
+---
+
+### 🔎 Scenario 20: Find All High-Tempo Dance Tracks
+
+**Problem:** You have 100+ commits and need to find all tracks between 128-140 BPM in E Minor.
+
+**Solution:** Use natural language search:
+
+```bash
+# Search with multiple criteria
+oxenvcs-cli search "bpm:128-140 key:minor"
+```
+
+**What you'll see:**
+```
+Found 12 matching commits:
+
+  abc123f - Dance track final mix
+  def456g - Remix attempt 2
+  ghi789j - Club edit v3
+  ...
+```
+
+**Advanced searches:**
+```bash
+# Find fast tracks tagged with "final"
+oxenvcs-cli search "bpm:>128 tag:final"
+
+# Find tracks with specific sample rate
+oxenvcs-cli search "sr:96000"
+
+# Combine multiple filters
+oxenvcs-cli search "bpm:120-140 key:minor tag:mixing,vocals"
+
+# Get ranked results (best matches first)
+oxenvcs-cli search "bpm:128 key:minor" --ranked
+```
+
+**Search syntax:**
+- `bpm:120-140` - Range
+- `bpm:>128` - Greater than
+- `bpm:<140` - Less than
+- `key:minor` - Contains (case-insensitive)
+- `tag:mixing,vocals` - Any of these tags
+- `msg:final` - Message contains "final"
+- `sr:48000` - Sample rate
+
+**Why:** Find relevant commits instantly without scrolling through hundreds of entries!
+
+---
+
+### ⚙️ Scenario 21: Automate Your Workflow
+
+**Problem:** You want to ensure every commit has BPM set, and automatically back up after each commit.
+
+**Solution:** Install workflow hooks:
+
+```bash
+# Set up hooks directory
+oxenvcs-cli hooks init
+```
+
+**What you'll see:**
+```
+✓ Created hooks directory: .oxen/hooks
+ℹ Hook types:
+  - pre-commit/  (run before commits)
+  - post-commit/ (run after commits)
+```
+
+**Install built-in hooks:**
+```bash
+# Require BPM/sample rate on all commits
+oxenvcs-cli hooks install validate-metadata --type pre-commit
+
+# Auto-backup after each commit
+oxenvcs-cli hooks install backup --type post-commit
+
+# Warn about large files
+oxenvcs-cli hooks install check-file-sizes --type pre-commit
+```
+
+**What happens:**
+```bash
+# Now when you commit without BPM...
+oxenvcs-cli commit -m "Test"
+
+# Hook runs:
+Running pre-commit hook: validate-metadata
+ERROR: BPM not set. Please provide BPM metadata.
+Hook failed: validate-metadata
+
+# Commit blocked! ✋
+```
+
+**List your hooks:**
+```bash
+oxenvcs-cli hooks list
+```
+
+**Remove a hook:**
+```bash
+oxenvcs-cli hooks remove validate-metadata --type pre-commit
+```
+
+**Create custom hooks:**
+
+1. Create a script in `.oxen/hooks/pre-commit/` or `.oxen/hooks/post-commit/`
+2. Make it executable: `chmod +x .oxen/hooks/pre-commit/my-hook`
+3. Use environment variables:
+   - `$OXVCS_MESSAGE` - Commit message
+   - `$OXVCS_BPM` - BPM value
+   - `$OXVCS_KEY` - Key signature
+   - `$OXVCS_TAGS` - Comma-separated tags
+   - `$OXVCS_REPO_PATH` - Project path
+
+**Example custom hook (bash):**
+```bash
+#!/bin/bash
+# .oxen/hooks/post-commit/notify-slack
+
+curl -X POST https://hooks.slack.com/YOUR_WEBHOOK \
+  -d "{\"text\":\"New commit: $OXVCS_MESSAGE (BPM: $OXVCS_BPM)\"}"
+```
+
+**Why:** Automate repetitive tasks and enforce team standards!
+
+---
+
+### 🖥️ Scenario 22: Interactive Console Mode
+
+**Problem:** You want a visual interface in Terminal with keyboard shortcuts.
+
+**Solution:** Launch the interactive console:
+
+```bash
+oxenvcs-cli console
+```
+
+**What you'll see:**
+```
+┌─ OxVCS Console - MyProject.logicx ────────────────────────┐
+│                                                            │
+│  Daemon: ● Running                                         │
+│                                                            │
+│  Repository:                                               │
+│    Staged: 2                                              │
+│    Modified: 3                                            │
+│    Untracked: 1                                           │
+│                                                            │
+├─ Activity Log ────────────────────────────────────────────┤
+│                                                            │
+│  12:30:45 ✓ Status refreshed: 2 staged, 3 modified       │
+│  12:29:12 ✓ Daemon connected                             │
+│                                                            │
+└────────────────────────────────────────────────────────────┘
+
+q:Quit  i:Commit  l:Log  d:Diff  s:Search  k:Hooks  ?:Help
+```
+
+**Keyboard shortcuts:**
+
+| Key | Action |
+|-----|--------|
+| `q` | Quit console |
+| `i` | Open commit dialog (interactive form) |
+| `l` | Browse commit history (navigate with ↑↓) |
+| `d` | Compare commits side-by-side |
+| `s` | Search commits (type query) |
+| `k` | Manage hooks |
+| `r` | Refresh repository status |
+| `c` | Clear activity log |
+| `?` or `h` | Show help |
+
+**Compare mode (`d`):**
+- Tab to switch between commit A and B
+- ↑↓ to navigate each list
+- Enter to execute comparison
+- Esc to exit
+
+**Search mode (`s`):**
+- Type your query: `bpm:120-140 key:minor`
+- Enter to search
+- ↑↓ to navigate results
+- Esc to exit
+
+**Hooks mode (`k`):**
+- View installed hooks
+- Press `d` to delete selected hook
+- Press `r` to refresh list
+- Esc to exit
+
+**Why:** All features in one unified interface with real-time updates!
+
+---
+
 ## 📱 Quick Reference Card
 
 **Print this and keep it by your keyboard:**
@@ -696,13 +942,18 @@ oxenvcs-cli restore [correct-id]
 ```
 ┌─ OxVCS Quick Commands ──────────────────────────────────┐
 │                                                          │
+│  Basic Commands:                                         │
 │  oxenvcs-cli status              See what changed       │
-│  oxenvcs-cli diff                See file details       │
 │  oxenvcs-cli add --all           Stage changes          │
 │  oxenvcs-cli commit -m "msg"     Save version           │
 │  oxenvcs-cli log --limit 10      Recent history         │
-│  oxenvcs-cli show <id>           View commit details    │
 │  oxenvcs-cli restore <id>        Go back to version     │
+│                                                          │
+│  Advanced (Week 3):                                      │
+│  oxenvcs-cli compare <a> <b>     Semantic diff          │
+│  oxenvcs-cli search "bpm:120"    Smart search           │
+│  oxenvcs-cli hooks install <h>   Workflow automation    │
+│  oxenvcs-cli console             Interactive TUI        │
 │                                                          │
 │  Team Commands:                                          │
 │  oxenvcs-cli lock status         Check availability     │

@@ -37,6 +37,37 @@ Project documentation has been streamlined and organized:
 - **Cleaned**: 42 markdown files reduced to 8 essential documents
 - **Updated**: All references and dates refreshed
 
+### 🚀 Advanced CLI Features - Week 3 Complete! (November 15, 2025)
+
+Powerful new features for professional workflows:
+
+**🔍 Semantic Diff Comparison**
+- Compare commit metadata side-by-side (BPM, sample rate, key, tags)
+- Colored terminal output showing changes
+- Multiple output formats (colored, plain, JSON, compact)
+
+**🔎 AI-Powered Search**
+- Natural language queries: `bpm:120-140 key:minor tag:mixing`
+- Filter by BPM range, sample rate, key signature, tags, message
+- Relevance scoring and ranked results
+
+**⚙️ Workflow Automation Hooks**
+- Pre-commit hooks (validation, file size checks)
+- Post-commit hooks (notifications, backups)
+- 4 built-in templates ready to install
+- Full scripting support (bash, python, ruby, etc.)
+
+**🖥️ Interactive Console TUI**
+- Full-screen terminal interface with 7 modes
+- Real-time daemon monitoring and activity log
+- Interactive commit dialog with metadata fields
+- Browse history and restore commits with keyboard navigation
+- All features accessible from one unified interface
+
+**📊 Test Coverage**
+- 349 total tests (274 unit + 49 integration + 26 doctests)
+- All tests passing ✅
+
 See [CHANGELOG.md](CHANGELOG.md) for complete project history.
 
 ## Architecture
@@ -114,6 +145,57 @@ oxenvcs-cli log --bpm 120 --tag vocals --limit 10
 
 # Restore to previous version
 oxenvcs-cli restore abc123f
+```
+
+### Option C: Advanced CLI Features ✨ NEW!
+
+**Compare commits semantically:**
+```bash
+# Compare two commits (shows BPM, key, sample rate changes)
+oxenvcs-cli compare abc123f def456g
+# Shows colored diff of metadata changes
+
+# Compare in different formats
+oxenvcs-cli compare abc123f def456g --format json
+oxenvcs-cli compare abc123f def456g --format compact
+```
+
+**Search with natural language:**
+```bash
+# Find all commits with specific criteria
+oxenvcs-cli search "bpm:120-140 key:minor tag:mixing"
+oxenvcs-cli search "bpm:>128 tag:vocals,final"
+
+# Get ranked results
+oxenvcs-cli search "bpm:120-140 key:minor" --ranked
+```
+
+**Automate workflows with hooks:**
+```bash
+# Initialize hooks directory
+oxenvcs-cli hooks init
+
+# Install built-in hooks
+oxenvcs-cli hooks install validate-metadata --type pre-commit
+oxenvcs-cli hooks install backup --type post-commit
+
+# List installed hooks
+oxenvcs-cli hooks list
+```
+
+**Interactive console mode:**
+```bash
+# Launch full-screen TUI
+oxenvcs-cli console
+
+# Keyboard shortcuts:
+# i - Create commit (with metadata fields)
+# l - Browse commit history
+# d - Compare commits side-by-side
+# s - Search commits
+# k - Manage hooks
+# r - Refresh status
+# ? - Help
 ```
 
 **See:** [CLI Examples](docs/CLI_EXAMPLES.md) for real production scenarios and team workflows.

@@ -314,6 +314,36 @@ EXAMPLES:
 }
 
 #[derive(Subcommand)]
+enum HooksCommands {
+    /// Initialize hooks directory
+    Init,
+
+    /// List all installed hooks
+    List,
+
+    /// List available built-in hooks
+    Builtins,
+
+    /// Install a built-in hook
+    Install {
+        #[arg(value_name = "HOOK_NAME", help = "Name of built-in hook to install")]
+        name: String,
+
+        #[arg(long, value_name = "TYPE", default_value = "pre-commit", help = "Hook type (pre-commit or post-commit)")]
+        hook_type: String,
+    },
+
+    /// Remove an installed hook
+    Remove {
+        #[arg(value_name = "HOOK_NAME", help = "Name of hook to remove")]
+        name: String,
+
+        #[arg(long, value_name = "TYPE", default_value = "pre-commit", help = "Hook type (pre-commit or post-commit)")]
+        hook_type: String,
+    },
+}
+
+#[derive(Subcommand)]
 enum Commands {
     /// Initialize a new Oxen repository for a Logic Pro project
     #[command(long_about = "Initialize a new Oxen repository for a Logic Pro project
@@ -592,6 +622,115 @@ EXAMPLES:
         commit_id: Option<String>,
     },
 
+    /// Compare metadata between two commits
+    #[command(long_about = "Compare metadata between two commits
+
+USAGE:
+    oxenvcs-cli compare <COMMIT_A> <COMMIT_B>
+    oxenvcs-cli compare <COMMIT_A> <COMMIT_B> --format json
+
+DESCRIPTION:
+    Performs semantic diff between two commits, showing changes in:
+      • Commit message
+      • BPM (tempo)
+      • Sample rate
+      • Key signature
+      • Tags
+
+    This helps understand what changed in the project's audio characteristics
+    between versions, beyond just file changes.
+
+OPTIONS:
+    --format <FORMAT>    Output format: text (default), colored, json, compact
+    --plain              Disable colored output
+
+EXAMPLES:
+    # Compare two commits with colored output
+    oxenvcs-cli compare abc123f def456a
+
+    # Compare with plain text (no colors)
+    oxenvcs-cli compare abc123f def456a --plain
+
+    # Compare with JSON output
+    oxenvcs-cli compare abc123f def456a --format json
+
+    # Compare with compact one-line summary
+    oxenvcs-cli compare abc123f def456a --format compact")]
+    Compare {
+        #[arg(value_name = "COMMIT_A", help = "First commit ID (older)")]
+        commit_a: String,
+
+        #[arg(value_name = "COMMIT_B", help = "Second commit ID (newer)")]
+        commit_b: String,
+
+        #[arg(long, value_name = "FORMAT", default_value = "colored", help = "Output format (text, colored, json, compact)")]
+        format: String,
+
+        #[arg(long, help = "Disable colored output")]
+        plain: bool,
+    },
+
+    /// Search commit history with advanced filtering
+    #[command(long_about = "Search commit history with advanced filtering
+
+USAGE:
+    oxenvcs-cli search <QUERY>
+    oxenvcs-cli search bpm:120-140 key:minor tag:mixing
+
+DESCRIPTION:
+    Smart search across commit history with metadata-based filtering.
+    Supports natural language-style queries with multiple criteria:
+
+    Query Syntax:
+      • bpm:120-140      - BPM range
+      • bpm:>120         - BPM greater than
+      • bpm:<140         - BPM less than
+      • sr:48000         - Exact sample rate
+      • key:minor        - Key signature (fuzzy match)
+      • tag:mixing       - Has tag (single)
+      • tag:mix,vocal    - Has any of these tags (OR logic)
+      • msg:final        - Message contains text
+      • limit:10         - Limit results
+
+    Multiple criteria can be combined (AND logic):
+      bpm:120-140 key:minor tag:mixing
+
+OPTIONS:
+    --format <FORMAT>    Output format: list (default), compact, json
+    --ranked             Sort by relevance score
+
+EXAMPLES:
+    # Find all commits between 120-140 BPM
+    oxenvcs-cli search \"bpm:120-140\"
+
+    # Find commits in minor keys with mixing tag
+    oxenvcs-cli search \"key:minor tag:mixing\"
+
+    # Find high BPM commits (>140)
+    oxenvcs-cli search \"bpm:>140\"
+
+    # Find commits with 'final' in message
+    oxenvcs-cli search \"msg:final\"
+
+    # Combined search with limit
+    oxenvcs-cli search \"bpm:120-140 key:minor tag:vocals limit:5\"
+
+    # Get compact one-line summaries
+    oxenvcs-cli search \"bpm:>128\" --format compact
+
+    # Ranked by relevance
+    oxenvcs-cli search \"bpm:120-140 tag:mixing\" --ranked")]
+    Search {
+        #[arg(value_name = "QUERY", help = "Search query string")]
+        query: String,
+
+        #[arg(long, value_name = "FORMAT", default_value = "list", help = "Output format (list, compact, json)")]
+        format: String,
+
+        #[arg(long, help = "Sort results by relevance score")]
+        ranked: bool,
+    },
+
     /// Manage project locks for team collaboration
     #[command(subcommand)]
     Lock(LockCommands),
@@ -659,6 +798,51 @@ EXAMPLES:
     /// Control the background daemon service
     #[command(subcommand)]
     Daemon(DaemonCommands),
+
+    /// Manage workflow automation hooks
+    #[command(long_about = "Manage workflow automation hooks
+
+USAGE:
+    oxenvcs-cli hooks init
+    oxenvcs-cli hooks list
+    oxenvcs-cli hooks install <HOOK_NAME>
+
+DESCRIPTION:
+    Workflow automation hooks allow you to run custom scripts before and after
+    commits. Use hooks for:
+
+    Pre-commit hooks (run before creating commit):
+      • Validate metadata completeness
+      • Check file sizes
+      • Run linting or formatting
+      • Verify project structure
+
+    Post-commit hooks (run after successful commit):
+      • Send notifications
+      • Create backups
+      • Trigger CI/CD pipelines
+      • Update tracking systems
+
+EXAMPLES:
+    # Initialize hooks directory
+    oxenvcs-cli hooks init
+
+    # List all installed hooks
+    oxenvcs-cli hooks list
+
+    # List available built-in hooks
+    oxenvcs-cli hooks builtins
+
+    # Install a built-in hook
+    oxenvcs-cli hooks install validate-metadata
+
+    # Install a post-commit hook
+    oxenvcs-cli hooks install backup --hook-type post-commit
+
+    # Remove a hook
+    oxenvcs-cli hooks remove validate-metadata")]
+    #[command(subcommand)]
+    Hooks(HooksCommands),
 
     /// Launch interactive console for real-time monitoring
     #[command(long_about = "Launch interactive console for real-time monitoring
@@ -832,10 +1016,14 @@ async fn main() -> anyhow::Result<()> {
                 progress::finish_success(&pb, "Logic Pro project repository initialized");
                 println!();
                 progress::success(&format!("Repository created at: {}", path.display()));
-                progress::info("Next steps:");
-                println!("  1. cd {}", path.display());
-                println!("  2. oxenvcs-cli add --all");
-                println!("  3. oxenvcs-cli commit -m \"Initial commit\"");
+                progress::success("Initial commit created on main branch");
+                progress::success("Draft branch created and checked out");
+                println!();
+                progress::info("You're all set! Start working in Logic Pro:");
+                println!("  • Changes will be automatically tracked on the draft branch");
+                println!("  • Create milestone commits: oxenvcs-cli commit -m \"Your message\" --bpm 120");
+                println!("  • View history: oxenvcs-cli log");
+                println!("  • Restore to any commit: oxenvcs-cli restore <commit-id>");
             } else {
                 let pb = progress::spinner(&format!("Initializing Oxen repository at {}...", path.display()));
 
@@ -1249,6 +1437,223 @@ async fn main() -> anyhow::Result<()> {
             Ok(())
         }
 
+        Commands::Compare {
+            commit_a,
+            commit_b,
+            format,
+            plain,
+        } => {
+            use oxenvcs_cli::CommitMetadata;
+
+            let repo = OxenRepository::new(".");
+
+            vlog!("Fetching commit A: {}", commit_a);
+            vlog!("Fetching commit B: {}", commit_b);
+
+            // Get commit history to find the two commits
+            let commits = repo.get_history(None).await?;
+
+            // Find commit A
+            let commit_a_info = commits
+                .iter()
+                .find(|c| c.id.starts_with(&commit_a))
+                .ok_or_else(|| anyhow::anyhow!("Commit not found: {}", commit_a))?;
+
+            // Find commit B
+            let commit_b_info = commits
+                .iter()
+                .find(|c| c.id.starts_with(&commit_b))
+                .ok_or_else(|| anyhow::anyhow!("Commit not found: {}", commit_b))?;
+
+            vlog!("Found commit A: {}", commit_a_info.id);
+            vlog!("Found commit B: {}", commit_b_info.id);
+
+            // Parse commit metadata
+            let metadata_a = CommitMetadata::parse_commit_message(&commit_a_info.message);
+            let metadata_b = CommitMetadata::parse_commit_message(&commit_b_info.message);
+
+            println!();
+            println!(
+                "┌─ Comparing {} → {} ─────────────┐",
+                &commit_a_info.id[..7].bright_cyan(),
+                &commit_b_info.id[..7].bright_cyan()
+            );
+            println!("│                                                          │");
+            println!("└──────────────────────────────────────────────────────────┘");
+            println!();
+
+            // Output based on format
+            match format.as_str() {
+                "json" => {
+                    // Create a simple JSON structure
+                    let json_output = serde_json::json!({
+                        "commit_a": {
+                            "id": &commit_a_info.id,
+                            "metadata": &metadata_a
+                        },
+                        "commit_b": {
+                            "id": &commit_b_info.id,
+                            "metadata": &metadata_b
+                        }
+                    });
+                    println!("{}", serde_json::to_string_pretty(&json_output)?);
+                }
+                "compact" => {
+                    let summary = metadata_a.compare_compact(&metadata_b);
+                    println!("{}", summary);
+                }
+                "text" => {
+                    println!("{}", metadata_a.compare_with_plain(&metadata_b));
+                }
+                "colored" | _ => {
+                    if plain {
+                        println!("{}", metadata_a.compare_with_plain(&metadata_b));
+                    } else {
+                        println!("{}", metadata_a.compare_with(&metadata_b));
+                    }
+                }
+            }
+
+            Ok(())
+        }
+
+        Commands::Search {
+            query,
+            format,
+            ranked,
+        } => {
+            use oxenvcs_cli::search::SearchEngine;
+
+            let repo = OxenRepository::new(".");
+
+            vlog!("Parsing search query: {}", query);
+
+            // Parse the natural language query
+            let search_query = SearchEngine::parse_query(&query);
+
+            vlog!("Fetching commit history...");
+            let commits = repo.get_history(None).await?;
+
+            vlog!("Executing search...");
+            let engine = SearchEngine::new();
+            let mut results = engine.search(&commits, &search_query);
+
+            // Sort by relevance if requested
+            if ranked {
+                results.sort_by(|a, b| {
+                    let score_b = engine.relevance_score(b, &search_query);
+                    let score_a = engine.relevance_score(a, &search_query);
+                    score_b.partial_cmp(&score_a).unwrap_or(std::cmp::Ordering::Equal)
+                });
+            }
+
+            println!();
+            println!(
+                "┌─ Search Results ({} matches) ─────────────────────┐",
+                results.len().to_string().bright_cyan()
+            );
+            println!("│ Query: {:<49} │", query.bright_yellow());
+            println!("│                                                          │");
+            println!("└──────────────────────────────────────────────────────────┘");
+            println!();
+
+            if results.is_empty() {
+                progress::warning("No commits match your search criteria");
+                println!();
+                println!("Try:");
+                println!("  • Broadening your BPM range");
+                println!("  • Using partial key matches (e.g., 'minor' instead of 'A Minor')");
+                println!("  • Checking tag spellings");
+                return Ok(());
+            }
+
+            // Output based on format
+            match format.as_str() {
+                "json" => {
+                    let json = serde_json::to_string_pretty(&results)?;
+                    println!("{}", json);
+                }
+                "compact" => {
+                    for (i, commit) in results.iter().enumerate() {
+                        let metadata = CommitMetadata::parse_commit_message(&commit.message);
+                        let short_id = if commit.id.len() >= 7 {
+                            &commit.id[..7]
+                        } else {
+                            &commit.id
+                        };
+
+                        let mut parts = vec![format!("{}", short_id.bright_cyan())];
+
+                        if let Some(bpm) = metadata.bpm {
+                            parts.push(format!("{}BPM", bpm));
+                        }
+                        if let Some(sr) = metadata.sample_rate {
+                            parts.push(format!("{}Hz", sr));
+                        }
+                        if let Some(ref key) = metadata.key_signature {
+                            parts.push(key.clone());
+                        }
+
+                        let first_line = metadata.message.lines().next().unwrap_or(&metadata.message);
+                        parts.push(first_line.to_string());
+
+                        if ranked {
+                            let score = engine.relevance_score(commit, &search_query);
+                            parts.push(format!("(score: {:.1})", score).dimmed().to_string());
+                        }
+
+                        println!("{}. {}", i + 1, parts.join(" │ "));
+                    }
+                }
+                "list" | _ => {
+                    for (i, commit) in results.iter().enumerate() {
+                        let metadata = CommitMetadata::parse_commit_message(&commit.message);
+                        let short_id = if commit.id.len() >= 7 {
+                            &commit.id[..7]
+                        } else {
+                            &commit.id
+                        };
+
+                        println!("{}. {} {}",
+                            format!("{}", i + 1).dimmed(),
+                            "Commit".bright_black(),
+                            short_id.bright_cyan()
+                        );
+
+                        let first_line = metadata.message.lines().next().unwrap_or(&metadata.message);
+                        println!("   Message: {}", first_line);
+
+                        if let Some(bpm) = metadata.bpm {
+                            println!("   BPM: {}", format!("{}", bpm).yellow());
+                        }
+                        if let Some(sr) = metadata.sample_rate {
+                            println!("   Sample Rate: {} Hz", sr);
+                        }
+                        if let Some(ref key) = metadata.key_signature {
+                            println!("   Key: {}", key.green());
+                        }
+                        if !metadata.tags.is_empty() {
+                            println!("   Tags: {}", metadata.tags.join(", ").bright_black());
+                        }
+
+                        if ranked {
+                            let score = engine.relevance_score(commit, &search_query);
+                            println!("   Relevance: {:.1}", score);
+                        }
+
+                        println!();
+                    }
+                }
+            }
+
+            progress::success(&format!("Found {} matching commit{}",
+                results.len(),
+                if results.len() == 1 { "" } else { "s" }
+            ));
+
+            Ok(())
+        }
+
         Commands::Lock(lock_cmd) => {
             use oxenvcs_cli::lock_integration;
             use std::env;
@@ -1605,6 +2010,143 @@ async fn main() -> anyhow::Result<()> {
                             println!("{}", line);
                         }
                     }
+
+                    Ok(())
+                }
+            }
+        }
+
+        Commands::Hooks(hooks_cmd) => {
+            use oxenvcs_cli::hooks::{HookManager, HookType};
+
+            let repo_path = std::env::current_dir()?;
+            let manager = HookManager::new(&repo_path);
+
+            match hooks_cmd {
+                HooksCommands::Init => {
+                    let pb = progress::spinner("Initializing hooks directory...");
+                    manager.init()?;
+                    progress::finish_success(&pb, "Hooks directory initialized");
+
+                    println!();
+                    println!("┌─ Hooks Initialized ─────────────────────────────────────┐");
+                    println!("│                                                          │");
+                    println!("│  Created:                                                │");
+                    println!("│    .oxen/hooks/pre-commit/                               │");
+                    println!("│    .oxen/hooks/post-commit/                              │");
+                    println!("│    .oxen/hooks/README.md                                 │");
+                    println!("│                                                          │");
+                    println!("└──────────────────────────────────────────────────────────┘");
+                    println!();
+                    progress::info("See .oxen/hooks/README.md for documentation");
+                    progress::info("Install built-in hooks with: oxenvcs-cli hooks install <name>");
+
+                    Ok(())
+                }
+
+                HooksCommands::List => {
+                    let hooks = manager.list_hooks()?;
+
+                    println!();
+                    println!("┌─ Installed Hooks ───────────────────────────────────────┐");
+                    println!("│                                                          │");
+
+                    if hooks.is_empty() {
+                        println!("│  No hooks installed                                      │");
+                    } else {
+                        let pre_commit: Vec<_> = hooks
+                            .iter()
+                            .filter(|(t, _)| matches!(t, HookType::PreCommit))
+                            .collect();
+                        let post_commit: Vec<_> = hooks
+                            .iter()
+                            .filter(|(t, _)| matches!(t, HookType::PostCommit))
+                            .collect();
+
+                        if !pre_commit.is_empty() {
+                            println!("│  Pre-commit hooks:                                       │");
+                            for (_, name) in pre_commit {
+                                println!("│    • {:<51} │", name);
+                            }
+                            println!("│                                                          │");
+                        }
+
+                        if !post_commit.is_empty() {
+                            println!("│  Post-commit hooks:                                      │");
+                            for (_, name) in post_commit {
+                                println!("│    • {:<51} │", name);
+                            }
+                        }
+                    }
+
+                    println!("│                                                          │");
+                    println!("└──────────────────────────────────────────────────────────┘");
+                    println!();
+
+                    Ok(())
+                }
+
+                HooksCommands::Builtins => {
+                    let builtins = HookManager::list_builtins();
+
+                    println!();
+                    println!("┌─ Available Built-in Hooks ──────────────────────────────┐");
+                    println!("│                                                          │");
+
+                    for hook in builtins {
+                        let type_str = match hook.hook_type {
+                            HookType::PreCommit => "pre-commit",
+                            HookType::PostCommit => "post-commit",
+                        };
+                        println!("│  {} ({})                                 ", hook.name.bright_yellow(), type_str.dimmed());
+                        println!("│    {:<55} │", hook.description);
+                        println!("│                                                          │");
+                    }
+
+                    println!("└──────────────────────────────────────────────────────────┘");
+                    println!();
+                    progress::info("Install with: oxenvcs-cli hooks install <name>");
+
+                    Ok(())
+                }
+
+                HooksCommands::Install { name, hook_type } => {
+                    // Parse hook type
+                    let hook_type = match hook_type.as_str() {
+                        "pre-commit" => HookType::PreCommit,
+                        "post-commit" => HookType::PostCommit,
+                        _ => {
+                            anyhow::bail!("Invalid hook type: {}. Use 'pre-commit' or 'post-commit'", hook_type);
+                        }
+                    };
+
+                    // Ensure hooks directory exists
+                    manager.init()?;
+
+                    let pb = progress::spinner(&format!("Installing {} hook...", name));
+                    manager.install_builtin(&name, hook_type)?;
+                    progress::finish_success(&pb, &format!("Installed {} hook", name));
+
+                    println!();
+                    progress::success(&format!("Hook '{}' installed successfully", name));
+                    progress::info(&format!("Edit at: .oxen/hooks/{}/{}", hook_type.dir_name(), name));
+
+                    Ok(())
+                }
+
+                HooksCommands::Remove { name, hook_type } => {
+                    // Parse hook type
+                    let hook_type = match hook_type.as_str() {
+                        "pre-commit" => HookType::PreCommit,
+                        "post-commit" => HookType::PostCommit,
+                        _ => {
+                            anyhow::bail!("Invalid hook type: {}. Use 'pre-commit' or 'post-commit'", hook_type);
+                        }
+                    };
+
+                    let pb = progress::spinner(&format!("Removing {} hook...", name));
+                    manager.remove_hook(&name, hook_type)?;
+                    progress::finish_success(&pb, &format!("Removed {} hook", name));
 
                     Ok(())
                 }

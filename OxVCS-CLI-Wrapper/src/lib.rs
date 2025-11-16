@@ -10,6 +10,7 @@ pub mod commit_metadata;
 pub mod console;
 pub mod daemon_client;
 pub mod draft_manager;
+pub mod hooks;
 pub mod ignore_template;
 pub mod lock_integration;
 pub mod logger;
@@ -20,6 +21,7 @@ pub mod oxen_ops;
 pub mod oxen_subprocess;
 pub mod progress;
 pub mod remote_lock;
+pub mod search;
 
 pub use auth::{AuthManager, Credentials};
 pub use collaboration::{

@@ -7,7 +7,68 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Week 3: Advanced CLI Features** (2025-11-15)
+  - **Semantic Diff Comparison** (`compare` command)
+    - Side-by-side comparison of commit metadata (BPM, sample rate, key, tags)
+    - Multiple output formats: colored terminal, plain text, JSON, compact
+    - CommitMetadata comparison methods with colored diff visualization
+  - **AI-Powered Search** (`search` command)
+    - Natural language query parser: `bpm:120-140 key:minor tag:mixing`
+    - BPM range filtering (ranges, >, <)
+    - Sample rate, key signature (fuzzy), tags (AND/OR logic)
+    - Message text search and date range filtering
+    - Relevance scoring and ranked results
+    - 11 comprehensive tests for search engine
+  - **Workflow Automation Hooks** (`hooks` command)
+    - Pre-commit hooks (run before commit, can abort)
+    - Post-commit hooks (run after commit, cannot abort)
+    - 4 built-in templates: validate-metadata, check-file-sizes, notify, backup
+    - Custom hook support (bash, python, ruby, any executable)
+    - Environment variables: OXVCS_MESSAGE, OXVCS_BPM, OXVCS_KEY, OXVCS_TAGS, OXVCS_REPO_PATH
+    - Hook execution order (alphabetical), error handling, logging
+    - 7 comprehensive tests for hooks system
+  - **Interactive Console TUI** (`console` command)
+    - Full-screen terminal interface with ratatui 0.25
+    - 7 modes: Normal, Commit Dialog, Restore Browser, Compare, Search, Hooks, Help
+    - Real-time daemon status monitoring and activity log
+    - Interactive commit dialog with metadata fields
+    - Compare mode: dual commit selector with Tab navigation
+    - Search mode: live query input and results navigation
+    - Hooks mode: list, delete, refresh hooks
+    - Keyboard shortcuts: i=commit, l=log, d=diff, s=search, k=hooks, r=refresh, ?=help
+    - 34 comprehensive tests for TUI (state management, keyboard handlers, mode transitions)
+
+### Fixed
+- **Draft Branch Initialization** (2025-11-15)
+  - Fixed "HeadNotFound" error during `init --logic` command
+  - Root cause: Draft branch creation requires HEAD (at least one commit) to exist
+  - Solution: Automatically create initial commit with .oxenignore before draft branch setup
+  - Improved UX: Users no longer need manual "git init" workflow, repository is immediately ready to use
+  - Updated success messages to reflect automatic setup completion
+
 ### Changed
+- **Test Coverage Expansion** (2025-11-15)
+  - Increased from 245 to 349 total tests (+104 tests, +42%)
+  - Unit tests: 215 → 274 (+59 tests)
+  - Integration tests: 120 → 49 (consolidated/cleaned)
+  - Added 26 doctests embedded in source documentation
+  - Console TUI: 5 → 34 tests (580% increase)
+  - All tests passing ✅
+
+- **Documentation Update** (2025-11-15)
+  - Updated README.md with Week 3 features and examples
+  - Updated docs/FOR_DEVELOPERS.md with test counts and architecture
+  - Added 4 new scenarios to docs/CLI_EXAMPLES.md:
+    - Scenario 19: Compare two mix approaches
+    - Scenario 20: Find high-tempo tracks with search
+    - Scenario 21: Automate workflow with hooks
+    - Scenario 22: Interactive console mode
+  - Updated Quick Reference Card with advanced commands
+  - Production code: 5,500 → 6,500 lines (+1,000 lines)
+  - Test code: 400 → 1,200 lines (+800 lines)
+  - Documentation: Updated test counts and statistics throughout
+
 - **SwiftUI Migration** (2025-10-29)
   - Migrated OxVCS-App from AppKit to SwiftUI for improved reliability
   - Replaced manual NSWindow/NSViewController management with declarative NavigationSplitView
@@ -17,7 +78,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Maintained all ViewModels and business logic (MVVM architecture intact)
   - Updated documentation and build scripts for SwiftUI architecture
 
-- Documentation consolidation and cleanup (2025-10-29)
+- **Documentation consolidation and cleanup** (2025-10-29)
   - Removed 12 outdated files: development plans (ACTION_PLAN_REVISED.md, WORK_PLAN_2025-10-29.md), build issues (BUILD_ISSUES.md), test evaluation (TEST_STRATEGY_EVALUATION.md), phase completion reports (PHASE1_COMPLETE.md, PHASE2_COMPLETE.md, PHASE3_COMPLETE.md), and PR descriptions
   - Consolidated docs/QUICKSTART.md into docs/USER_GUIDE.md with new "Quick Start (5 Minutes)" section
   - Updated all references to deleted documentation files
@@ -25,7 +86,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Updated IMPLEMENTATION_PLAN.md with clear "ALL PHASES COMPLETE" status
   - Refreshed all "Last Updated" dates to 2025-10-29
 
-### Added
+### Added (Previous)
 - Comprehensive documentation update (2025-10-27)
   - Completely rewrote OxVCS-CLI-Wrapper/README.md (62→435 lines) with architecture, features, usage, testing, and troubleshooting
   - Completely rewrote OxVCS-LaunchAgent/README.md (49→558 lines) with daemon details, XPC API, configuration, and development guide
