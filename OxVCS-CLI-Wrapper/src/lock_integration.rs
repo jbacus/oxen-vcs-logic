@@ -263,4 +263,58 @@ mod tests {
         assert_eq!(truncate("this is a very long string", 10), "this is...");
         assert_eq!(truncate("exact", 5), "exact");
     }
+
+    // Note: The following tests require a real Oxen repository for full integration testing.
+    // For unit testing without Oxen, we test the logic flow and error handling.
+
+    #[test]
+    fn test_handle_lock_status_no_repo() {
+        use std::env;
+        use tempfile::TempDir;
+
+        let temp_dir = TempDir::new().unwrap();
+        let non_repo = temp_dir.path();
+
+        // Should fail gracefully when not in an Oxen repo
+        let result = handle_lock_status(non_repo);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_handle_lock_release_no_repo() {
+        use tempfile::TempDir;
+
+        let temp_dir = TempDir::new().unwrap();
+        let non_repo = temp_dir.path();
+
+        // Should fail gracefully when not in an Oxen repo
+        let result = handle_lock_release(non_repo);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_handle_lock_break_requires_force() {
+        use tempfile::TempDir;
+
+        let temp_dir = TempDir::new().unwrap();
+        let non_repo = temp_dir.path();
+
+        // Without force flag, should fail
+        let result = handle_lock_break(non_repo, false);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_user_identifier_format() {
+        let id = get_user_identifier();
+
+        // Should contain @ separator
+        assert!(id.contains('@'), "User identifier should contain @");
+
+        // Should have both username and hostname parts
+        let parts: Vec<&str> = id.split('@').collect();
+        assert_eq!(parts.len(), 2, "Should have exactly one @ separator");
+        assert!(!parts[0].is_empty(), "Username part should not be empty");
+        assert!(!parts[1].is_empty(), "Hostname part should not be empty");
+    }
 }
