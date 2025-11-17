@@ -5,9 +5,11 @@ pub mod liboxen_stub;
 use liboxen_stub as liboxen;
 
 pub mod auth;
+pub mod backup_recovery;
 pub mod collaboration;
 pub mod commit_metadata;
 pub mod config;
+pub mod conflict_detection;
 pub mod console;
 pub mod daemon_client;
 pub mod draft_manager;
@@ -20,18 +22,24 @@ pub mod logic_project;
 pub mod metadata_diff;
 pub mod network_resilience;
 pub mod offline_queue;
+pub mod operation_history;
 pub mod oxen_ops;
 pub mod oxen_subprocess;
 pub mod progress;
 pub mod remote_lock;
 pub mod search;
+pub mod workflow_automation;
 
 pub use auth::{AuthManager, Credentials};
+pub use backup_recovery::{
+    BackupRecoveryManager, RecoveryHelper, Snapshot, SnapshotType,
+};
 pub use collaboration::{
     Activity, ActivityFeed, ActivityType, Comment, CommentManager, TeamManager, TeamMember,
 };
 pub use commit_metadata::CommitMetadata;
 pub use config::Config;
+pub use conflict_detection::{ConflictCheckResult, ConflictDetector, ConflictRecommendation};
 pub use draft_manager::{DraftManager, DraftStats};
 pub use ignore_template::generate_oxenignore;
 pub use logic_parser::{LogicParser, LogicProjectData};
@@ -39,13 +47,19 @@ pub use logic_project::LogicProject;
 pub use metadata_diff::{MetadataDiff, MetadataDiffer, ReportGenerator};
 pub use network_resilience::{
     check_connectivity, categorize_error, wait_for_connectivity,
-    ConnectivityState, ErrorType, NetworkOperation, RetryPolicy,
+    ConnectivityState, ErrorType, NetworkOperation, NetworkResilienceManager,
+    OperationData, OperationType, QueuedOperation, RetryPolicy,
 };
 pub use offline_queue::{
-    OfflineQueue, QueueEntry, QueueStats, QueuedOperation, SyncReport,
+    OfflineQueue, QueueEntry, QueueStats, QueuedOperation as OfflineQueuedOperation, SyncReport,
+};
+pub use operation_history::{
+    HistoryOperation, OperationHistoryEntry, OperationHistoryManager, OperationResult,
+    OperationStats,
 };
 pub use oxen_ops::OxenRepository;
 pub use oxen_subprocess::{
     BranchInfo, CommitInfo as SubprocessCommitInfo, OxenSubprocess, StatusInfo,
 };
 pub use remote_lock::{RemoteLock, RemoteLockManager};
+pub use workflow_automation::{WorkflowAutomation, WorkflowConfig};

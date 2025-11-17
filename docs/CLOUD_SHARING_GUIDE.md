@@ -1,7 +1,7 @@
 # Auxin Cloud Sharing Guide
 
-**Last Updated**: 2025-11-15
-**Status**: Phases 1-3 Complete (Authentication, Locks, Collaboration), Phase 4+ In Development
+**Last Updated**: 2025-11-16
+**Status**: Phases 1-5 Complete (Authentication, Locks, Collaboration, Network Resilience, Workflow Automation)
 
 ---
 
@@ -476,16 +476,224 @@ auxin comment list <commit-id>
 
 **Completed**: 2025-11-15
 
-### 🚧 Phase 4: Network Resilience & Safety (PLANNED)
+### ✅ Phase 4: Network Resilience & Safety (COMPLETE)
 
-**Planned Features:**
-- Offline mode with commit queue
-- Smart retry with exponential backoff
-- Partial push recovery
-- Pre-pull conflict detection
-- Emergency unlock protocol
+**Features Implemented:**
+- ✅ Offline mode with commit queue
+- ✅ Smart retry with exponential backoff (2s, 4s, 8s, 16s)
+- ✅ Transient error detection
+- ✅ Pre-pull/pre-push conflict detection
+- ✅ Emergency unlock protocol
+- ✅ Lock expiration and auto-unlock
+- ✅ 12 unit tests passing (7 network_resilience + 5 conflict_detection)
 
-**Target**: 2-3 weeks
+**Usage:**
+
+```bash
+# Operation queue is automatic - operations queue when offline
+# Check queue status
+ls ~/.oxenvcs/operation_queue.json
+
+# Conflict detection (automatic before push/pull)
+# Checks lock status and provides recommendations
+
+# Emergency unlock expired locks
+# (Automatically checked before lock operations)
+```
+
+**Network Resilience Features:**
+- **Offline Queue**: Failed operations automatically queued
+- **Persistent Storage**: Queue survives restarts (`~/.oxenvcs/operation_queue.json`)
+- **Smart Retry**: Exponential backoff with 4 max retries
+- **Transient Detection**: Distinguishes network errors from permanent failures
+- **Auto-Recovery**: Queued operations can be retried when network returns
+
+**Conflict Detection:**
+- **Pre-Pull Check**: Validates lock status before pulling
+- **Pre-Push Check**: Ensures lock is held before pushing
+- **Recommendations**: Provides actionable guidance
+  - `Safe`: Operation can proceed
+  - `AcquireLock`: Need to acquire lock first
+  - `CheckNetwork`: Network connectivity issues
+  - `ManualMergeRequired`: Diverged branches need manual resolution
+
+**Emergency Unlock:**
+- **Auto-Unlock**: Expired/stale locks automatically unlocked
+- **Lock Age Check**: View how long a lock has been held
+- **Force Break**: Admin can forcibly break any lock
+- **Audit Trail**: All lock operations logged
+
+**Error Handling:**
+- Network timeouts: Auto-retry with backoff
+- Connection refused: Queue for later retry
+- Authentication errors: Immediate failure (no retry)
+- Lock conflicts: Clear error messages with guidance
+
+**Completed**: 2025-11-16
+
+### ✅ Phase 5: Workflow Integration & Safety (COMPLETE)
+
+**Features Implemented:**
+- ✅ Operation history & audit trail
+- ✅ Workflow automation & smart suggestions
+- ✅ Backup & recovery system
+- ✅ Auto-lock renewal daemon
+- ✅ Pre/post-commit hooks
+- ✅ Dry-run mode
+- ✅ 30 unit tests passing (10 operation_history + 11 backup_recovery + 9 workflow_automation)
+
+**Operation History:**
+- **Audit Trail**: Complete history of all operations (locks, commits, pushes, pulls)
+- **Persistent Storage**: History survives restarts (`~/.oxenvcs/operation_history.json`)
+- **Queryable**: Filter by operation type, result, repository, date
+- **CSV Export**: Export history for analysis and compliance
+- **Statistics**: Total operations, success rate, operation breakdowns
+- **Max History**: Automatically trims to 10,000 most recent entries
+
+**Usage:**
+```bash
+# View recent operation history
+oxenvcs-cli history --limit 20
+
+# View history for specific repository
+oxenvcs-cli history --repo /path/to/project.logicx
+
+# Export history to CSV
+oxenvcs-cli history export history.csv
+
+# View statistics
+oxenvcs-cli history stats
+```
+
+**Workflow Automation:**
+- **Auto-Lock Renewal**: Automatically renews locks before expiration
+- **Lock Renewal Daemon**: Background service to keep locks alive during long sessions
+- **Smart Suggestions**: Context-aware recommendations based on repository state
+- **Pre-Commit Checks**: Validates lock status before commits
+- **Post-Commit Actions**: Optional auto-push after commit
+- **Dry-Run Mode**: Preview operations without executing them
+- **Configurable**: All automation can be enabled/disabled
+
+**Configuration** (`~/.oxenvcs/workflow_config.json`):
+```json
+{
+  "auto_renew_locks": true,
+  "lock_check_interval_minutes": 15,
+  "lock_renew_threshold_minutes": 60,
+  "auto_pull_on_startup": false,
+  "auto_push_after_commit": false,
+  "confirm_destructive_operations": true,
+  "dry_run_mode": false
+}
+```
+
+**Usage:**
+```bash
+# Enable auto-lock renewal daemon
+oxenvcs-cli workflow lock-daemon /path/to/project.logicx
+
+# Get smart suggestions
+oxenvcs-cli workflow suggest /path/to/project.logicx
+
+# Enable dry-run mode (preview without executing)
+oxenvcs-cli config set dry_run_mode true
+
+# Check workflow configuration
+oxenvcs-cli config show
+```
+
+**Backup & Recovery:**
+- **Automatic Snapshots**: Created before risky operations (push, pull, lock break, rollback)
+- **Manual Snapshots**: User-initiated backups
+- **Persistent Storage**: Snapshots stored in `~/.oxenvcs/snapshots/`
+- **Metadata Tracking**: Each snapshot includes commit ID, timestamp, description
+- **Recovery Instructions**: Step-by-step guide for restoring from snapshots
+- **Automatic Cleanup**: Keeps only 50 most recent snapshots
+
+**Snapshot Types:**
+- `Manual`: User-created backup
+- `AutoBeforePush`: Automatic snapshot before pushing
+- `AutoBeforePull`: Automatic snapshot before pulling
+- `AutoBeforeLockBreak`: Automatic snapshot before breaking a lock
+- `AutoBeforeRollback`: Automatic snapshot before rolling back
+- `Scheduled`: Time-based automatic snapshots
+
+**Usage:**
+```bash
+# Create manual snapshot
+oxenvcs-cli snapshot create /path/to/project.logicx "Before major refactor"
+
+# List all snapshots
+oxenvcs-cli snapshot list
+
+# List snapshots for specific repository
+oxenvcs-cli snapshot list --repo /path/to/project.logicx
+
+# Get restore instructions
+oxenvcs-cli snapshot restore <snapshot-id>
+
+# Delete old snapshots
+oxenvcs-cli snapshot delete <snapshot-id>
+```
+
+**Recovery Helpers:**
+- **Failed Push Recovery**: Step-by-step guide for push failures
+- **Failed Pull Recovery**: Step-by-step guide for pull failures
+- **Lock Conflict Recovery**: Step-by-step guide for lock conflicts
+
+**Usage:**
+```bash
+# Show recovery guide for failed push
+oxenvcs-cli recovery push
+
+# Show recovery guide for failed pull
+oxenvcs-cli recovery pull
+
+# Show recovery guide for lock conflicts
+oxenvcs-cli recovery lock
+```
+
+**Safety Features:**
+- **Confirmation Prompts**: Required for destructive operations (break lock, rollback)
+- **Dry-Run Mode**: Test operations without executing them
+- **Pre-Operation Validation**: Checks before risky operations
+- **Audit Trail**: Complete history of all operations
+- **Automatic Backups**: Snapshots before risky operations
+- **Rollback Capability**: Restore from snapshots if needed
+
+**Workflow Example:**
+```bash
+# Morning: Start work session
+cd MyProject.logicx
+
+# Get smart suggestions
+oxenvcs-cli workflow suggest .
+# Output: "💡 No lock held - run 'oxenvcs-cli lock acquire' before editing"
+
+# Acquire lock
+oxenvcs-cli lock acquire --timeout 8
+
+# Start auto-renewal daemon in background
+oxenvcs-cli workflow lock-daemon . &
+
+# ... work in Logic Pro for several hours ...
+# (lock automatically renewed every 15 minutes)
+
+# Commit changes (auto-snapshot created before commit)
+oxenvcs-cli add --all
+oxenvcs-cli commit -m "Added guitar solo" --bpm 128
+
+# Push to remote (auto-snapshot created before push)
+oxen push origin main
+
+# Release lock (daemon stops automatically)
+oxenvcs-cli lock release
+
+# View operation history
+oxenvcs-cli history --limit 10
+```
+
+**Completed**: 2025-11-16
 
 ---
 
@@ -686,16 +894,15 @@ oxen config remote.hub_url https://your-oxen-server.com
 - ✅ Phase 1: Authentication system (2025-11-15)
 - ✅ Phase 2: Distributed lock management (2025-11-15)
 - ✅ Phase 3: Collaboration features (2025-11-15)
-
-### In Development
-- 🚧 Phase 4: Network resilience
+- ✅ Phase 4: Network resilience & safety (2025-11-16)
+- ✅ Phase 5: Workflow integration & safety (2025-11-16)
 
 ### Future
-- 📅 Phase 5: Advanced features (semantic diff, audio preview, automated merge)
+- 📅 Phase 6: Advanced features (semantic diff, audio preview, FCP XML merge)
 - 📅 Web UI for project management
 - 📅 Mobile app for project browsing
 - 📅 CI/CD integrations
 
 ---
 
-*Last updated: 2025-11-15 | Auxin v0.1.0 | Oxen integration via subprocess wrapper*
+*Last updated: 2025-11-17 | Auxin v0.2.0 | Oxen integration via subprocess wrapper*

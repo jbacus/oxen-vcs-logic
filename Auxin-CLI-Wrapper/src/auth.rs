@@ -520,4 +520,104 @@ mod tests {
         assert!(!json.contains("secret_key"));
         assert!(json.contains("testuser"));
     }
+
+    #[test]
+    fn test_is_authenticated_with_credentials() {
+        use tempfile::TempDir;
+
+        let temp_dir = TempDir::new().unwrap();
+        let config_file = temp_dir.path().join("credentials.json");
+
+        let manager = AuthManager::with_config_path(config_file.clone());
+
+        // Should not be authenticated initially
+        assert!(!manager.is_authenticated());
+
+        // Store credentials directly to config file (bypassing oxen CLI)
+        let creds = Credentials::new("testuser", "test_key");
+        manager.store_in_config_file(&creds).unwrap();
+
+        // Now should be authenticated
+        assert!(manager.is_authenticated());
+    }
+
+    #[test]
+    fn test_is_authenticated_after_clear() {
+        use tempfile::TempDir;
+
+        let temp_dir = TempDir::new().unwrap();
+        let config_file = temp_dir.path().join("credentials.json");
+
+        let manager = AuthManager::with_config_path(config_file);
+
+        // Store credentials directly (bypassing oxen CLI)
+        let creds = Credentials::new("testuser", "test_key");
+        manager.store_in_config_file(&creds).unwrap();
+        assert!(manager.is_authenticated());
+
+        // Clear and verify
+        manager.clear_credentials().unwrap();
+        assert!(!manager.is_authenticated());
+    }
+
+    #[test]
+    fn test_credentials_with_custom_hub() {
+        let creds = Credentials::with_hub_url(
+            "testuser",
+            "test_key",
+            "https://custom.hub.example.com",
+        );
+
+        assert_eq!(creds.username, "testuser");
+        assert_eq!(creds.hub_url, "https://custom.hub.example.com");
+    }
+
+    #[test]
+    fn test_store_credentials_overwrites_existing() {
+        use tempfile::TempDir;
+
+        let temp_dir = TempDir::new().unwrap();
+        let config_file = temp_dir.path().join("credentials.json");
+
+        let manager = AuthManager::with_config_path(config_file);
+
+        // Store first credentials (bypassing oxen CLI)
+        let creds1 = Credentials::new("user1", "key1");
+        manager.store_in_config_file(&creds1).unwrap();
+
+        // Store different credentials (should overwrite)
+        let creds2 = Credentials::new("user2", "key2");
+        manager.store_in_config_file(&creds2).unwrap();
+
+        // Should have the new credentials
+        let creds = manager.get_credentials().unwrap().unwrap();
+        assert_eq!(creds.username, "user2");
+    }
+
+    #[test]
+    fn test_credentials_validation_edge_cases() {
+        // Test with whitespace
+        let creds = Credentials::new("  user  ", "  key  ");
+        assert!(creds.validate().is_ok());
+
+        // Test with very long username
+        let long_user = "a".repeat(1000);
+        let creds = Credentials::new(long_user, "key");
+        assert!(creds.validate().is_ok());
+    }
+
+    #[test]
+    fn test_get_credentials_nonexistent_file() {
+        use tempfile::TempDir;
+
+        let temp_dir = TempDir::new().unwrap();
+        let config_file = temp_dir.path().join("nonexistent").join("credentials.json");
+
+        let manager = AuthManager::with_config_path(config_file);
+
+        // Should return None for non-existent file
+        let result = manager.get_credentials();
+        assert!(result.is_ok());
+        assert!(result.unwrap().is_none());
+    }
 }

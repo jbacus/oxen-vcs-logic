@@ -465,4 +465,152 @@ mod tests {
         let manager = CommentManager::new();
         assert_eq!(manager.comments_dir, ".oxen/comments");
     }
+
+    #[test]
+    fn test_add_and_get_comments() {
+        use tempfile::TempDir;
+
+        let temp_dir = TempDir::new().unwrap();
+        let repo_path = temp_dir.path();
+
+        // Create comments directory
+        let comments_dir = repo_path.join(".oxen").join("comments");
+        std::fs::create_dir_all(&comments_dir).unwrap();
+
+        let manager = CommentManager::new();
+        let commit_id = "abc123";
+        let author = "test@user";
+        let text = "Great work on this commit!";
+
+        // Add a comment
+        let result = manager.add_comment(repo_path, commit_id, author, text);
+        assert!(result.is_ok());
+
+        let comment = result.unwrap();
+        assert_eq!(comment.author, author);
+        assert_eq!(comment.text, text);
+        assert_eq!(comment.commit_id, commit_id);
+
+        // Retrieve comments
+        let comments = manager.get_comments(repo_path, commit_id).unwrap();
+        assert_eq!(comments.len(), 1);
+        assert_eq!(comments[0].text, text);
+    }
+
+    #[test]
+    fn test_multiple_comments_on_commit() {
+        use tempfile::TempDir;
+
+        let temp_dir = TempDir::new().unwrap();
+        let repo_path = temp_dir.path();
+        std::fs::create_dir_all(repo_path.join(".oxen").join("comments")).unwrap();
+
+        let manager = CommentManager::new();
+        let commit_id = "def456";
+
+        // Add multiple comments
+        manager
+            .add_comment(repo_path, commit_id, "user1@host", "First comment")
+            .unwrap();
+        manager
+            .add_comment(repo_path, commit_id, "user2@host", "Second comment")
+            .unwrap();
+        manager
+            .add_comment(repo_path, commit_id, "user3@host", "Third comment")
+            .unwrap();
+
+        // Get all comments
+        let comments = manager.get_comments(repo_path, commit_id).unwrap();
+        assert_eq!(comments.len(), 3);
+        assert_eq!(comments[0].text, "First comment");
+        assert_eq!(comments[1].text, "Second comment");
+        assert_eq!(comments[2].text, "Third comment");
+    }
+
+    #[test]
+    fn test_get_comments_nonexistent_commit() {
+        use tempfile::TempDir;
+
+        let temp_dir = TempDir::new().unwrap();
+        let repo_path = temp_dir.path();
+        std::fs::create_dir_all(repo_path.join(".oxen").join("comments")).unwrap();
+
+        let manager = CommentManager::new();
+
+        // Should return empty vec for non-existent commit
+        let comments = manager.get_comments(repo_path, "nonexistent").unwrap();
+        assert_eq!(comments.len(), 0);
+    }
+
+    #[test]
+    fn test_activity_creation_from_metadata() {
+        let activity = Activity {
+            id: "abc123".to_string(),
+            activity_type: ActivityType::Commit,
+            author: "john@laptop".to_string(),
+            timestamp: Utc::now(),
+            message: "Added drums track".to_string(),
+            metadata: HashMap::from([
+                ("BPM".to_string(), "128".to_string()),
+                ("Sample Rate".to_string(), "48000Hz".to_string()),
+            ]),
+        };
+
+        assert_eq!(activity.activity_type.icon(), "●");
+        assert_eq!(activity.metadata.get("BPM").unwrap(), "128");
+        assert!(activity.message.contains("drums"));
+    }
+
+    #[test]
+    fn test_team_member_stats() {
+        let member = TeamMember {
+            name: "alice@studio".to_string(),
+            commit_count: 15,
+            last_active: Utc::now(),
+        };
+
+        assert_eq!(member.name, "alice@studio");
+        assert_eq!(member.commit_count, 15);
+    }
+
+    #[test]
+    fn test_parse_metadata_empty_line() {
+        assert_eq!(parse_metadata_line(""), None);
+        assert_eq!(parse_metadata_line("   "), None);
+    }
+
+    #[test]
+    fn test_extract_author_multiline() {
+        let message = "First line\nSecond line\n\nAuthor: bob@machine\nSome other text";
+        assert_eq!(
+            extract_author_from_message(message),
+            Some("bob@machine".to_string())
+        );
+    }
+
+    #[test]
+    fn test_comment_id_uniqueness() {
+        use tempfile::TempDir;
+
+        let temp_dir = TempDir::new().unwrap();
+        let repo_path = temp_dir.path();
+        std::fs::create_dir_all(repo_path.join(".oxen").join("comments")).unwrap();
+
+        let manager = CommentManager::new();
+        let commit_id = "test123";
+
+        let comment1 = manager
+            .add_comment(repo_path, commit_id, "user@host", "Comment 1")
+            .unwrap();
+
+        // Wait a tiny bit to ensure different timestamp
+        std::thread::sleep(std::time::Duration::from_millis(2));
+
+        let comment2 = manager
+            .add_comment(repo_path, commit_id, "user@host", "Comment 2")
+            .unwrap();
+
+        // Comment IDs should be unique
+        assert_ne!(comment1.id, comment2.id);
+    }
 }

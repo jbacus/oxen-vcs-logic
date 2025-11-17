@@ -985,6 +985,22 @@ EXAMPLES:
         #[arg(value_name = "SHELL", help = "Shell to generate completions for (bash, zsh, fish, powershell)")]
         shell: String,
     },
+
+    /// View operation history and audit trail
+    #[command(subcommand)]
+    History(HistoryCommands),
+
+    /// Workflow automation and smart suggestions
+    #[command(subcommand)]
+    Workflow(WorkflowCommands),
+
+    /// Backup and snapshot management
+    #[command(subcommand)]
+    Snapshot(SnapshotCommands),
+
+    /// Recovery guides for common scenarios
+    #[command(subcommand)]
+    Recovery(RecoveryCommands),
 }
 
 #[derive(Subcommand)]
@@ -1115,6 +1131,353 @@ EXAMPLES:
         entry_id: String,
     },
 }
+
+#[derive(Subcommand)]
+enum HistoryCommands {
+    /// View recent operation history
+    #[command(long_about = "View recent operation history
+
+USAGE:
+    auxin history view [--limit <N>]
+    auxin history view --repo <PATH>
+
+DESCRIPTION:
+    Displays a timeline of all operations performed, including:
+      • Lock operations (acquire, release, renew, break)
+      • Commits and pushes
+      • Authentication events
+      • Comments and activity views
+      • Success/failure status for each operation
+
+    Operations are stored persistently and survive restarts.
+
+OPTIONS:
+    --limit <N>     Number of recent operations to show (default: 20)
+    --repo <PATH>   Filter by repository path
+
+EXAMPLES:
+    # Show last 20 operations
+    auxin history view
+
+    # Show last 50 operations
+    auxin history view --limit 50
+
+    # Show operations for specific repository
+    auxin history view --repo /path/to/project.logicx")]
+    View {
+        #[arg(long, default_value = "20", help = "Number of operations to show")]
+        limit: usize,
+
+        #[arg(long, value_name = "PATH", help = "Filter by repository path")]
+        repo: Option<PathBuf>,
+    },
+
+    /// Export history to CSV file
+    #[command(long_about = "Export history to CSV file
+
+USAGE:
+    auxin history export <OUTPUT_FILE>
+
+DESCRIPTION:
+    Exports complete operation history to a CSV file for analysis,
+    compliance, or reporting. CSV includes:
+      • Timestamp
+      • Operation type
+      • User and machine
+      • Result (success/failure)
+      • Repository path
+
+EXAMPLES:
+    # Export to CSV
+    auxin history export operations.csv
+
+    # Export and open in Excel
+    auxin history export report.csv && open report.csv")]
+    Export {
+        #[arg(value_name = "OUTPUT_FILE", help = "CSV file to write")]
+        output: PathBuf,
+    },
+
+    /// Show operation statistics
+    #[command(long_about = "Show operation statistics
+
+USAGE:
+    auxin history stats
+
+DESCRIPTION:
+    Displays statistics about all operations:
+      • Total operations
+      • Success rate
+      • Lock operation count
+      • Network operation count
+      • Failure breakdown
+
+EXAMPLES:
+    # View statistics
+    auxin history stats")]
+    Stats,
+}
+
+#[derive(Subcommand)]
+enum WorkflowCommands {
+    /// Get smart suggestions based on repository state
+    #[command(long_about = "Get smart suggestions based on repository state
+
+USAGE:
+    auxin workflow suggest [PATH]
+
+DESCRIPTION:
+    Analyzes current repository state and provides context-aware
+    suggestions for next actions. Checks:
+      • Lock status and expiration
+      • Recent operation failures
+      • Uncommitted changes
+      • Recommended workflows
+
+EXAMPLES:
+    # Get suggestions for current directory
+    auxin workflow suggest
+
+    # Get suggestions for specific project
+    auxin workflow suggest /path/to/project.logicx")]
+    Suggest {
+        #[arg(value_name = "PATH", help = "Repository path (default: current directory)")]
+        path: Option<PathBuf>,
+    },
+
+    /// Run lock renewal daemon (keeps lock alive)
+    #[command(long_about = "Run lock renewal daemon (keeps lock alive)
+
+USAGE:
+    auxin workflow lock-daemon <PATH>
+
+DESCRIPTION:
+    Starts a background daemon that automatically renews your lock
+    before it expires. Useful for long editing sessions (>4 hours).
+
+    The daemon:
+      • Checks every 15 minutes
+      • Renews when <60 minutes remaining
+      • Records all renewals in history
+      • Stops when lock is released
+
+OPTIONS:
+    Daemon runs in foreground. Use '&' to run in background:
+    auxin workflow lock-daemon . &
+
+EXAMPLES:
+    # Start lock renewal daemon
+    auxin workflow lock-daemon .
+
+    # Run in background
+    auxin workflow lock-daemon . &")]
+    LockDaemon {
+        #[arg(value_name = "PATH", help = "Repository path")]
+        path: PathBuf,
+    },
+
+    /// Show current workflow configuration
+    #[command(long_about = "Show current workflow configuration
+
+USAGE:
+    auxin workflow config
+
+DESCRIPTION:
+    Displays current workflow automation settings:
+      • Auto-lock renewal (enabled/disabled)
+      • Lock check interval
+      • Lock renew threshold
+      • Auto-pull on startup
+      • Auto-push after commit
+      • Confirmation prompts
+      • Dry-run mode
+
+    Configuration file: ~/.oxenvcs/workflow_config.json
+
+EXAMPLES:
+    # View configuration
+    auxin workflow config")]
+    Config,
+}
+
+#[derive(Subcommand)]
+enum SnapshotCommands {
+    /// Create a manual backup snapshot
+    #[command(long_about = "Create a manual backup snapshot
+
+USAGE:
+    auxin snapshot create <PATH> [DESCRIPTION]
+
+DESCRIPTION:
+    Creates a manual backup snapshot of the repository state.
+    Snapshots include:
+      • Current commit ID
+      • Timestamp
+      • Repository path
+      • User description
+
+    Automatic snapshots are also created before:
+      • Push operations
+      • Pull operations
+      • Lock break operations
+      • Rollback operations
+
+EXAMPLES:
+    # Create snapshot with description
+    auxin snapshot create . \"Before major refactor\"
+
+    # Create snapshot without description
+    auxin snapshot create /path/to/project.logicx")]
+    Create {
+        #[arg(value_name = "PATH", help = "Repository path")]
+        path: PathBuf,
+
+        #[arg(value_name = "DESCRIPTION", help = "Optional description")]
+        description: Option<String>,
+    },
+
+    /// List all backup snapshots
+    #[command(long_about = "List all backup snapshots
+
+USAGE:
+    auxin snapshot list [OPTIONS]
+
+DESCRIPTION:
+    Lists all backup snapshots with:
+      • Snapshot ID
+      • Type (manual, auto-before-push, etc.)
+      • Timestamp
+      • Description
+      • Associated commit ID
+      • Repository path
+
+OPTIONS:
+    --all           Show all snapshots (default: last 20)
+    --repo <PATH>   Filter by repository
+
+EXAMPLES:
+    # List recent snapshots
+    auxin snapshot list
+
+    # List all snapshots
+    auxin snapshot list --all
+
+    # List snapshots for specific repository
+    auxin snapshot list --repo /path/to/project.logicx")]
+    List {
+        #[arg(long, help = "Show all snapshots")]
+        all: bool,
+
+        #[arg(long, value_name = "PATH", help = "Filter by repository")]
+        repo: Option<PathBuf>,
+    },
+
+    /// Get restore instructions for a snapshot
+    #[command(long_about = "Get restore instructions for a snapshot
+
+USAGE:
+    auxin snapshot restore <SNAPSHOT_ID>
+
+DESCRIPTION:
+    Displays step-by-step instructions for restoring from a snapshot.
+    Does NOT actually perform the restore (dry-run only).
+
+    Instructions include:
+      • Snapshot details
+      • Commit to restore
+      • Commands to run
+      • Warnings about uncommitted changes
+
+EXAMPLES:
+    # Get restore instructions
+    auxin snapshot restore abc123def456")]
+    Restore {
+        #[arg(value_name = "SNAPSHOT_ID", help = "Snapshot ID to restore from")]
+        snapshot_id: String,
+    },
+
+    /// Delete a snapshot
+    #[command(long_about = "Delete a snapshot
+
+USAGE:
+    auxin snapshot delete <SNAPSHOT_ID>
+
+DESCRIPTION:
+    Permanently deletes a snapshot. Cannot be undone.
+
+    Note: Automatic cleanup keeps only the 50 most recent snapshots.
+
+EXAMPLES:
+    # Delete snapshot
+    auxin snapshot delete abc123def456")]
+    Delete {
+        #[arg(value_name = "SNAPSHOT_ID", help = "Snapshot ID to delete")]
+        snapshot_id: String,
+    },
+}
+
+#[derive(Subcommand)]
+enum RecoveryCommands {
+    /// Show recovery guide for failed push
+    #[command(long_about = "Show recovery guide for failed push
+
+USAGE:
+    auxin recovery push
+
+DESCRIPTION:
+    Displays step-by-step recovery guide for push failures.
+
+    Common push failure causes:
+      • Network connectivity issues
+      • Authentication problems
+      • Missing lock
+      • Diverged branches
+
+EXAMPLES:
+    # Show push recovery guide
+    auxin recovery push")]
+    Push,
+
+    /// Show recovery guide for failed pull
+    #[command(long_about = "Show recovery guide for failed pull
+
+USAGE:
+    auxin recovery pull
+
+DESCRIPTION:
+    Displays step-by-step recovery guide for pull failures.
+
+    Common pull failure causes:
+      • Network connectivity issues
+      • Authentication problems
+      • Uncommitted local changes
+      • Merge conflicts
+
+EXAMPLES:
+    # Show pull recovery guide
+    auxin recovery pull")]
+    Pull,
+
+    /// Show recovery guide for lock conflicts
+    #[command(long_about = "Show recovery guide for lock conflicts
+
+USAGE:
+    auxin recovery lock
+
+DESCRIPTION:
+    Displays step-by-step recovery guide for lock conflicts.
+
+    Common lock conflict scenarios:
+      • Lock held by another user
+      • Expired lock not auto-released
+      • Stale lock after crash
+
+EXAMPLES:
+    # Show lock recovery guide
+    auxin recovery lock")]
+    Lock,
+}
+
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

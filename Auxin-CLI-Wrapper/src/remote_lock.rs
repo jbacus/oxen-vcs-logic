@@ -149,6 +149,19 @@ impl RemoteLock {
         self.last_heartbeat = now;
         self.expires_at = now + Duration::hours(additional_hours as i64);
     }
+
+    /// Check if lock is expiring soon (within threshold minutes)
+    pub fn is_expiring_soon(&self, threshold_minutes: i64) -> bool {
+        let now = Utc::now();
+        let time_until_expiry = self.expires_at.signed_duration_since(now);
+        time_until_expiry < Duration::minutes(threshold_minutes)
+    }
+
+    /// Get minutes until lock expires
+    pub fn minutes_until_expiry(&self) -> i64 {
+        let now = Utc::now();
+        self.expires_at.signed_duration_since(now).num_minutes()
+    }
 }
 
 /// Manages distributed locks stored in Oxen repository
@@ -359,6 +372,41 @@ impl RemoteLockManager {
 
         crate::info!("Lock forcibly broken");
         Ok(())
+    }
+
+    /// Emergency unlock: Break lock if expired or stale
+    pub fn emergency_unlock_if_expired(&self, repo_path: &Path) -> Result<bool> {
+        match self.get_lock(repo_path)? {
+            Some(lock) => {
+                if lock.is_expired() || lock.is_stale() {
+                    crate::info!("Lock is expired/stale, performing emergency unlock");
+                    self.force_break_lock(repo_path)?;
+                    Ok(true)
+                } else {
+                    Ok(false)
+                }
+            }
+            None => Ok(false),
+        }
+    }
+
+    /// Check if lock can be emergency unlocked
+    pub fn can_emergency_unlock(&self, repo_path: &Path) -> Result<bool> {
+        match self.get_lock(repo_path)? {
+            Some(lock) => Ok(lock.is_expired() || lock.is_stale()),
+            None => Ok(false),
+        }
+    }
+
+    /// Get lock age in hours
+    pub fn get_lock_age_hours(&self, repo_path: &Path) -> Result<Option<i64>> {
+        match self.get_lock(repo_path)? {
+            Some(lock) => {
+                let age = Utc::now() - lock.acquired_at;
+                Ok(Some(age.num_hours()))
+            }
+            None => Ok(None),
+        }
     }
 
     // ========== Private Helper Methods ==========
@@ -713,5 +761,83 @@ mod tests {
     fn test_remote_lock_manager_creation() {
         let manager = RemoteLockManager::new();
         assert_eq!(manager.locks_branch, "locks");
+    }
+
+    #[test]
+    fn test_lock_file_path_generation() {
+        use tempfile::TempDir;
+
+        let temp_dir = TempDir::new().unwrap();
+        let manager = RemoteLockManager::new();
+
+        // Create locks directory
+        let locks_dir = temp_dir.path().join(".oxen").join("locks");
+        std::fs::create_dir_all(&locks_dir).unwrap();
+
+        // Test that lock file path is correctly generated
+        let project_name = "test.logicx";
+        let lock_file = locks_dir.join(format!("{}.json", sanitize_filename(project_name)));
+
+        assert!(lock_file.to_str().unwrap().contains("test_logicx.json"));
+    }
+
+    #[test]
+    fn test_get_lock_nonexistent() {
+        use tempfile::TempDir;
+
+        let temp_dir = TempDir::new().unwrap();
+        let repo_path = temp_dir.path();
+
+        // Create .oxen directory structure
+        std::fs::create_dir_all(repo_path.join(".oxen").join("locks")).unwrap();
+
+        let manager = RemoteLockManager::new();
+
+        // Should return None when no lock exists
+        let result = manager.get_lock(repo_path);
+        assert!(result.is_ok());
+        assert!(result.unwrap().is_none());
+    }
+
+    #[test]
+    fn test_lock_ownership_check() {
+        let lock = RemoteLock::new("test.logicx", &get_user_identifier(), 4);
+        assert!(lock.is_owned_by_current_user());
+
+        let other_lock = RemoteLock::new("test.logicx", "different@user", 4);
+        assert!(!other_lock.is_owned_by_current_user());
+    }
+
+    #[test]
+    fn test_lock_remaining_time_expired() {
+        let mut lock = RemoteLock::new("test.logicx", "user@host", 4);
+        lock.expires_at = Utc::now() - Duration::hours(2);
+
+        let remaining = lock.remaining_time();
+        assert_eq!(remaining, Duration::zero());
+    }
+
+    #[test]
+    fn test_lock_renew_extends_expiration() {
+        let mut lock = RemoteLock::new("test.logicx", "user@host", 1);
+        let original_expires = lock.expires_at;
+
+        // Renew for 2 more hours
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        lock.renew(2);
+
+        // New expiration should be ~2 hours from now (much later than original)
+        assert!(lock.expires_at > original_expires);
+        let diff = lock.expires_at - original_expires;
+        assert!(diff > Duration::hours(1)); // Should be at least 1 hour more
+    }
+
+    #[test]
+    fn test_sanitize_filename_special_chars() {
+        assert_eq!(sanitize_filename("test/file.logicx"), "test_file_logicx");
+        assert_eq!(sanitize_filename("my\\project"), "my_project");
+        assert_eq!(sanitize_filename("project:name"), "project_name");
+        assert_eq!(sanitize_filename("file?name"), "file_name");
+        assert_eq!(sanitize_filename("file*name"), "file_name");
     }
 }

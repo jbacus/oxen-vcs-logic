@@ -1,588 +1,431 @@
-//! Network resilience for collaboration features
-//!
-//! This module provides robust network operation handling with:
-//! - Automatic retry with exponential backoff
-//! - Network connectivity detection
-//! - Error categorization (transient vs permanent)
-//! - Timeout handling
-//! - Operation queuing for offline scenarios
-//!
-//! # Example
-//!
-//! ```no_run
-//! use auxin_cli::network_resilience::{RetryPolicy, NetworkOperation};
-//! use std::time::Duration;
-//!
-//! let policy = RetryPolicy::default();
-//! let result = policy.execute(|| {
-//!     // Your network operation here
-//!     Ok(())
-//! });
-//! ```
-
 use anyhow::{anyhow, Context, Result};
-use std::time::{Duration, Instant};
-use std::thread;
+use chrono::{DateTime, Utc};
 use colored::Colorize;
+use serde::{Deserialize, Serialize};
+use std::collections::VecDeque;
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::thread;
+use std::time::Duration as StdDuration;
 
-/// Maximum number of retry attempts
-const MAX_RETRIES: u32 = 5;
+/// Maximum number of retry attempts for network operations
+const MAX_RETRIES: u32 = 4;
 
-/// Initial backoff duration
-const INITIAL_BACKOFF_MS: u64 = 1000;
+/// Initial backoff duration in milliseconds
+const INITIAL_BACKOFF_MS: u64 = 2000;
 
-/// Maximum backoff duration (cap)
-const MAX_BACKOFF_MS: u64 = 30000;
+/// Maximum backoff duration in milliseconds (16 seconds)
+const MAX_BACKOFF_MS: u64 = 16000;
 
-/// Network timeout for connectivity checks
-const CONNECTIVITY_CHECK_TIMEOUT_MS: u64 = 5000;
+/// Represents a queued operation that failed due to network issues
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct QueuedOperation {
+    /// Unique identifier for this operation
+    pub id: String,
 
-/// Error types for network operations
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ErrorType {
-    /// Transient error that can be retried (network timeout, connection refused)
-    Transient,
+    /// Type of operation (push, pull, lock_acquire, etc.)
+    pub operation_type: OperationType,
 
-    /// Permanent error that should not be retried (authentication failure, not found)
-    Permanent,
+    /// Repository path
+    pub repo_path: PathBuf,
 
-    /// Unknown error type (default to permanent for safety)
-    Unknown,
+    /// Additional operation-specific data
+    pub data: OperationData,
+
+    /// When this operation was first queued
+    pub queued_at: DateTime<Utc>,
+
+    /// Number of times this operation has been attempted
+    pub attempt_count: u32,
+
+    /// Last error message
+    pub last_error: Option<String>,
 }
 
-/// Network connectivity state
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ConnectivityState {
-    /// Network is available
-    Online,
-
-    /// Network is unavailable
-    Offline,
-
-    /// Network state unknown (default)
-    Unknown,
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum OperationType {
+    Push,
+    Pull,
+    LockAcquire,
+    LockRelease,
+    LockRenew,
+    CommentSync,
 }
 
-/// Retry policy configuration
-#[derive(Debug, Clone)]
-pub struct RetryPolicy {
-    /// Maximum number of retry attempts
-    pub max_retries: u32,
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct OperationData {
+    /// Branch name (for push/pull)
+    pub branch: Option<String>,
 
-    /// Initial backoff duration in milliseconds
-    pub initial_backoff_ms: u64,
+    /// Commit message (for commits)
+    pub message: Option<String>,
 
-    /// Maximum backoff duration in milliseconds
-    pub max_backoff_ms: u64,
+    /// Lock timeout (for lock operations)
+    pub timeout_hours: Option<u32>,
 
-    /// Whether to use exponential backoff (vs fixed)
-    pub exponential: bool,
-
-    /// Whether to print retry progress
-    pub verbose: bool,
+    /// Additional key-value data
+    pub extra: std::collections::HashMap<String, String>,
 }
 
-impl Default for RetryPolicy {
-    fn default() -> Self {
+impl OperationData {
+    pub fn new() -> Self {
         Self {
-            max_retries: MAX_RETRIES,
-            initial_backoff_ms: INITIAL_BACKOFF_MS,
-            max_backoff_ms: MAX_BACKOFF_MS,
-            exponential: true,
-            verbose: true,
-        }
-    }
-}
-
-impl RetryPolicy {
-    /// Create a new retry policy with custom settings
-    pub fn new(max_retries: u32, initial_backoff_ms: u64, max_backoff_ms: u64) -> Self {
-        Self {
-            max_retries,
-            initial_backoff_ms,
-            max_backoff_ms,
-            exponential: true,
-            verbose: true,
+            branch: None,
+            message: None,
+            timeout_hours: None,
+            extra: std::collections::HashMap::new(),
         }
     }
 
-    /// Create a policy with no retries (fail fast)
-    pub fn no_retry() -> Self {
-        Self {
-            max_retries: 0,
-            initial_backoff_ms: 0,
-            max_backoff_ms: 0,
-            exponential: false,
-            verbose: false,
-        }
-    }
-
-    /// Create a policy with fixed backoff (no exponential)
-    pub fn fixed_backoff(max_retries: u32, backoff_ms: u64) -> Self {
-        Self {
-            max_retries,
-            initial_backoff_ms: backoff_ms,
-            max_backoff_ms: backoff_ms,
-            exponential: false,
-            verbose: true,
-        }
-    }
-
-    /// Enable or disable verbose output
-    pub fn set_verbose(mut self, verbose: bool) -> Self {
-        self.verbose = verbose;
+    pub fn with_branch(mut self, branch: impl Into<String>) -> Self {
+        self.branch = Some(branch.into());
         self
     }
 
-    /// Calculate backoff duration for a given attempt
-    pub fn backoff_duration(&self, attempt: u32) -> Duration {
-        if !self.exponential {
-            return Duration::from_millis(self.initial_backoff_ms);
-        }
-
-        // Exponential backoff: initial * 2^attempt
-        let backoff_ms = self.initial_backoff_ms * 2u64.pow(attempt);
-        let capped_ms = backoff_ms.min(self.max_backoff_ms);
-
-        Duration::from_millis(capped_ms)
+    pub fn with_message(mut self, message: impl Into<String>) -> Self {
+        self.message = Some(message.into());
+        self
     }
 
-    /// Execute an operation with retry logic
-    ///
-    /// # Arguments
-    ///
-    /// * `operation` - Closure that performs the network operation
-    ///
-    /// # Returns
-    ///
-    /// Result from the operation, or error if all retries exhausted
-    pub fn execute<F, T>(&self, mut operation: F) -> Result<T>
-    where
-        F: FnMut() -> Result<T>,
-    {
-        let mut attempt = 0;
-        let start_time = Instant::now();
-
-        loop {
-            match operation() {
-                Ok(result) => {
-                    if attempt > 0 && self.verbose {
-                        let elapsed = start_time.elapsed();
-                        crate::info!(
-                            "Operation succeeded after {} attempt(s) in {:.1}s",
-                            attempt + 1,
-                            elapsed.as_secs_f64()
-                        );
-                    }
-                    return Ok(result);
-                }
-                Err(e) => {
-                    let error_type = categorize_error(&e);
-
-                    // Don't retry permanent errors
-                    if error_type == ErrorType::Permanent {
-                        return Err(e.context("Operation failed (permanent error, not retrying)"));
-                    }
-
-                    // Check if we should retry
-                    if attempt >= self.max_retries {
-                        return Err(e.context(format!(
-                            "Operation failed after {} attempts",
-                            attempt + 1
-                        )));
-                    }
-
-                    // Calculate backoff
-                    let backoff = self.backoff_duration(attempt);
-
-                    if self.verbose {
-                        eprintln!(
-                            "{}",
-                            format!(
-                                "⚠️  Attempt {} failed: {}",
-                                attempt + 1,
-                                e
-                            ).yellow()
-                        );
-                        eprintln!(
-                            "{}",
-                            format!(
-                                "   Retrying in {:.1}s... ({}/{} attempts remaining)",
-                                backoff.as_secs_f64(),
-                                self.max_retries - attempt,
-                                self.max_retries
-                            ).yellow()
-                        );
-                    }
-
-                    // Wait before retry
-                    thread::sleep(backoff);
-                    attempt += 1;
-                }
-            }
-        }
-    }
-
-    /// Execute an operation with retry, providing progress callback
-    pub fn execute_with_progress<F, T, P>(&self, mut operation: F, mut on_retry: P) -> Result<T>
-    where
-        F: FnMut() -> Result<T>,
-        P: FnMut(u32, Duration),
-    {
-        let mut attempt = 0;
-
-        loop {
-            match operation() {
-                Ok(result) => return Ok(result),
-                Err(e) => {
-                    let error_type = categorize_error(&e);
-
-                    if error_type == ErrorType::Permanent {
-                        return Err(e.context("Permanent error"));
-                    }
-
-                    if attempt >= self.max_retries {
-                        return Err(e.context(format!("Failed after {} attempts", attempt + 1)));
-                    }
-
-                    let backoff = self.backoff_duration(attempt);
-                    on_retry(attempt, backoff);
-
-                    thread::sleep(backoff);
-                    attempt += 1;
-                }
-            }
-        }
+    pub fn with_timeout(mut self, hours: u32) -> Self {
+        self.timeout_hours = Some(hours);
+        self
     }
 }
 
-/// Categorize error as transient or permanent
-pub fn categorize_error(error: &anyhow::Error) -> ErrorType {
-    let error_string = error.to_string().to_lowercase();
+impl Default for OperationData {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
-    // Transient errors (should retry)
+/// Manages offline operation queue and network retry logic
+pub struct NetworkResilienceManager {
+    queue_file: PathBuf,
+    operations: VecDeque<QueuedOperation>,
+}
+
+impl NetworkResilienceManager {
+    /// Create a new NetworkResilienceManager with default queue location
+    pub fn new() -> Self {
+        let queue_file = Self::default_queue_path();
+        Self {
+            queue_file,
+            operations: VecDeque::new(),
+        }
+    }
+
+    /// Create with custom queue file path
+    pub fn with_queue_path(queue_file: PathBuf) -> Self {
+        Self {
+            queue_file,
+            operations: VecDeque::new(),
+        }
+    }
+
+    /// Get default queue file path (~/.oxenvcs/operation_queue.json)
+    fn default_queue_path() -> PathBuf {
+        let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+        PathBuf::from(home).join(".oxenvcs").join("operation_queue.json")
+    }
+
+    /// Load queued operations from disk
+    pub fn load_queue(&mut self) -> Result<()> {
+        if !self.queue_file.exists() {
+            return Ok(());
+        }
+
+        let contents = fs::read_to_string(&self.queue_file)
+            .context("Failed to read operation queue file")?;
+
+        let ops: Vec<QueuedOperation> = serde_json::from_str(&contents)
+            .context("Failed to parse operation queue")?;
+
+        self.operations = ops.into();
+        Ok(())
+    }
+
+    /// Save queued operations to disk
+    pub fn save_queue(&self) -> Result<()> {
+        // Ensure parent directory exists
+        if let Some(parent) = self.queue_file.parent() {
+            fs::create_dir_all(parent)?;
+        }
+
+        let ops: Vec<_> = self.operations.iter().collect();
+        let json = serde_json::to_string_pretty(&ops)?;
+
+        fs::write(&self.queue_file, json)
+            .context("Failed to write operation queue file")?;
+
+        Ok(())
+    }
+
+    /// Add an operation to the queue
+    pub fn enqueue(&mut self, mut operation: QueuedOperation) -> Result<()> {
+        operation.queued_at = Utc::now();
+        operation.attempt_count = 0;
+        self.operations.push_back(operation);
+        self.save_queue()?;
+        Ok(())
+    }
+
+    /// Get the next operation to retry
+    pub fn dequeue(&mut self) -> Option<QueuedOperation> {
+        let op = self.operations.pop_front();
+        if op.is_some() {
+            let _ = self.save_queue();
+        }
+        op
+    }
+
+    /// Peek at the next operation without removing it
+    pub fn peek(&self) -> Option<&QueuedOperation> {
+        self.operations.front()
+    }
+
+    /// Get number of queued operations
+    pub fn queue_size(&self) -> usize {
+        self.operations.len()
+    }
+
+    /// Clear all queued operations
+    pub fn clear_queue(&mut self) -> Result<()> {
+        self.operations.clear();
+        self.save_queue()
+    }
+
+    /// Mark an operation as failed and re-queue if under retry limit
+    pub fn mark_failed(&mut self, mut operation: QueuedOperation, error: String) -> Result<bool> {
+        operation.attempt_count += 1;
+        operation.last_error = Some(error);
+
+        if operation.attempt_count < MAX_RETRIES {
+            // Re-queue for retry
+            self.operations.push_back(operation);
+            self.save_queue()?;
+            Ok(true) // Will retry
+        } else {
+            // Max retries exceeded, don't re-queue
+            self.save_queue()?;
+            Ok(false) // Won't retry
+        }
+    }
+
+    /// Execute a network operation with retry logic
+    pub fn execute_with_retry<F>(&self, mut operation: F) -> Result<()>
+    where
+        F: FnMut() -> Result<()>,
+    {
+        let mut attempt = 0;
+        let mut last_error = None;
+
+        while attempt < MAX_RETRIES {
+            match operation() {
+                Ok(()) => return Ok(()),
+                Err(e) => {
+                    last_error = Some(e);
+                    attempt += 1;
+
+                    if attempt < MAX_RETRIES {
+                        // Calculate exponential backoff
+                        let backoff_ms = INITIAL_BACKOFF_MS * 2u64.pow(attempt - 1);
+                        let backoff_ms = backoff_ms.min(MAX_BACKOFF_MS);
+
+                        crate::vlog!("Retry attempt {}/{}, waiting {}ms", attempt, MAX_RETRIES, backoff_ms);
+                        thread::sleep(StdDuration::from_millis(backoff_ms));
+                    }
+                }
+            }
+        }
+
+        Err(last_error.unwrap_or_else(|| anyhow!("Operation failed after {} retries", MAX_RETRIES)))
+    }
+}
+
+impl Default for NetworkResilienceManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Detect if an error is transient (retryable) or permanent
+pub fn is_transient_error(error: &anyhow::Error) -> bool {
+    let error_str = error.to_string().to_lowercase();
+
+    // Network-related errors that are typically transient
     let transient_patterns = [
         "timeout",
         "connection refused",
         "connection reset",
+        "broken pipe",
         "network unreachable",
         "temporary failure",
-        "too many requests",
-        "service unavailable",
-        "gateway timeout",
-        "connection timed out",
-        "no route to host",
-        "broken pipe",
+        "502",
+        "503",
+        "504",
+        "try again",
     ];
 
-    for pattern in &transient_patterns {
-        if error_string.contains(pattern) {
-            return ErrorType::Transient;
-        }
-    }
-
-    // Permanent errors (should not retry)
-    let permanent_patterns = [
-        "authentication failed",
-        "unauthorized",
-        "forbidden",
-        "not found",
-        "invalid credentials",
-        "permission denied",
-        "already exists",
-        "conflict",
-        "bad request",
-        "invalid",
-    ];
-
-    for pattern in &permanent_patterns {
-        if error_string.contains(pattern) {
-            return ErrorType::Permanent;
-        }
-    }
-
-    // Default to permanent for safety (avoid infinite retries)
-    ErrorType::Permanent
+    transient_patterns.iter().any(|pattern| error_str.contains(pattern))
 }
 
-/// Check network connectivity
-pub fn check_connectivity() -> ConnectivityState {
-    // Try to connect to Oxen Hub
-    let result = check_host_connectivity("hub.oxen.ai", 443);
+/// Check if network is available by attempting to connect to Oxen Hub
+pub fn check_network_availability() -> bool {
+    use std::process::Command;
 
-    if result {
-        ConnectivityState::Online
-    } else {
-        // Fallback: try DNS servers
-        let dns_reachable = check_host_connectivity("8.8.8.8", 53);
-        if dns_reachable {
-            ConnectivityState::Online
-        } else {
-            ConnectivityState::Offline
-        }
-    }
-}
+    // Try to ping Oxen Hub
+    let output = Command::new("ping")
+        .args(["-c", "1", "-W", "2", "hub.oxen.ai"])
+        .output();
 
-/// Check if a specific host is reachable
-fn check_host_connectivity(host: &str, port: u16) -> bool {
-    use std::net::{TcpStream, ToSocketAddrs};
-
-    // Resolve host to socket address
-    let addr = match format!("{}:{}", host, port).to_socket_addrs() {
-        Ok(mut addrs) => match addrs.next() {
-            Some(addr) => addr,
-            None => return false,
-        },
-        Err(_) => return false,
-    };
-
-    // Try to connect with timeout
-    match TcpStream::connect_timeout(&addr, Duration::from_millis(CONNECTIVITY_CHECK_TIMEOUT_MS)) {
-        Ok(_) => true,
+    match output {
+        Ok(out) => out.status.success(),
         Err(_) => false,
     }
 }
 
-/// Wait for network connectivity to be restored
-///
-/// # Arguments
-///
-/// * `max_wait` - Maximum duration to wait
-/// * `check_interval` - How often to check connectivity
-///
-/// # Returns
-///
-/// Ok if connectivity restored, Err if timeout
-pub fn wait_for_connectivity(max_wait: Duration, check_interval: Duration) -> Result<()> {
-    let start = Instant::now();
-
-    eprintln!("{}", "⚠️  Network appears offline. Waiting for connectivity...".yellow());
-
-    while start.elapsed() < max_wait {
-        match check_connectivity() {
-            ConnectivityState::Online => {
-                eprintln!("{}", "✓ Network connectivity restored".green());
-                return Ok(());
-            }
-            _ => {
-                thread::sleep(check_interval);
-            }
-        }
-    }
-
-    Err(anyhow!("Network connectivity not restored after {:.0}s", max_wait.as_secs_f64()))
-}
-
-/// Network operation wrapper with built-in resilience
-pub struct NetworkOperation<T> {
-    name: String,
-    operation: Box<dyn FnMut() -> Result<T>>,
-    policy: RetryPolicy,
-}
-
-impl<T> NetworkOperation<T> {
-    /// Create a new network operation
-    pub fn new<F>(name: impl Into<String>, operation: F) -> Self
-    where
-        F: FnMut() -> Result<T> + 'static,
-    {
-        Self {
-            name: name.into(),
-            operation: Box::new(operation),
-            policy: RetryPolicy::default(),
-        }
-    }
-
-    /// Set custom retry policy
-    pub fn with_policy(mut self, policy: RetryPolicy) -> Self {
-        self.policy = policy;
-        self
-    }
-
-    /// Execute the operation with resilience
-    pub fn execute(mut self) -> Result<T> {
-        crate::vlog!("Executing network operation: {}", self.name);
-
-        // Check connectivity first
-        match check_connectivity() {
-            ConnectivityState::Offline => {
-                return Err(anyhow!("Network is offline. Operation cannot be performed."));
-            }
-            _ => {}
-        }
-
-        // Execute with retry
-        self.policy.execute(|| (self.operation)())
-            .context(format!("Network operation '{}' failed", self.name))
-    }
-}
-
-// =============================================================================
-// Tests
-// =============================================================================
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tempfile::TempDir;
 
     #[test]
-    fn test_retry_policy_default() {
-        let policy = RetryPolicy::default();
-        assert_eq!(policy.max_retries, MAX_RETRIES);
-        assert_eq!(policy.initial_backoff_ms, INITIAL_BACKOFF_MS);
-        assert!(policy.exponential);
+    fn test_network_resilience_manager_creation() {
+        let manager = NetworkResilienceManager::new();
+        assert_eq!(manager.queue_size(), 0);
     }
 
     #[test]
-    fn test_retry_policy_no_retry() {
-        let policy = RetryPolicy::no_retry();
-        assert_eq!(policy.max_retries, 0);
+    fn test_enqueue_and_dequeue() {
+        let temp_dir = TempDir::new().unwrap();
+        let queue_file = temp_dir.path().join("queue.json");
+        let mut manager = NetworkResilienceManager::with_queue_path(queue_file);
+
+        let op = QueuedOperation {
+            id: "test-1".to_string(),
+            operation_type: OperationType::Push,
+            repo_path: PathBuf::from("/test/repo"),
+            data: OperationData::new().with_branch("main"),
+            queued_at: Utc::now(),
+            attempt_count: 0,
+            last_error: None,
+        };
+
+        manager.enqueue(op.clone()).unwrap();
+        assert_eq!(manager.queue_size(), 1);
+
+        let dequeued = manager.dequeue().unwrap();
+        assert_eq!(dequeued.id, "test-1");
+        assert_eq!(manager.queue_size(), 0);
     }
 
     #[test]
-    fn test_backoff_duration_exponential() {
-        let policy = RetryPolicy::default();
+    fn test_queue_persistence() {
+        let temp_dir = TempDir::new().unwrap();
+        let queue_file = temp_dir.path().join("queue.json");
 
-        // Attempt 0: 1000ms
-        assert_eq!(policy.backoff_duration(0), Duration::from_millis(1000));
+        // Create and enqueue
+        {
+            let mut manager = NetworkResilienceManager::with_queue_path(queue_file.clone());
+            let op = QueuedOperation {
+                id: "persist-test".to_string(),
+                operation_type: OperationType::LockAcquire,
+                repo_path: PathBuf::from("/test"),
+                data: OperationData::new().with_timeout(4),
+                queued_at: Utc::now(),
+                attempt_count: 0,
+                last_error: None,
+            };
+            manager.enqueue(op).unwrap();
+        }
 
-        // Attempt 1: 2000ms
-        assert_eq!(policy.backoff_duration(1), Duration::from_millis(2000));
+        // Load in new instance
+        {
+            let mut manager = NetworkResilienceManager::with_queue_path(queue_file);
+            manager.load_queue().unwrap();
+            assert_eq!(manager.queue_size(), 1);
 
-        // Attempt 2: 4000ms
-        assert_eq!(policy.backoff_duration(2), Duration::from_millis(4000));
-
-        // Attempt 3: 8000ms
-        assert_eq!(policy.backoff_duration(3), Duration::from_millis(8000));
+            let op = manager.peek().unwrap();
+            assert_eq!(op.id, "persist-test");
+        }
     }
 
     #[test]
-    fn test_backoff_duration_fixed() {
-        let policy = RetryPolicy::fixed_backoff(3, 2000);
+    fn test_mark_failed_retry_logic() {
+        let temp_dir = TempDir::new().unwrap();
+        let queue_file = temp_dir.path().join("queue.json");
+        let mut manager = NetworkResilienceManager::with_queue_path(queue_file);
 
-        assert_eq!(policy.backoff_duration(0), Duration::from_millis(2000));
-        assert_eq!(policy.backoff_duration(1), Duration::from_millis(2000));
-        assert_eq!(policy.backoff_duration(2), Duration::from_millis(2000));
+        let op = QueuedOperation {
+            id: "retry-test".to_string(),
+            operation_type: OperationType::Push,
+            repo_path: PathBuf::from("/test"),
+            data: OperationData::new(),
+            queued_at: Utc::now(),
+            attempt_count: 0,
+            last_error: None,
+        };
+
+        // First 3 failures should re-queue
+        let will_retry = manager.mark_failed(op.clone(), "Network error".to_string()).unwrap();
+        assert!(will_retry);
+        assert_eq!(manager.queue_size(), 1);
+
+        // After MAX_RETRIES, should not re-queue
+        let mut op_max = op.clone();
+        op_max.attempt_count = MAX_RETRIES - 1;
+        let will_retry = manager.mark_failed(op_max, "Network error".to_string()).unwrap();
+        assert!(!will_retry);
     }
 
     #[test]
-    fn test_backoff_duration_capped() {
-        let policy = RetryPolicy::new(10, 1000, 5000);
+    fn test_is_transient_error() {
+        let timeout_err = anyhow!("Connection timeout");
+        assert!(is_transient_error(&timeout_err));
 
-        // Should cap at 5000ms
-        assert_eq!(policy.backoff_duration(10), Duration::from_millis(5000));
+        let refused_err = anyhow!("Connection refused");
+        assert!(is_transient_error(&refused_err));
+
+        let auth_err = anyhow!("Authentication failed");
+        assert!(!is_transient_error(&auth_err));
     }
 
     #[test]
-    fn test_categorize_error_transient() {
-        let error = anyhow!("Connection timeout");
-        assert_eq!(categorize_error(&error), ErrorType::Transient);
+    fn test_operation_data_builder() {
+        let data = OperationData::new()
+            .with_branch("main")
+            .with_message("Test commit")
+            .with_timeout(4);
 
-        let error = anyhow!("Connection refused");
-        assert_eq!(categorize_error(&error), ErrorType::Transient);
-
-        let error = anyhow!("Network unreachable");
-        assert_eq!(categorize_error(&error), ErrorType::Transient);
+        assert_eq!(data.branch, Some("main".to_string()));
+        assert_eq!(data.message, Some("Test commit".to_string()));
+        assert_eq!(data.timeout_hours, Some(4));
     }
 
     #[test]
-    fn test_categorize_error_permanent() {
-        let error = anyhow!("Authentication failed");
-        assert_eq!(categorize_error(&error), ErrorType::Permanent);
+    fn test_clear_queue() {
+        let temp_dir = TempDir::new().unwrap();
+        let queue_file = temp_dir.path().join("queue.json");
+        let mut manager = NetworkResilienceManager::with_queue_path(queue_file);
 
-        let error = anyhow!("Not found");
-        assert_eq!(categorize_error(&error), ErrorType::Permanent);
+        // Add multiple operations
+        for i in 0..5 {
+            let op = QueuedOperation {
+                id: format!("op-{}", i),
+                operation_type: OperationType::Push,
+                repo_path: PathBuf::from("/test"),
+                data: OperationData::new(),
+                queued_at: Utc::now(),
+                attempt_count: 0,
+                last_error: None,
+            };
+            manager.enqueue(op).unwrap();
+        }
 
-        let error = anyhow!("Permission denied");
-        assert_eq!(categorize_error(&error), ErrorType::Permanent);
-    }
+        assert_eq!(manager.queue_size(), 5);
 
-    #[test]
-    fn test_categorize_error_default_permanent() {
-        let error = anyhow!("Some unknown error");
-        assert_eq!(categorize_error(&error), ErrorType::Permanent);
-    }
-
-    #[test]
-    fn test_retry_policy_success_first_try() {
-        let policy = RetryPolicy::default().set_verbose(false);
-        let mut attempts = 0;
-
-        let result = policy.execute(|| {
-            attempts += 1;
-            Ok(42)
-        });
-
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), 42);
-        assert_eq!(attempts, 1);
-    }
-
-    #[test]
-    fn test_retry_policy_success_after_retry() {
-        let policy = RetryPolicy::new(3, 10, 100).set_verbose(false);
-        let mut attempts = 0;
-
-        let result: Result<i32> = policy.execute(|| {
-            attempts += 1;
-            if attempts < 3 {
-                Err(anyhow!("Connection timeout")) // Transient
-            } else {
-                Ok(42)
-            }
-        });
-
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), 42);
-        assert_eq!(attempts, 3);
-    }
-
-    #[test]
-    fn test_retry_policy_permanent_error_no_retry() {
-        let policy = RetryPolicy::default().set_verbose(false);
-        let mut attempts = 0;
-
-        let result: Result<i32> = policy.execute(|| {
-            attempts += 1;
-            Err(anyhow!("Authentication failed")) // Permanent
-        });
-
-        assert!(result.is_err());
-        assert_eq!(attempts, 1); // No retries for permanent errors
-    }
-
-    #[test]
-    fn test_retry_policy_exhausted_retries() {
-        let policy = RetryPolicy::new(2, 10, 100).set_verbose(false);
-        let mut attempts = 0;
-
-        let result: Result<i32> = policy.execute(|| {
-            attempts += 1;
-            Err(anyhow!("Connection timeout")) // Transient
-        });
-
-        assert!(result.is_err());
-        assert_eq!(attempts, 3); // Initial + 2 retries
-    }
-
-    #[test]
-    fn test_check_connectivity() {
-        // This test requires network, so it may fail in offline environments
-        // We'll just verify it returns a valid state
-        let state = check_connectivity();
-        assert!(
-            state == ConnectivityState::Online ||
-            state == ConnectivityState::Offline
-        );
-    }
-
-    #[test]
-    fn test_network_operation_success() {
-        let op = NetworkOperation::new("test_op", || Ok(42))
-            .with_policy(RetryPolicy::default().set_verbose(false));
-
-        let result = op.execute();
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), 42);
+        manager.clear_queue().unwrap();
+        assert_eq!(manager.queue_size(), 0);
     }
 }
