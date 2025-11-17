@@ -530,7 +530,7 @@ fn setup_test_repo(repo_path: &std::path::Path) {
     // Create projectData file
     fs::write(repo_path.join("projectData"), b"mock project data").expect("Failed to create projectData");
 
-    // Initialize OxVCS
+    // Initialize Auxin
     run_cli_command(&["init", "--logic", "."], Some(&repo_path.to_path_buf()))
         .expect("Failed to initialize repo");
 

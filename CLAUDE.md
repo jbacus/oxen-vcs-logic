@@ -536,7 +536,7 @@ fn oxen_init(path: &Path) -> Result<()> {
 **FFI Exports**
 ```rust
 #[no_mangle]
-pub extern "C" fn oxenvcs_add_file(
+pub extern "C" fn auxin_add_file(
     repo_path: *const c_char,
     file_path: *const c_char
 ) -> i32 {

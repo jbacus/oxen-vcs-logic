@@ -893,21 +893,21 @@ xcrun notarytool submit Auxin.app.zip \
 ```bash
 # Create release archive
 VERSION=0.1.0
-tar -czf oxvcs-${VERSION}-macos.tar.gz \
+tar -czf auxin-${VERSION}-macos.tar.gz \
     /usr/local/bin/auxin \
     ~/Library/Application\ Support/Auxin/ \
     /Applications/Auxin.app
 
 # Upload to GitHub Releases
 gh release create v${VERSION} \
-   oxvcs-${VERSION}-macos.tar.gz \
+   auxin-${VERSION}-macos.tar.gz \
    --title "Auxin ${VERSION}" \
    --notes "See CHANGELOG.md for details"
 ```
 
 **Homebrew Cask (Future):**
 ```ruby
-cask "oxvcs" do
+cask "auxin" do
   version "0.1.0"
   sha256 "..."
 

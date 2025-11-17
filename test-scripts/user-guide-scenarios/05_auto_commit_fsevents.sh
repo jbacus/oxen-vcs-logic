@@ -81,7 +81,7 @@ print_header
 print_step 1 "Checking prerequisites"
 
 # Check if LaunchAgent is running
-if launchctl list | grep -q "oxenvcs"; then
+if launchctl list | grep -q "auxin"; then
     DAEMON_PID=$(launchctl list | grep auxin | awk '{print $1}')
     print_success "LaunchAgent is running (PID: $DAEMON_PID)"
 else
@@ -89,7 +89,7 @@ else
 fi
 
 # Check if we can access logs
-if log show --predicate 'process == "Auxin-LaunchAgent"' --last 1m --style syslog 2>&1 | grep -q "oxenvcs"; then
+if log show --predicate 'process == "Auxin-LaunchAgent"' --last 1m --style syslog 2>&1 | grep -q "auxin"; then
     print_success "Can access daemon logs"
 else
     print_info "Note: Daemon logs may not be available yet (daemon just started)"

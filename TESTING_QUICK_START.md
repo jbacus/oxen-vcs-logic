@@ -44,7 +44,7 @@ cargo build --release
 ### 4. Create Test Repository
 
 1. On hub.oxen.ai, click "New Repository"
-2. Name: `oxvcs-test-project`
+2. Name: `auxin-test-project`
 3. Visibility: Private (recommended)
 4. Click Create
 
@@ -55,7 +55,7 @@ cargo build --release
 export RUN_INTEGRATION_TESTS=1
 export OXEN_TEST_USERNAME='your-username'
 export OXEN_TEST_API_KEY='your-api-key'
-export OXEN_TEST_REPO_URL='https://hub.oxen.ai/your-username/oxvcs-test-project'
+export OXEN_TEST_REPO_URL='https://hub.oxen.ai/your-username/auxin-test-project'
 
 # Reload shell
 source ~/.zshrc  # or source ~/.bash_profile
