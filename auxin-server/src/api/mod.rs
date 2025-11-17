@@ -1,3 +1,5 @@
+mod repo_ops;
+
 use actix_web::{web, HttpResponse, Result};
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -6,6 +8,14 @@ use tracing::{error, info};
 
 use crate::config::Config;
 use crate::error::{AppError, AppResult};
+use crate::repo::RepositoryOps;
+
+// Re-export API handlers
+pub use repo_ops::{
+    acquire_lock, create_branch, get_commits, get_metadata, heartbeat_lock,
+    list_branches, lock_status, pull_repository, push_repository,
+    release_lock, store_metadata,
+};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateRepoRequest {
@@ -92,60 +102,8 @@ pub async fn create_repository(
         ));
     }
 
-    // Create repository directory
-    fs::create_dir_all(&repo_path).map_err(|e| {
-        error!("Failed to create repository directory: {}", e);
-        AppError::Internal("Failed to create repository".to_string())
-    })?;
-
-    // Initialize .oxen directory structure (minimal for now)
-    let oxen_dir = repo_path.join(".oxen");
-    fs::create_dir_all(oxen_dir.join("history")).map_err(|e| {
-        error!("Failed to create .oxen/history: {}", e);
-        AppError::Internal("Failed to initialize repository".to_string())
-    })?;
-
-    fs::create_dir_all(oxen_dir.join("refs/heads")).map_err(|e| {
-        error!("Failed to create .oxen/refs/heads: {}", e);
-        AppError::Internal("Failed to initialize repository".to_string())
-    })?;
-
-    fs::create_dir_all(oxen_dir.join("tree")).map_err(|e| {
-        error!("Failed to create .oxen/tree: {}", e);
-        AppError::Internal("Failed to initialize repository".to_string())
-    })?;
-
-    fs::create_dir_all(oxen_dir.join("versions")).map_err(|e| {
-        error!("Failed to create .oxen/versions: {}", e);
-        AppError::Internal("Failed to initialize repository".to_string())
-    })?;
-
-    // OxVCS extensions
-    fs::create_dir_all(oxen_dir.join("metadata")).map_err(|e| {
-        error!("Failed to create .oxen/metadata: {}", e);
-        AppError::Internal("Failed to initialize repository".to_string())
-    })?;
-
-    fs::create_dir_all(oxen_dir.join("locks")).map_err(|e| {
-        error!("Failed to create .oxen/locks: {}", e);
-        AppError::Internal("Failed to initialize repository".to_string())
-    })?;
-
-    // Write config.toml
-    let config_content = format!(
-        "[repository]\nname = \"{}\"\nnamespace = \"{}\"\n",
-        repo_name, namespace
-    );
-    fs::write(oxen_dir.join("config.toml"), config_content).map_err(|e| {
-        error!("Failed to write config.toml: {}", e);
-        AppError::Internal("Failed to initialize repository".to_string())
-    })?;
-
-    // Write HEAD (default to main branch)
-    fs::write(oxen_dir.join("HEAD"), "ref: refs/heads/main\n").map_err(|e| {
-        error!("Failed to write HEAD: {}", e);
-        AppError::Internal("Failed to initialize repository".to_string())
-    })?;
+    // Initialize using liboxen
+    let _repo = RepositoryOps::init(&repo_path)?;
 
     info!("Repository created successfully: {}/{}", namespace, repo_name);
 

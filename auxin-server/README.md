@@ -1,6 +1,6 @@
-# OxVCS Server v2 (Oxen-Aligned)
+# Auxin Server (Oxen-Aligned)
 
-**Self-hosted repository server for OxVCS, aligned with Oxen.ai architecture**
+**Self-hosted repository server for Auxin, aligned with Oxen.ai architecture**
 
 ## Architecture
 
@@ -24,7 +24,7 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 ```bash
 # Clone and navigate
-cd oxvcs-server-v2
+cd auxin-server
 
 # Copy environment config
 cp .env.example .env
@@ -33,7 +33,7 @@ cp .env.example .env
 cargo build --release
 
 # Run
-./target/release/oxvcs-server
+./target/release/auxin-server
 ```
 
 ### 3. Test
@@ -92,8 +92,8 @@ SYNC_DIR/
             │   └── heads/
             ├── tree/              # File tree snapshots
             ├── versions/          # Deduplicated blocks
-            ├── metadata/          # Logic Pro metadata (OxVCS extension)
-            └── locks/             # Distributed locks (OxVCS extension)
+            ├── metadata/          # Logic Pro metadata (Auxin extension)
+            └── locks/             # Distributed locks (Auxin extension)
 ```
 
 ## API Endpoints
@@ -109,7 +109,7 @@ SYNC_DIR/
 - `GET /api/repos/{namespace}/{name}/pull` - Pull commits
 - `GET /api/repos/{namespace}/{name}/commits` - List commits
 
-### OxVCS Extensions
+### Auxin Extensions
 - `GET /api/repos/{namespace}/{name}/metadata/{commit}` - Logic Pro metadata
 - `POST /api/repos/{namespace}/{name}/locks/acquire` - Acquire lock
 - `POST /api/repos/{namespace}/{name}/locks/release` - Release lock
@@ -124,20 +124,20 @@ SYNC_DIR/
 cargo build --release
 
 # Copy binary
-sudo cp target/release/oxvcs-server /usr/local/bin/
+sudo cp target/release/auxin-server /usr/local/bin/
 
 # Create systemd service
-sudo tee /etc/systemd/system/oxvcs-server.service > /dev/null <<EOF
+sudo tee /etc/systemd/system/auxin-server.service > /dev/null <<EOF
 [Unit]
-Description=OxVCS Server
+Description=Auxin Server
 After=network.target
 
 [Service]
 Type=simple
-User=oxvcs
+User=auxin
 Environment="SYNC_DIR=/var/oxen/data"
 Environment="OXEN_SERVER_PORT=3000"
-ExecStart=/usr/local/bin/oxvcs-server
+ExecStart=/usr/local/bin/auxin-server
 Restart=always
 
 [Install]
@@ -146,22 +146,22 @@ EOF
 
 # Start service
 sudo systemctl daemon-reload
-sudo systemctl enable oxvcs-server
-sudo systemctl start oxvcs-server
+sudo systemctl enable auxin-server
+sudo systemctl start auxin-server
 ```
 
 ### With Docker (Optional)
 
 ```bash
 # Build image
-docker build -t oxvcs-server:v2 .
+docker build -t auxin-server:latest .
 
 # Run
 docker run -d \
   -p 3000:3000 \
   -v /var/oxen/data:/var/oxen/data \
   -e SYNC_DIR=/var/oxen/data \
-  oxvcs-server:v2
+  auxin-server:latest
 ```
 
 ## Comparison: v1 vs v2
@@ -211,7 +211,7 @@ cargo check
 
 ## Next Steps
 
-See `OXVCS_SERVER_REVISED.md` for:
+See `../AUXIN_SERVER.md` for:
 - Complete 8-week implementation plan
 - Integration with liboxen
 - Logic Pro metadata support
@@ -220,7 +220,7 @@ See `OXVCS_SERVER_REVISED.md` for:
 
 ## Documentation
 
-- **Implementation Plan**: `OXVCS_SERVER_REVISED.md`
+- **Implementation Plan**: `../AUXIN_SERVER.md`
 - **Original Plan**: `../OXVCS_SERVER_PLAN.md` (archived)
 
 ## License

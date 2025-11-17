@@ -1,6 +1,6 @@
-# OxVCS Server - Revised Architecture (Oxen-Aligned)
+# Auxin Server - Architecture (Oxen-Aligned)
 
-**Project**: Self-hosted repository server for OxVCS using liboxen
+**Project**: Self-hosted repository server for Auxin using liboxen
 **Strategy**: Align with Oxen.ai's proven architecture
 **Timeline**: 8 weeks (reduced from 24)
 **Status**: Architecture Revision
@@ -14,14 +14,14 @@
 
 After analyzing the actual Oxen.ai repository, we're **realigning our architecture** to match Oxen's proven design:
 
-**Before (OxVCS Server Original):**
+**Before (Auxin Server Original):**
 - Axum web framework
 - PostgreSQL + Redis + MinIO stack
 - Custom database schema
 - 24-week implementation
 - High operational complexity
 
-**After (OxVCS Server Revised):**
+**After (Auxin Server Revised):**
 - **Actix Web** (matches Oxen)
 - **liboxen library** (reuse Oxen core)
 - **Filesystem storage** with `.oxen` directories
@@ -44,7 +44,7 @@ After analyzing the actual Oxen.ai repository, we're **realigning our architectu
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│              OxVCS Server (Actix Web + liboxen)              │
+│              Auxin Server (Actix Web + liboxen)              │
 │                                                              │
 │  ┌────────────────────────────────────────────────────────┐ │
 │  │              Actix Web HTTP Server                     │ │
@@ -55,7 +55,7 @@ After analyzing the actual Oxen.ai repository, we're **realigning our architectu
 │  └────────────────┬───────────────────────────────────────┘ │
 │                   │                                          │
 │  ┌────────────────▼───────────────────────────────────────┐ │
-│  │         OxVCS Extensions Layer                         │ │
+│  │         Auxin Extensions Layer                         │ │
 │  │  • Logic Pro metadata (BPM, sample rate, key)          │ │
 │  │  • Distributed locking (file-based or Redis)           │ │
 │  │  • Activity tracking                                   │ │
@@ -100,7 +100,7 @@ tokio = "1"               # Async runtime
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
-# Optional (for OxVCS extensions)
+# Optional (for Auxin extensions)
 redis = { version = "0.24", optional = true }  # For distributed locks
 sqlx = { version = "0.7", optional = true }    # For web UI metadata cache
 
@@ -166,7 +166,7 @@ async fn main() -> std::io::Result<()> {
 
 ### Phase 2: Logic Pro Extensions (Weeks 3-4)
 
-**Goal**: Add OxVCS-specific features
+**Goal**: Add Auxin-specific features
 
 **Week 3: Metadata Support**
 ```rust
@@ -304,9 +304,9 @@ SYNC_DIR/
         │   │   └── {tree_hash}      # Tree objects
         │   ├── versions/            # Deduplicated blocks
         │   │   └── {block_hash}     # Content blocks
-        │   ├── metadata/            # OxVCS extension
+        │   ├── metadata/            # Auxin extension
         │   │   └── {commit_hash}.json  # Logic Pro metadata
-        │   └── locks/               # OxVCS extension
+        │   └── locks/               # Auxin extension
         │       └── project.lock     # Distributed lock
         └── (no working directory - server only stores .oxen)
 ```
@@ -332,7 +332,7 @@ GET    /api/repos/{namespace}/{name}/pull     # Pull commits
 GET    /api/repos/{namespace}/{name}/commits  # List commits
 ```
 
-### OxVCS Extensions
+### Auxin Extensions
 ```
 GET    /api/repos/{namespace}/{name}/metadata/{commit}  # Logic Pro metadata
 POST   /api/repos/{namespace}/{name}/locks/acquire      # Acquire lock
@@ -363,7 +363,7 @@ export SYNC_DIR=/var/oxen/data
 export OXEN_SERVER_PORT=3000
 
 # 3. Run
-./target/release/oxvcs-server
+./target/release/auxin-server
 
 # That's it! No Docker Compose needed.
 ```
@@ -375,7 +375,7 @@ export OXEN_SERVER_PORT=3000
 docker run -d -p 6379:6379 redis:7-alpine
 
 export REDIS_URL=redis://localhost:6379
-./target/release/oxvcs-server --enable-redis-locks
+./target/release/auxin-server --enable-redis-locks
 ```
 
 ### Optional: Add PostgreSQL for Web UI
@@ -386,8 +386,8 @@ docker run -d -p 5432:5432 \
   -e POSTGRES_PASSWORD=password \
   postgres:16
 
-export DATABASE_URL=postgres://postgres:password@localhost/oxvcs
-./target/release/oxvcs-server --enable-web-ui
+export DATABASE_URL=postgres://postgres:password@localhost/auxin
+./target/release/auxin-server --enable-web-ui
 ```
 
 ---
@@ -425,10 +425,10 @@ REDIS_URL=redis://localhost:6379
 
 # Optional: PostgreSQL (web UI)
 ENABLE_WEB_UI=true
-DATABASE_URL=postgres://user:pass@localhost/oxvcs
+DATABASE_URL=postgres://user:pass@localhost/auxin
 
 # Logging
-RUST_LOG=info,oxvcs_server=debug
+RUST_LOG=info,auxin_server=debug
 ```
 
 ---
@@ -459,12 +459,12 @@ git checkout -b backup/original-design
 git checkout -b feature/oxen-aligned-server
 
 # Create new project structure
-mkdir oxvcs-server-v2
-cd oxvcs-server-v2
+mkdir auxin-server
+cd auxin-server
 
 # Copy only what's needed
-cp ../oxvcs-server/Cargo.toml .  # Update dependencies
-cp ../oxvcs-server/README.md .   # Update docs
+cp ../auxin-server/Cargo.toml .  # Update dependencies
+cp ../auxin-server/README.md .   # Update docs
 
 # Implement new architecture
 # (See implementation guide below)

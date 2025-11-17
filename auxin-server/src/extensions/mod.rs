@@ -1,4 +1,4 @@
-// OxVCS-specific extensions to Oxen
+// Auxin-specific extensions to Oxen
 // This module contains Logic Pro metadata support, distributed locking, etc.
 
 pub mod metadata;

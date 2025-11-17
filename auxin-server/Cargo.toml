@@ -1,9 +1,9 @@
 [package]
-name = "oxvcs-server"
+name = "auxin-server"
 version = "0.2.0"
 edition = "2021"
-authors = ["OxVCS Team"]
-description = "Self-hosted repository server for OxVCS using liboxen (Oxen-aligned architecture)"
+authors = ["Auxin Team"]
+description = "Self-hosted repository server for Auxin using liboxen (Oxen-aligned architecture)"
 license = "MIT"
 
 [dependencies]
@@ -11,6 +11,7 @@ license = "MIT"
 actix-web = "4"
 actix-rt = "2"
 actix-cors = "0.7"
+actix-web-httpauth = "0.8"
 
 # Core Oxen library
 liboxen = "0.10"
@@ -42,13 +43,20 @@ redis = { version = "0.24", features = ["tokio-comp"], optional = true }
 # Optional: PostgreSQL for web UI metadata cache
 sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono", "json"], optional = true }
 
+[dev-dependencies]
+tempfile = "3"
+
 [features]
 default = []
 redis-locks = ["redis"]
 web-ui = ["sqlx"]
 
+[lib]
+name = "auxin_server"
+path = "src/lib.rs"
+
 [[bin]]
-name = "oxvcs-server"
+name = "auxin-server"
 path = "src/main.rs"
 
 [profile.release]
