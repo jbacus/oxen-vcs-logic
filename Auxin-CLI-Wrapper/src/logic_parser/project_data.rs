@@ -1,4 +1,4 @@
-// OxVCS-CLI-Wrapper/src/logic_parser/project_data.rs
+// Auxin-CLI-Wrapper/src/logic_parser/project_data.rs
 //
 // Data structures representing Logic Pro project metadata.
 // These structures are populated by parsing the .logicx binary format.

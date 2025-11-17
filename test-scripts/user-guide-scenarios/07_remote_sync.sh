@@ -19,12 +19,12 @@ NC='\033[0m'
 # Test configuration
 TEST_NAME="Remote Synchronization"
 TEST_PROJECT_NAME="RemoteSyncTest_$(date +%s).logicx"
-TEST_DIR="$HOME/Desktop/oxenvcs-test-projects"
+TEST_DIR="$HOME/Desktop/auxin-test-projects"
 TEST_PROJECT_PATH="$TEST_DIR/$TEST_PROJECT_NAME"
 TEST_REMOTE_DIR="$TEST_DIR/remote-repo.oxen"
 
 # CLI path
-OXENVCS_CLI="./Auxin-CLI-Wrapper/target/release/auxin"
+AUXIN_CLI="./Auxin-CLI-Wrapper/target/release/auxin"
 
 # Functions
 print_header() {
@@ -98,7 +98,7 @@ EOF
 
 dd if=/dev/zero of="Resources/Audio Files/drums.wav" bs=1024 count=2048 2>/dev/null
 
-$OXENVCS_CLI init --logic .
+$AUXIN_CLI init --logic .
 print_success "Local project created"
 
 INITIAL_COMMIT=$(oxen log --oneline | head -1 | awk '{print $1}')

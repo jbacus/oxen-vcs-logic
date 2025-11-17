@@ -345,7 +345,7 @@ client.acquireLock(
 
 ### User Preferences
 
-Stored in: `~/Library/Preferences/com.oxen.oxvcs.plist`
+Stored in: `~/Library/Preferences/com.auxin.app.plist`
 
 Settings include:
 - Auto-refresh interval (default: 30s)

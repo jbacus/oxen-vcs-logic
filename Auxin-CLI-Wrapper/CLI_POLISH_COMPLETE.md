@@ -206,7 +206,7 @@ Next steps:
 
 **Option 1: Via Homebrew Tap** (once published):
 ```bash
-brew tap jbacus/oxenvcs
+brew tap jbacus/auxin
 brew install auxin
 ```
 
@@ -223,7 +223,7 @@ cd Auxin-CLI-Wrapper
 
 **Formula Structure**:
 ```ruby
-class OxenvcsLi < Formula
+class Auxin < Formula
   desc "High-performance CLI wrapper for Oxen.ai"
   homepage "https://github.com/jbacus/auxin"
   url "https://github.com/.../archive/refs/tags/v0.1.0.tar.gz"
@@ -392,7 +392,7 @@ cd auxin/Auxin-CLI-Wrapper
 
 **Option B: Homebrew** (macOS, once published):
 ```bash
-brew tap jbacus/oxenvcs
+brew tap jbacus/auxin
 brew install auxin
 ```
 
@@ -480,7 +480,7 @@ Current installation requires Rust toolchain:
 
 ### Homebrew Tap Publishing
 Formula is ready but not yet published:
-- Need to create `homebrew-oxenvcs` repository
+- Need to create `homebrew-auxin` repository
 - Need to create v0.1.0 GitHub release with tarball
 - Need to compute SHA256 hash for formula
 - Full instructions in `formula/README.md`
@@ -561,7 +561,7 @@ All must-have features from CLI_COMPLETENESS_ASSESSMENT.md have been implemented
 
 ### Short Term (1-2 weeks)
 1. Create v0.1.0 GitHub release
-2. Publish Homebrew tap (homebrew-oxenvcs)
+2. Publish Homebrew tap (homebrew-auxin)
 3. Set up CI/CD for automated builds
 4. Build and publish pre-compiled binaries
 5. Fix remaining doctest failures
@@ -597,7 +597,7 @@ The CLI now matches the quality and UX expectations of professional developer to
 ./install.sh
 
 # Homebrew (once published)
-brew tap jbacus/oxenvcs
+brew tap jbacus/auxin
 brew install auxin
 
 # Manual build

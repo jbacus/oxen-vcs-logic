@@ -18,11 +18,11 @@ NC='\033[0m'
 # Test configuration
 TEST_NAME="Milestone Commit with Metadata"
 TEST_PROJECT_NAME="MilestoneTest_$(date +%s).logicx"
-TEST_DIR="$HOME/Desktop/oxenvcs-test-projects"
+TEST_DIR="$HOME/Desktop/auxin-test-projects"
 TEST_PROJECT_PATH="$TEST_DIR/$TEST_PROJECT_NAME"
 
 # CLI path
-OXENVCS_CLI="./Auxin-CLI-Wrapper/target/release/auxin"
+AUXIN_CLI="./Auxin-CLI-Wrapper/target/release/auxin"
 
 # Functions
 print_header() {
@@ -93,7 +93,7 @@ dd if=/dev/zero of="$TEST_PROJECT_PATH/Resources/Audio Files/bass.wav" bs=1024 c
 cd "$TEST_PROJECT_PATH"
 
 # Initialize
-$OXENVCS_CLI init --logic .
+$AUXIN_CLI init --logic .
 print_success "Project initialized"
 
 # ------------------------------------------------------------

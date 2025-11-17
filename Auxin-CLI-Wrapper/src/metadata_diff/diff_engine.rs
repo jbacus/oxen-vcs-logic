@@ -1,4 +1,4 @@
-// OxVCS-CLI-Wrapper/src/metadata_diff/diff_engine.rs
+// Auxin-CLI-Wrapper/src/metadata_diff/diff_engine.rs
 //
 // Core diff engine for comparing Logic Pro project metadata
 

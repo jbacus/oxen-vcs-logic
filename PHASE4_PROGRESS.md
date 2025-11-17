@@ -246,7 +246,7 @@ cargo test --test collaboration_integration_test -- --ignored
 ### Basic Retry
 
 ```rust
-use oxenvcs_cli::network_resilience::RetryPolicy;
+use auxin::network_resilience::RetryPolicy;
 
 // Default: 5 retries, exponential backoff (1s → 30s)
 let policy = RetryPolicy::default();
@@ -284,7 +284,7 @@ let result = policy.execute_with_progress(
 ### Network Operation Wrapper
 
 ```rust
-use oxenvcs_cli::network_resilience::NetworkOperation;
+use auxin::network_resilience::NetworkOperation;
 
 let op = NetworkOperation::new("push_changes", || {
     oxen_push(repo_path)
@@ -298,7 +298,7 @@ op.execute()?;
 ### Manual Connectivity Check
 
 ```rust
-use oxenvcs_cli::network_resilience::{check_connectivity, ConnectivityState};
+use auxin::network_resilience::{check_connectivity, ConnectivityState};
 
 match check_connectivity() {
     ConnectivityState::Online => {

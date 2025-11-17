@@ -62,7 +62,7 @@ final class ServiceManagerTests: XCTestCase {
         let validStatuses = [
             "✗ Service configuration not found (run install.sh)",
             "✓ Enabled and running",
-            "○ Not loaded (run: oxvcs-daemon --install)"
+            "○ Not loaded (run: auxin-daemon --install)"
         ]
 
         XCTAssertTrue(

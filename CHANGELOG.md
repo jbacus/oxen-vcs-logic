@@ -15,9 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Package name: `auxin-cli` → `auxin`
   - GitHub repository: `jbacus/oxen-vcs-logic` → `jbacus/auxin`
   - macOS service IDs:
-    - `com.oxenvcs.agent` → `com.auxin.agent`
+    - `com.auxin.agent` → `com.auxin.agent`
     - `com.oxen.logic.daemon` → `com.auxin.daemon`
-    - `com.oxenvcs.app` → `com.auxin.app`
+    - `com.auxin.app` → `com.auxin.app`
   - Configuration directory: `~/.auxin` → `~/.auxin`
   - Environment variables: `OXENVCS_*` → `AUXIN_*`
   - Shell completions updated for new binary name
@@ -44,7 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Post-commit hooks (run after commit, cannot abort)
     - 4 built-in templates: validate-metadata, check-file-sizes, notify, backup
     - Custom hook support (bash, python, ruby, any executable)
-    - Environment variables: OXVCS_MESSAGE, OXVCS_BPM, OXVCS_KEY, OXVCS_TAGS, OXVCS_REPO_PATH
+    - Environment variables: AUXIN_MESSAGE, AUXIN_BPM, AUXIN_KEY, AUXIN_TAGS, AUXIN_REPO_PATH
     - Hook execution order (alphabetical), error handling, logging
     - 7 comprehensive tests for hooks system
   - **Interactive Console TUI** (`console` command)

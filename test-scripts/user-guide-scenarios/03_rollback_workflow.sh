@@ -18,11 +18,11 @@ NC='\033[0m'
 # Test configuration
 TEST_NAME="Rollback to Previous Version"
 TEST_PROJECT_NAME="RollbackTest_$(date +%s).logicx"
-TEST_DIR="$HOME/Desktop/oxenvcs-test-projects"
+TEST_DIR="$HOME/Desktop/auxin-test-projects"
 TEST_PROJECT_PATH="$TEST_DIR/$TEST_PROJECT_NAME"
 
 # CLI path
-OXENVCS_CLI="./Auxin-CLI-Wrapper/target/release/auxin"
+AUXIN_CLI="./Auxin-CLI-Wrapper/target/release/auxin"
 
 # Functions
 print_header() {
@@ -90,7 +90,7 @@ EOF
 
 dd if=/dev/zero of="Resources/Audio Files/drums.wav" bs=1024 count=1024 2>/dev/null
 
-$OXENVCS_CLI init --logic .
+$AUXIN_CLI init --logic .
 print_success "Version 1 created (Initial recording, BPM: 120)"
 
 # Version 2: Add bass

@@ -18,11 +18,11 @@ NC='\033[0m'
 # Test configuration
 TEST_NAME="Browse Project History"
 TEST_PROJECT_NAME="HistoryTest_$(date +%s).logicx"
-TEST_DIR="$HOME/Desktop/oxenvcs-test-projects"
+TEST_DIR="$HOME/Desktop/auxin-test-projects"
 TEST_PROJECT_PATH="$TEST_DIR/$TEST_PROJECT_NAME"
 
 # CLI path
-OXENVCS_CLI="./Auxin-CLI-Wrapper/target/release/auxin"
+AUXIN_CLI="./Auxin-CLI-Wrapper/target/release/auxin"
 
 # Functions
 print_header() {
@@ -96,7 +96,7 @@ create_version() {
 EOF
 
     if [ "$version" -eq 1 ]; then
-        $OXENVCS_CLI init --logic .
+        $AUXIN_CLI init --logic .
     else
         oxen add .
         echo "$message

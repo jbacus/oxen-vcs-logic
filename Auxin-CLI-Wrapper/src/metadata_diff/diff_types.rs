@@ -1,4 +1,4 @@
-// OxVCS-CLI-Wrapper/src/metadata_diff/diff_types.rs
+// Auxin-CLI-Wrapper/src/metadata_diff/diff_types.rs
 //
 // Types representing differences between Logic Pro project versions
 

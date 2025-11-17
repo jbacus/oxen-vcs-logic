@@ -174,12 +174,12 @@ impl HookManager {
     fn run_hook(&self, hook_path: &Path, metadata: &CommitMetadata) -> Result<bool> {
         // Prepare environment variables for the hook
         let output = Command::new(hook_path)
-            .env("OXVCS_MESSAGE", &metadata.message)
-            .env("OXVCS_BPM", metadata.bpm.map(|b| b.to_string()).unwrap_or_default())
-            .env("OXVCS_SAMPLE_RATE", metadata.sample_rate.map(|s| s.to_string()).unwrap_or_default())
-            .env("OXVCS_KEY", metadata.key_signature.as_deref().unwrap_or(""))
-            .env("OXVCS_TAGS", metadata.tags.join(","))
-            .env("OXVCS_REPO_PATH", &self.repo_path)
+            .env("AUXIN_MESSAGE", &metadata.message)
+            .env("AUXIN_BPM", metadata.bpm.map(|b| b.to_string()).unwrap_or_default())
+            .env("AUXIN_SAMPLE_RATE", metadata.sample_rate.map(|s| s.to_string()).unwrap_or_default())
+            .env("AUXIN_KEY", metadata.key_signature.as_deref().unwrap_or(""))
+            .env("AUXIN_TAGS", metadata.tags.join(","))
+            .env("AUXIN_REPO_PATH", &self.repo_path)
             .output()
             .with_context(|| format!("Failed to execute hook: {:?}", hook_path))?;
 
@@ -314,12 +314,12 @@ Run after a successful commit. Cannot abort the commit.
 
 ### Available Environment Variables
 
-- `OXVCS_MESSAGE` - Commit message
-- `OXVCS_BPM` - BPM value (if set)
-- `OXVCS_SAMPLE_RATE` - Sample rate (if set)
-- `OXVCS_KEY` - Key signature (if set)
-- `OXVCS_TAGS` - Comma-separated tags
-- `OXVCS_REPO_PATH` - Path to the repository
+- `AUXIN_MESSAGE` - Commit message
+- `AUXIN_BPM` - BPM value (if set)
+- `AUXIN_SAMPLE_RATE` - Sample rate (if set)
+- `AUXIN_KEY` - Key signature (if set)
+- `AUXIN_TAGS` - Comma-separated tags
+- `AUXIN_REPO_PATH` - Path to the repository
 
 See the documentation for examples and more information.
 "#;
@@ -327,12 +327,12 @@ See the documentation for examples and more information.
 const HOOK_VALIDATE_METADATA: &str = r#"#!/bin/bash
 # Pre-commit hook: Validate metadata
 
-if [ -z "$OXVCS_BPM" ]; then
+if [ -z "$AUXIN_BPM" ]; then
     echo "ERROR: BPM not set. Please provide BPM metadata."
     exit 1
 fi
 
-if [ -z "$OXVCS_SAMPLE_RATE" ]; then
+if [ -z "$AUXIN_SAMPLE_RATE" ]; then
     echo "ERROR: Sample rate not set. Please provide sample rate metadata."
     exit 1
 fi
@@ -346,7 +346,7 @@ const HOOK_CHECK_FILE_SIZES: &str = r#"#!/bin/bash
 
 MAX_SIZE=$((100 * 1024 * 1024))  # 100MB in bytes
 
-cd "$OXVCS_REPO_PATH" || exit 1
+cd "$AUXIN_REPO_PATH" || exit 1
 
 # Find large files
 large_files=$(find . -type f -size +${MAX_SIZE}c -not -path "./.oxen/*" 2>/dev/null)
@@ -371,17 +371,17 @@ const HOOK_NOTIFY: &str = r#"#!/bin/bash
 # - Send to Discord webhook
 # - Update project management system
 
-echo "New commit: $OXVCS_MESSAGE"
-echo "BPM: $OXVCS_BPM, Sample Rate: $OXVCS_SAMPLE_RATE, Key: $OXVCS_KEY"
+echo "New commit: $AUXIN_MESSAGE"
+echo "BPM: $AUXIN_BPM, Sample Rate: $AUXIN_SAMPLE_RATE, Key: $AUXIN_KEY"
 
 # Example: macOS notification
 if command -v osascript &> /dev/null; then
-    osascript -e "display notification \"$OXVCS_MESSAGE\" with title \"Auxin Commit\""
+    osascript -e "display notification \"$AUXIN_MESSAGE\" with title \"Auxin Commit\""
 fi
 
 # Example: Linux notification
 if command -v notify-send &> /dev/null; then
-    notify-send "Auxin Commit" "$OXVCS_MESSAGE"
+    notify-send "Auxin Commit" "$AUXIN_MESSAGE"
 fi
 
 exit 0
@@ -390,9 +390,9 @@ exit 0
 const HOOK_BACKUP: &str = r#"#!/bin/bash
 # Post-commit hook: Create backup
 
-BACKUP_DIR="$HOME/.oxvcs-backups"
+BACKUP_DIR="$HOME/.auxin-backups"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-PROJECT_NAME=$(basename "$OXVCS_REPO_PATH")
+PROJECT_NAME=$(basename "$AUXIN_REPO_PATH")
 
 mkdir -p "$BACKUP_DIR"
 
@@ -400,7 +400,7 @@ mkdir -p "$BACKUP_DIR"
 BACKUP_PATH="$BACKUP_DIR/${PROJECT_NAME}_${TIMESTAMP}.tar.gz"
 
 echo "Creating backup: $BACKUP_PATH"
-tar -czf "$BACKUP_PATH" -C "$(dirname "$OXVCS_REPO_PATH")" "$(basename "$OXVCS_REPO_PATH")" 2>/dev/null
+tar -czf "$BACKUP_PATH" -C "$(dirname "$AUXIN_REPO_PATH")" "$(basename "$AUXIN_REPO_PATH")" 2>/dev/null
 
 if [ $? -eq 0 ]; then
     echo "✓ Backup created successfully"

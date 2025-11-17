@@ -18,11 +18,11 @@ NC='\033[0m' # No Color
 # Test configuration
 TEST_NAME="Initialize Project"
 TEST_PROJECT_NAME="TestProject_$(date +%s).logicx"
-TEST_DIR="$HOME/Desktop/oxenvcs-test-projects"
+TEST_DIR="$HOME/Desktop/auxin-test-projects"
 TEST_PROJECT_PATH="$TEST_DIR/$TEST_PROJECT_NAME"
 
 # CLI path
-OXENVCS_CLI="./Auxin-CLI-Wrapper/target/release/auxin"
+AUXIN_CLI="./Auxin-CLI-Wrapper/target/release/auxin"
 
 # Function to print test header
 print_header() {
@@ -90,7 +90,7 @@ print_step 1 "Checking prerequisites"
 
 verify_prerequisite "oxen" "Oxen CLI"
 
-if [ ! -f "$OXENVCS_CLI" ]; then
+if [ ! -f "$AUXIN_CLI" ]; then
     print_error "auxin not found. Build it first: cd Auxin-CLI-Wrapper && cargo build --release"
 fi
 print_success "auxin is available"
@@ -132,7 +132,7 @@ echo "  - Audio files: 2 files, $(du -sh "$TEST_PROJECT_PATH/Resources/Audio Fil
 print_step 3 "Initializing project with auxin"
 
 cd "$TEST_PROJECT_PATH"
-$OXENVCS_CLI init --logic .
+$AUXIN_CLI init --logic .
 
 # Verify .oxen directory created
 if [ ! -d ".oxen" ]; then

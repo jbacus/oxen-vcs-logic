@@ -9,7 +9,7 @@ This directory contains the Homebrew formula for installing `auxin` on macOS.
 Once the formula is published to a tap:
 
 ```bash
-brew tap jbacus/oxenvcs
+brew tap jbacus/auxin
 brew install auxin
 ```
 
@@ -38,14 +38,14 @@ cd Auxin-CLI-Wrapper
 
 1. **Create a tap repository**:
    ```bash
-   # Create a new GitHub repository named: homebrew-oxenvcs
-   # Repository URL will be: https://github.com/jbacus/homebrew-oxenvcs
+   # Create a new GitHub repository named: homebrew-auxin
+   # Repository URL will be: https://github.com/jbacus/homebrew-auxin
    ```
 
 2. **Add the formula**:
    ```bash
-   git clone https://github.com/jbacus/homebrew-oxenvcs.git
-   cd homebrew-oxenvcs
+   git clone https://github.com/jbacus/homebrew-auxin.git
+   cd homebrew-auxin
    mkdir Formula
    cp /path/to/auxin/Auxin-CLI-Wrapper/formula/auxin.rb Formula/
    git add Formula/auxin.rb
@@ -157,7 +157,7 @@ After installation via Homebrew, users should:
 
 ### Formula not found
 ```bash
-brew tap jbacus/oxenvcs
+brew tap jbacus/auxin
 brew update
 ```
 
@@ -182,7 +182,7 @@ compinit
 ## Formula Structure
 
 ```ruby
-class OxenvcsLi < Formula
+class Auxin < Formula
   desc "..."              # Short description
   homepage "..."          # Project homepage
   url "..."               # Source tarball URL

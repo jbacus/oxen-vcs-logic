@@ -1292,7 +1292,7 @@ DESCRIPTION:
       • Confirmation prompts
       • Dry-run mode
 
-    Configuration file: ~/.oxenvcs/workflow_config.json
+    Configuration file: ~/.auxin/workflow_config.json
 
 EXAMPLES:
     # View configuration

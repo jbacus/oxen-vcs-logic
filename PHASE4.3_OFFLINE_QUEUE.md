@@ -530,7 +530,7 @@ auxin lock status
 /// # Example
 ///
 /// ```no_run
-/// use oxenvcs_cli::offline_queue::{OfflineQueue, QueuedOperation};
+/// use auxin::offline_queue::{OfflineQueue, QueuedOperation};
 ///
 /// let queue = OfflineQueue::new()?;
 ///

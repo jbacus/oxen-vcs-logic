@@ -101,10 +101,10 @@ impl BackupRecoveryManager {
         Self { snapshots_dir }
     }
 
-    /// Get default snapshots directory (~/.oxenvcs/snapshots)
+    /// Get default snapshots directory (~/.auxin/snapshots)
     fn default_snapshots_dir() -> PathBuf {
         let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-        PathBuf::from(home).join(".oxenvcs").join("snapshots")
+        PathBuf::from(home).join(".auxin").join("snapshots")
     }
 
     /// Get path to snapshot metadata file
@@ -328,7 +328,7 @@ impl BackupRecoveryManager {
         if let Some(limit) = limit {
             if snapshots.len() > limit {
                 println!(
-                    "\n{} more snapshots available. Use 'oxenvcs-cli snapshots list --all' to see all.\n",
+                    "\n{} more snapshots available. Use 'auxin snapshots list --all' to see all.\n",
                     snapshots.len() - limit
                 );
             }
@@ -369,8 +369,8 @@ impl RecoveryHelper {
         vec![
             "Failed push recovery steps:".to_string(),
             "1. Check network connection".to_string(),
-            "2. Verify authentication: oxenvcs-cli auth status".to_string(),
-            "3. Check if you have the lock: oxenvcs-cli lock status".to_string(),
+            "2. Verify authentication: auxin auth status".to_string(),
+            "3. Check if you have the lock: auxin lock status".to_string(),
             "4. Pull latest changes: oxen pull origin main".to_string(),
             "5. Retry push: oxen push origin main".to_string(),
         ]
@@ -381,7 +381,7 @@ impl RecoveryHelper {
         vec![
             "Failed pull recovery steps:".to_string(),
             "1. Check network connection".to_string(),
-            "2. Verify authentication: oxenvcs-cli auth status".to_string(),
+            "2. Verify authentication: auxin auth status".to_string(),
             "3. Check for local uncommitted changes: oxen status".to_string(),
             "4. Stash local changes if needed: (manual git workflow)".to_string(),
             "5. Retry pull: oxen pull origin main".to_string(),
@@ -392,10 +392,10 @@ impl RecoveryHelper {
     pub fn lock_conflict_recovery() -> Vec<String> {
         vec![
             "Lock conflict recovery steps:".to_string(),
-            "1. Check lock status: oxenvcs-cli lock status".to_string(),
+            "1. Check lock status: auxin lock status".to_string(),
             "2. Contact lock holder to request release".to_string(),
             "3. Wait for lock to expire (check expiration time)".to_string(),
-            "4. If urgent and authorized: oxenvcs-cli lock break --force".to_string(),
+            "4. If urgent and authorized: auxin lock break --force".to_string(),
             "".to_string(),
             "⚠ WARNING: Breaking someone else's lock may cause data loss!".to_string(),
         ]
@@ -450,7 +450,7 @@ mod tests {
         assert!(manager
             .snapshots_dir
             .to_string_lossy()
-            .contains(".oxenvcs"));
+            .contains(".auxin"));
     }
 
     #[test]

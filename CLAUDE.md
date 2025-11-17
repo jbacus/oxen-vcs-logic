@@ -696,7 +696,7 @@ pub struct CommitMetadata {
 
 ```swift
 // Service Protocol
-@objc protocol OxenVCSServiceProtocol {
+@objc protocol AuxinServiceProtocol {
     func executeCommit(message: String, reply: @escaping (Bool, Error?) -> Void)
     func stagePath(_ path: String, reply: @escaping (Bool, Error?) -> Void)
 }
@@ -707,14 +707,14 @@ class IPCClient {
     
     func connect() {
         connection = NSXPCConnection(serviceName: "com.auxin.cli-wrapper")
-        connection?.remoteObjectInterface = NSXPCInterface(with: OxenVCSServiceProtocol.self)
+        connection?.remoteObjectInterface = NSXPCInterface(with: AuxinServiceProtocol.self)
         connection?.resume()
     }
     
     func commit(message: String) async throws {
         guard let proxy = connection?.remoteObjectProxyWithErrorHandler({ error in
             print("XPC Error: \(error)")
-        }) as? OxenVCSServiceProtocol else {
+        }) as? AuxinServiceProtocol else {
             throw OxenError.ipcConnectionFailed
         }
         

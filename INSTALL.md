@@ -358,7 +358,7 @@ After installation, verify everything is working:
 
 - [ ] `auxin --help` shows help message
 - [ ] `auxin-daemon --status` shows "✓ Enabled and running"
-- [ ] Binaries exist: `ls -l /usr/local/bin/oxenvcs-*`
+- [ ] Binaries exist: `ls -l /usr/local/bin/auxin-*`
 - [ ] Plist exists: `ls -l ~/Library/LaunchAgents/com.auxin.daemon.plist`
 - [ ] Can initialize project: `auxin init --logic ~/Music/TestProject.logicx`
 

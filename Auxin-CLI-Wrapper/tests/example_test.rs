@@ -1,7 +1,7 @@
 /// Example test file demonstrating test utilities usage
 ///
 /// This file shows how to use the common test utilities for testing
-/// the OxVCS CLI wrapper. Delete or replace this file when implementing
+/// the Auxin CLI wrapper. Delete or replace this file when implementing
 /// actual tests as outlined in TEST_IMPLEMENTATION_PLAN.md
 #[cfg(test)]
 mod common;

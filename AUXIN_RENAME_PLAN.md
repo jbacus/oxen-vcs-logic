@@ -113,7 +113,7 @@ auxin.ps1     → auxin.ps1
 
 **Homebrew Formula**:
 ```
-Class: OxenvcsLi    → Auxin
+Class: Auxin    → Auxin
 File: auxin.rb → auxin.rb
 ```
 
@@ -366,7 +366,7 @@ swift build
 
 **4.3 - Homebrew formula** (formula/auxin.rb → formula/auxin.rb)
 - Rename file: `auxin.rb` → `auxin.rb`
-- Change class name: `OxenvcsLi` → `Auxin`
+- Change class name: `Auxin` → `Auxin`
 - Update description
 - Update homepage URL: `github.com/jbacus/auxin` → `github.com/jbacus/auxin`
 - Update url field
@@ -680,9 +680,9 @@ cp -r ~/.auxin ~/.auxin
    - Note: Workflows themselves auto-update, only badge URLs need manual change
 
 2. **Update Homebrew tap** (if exists):
-   - Create new repo: `homebrew-auxin` (instead of `homebrew-oxenvcs`)
+   - Create new repo: `homebrew-auxin` (instead of `homebrew-auxin`)
    - Update formula with new repository URL
-   - Archive old `homebrew-oxenvcs` repo with deprecation notice
+   - Archive old `homebrew-auxin` repo with deprecation notice
 
 3. **Update package registry URLs**:
    - Homebrew formula: Update download URL to new GitHub repo

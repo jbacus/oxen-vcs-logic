@@ -409,7 +409,7 @@ All shortcuts from USER_GUIDE.md implemented:
 - ✅ Minimum system version: 14.0
 - ✅ App category: Developer Tools
 - ✅ Document types: .logicx files
-- ✅ URL scheme: oxenvcs://
+- ✅ URL scheme: auxin://
 - ✅ Permissions requested
 - ✅ High resolution capable
 

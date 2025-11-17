@@ -19,7 +19,7 @@ NC='\033[0m'
 # Test configuration
 TEST_NAME="Lock Acquisition and Release"
 TEST_PROJECT_NAME="LockTest_$(date +%s).logicx"
-TEST_DIR="$HOME/Desktop/oxenvcs-test-projects"
+TEST_DIR="$HOME/Desktop/auxin-test-projects"
 TEST_PROJECT_PATH="$TEST_DIR/$TEST_PROJECT_NAME"
 
 # Simulated users
@@ -27,7 +27,7 @@ USER1="alice@studio.com"
 USER2="bob@studio.com"
 
 # CLI path
-OXENVCS_CLI="./Auxin-CLI-Wrapper/target/release/auxin"
+AUXIN_CLI="./Auxin-CLI-Wrapper/target/release/auxin"
 
 # Functions
 print_header() {
@@ -114,7 +114,7 @@ cat > "Alternatives/001/ProjectData" <<EOF
 </project>
 EOF
 
-$OXENVCS_CLI init --logic .
+$AUXIN_CLI init --logic .
 print_success "Shared project created"
 
 # ------------------------------------------------------------

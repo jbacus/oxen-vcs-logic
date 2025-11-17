@@ -239,22 +239,22 @@ Command-line tool:
 
 ```bash
 # Basic diff
-oxenvcs-fcpxml-diff base.xml feature.xml
+auxin-fcpxml-diff base.xml feature.xml
 
 # JSON output
-oxenvcs-fcpxml-diff base.xml feature.xml --format json
+auxin-fcpxml-diff base.xml feature.xml --format json
 
 # HTML report
-oxenvcs-fcpxml-diff base.xml feature.xml --format html -o report.html
+auxin-fcpxml-diff base.xml feature.xml --format html -o report.html
 
 # Three-way merge
-oxenvcs-fcpxml-diff --base original.xml --ours main.xml --theirs feature.xml
+auxin-fcpxml-diff --base original.xml --ours main.xml --theirs feature.xml
 
 # Verbose output with all changes
-oxenvcs-fcpxml-diff base.xml feature.xml --verbose
+auxin-fcpxml-diff base.xml feature.xml --verbose
 
 # Filter by track
-oxenvcs-fcpxml-diff base.xml feature.xml --track "Vocal 1"
+auxin-fcpxml-diff base.xml feature.xml --track "Vocal 1"
 ```
 
 ---
@@ -692,7 +692,7 @@ Create sample FCP XML files representing:
 
 **Enhanced Workflow** (Semi-automated):
 1. Export both versions to FCP XML (or auto-export via Auxin)
-2. **Run `oxenvcs-fcpxml-diff base.xml feature.xml --format html`**
+2. **Run `auxin-fcpxml-diff base.xml feature.xml --format html`**
 3. **Review intelligent diff report with semantic changes highlighted**
 4. **Use report to guide manual reconciliation** (80% faster)
 5. Import reconciled XML back to Logic Pro

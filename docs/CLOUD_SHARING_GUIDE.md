@@ -492,7 +492,7 @@ auxin comment list <commit-id>
 ```bash
 # Operation queue is automatic - operations queue when offline
 # Check queue status
-ls ~/.oxenvcs/operation_queue.json
+ls ~/.auxin/operation_queue.json
 
 # Conflict detection (automatic before push/pull)
 # Checks lock status and provides recommendations
@@ -503,7 +503,7 @@ ls ~/.oxenvcs/operation_queue.json
 
 **Network Resilience Features:**
 - **Offline Queue**: Failed operations automatically queued
-- **Persistent Storage**: Queue survives restarts (`~/.oxenvcs/operation_queue.json`)
+- **Persistent Storage**: Queue survives restarts (`~/.auxin/operation_queue.json`)
 - **Smart Retry**: Exponential backoff with 4 max retries
 - **Transient Detection**: Distinguishes network errors from permanent failures
 - **Auto-Recovery**: Queued operations can be retried when network returns
@@ -544,7 +544,7 @@ ls ~/.oxenvcs/operation_queue.json
 
 **Operation History:**
 - **Audit Trail**: Complete history of all operations (locks, commits, pushes, pulls)
-- **Persistent Storage**: History survives restarts (`~/.oxenvcs/operation_history.json`)
+- **Persistent Storage**: History survives restarts (`~/.auxin/operation_history.json`)
 - **Queryable**: Filter by operation type, result, repository, date
 - **CSV Export**: Export history for analysis and compliance
 - **Statistics**: Total operations, success rate, operation breakdowns
@@ -553,16 +553,16 @@ ls ~/.oxenvcs/operation_queue.json
 **Usage:**
 ```bash
 # View recent operation history
-oxenvcs-cli history --limit 20
+auxin history --limit 20
 
 # View history for specific repository
-oxenvcs-cli history --repo /path/to/project.logicx
+auxin history --repo /path/to/project.logicx
 
 # Export history to CSV
-oxenvcs-cli history export history.csv
+auxin history export history.csv
 
 # View statistics
-oxenvcs-cli history stats
+auxin history stats
 ```
 
 **Workflow Automation:**
@@ -574,7 +574,7 @@ oxenvcs-cli history stats
 - **Dry-Run Mode**: Preview operations without executing them
 - **Configurable**: All automation can be enabled/disabled
 
-**Configuration** (`~/.oxenvcs/workflow_config.json`):
+**Configuration** (`~/.auxin/workflow_config.json`):
 ```json
 {
   "auto_renew_locks": true,
@@ -590,22 +590,22 @@ oxenvcs-cli history stats
 **Usage:**
 ```bash
 # Enable auto-lock renewal daemon
-oxenvcs-cli workflow lock-daemon /path/to/project.logicx
+auxin workflow lock-daemon /path/to/project.logicx
 
 # Get smart suggestions
-oxenvcs-cli workflow suggest /path/to/project.logicx
+auxin workflow suggest /path/to/project.logicx
 
 # Enable dry-run mode (preview without executing)
-oxenvcs-cli config set dry_run_mode true
+auxin config set dry_run_mode true
 
 # Check workflow configuration
-oxenvcs-cli config show
+auxin config show
 ```
 
 **Backup & Recovery:**
 - **Automatic Snapshots**: Created before risky operations (push, pull, lock break, rollback)
 - **Manual Snapshots**: User-initiated backups
-- **Persistent Storage**: Snapshots stored in `~/.oxenvcs/snapshots/`
+- **Persistent Storage**: Snapshots stored in `~/.auxin/snapshots/`
 - **Metadata Tracking**: Each snapshot includes commit ID, timestamp, description
 - **Recovery Instructions**: Step-by-step guide for restoring from snapshots
 - **Automatic Cleanup**: Keeps only 50 most recent snapshots
@@ -621,19 +621,19 @@ oxenvcs-cli config show
 **Usage:**
 ```bash
 # Create manual snapshot
-oxenvcs-cli snapshot create /path/to/project.logicx "Before major refactor"
+auxin snapshot create /path/to/project.logicx "Before major refactor"
 
 # List all snapshots
-oxenvcs-cli snapshot list
+auxin snapshot list
 
 # List snapshots for specific repository
-oxenvcs-cli snapshot list --repo /path/to/project.logicx
+auxin snapshot list --repo /path/to/project.logicx
 
 # Get restore instructions
-oxenvcs-cli snapshot restore <snapshot-id>
+auxin snapshot restore <snapshot-id>
 
 # Delete old snapshots
-oxenvcs-cli snapshot delete <snapshot-id>
+auxin snapshot delete <snapshot-id>
 ```
 
 **Recovery Helpers:**
@@ -644,13 +644,13 @@ oxenvcs-cli snapshot delete <snapshot-id>
 **Usage:**
 ```bash
 # Show recovery guide for failed push
-oxenvcs-cli recovery push
+auxin recovery push
 
 # Show recovery guide for failed pull
-oxenvcs-cli recovery pull
+auxin recovery pull
 
 # Show recovery guide for lock conflicts
-oxenvcs-cli recovery lock
+auxin recovery lock
 ```
 
 **Safety Features:**
@@ -667,30 +667,30 @@ oxenvcs-cli recovery lock
 cd MyProject.logicx
 
 # Get smart suggestions
-oxenvcs-cli workflow suggest .
-# Output: "💡 No lock held - run 'oxenvcs-cli lock acquire' before editing"
+auxin workflow suggest .
+# Output: "💡 No lock held - run 'auxin lock acquire' before editing"
 
 # Acquire lock
-oxenvcs-cli lock acquire --timeout 8
+auxin lock acquire --timeout 8
 
 # Start auto-renewal daemon in background
-oxenvcs-cli workflow lock-daemon . &
+auxin workflow lock-daemon . &
 
 # ... work in Logic Pro for several hours ...
 # (lock automatically renewed every 15 minutes)
 
 # Commit changes (auto-snapshot created before commit)
-oxenvcs-cli add --all
-oxenvcs-cli commit -m "Added guitar solo" --bpm 128
+auxin add --all
+auxin commit -m "Added guitar solo" --bpm 128
 
 # Push to remote (auto-snapshot created before push)
 oxen push origin main
 
 # Release lock (daemon stops automatically)
-oxenvcs-cli lock release
+auxin lock release
 
 # View operation history
-oxenvcs-cli history --limit 10
+auxin history --limit 10
 ```
 
 **Completed**: 2025-11-16

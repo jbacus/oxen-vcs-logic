@@ -123,10 +123,10 @@ impl NetworkResilienceManager {
         }
     }
 
-    /// Get default queue file path (~/.oxenvcs/operation_queue.json)
+    /// Get default queue file path (~/.auxin/operation_queue.json)
     fn default_queue_path() -> PathBuf {
         let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-        PathBuf::from(home).join(".oxenvcs").join("operation_queue.json")
+        PathBuf::from(home).join(".auxin").join("operation_queue.json")
     }
 
     /// Load queued operations from disk

@@ -352,7 +352,7 @@ extension OxenDaemon {
         Oxen VCS Daemon - Background service for Logic Pro version control
 
         USAGE:
-            oxvcs-daemon <command>
+            auxin-daemon <command>
 
         COMMANDS:
             --install       Install and register the daemon service
@@ -373,9 +373,9 @@ extension OxenDaemon {
 
         INSTALLATION:
             1. Build the daemon: swift build -c release
-            2. Install: sudo cp .build/release/oxvcs-daemon /usr/local/bin/
-            3. Register service: oxvcs-daemon --install
-            4. Check status: oxvcs-daemon --status
+            2. Install: sudo cp .build/release/auxin-daemon /usr/local/bin/
+            3. Register service: auxin-daemon --install
+            4. Check status: auxin-daemon --status
 
         The daemon runs automatically on login after installation.
 

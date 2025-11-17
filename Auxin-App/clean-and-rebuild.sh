@@ -9,7 +9,7 @@ echo "🧹 Cleaning Auxin app..."
 
 # Clear saved preferences
 echo "• Clearing saved preferences..."
-defaults delete com.oxenvcs.app 2>/dev/null || echo "  (No saved preferences found)"
+defaults delete com.auxin.app 2>/dev/null || echo "  (No saved preferences found)"
 
 # Clean build artifacts
 echo "• Cleaning build artifacts..."

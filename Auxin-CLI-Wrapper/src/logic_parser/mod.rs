@@ -1,4 +1,4 @@
-// OxVCS-CLI-Wrapper/src/logic_parser/mod.rs
+// Auxin-CLI-Wrapper/src/logic_parser/mod.rs
 //
 // Logic Pro project file parsing module.
 

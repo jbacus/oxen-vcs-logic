@@ -34,7 +34,7 @@ which oxen
 oxen --version
 
 # 3. Daemon Status
-launchctl list | grep oxenvcs
+launchctl list | grep auxin
 
 # 4. Recent Logs (last 30 minutes)
 log show --predicate 'process == "Auxin-LaunchAgent"' --last 30m
@@ -56,10 +56,10 @@ du -sh MyProject.logicx/.oxen
     which oxen
     oxen --version
     echo -e "\n=== Daemon Status ==="
-    launchctl list | grep oxenvcs
+    launchctl list | grep auxin
     echo -e "\n=== Disk Space ==="
     df -h
-} > ~/Desktop/oxenvcs-diagnostics.txt
+} > ~/Desktop/auxin-diagnostics.txt
 ```
 
 ---
@@ -186,7 +186,7 @@ chmod 755 ~/Library/LaunchAgents
 
 **Diagnosis:**
 ```bash
-launchctl list | grep oxenvcs
+launchctl list | grep auxin
 # If empty, daemon is not running
 ```
 
@@ -230,7 +230,7 @@ launchctl load ~/Library/LaunchAgents/com.auxin.agent.plist
 
 **Symptom:**
 ```bash
-launchctl list | grep oxenvcs
+launchctl list | grep auxin
 # Shows PID, then disappears after a few seconds
 ```
 
@@ -312,7 +312,7 @@ launchctl load ~/Library/LaunchAgents/com.auxin.agent.plist
 
 **Step 1: Verify Daemon**
 ```bash
-launchctl list | grep oxenvcs
+launchctl list | grep auxin
 # Should show process with PID
 ```
 If not running, see [Daemon Not Running](#daemon-not-running)
@@ -747,7 +747,7 @@ Before reporting issues, gather:
 #!/bin/bash
 # diagnostic-script.sh
 
-OUTPUT=~/Desktop/oxenvcs-diagnostics-$(date +%Y%m%d-%H%M%S).txt
+OUTPUT=~/Desktop/auxin-diagnostics-$(date +%Y%m%d-%H%M%S).txt
 
 {
     echo "=== Oxen-VCS Diagnostics ==="
@@ -765,7 +765,7 @@ OUTPUT=~/Desktop/oxenvcs-diagnostics-$(date +%Y%m%d-%H%M%S).txt
     echo ""
 
     echo "=== Daemon Status ==="
-    launchctl list | grep oxenvcs
+    launchctl list | grep auxin
     echo ""
 
     echo "=== Recent Logs (last 30 min) ==="

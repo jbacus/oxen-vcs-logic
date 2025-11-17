@@ -102,9 +102,9 @@ oxen config --name "Your Name" --email "your@email.com"
 ./run_all_tests.sh
 
 # Or run individual components
-cd OxVCS-CLI-Wrapper && cargo test
-cd OxVCS-LaunchAgent && swift test
-cd OxVCS-App && swift test
+cd Auxin-CLI-Wrapper && cargo test
+cd Auxin-LaunchAgent && swift test
+cd Auxin-App && swift test
 ```
 
 ## Troubleshooting

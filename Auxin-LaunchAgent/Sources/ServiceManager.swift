@@ -164,7 +164,7 @@ public class ServiceManager {
         } else if serviceLoaded {
             return "✓ Enabled and running"
         } else {
-            return "○ Not loaded (run: oxvcs-daemon --install)"
+            return "○ Not loaded (run: auxin-daemon --install)"
         }
     }
 
@@ -217,7 +217,7 @@ public class ServiceManager {
         } else {
             print("\nThe daemon is not running")
             if FileManager.default.fileExists(atPath: plistPath) {
-                print("Run: oxvcs-daemon --install")
+                print("Run: auxin-daemon --install")
             } else {
                 print("Run: ./install.sh (to install the plist and daemon)")
             }
@@ -335,11 +335,11 @@ extension ServiceManager {
         Oxen VCS Service Manager
 
         Usage:
-          oxvcs-daemon --install      Install and register the daemon
-          oxvcs-daemon --uninstall    Uninstall and stop the daemon
-          oxvcs-daemon --status       Show daemon status
-          oxvcs-daemon --verify       Verify configuration
-          oxvcs-daemon --daemon       Run as daemon (internal use)
+          auxin-daemon --install      Install and register the daemon
+          auxin-daemon --uninstall    Uninstall and stop the daemon
+          auxin-daemon --status       Show daemon status
+          auxin-daemon --verify       Verify configuration
+          auxin-daemon --daemon       Run as daemon (internal use)
 
         The daemon provides:
           • Automatic file system monitoring

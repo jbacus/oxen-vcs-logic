@@ -131,11 +131,11 @@ impl OperationHistoryManager {
         Self { history_file }
     }
 
-    /// Get default history file path (~/.oxenvcs/operation_history.json)
+    /// Get default history file path (~/.auxin/operation_history.json)
     fn default_history_path() -> PathBuf {
         let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
         PathBuf::from(home)
-            .join(".oxenvcs")
+            .join(".auxin")
             .join("operation_history.json")
     }
 
@@ -392,7 +392,7 @@ mod tests {
     #[test]
     fn test_operation_history_manager_creation() {
         let manager = OperationHistoryManager::new();
-        assert!(manager.history_file.to_string_lossy().contains(".oxenvcs"));
+        assert!(manager.history_file.to_string_lossy().contains(".auxin"));
     }
 
     #[test]

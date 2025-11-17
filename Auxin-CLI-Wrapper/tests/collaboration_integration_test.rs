@@ -603,7 +603,7 @@ CI environments. Follow these steps to run them:
 1. PREREQUISITES
    - macOS 14.0+ with Xcode 15+
    - Oxen CLI installed: pip install oxen-ai
-   - OxVCS CLI built: cargo build --release
+   - Auxin CLI built: cargo build --release
    - Oxen Hub account with API key
    - Test repository created on hub.oxen.ai
 

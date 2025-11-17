@@ -169,7 +169,7 @@ check_prerequisites() {
 
     # Check LaunchAgent (optional)
     if launchctl list | grep -q "oxenvcs"; then
-        DAEMON_PID=$(launchctl list | grep oxenvcs | awk '{print $1}')
+        DAEMON_PID=$(launchctl list | grep auxin | awk '{print $1}')
         echo -e "${GREEN}✓${NC} LaunchAgent running (PID: $DAEMON_PID)"
     else
         echo -e "${YELLOW}○${NC} LaunchAgent not running (optional, needed for test 5)"

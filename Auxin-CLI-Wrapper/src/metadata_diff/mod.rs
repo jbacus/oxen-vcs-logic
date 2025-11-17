@@ -1,4 +1,4 @@
-// OxVCS-CLI-Wrapper/src/metadata_diff/mod.rs
+// Auxin-CLI-Wrapper/src/metadata_diff/mod.rs
 //
 // Metadata diff module for Logic Pro projects
 

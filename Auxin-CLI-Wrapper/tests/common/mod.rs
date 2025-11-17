@@ -1,4 +1,4 @@
-/// Common test utilities for OxVCS CLI Wrapper tests
+/// Common test utilities for Auxin CLI Wrapper tests
 use std::fs;
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;

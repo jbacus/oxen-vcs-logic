@@ -279,7 +279,7 @@ For automatic background monitoring, see the FSEvents monitor:
 ```bash
 # In Auxin-LaunchAgent directory
 swift build
-.build/debug/oxvcs-monitor ~/Music/MyProject.logicx
+.build/debug/auxin-monitor ~/Music/MyProject.logicx
 ```
 
 This will watch for changes and trigger auto-commits after 30 seconds of inactivity (Phase 2 feature).

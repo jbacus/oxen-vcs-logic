@@ -849,11 +849,11 @@ auxin hooks remove validate-metadata --type pre-commit
 1. Create a script in `.oxen/hooks/pre-commit/` or `.oxen/hooks/post-commit/`
 2. Make it executable: `chmod +x .oxen/hooks/pre-commit/my-hook`
 3. Use environment variables:
-   - `$OXVCS_MESSAGE` - Commit message
-   - `$OXVCS_BPM` - BPM value
-   - `$OXVCS_KEY` - Key signature
-   - `$OXVCS_TAGS` - Comma-separated tags
-   - `$OXVCS_REPO_PATH` - Project path
+   - `$AUXIN_MESSAGE` - Commit message
+   - `$AUXIN_BPM` - BPM value
+   - `$AUXIN_KEY` - Key signature
+   - `$AUXIN_TAGS` - Comma-separated tags
+   - `$AUXIN_REPO_PATH` - Project path
 
 **Example custom hook (bash):**
 ```bash
@@ -861,7 +861,7 @@ auxin hooks remove validate-metadata --type pre-commit
 # .oxen/hooks/post-commit/notify-slack
 
 curl -X POST https://hooks.slack.com/YOUR_WEBHOOK \
-  -d "{\"text\":\"New commit: $OXVCS_MESSAGE (BPM: $OXVCS_BPM)\"}"
+  -d "{\"text\":\"New commit: $AUXIN_MESSAGE (BPM: $AUXIN_BPM)\"}"
 ```
 
 **Why:** Automate repetitive tasks and enforce team standards!

@@ -39,12 +39,12 @@ Use cases:
 
 All hooks receive these environment variables:
 
-- `OXVCS_MESSAGE` - Commit message
-- `OXVCS_BPM` - BPM value (if set)
-- `OXVCS_SAMPLE_RATE` - Sample rate (if set)
-- `OXVCS_KEY` - Key signature (if set)
-- `OXVCS_TAGS` - Comma-separated tags
-- `OXVCS_REPO_PATH` - Path to the repository
+- `AUXIN_MESSAGE` - Commit message
+- `AUXIN_BPM` - BPM value (if set)
+- `AUXIN_SAMPLE_RATE` - Sample rate (if set)
+- `AUXIN_KEY` - Key signature (if set)
+- `AUXIN_TAGS` - Comma-separated tags
+- `AUXIN_REPO_PATH` - Path to the repository
 
 ### Example Hook (bash)
 
@@ -52,13 +52,13 @@ All hooks receive these environment variables:
 #!/bin/bash
 # pre-commit/check-bpm
 
-if [ -z "$OXVCS_BPM" ]; then
+if [ -z "$AUXIN_BPM" ]; then
     echo "ERROR: BPM is required for all commits"
     exit 1  # Abort commit
 fi
 
-if (( $(echo "$OXVCS_BPM < 60" | bc -l) )); then
-    echo "WARNING: BPM seems unusually low ($OXVCS_BPM)"
+if (( $(echo "$AUXIN_BPM < 60" | bc -l) )); then
+    echo "WARNING: BPM seems unusually low ($AUXIN_BPM)"
 fi
 
 exit 0  # Continue with commit
@@ -77,10 +77,10 @@ import urllib.request
 webhook_url = "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
 
 message = {
-    "text": f"New commit: {os.environ['OXVCS_MESSAGE']}",
+    "text": f"New commit: {os.environ['AUXIN_MESSAGE']}",
     "fields": [
-        {"title": "BPM", "value": os.environ.get('OXVCS_BPM', 'N/A')},
-        {"title": "Key", "value": os.environ.get('OXVCS_KEY', 'N/A')}
+        {"title": "BPM", "value": os.environ.get('AUXIN_BPM', 'N/A')},
+        {"title": "Key", "value": os.environ.get('AUXIN_KEY', 'N/A')}
     ]
 }
 

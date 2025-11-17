@@ -7,11 +7,11 @@ echo ""
 
 # Check for saved preferences
 echo "Saved preferences:"
-defaults read com.oxenvcs.app 2>/dev/null || echo "  (None found - this is good!)"
+defaults read com.auxin.app 2>/dev/null || echo "  (None found - this is good!)"
 
 echo ""
 echo "To clear saved preferences:"
-echo "  defaults delete com.oxenvcs.app"
+echo "  defaults delete com.auxin.app"
 echo ""
 
 # Check app bundle structure

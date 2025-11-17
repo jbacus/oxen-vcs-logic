@@ -81,7 +81,7 @@ impl WorkflowConfig {
     pub fn default_path() -> PathBuf {
         let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
         PathBuf::from(home)
-            .join(".oxenvcs")
+            .join(".auxin")
             .join("workflow_config.json")
     }
 }
@@ -232,7 +232,7 @@ impl WorkflowAutomation {
                 if lock.is_owned_by_current_user() {
                     if lock.is_expiring_soon(60) {
                         suggestions.push(format!(
-                            "{} Lock expires in {} minutes - consider running 'oxenvcs-cli lock renew'",
+                            "{} Lock expires in {} minutes - consider running 'auxin lock renew'",
                             "⚠".yellow(),
                             lock.minutes_until_expiry()
                         ));
@@ -247,7 +247,7 @@ impl WorkflowAutomation {
             }
             Ok(None) => {
                 suggestions.push(format!(
-                    "{} No lock held - run 'oxenvcs-cli lock acquire' before editing",
+                    "{} No lock held - run 'auxin lock acquire' before editing",
                     "💡",
                 ));
             }
@@ -263,7 +263,7 @@ impl WorkflowAutomation {
 
             if !failed_ops.is_empty() {
                 suggestions.push(format!(
-                    "{} {} recent operations failed - check history with 'oxenvcs-cli history'",
+                    "{} {} recent operations failed - check history with 'auxin history'",
                     "⚠".yellow(),
                     failed_ops.len()
                 ));

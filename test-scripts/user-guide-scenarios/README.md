@@ -36,7 +36,7 @@ oxen --version
 ./Auxin-CLI-Wrapper/target/release/auxin --version
 
 # Check LaunchAgent (optional)
-launchctl list | grep oxenvcs
+launchctl list | grep auxin
 ```
 
 ## Quick Start
@@ -264,16 +264,16 @@ Delete test project? (y/n)
 - **y**: Delete test project (recommended for clean testing)
 - **n**: Keep test project (useful for manual inspection)
 
-Test projects are created in: `~/Desktop/oxenvcs-test-projects/`
+Test projects are created in: `~/Desktop/auxin-test-projects/`
 
 ### Manual Cleanup
 
 ```bash
 # Remove all test projects
-rm -rf ~/Desktop/oxenvcs-test-projects
+rm -rf ~/Desktop/auxin-test-projects
 
 # Keep them for inspection
-cd ~/Desktop/oxenvcs-test-projects
+cd ~/Desktop/auxin-test-projects
 ls -lh
 ```
 
@@ -307,7 +307,7 @@ cargo build --release
 launchctl load ~/Library/LaunchAgents/com.auxin.agent.plist
 
 # Verify
-launchctl list | grep oxenvcs
+launchctl list | grep auxin
 ```
 
 ### Tests Running Slow

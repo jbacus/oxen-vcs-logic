@@ -65,7 +65,7 @@ Auxin.app/
 
 The Info.plist contains important metadata:
 
-- **Bundle Identifier**: `com.oxen.oxvcs`
+- **Bundle Identifier**: `com.auxin.app`
 - **Display Name**: "Auxin for Logic Pro"
 - **Minimum macOS Version**: 14.0 (Sonoma)
 - **App Category**: Developer Tools
@@ -271,7 +271,7 @@ lldb /Applications/Auxin.app/Contents/MacOS/Auxin
 
 | Property | Value |
 |----------|-------|
-| Bundle ID | com.oxen.oxvcs |
+| Bundle ID | com.auxin.app |
 | Version | 1.0.0 |
 | Min macOS | 14.0 |
 | Category | Developer Tools |

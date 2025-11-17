@@ -1,4 +1,4 @@
-// OxVCS-CLI-Wrapper/src/logic_parser/binary_parser.rs
+// Auxin-CLI-Wrapper/src/logic_parser/binary_parser.rs
 //
 // Binary parser for Logic Pro .logicx project files.
 // This requires reverse engineering of the proprietary format.

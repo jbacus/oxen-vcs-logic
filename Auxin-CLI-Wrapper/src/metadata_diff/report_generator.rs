@@ -1,4 +1,4 @@
-// OxVCS-CLI-Wrapper/src/metadata_diff/report_generator.rs
+// Auxin-CLI-Wrapper/src/metadata_diff/report_generator.rs
 //
 // Generate human-readable reports from metadata diffs
 

@@ -44,7 +44,7 @@ oxen --version
 ./Auxin-CLI-Wrapper/target/release/auxin --version
 
 # ○ Check LaunchAgent (optional, for test 5)
-launchctl list | grep oxenvcs
+launchctl list | grep auxin
 ```
 
 ## Expected Results by Test
@@ -72,7 +72,7 @@ cd Auxin-CLI-Wrapper && cargo build --release
 launchctl load ~/Library/LaunchAgents/com.auxin.agent.plist
 
 # Clean up test projects
-rm -rf ~/Desktop/oxenvcs-test-projects
+rm -rf ~/Desktop/auxin-test-projects
 ```
 
 ## Test Output Color Legend
@@ -114,7 +114,7 @@ rm -rf ~/Desktop/oxenvcs-test-projects
 
 ## Test Locations
 
-- **Test projects**: `~/Desktop/oxenvcs-test-projects/`
+- **Test projects**: `~/Desktop/auxin-test-projects/`
 - **Logs**: `test-scripts/user-guide-scenarios/test-logs/`
 - **Scripts**: `test-scripts/user-guide-scenarios/`
 

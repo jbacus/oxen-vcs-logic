@@ -20,11 +20,11 @@ NC='\033[0m'
 # Test configuration
 TEST_NAME="Auto-Commit with FSEvents"
 TEST_PROJECT_NAME="AutoCommitTest_$(date +%s).logicx"
-TEST_DIR="$HOME/Desktop/oxenvcs-test-projects"
+TEST_DIR="$HOME/Desktop/auxin-test-projects"
 TEST_PROJECT_PATH="$TEST_DIR/$TEST_PROJECT_NAME"
 
 # CLI path
-OXENVCS_CLI="./Auxin-CLI-Wrapper/target/release/auxin"
+AUXIN_CLI="./Auxin-CLI-Wrapper/target/release/auxin"
 
 # Auto-commit debounce interval (seconds)
 DEBOUNCE_WAIT=35
@@ -82,7 +82,7 @@ print_step 1 "Checking prerequisites"
 
 # Check if LaunchAgent is running
 if launchctl list | grep -q "oxenvcs"; then
-    DAEMON_PID=$(launchctl list | grep oxenvcs | awk '{print $1}')
+    DAEMON_PID=$(launchctl list | grep auxin | awk '{print $1}')
     print_success "LaunchAgent is running (PID: $DAEMON_PID)"
 else
     print_error "LaunchAgent not running. Start it with: launchctl load ~/Library/LaunchAgents/com.auxin.agent.plist"
@@ -119,7 +119,7 @@ EOF
 
 dd if=/dev/zero of="Resources/Audio Files/audio1.wav" bs=1024 count=1024 2>/dev/null
 
-$OXENVCS_CLI init --logic .
+$AUXIN_CLI init --logic .
 print_success "Project initialized at: $TEST_PROJECT_PATH"
 
 INITIAL_COMMITS=$(oxen log --oneline | wc -l | tr -d ' ')
