@@ -24,14 +24,14 @@ if ! command -v oxen &> /dev/null; then
 fi
 echo -e "${GREEN}✓${NC} Oxen CLI found"
 
-# Check if OxVCS CLI is built
-if [ ! -f "OxVCS-CLI-Wrapper/target/release/oxenvcs-cli" ]; then
-    echo -e "${YELLOW}⚠${NC}  OxVCS CLI not found in release mode. Building..."
-    cd OxVCS-CLI-Wrapper
+# Check if Auxin CLI is built
+if [ ! -f "Auxin-CLI-Wrapper/target/release/auxin" ]; then
+    echo -e "${YELLOW}⚠${NC}  Auxin CLI not found in release mode. Building..."
+    cd Auxin-CLI-Wrapper
     cargo build --release
     cd ..
 fi
-echo -e "${GREEN}✓${NC} OxVCS CLI built"
+echo -e "${GREEN}✓${NC} Auxin CLI built"
 
 # Create test project
 TEST_PROJECT="$HOME/Desktop/NetworkResilienceTest.logicx"
@@ -52,8 +52,8 @@ cd "$TEST_PROJECT"
 
 # Initialize repository
 echo ""
-echo "Initializing OxVCS repository..."
-../OxVCS-CLI-Wrapper/target/release/oxenvcs-cli init --logic .
+echo "Initializing Auxin repository..."
+../Auxin-CLI-Wrapper/target/release/auxin init --logic .
 echo -e "${GREEN}✓${NC} Repository initialized"
 
 # Check if user has configured remote
@@ -63,7 +63,7 @@ echo ""
 echo "Please follow these steps:"
 echo "1. Create a test repository on hub.oxen.ai (if not already done)"
 echo "2. Run: oxen remote add origin https://hub.oxen.ai/YOUR_USERNAME/test-repo"
-echo "3. Authenticate: oxenvcs-cli auth login (if not already authenticated)"
+echo "3. Authenticate: auxin auth login (if not already authenticated)"
 echo ""
 read -p "Press ENTER when you've configured the remote..."
 
@@ -77,8 +77,8 @@ echo -e "${GREEN}✓${NC} Remote configured"
 # Create initial commit
 echo ""
 echo "Creating initial commit..."
-../OxVCS-CLI-Wrapper/target/release/oxenvcs-cli add --all
-../OxVCS-CLI-Wrapper/target/release/oxenvcs-cli commit -m "Initial commit for network resilience test" --bpm 120
+../Auxin-CLI-Wrapper/target/release/auxin add --all
+../Auxin-CLI-Wrapper/target/release/auxin commit -m "Initial commit for network resilience test" --bpm 120
 echo -e "${GREEN}✓${NC} Initial commit created"
 
 # Push to remote (this sets up the locks branch)
@@ -96,7 +96,7 @@ echo ""
 # Test 1: Normal lock acquisition (should work)
 echo "Test 1: Normal lock acquisition (baseline)"
 echo "-------------------------------------------"
-../OxVCS-CLI-Wrapper/target/release/oxenvcs-cli lock acquire --timeout 1
+../Auxin-CLI-Wrapper/target/release/auxin lock acquire --timeout 1
 if [ $? -eq 0 ]; then
     echo -e "${GREEN}✓${NC} Test 1 PASSED: Lock acquired successfully"
 else
@@ -105,7 +105,7 @@ else
 fi
 
 # Release lock for next test
-../OxVCS-CLI-Wrapper/target/release/oxenvcs-cli lock release
+../Auxin-CLI-Wrapper/target/release/auxin lock release
 echo ""
 
 # Test 2: Lock acquisition with network interruption
@@ -126,7 +126,7 @@ echo -e "${YELLOW}⚠${NC}  NOW DISCONNECT YOUR WIFI FOR 5 SECONDS, THEN RECONNE
 echo ""
 
 # Run with verbose logging to see retries
-RUST_LOG=info ../OxVCS-CLI-Wrapper/target/release/oxenvcs-cli lock acquire --timeout 1 2>&1 | tee /tmp/lock_test.log
+RUST_LOG=info ../Auxin-CLI-Wrapper/target/release/auxin lock acquire --timeout 1 2>&1 | tee /tmp/lock_test.log
 
 if [ $? -eq 0 ]; then
     echo ""
@@ -147,7 +147,7 @@ else
 fi
 
 # Release lock
-../OxVCS-CLI-Wrapper/target/release/oxenvcs-cli lock release 2>/dev/null || true
+../Auxin-CLI-Wrapper/target/release/auxin lock release 2>/dev/null || true
 echo ""
 
 # Test 3: Lock release with network retry
@@ -155,13 +155,13 @@ echo "Test 3: Lock release with network retry"
 echo "----------------------------------------"
 
 # Acquire lock first
-../OxVCS-CLI-Wrapper/target/release/oxenvcs-cli lock acquire --timeout 1 >/dev/null 2>&1
+../Auxin-CLI-Wrapper/target/release/auxin lock acquire --timeout 1 >/dev/null 2>&1
 
 echo "Lock acquired. Now testing release with retry..."
 echo -e "${YELLOW}⚠${NC}  You can optionally disconnect WiFi briefly during this operation"
 echo ""
 
-RUST_LOG=info ../OxVCS-CLI-Wrapper/target/release/oxenvcs-cli lock release 2>&1 | tee /tmp/release_test.log
+RUST_LOG=info ../Auxin-CLI-Wrapper/target/release/auxin lock release 2>&1 | tee /tmp/release_test.log
 
 if [ $? -eq 0 ]; then
     echo ""

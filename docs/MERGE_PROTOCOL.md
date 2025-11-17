@@ -23,7 +23,7 @@ Logic Pro can export projects to Final Cut Pro XML format, which is a human-read
 3. Save as `project_branch_a.xml`
 
 **For Branch B (e.g., feature branch):**
-1. Checkout branch B: `oxenvcs-cli checkout feature-branch`
+1. Checkout branch B: `auxin checkout feature-branch`
 2. Open the project in Logic Pro
 3. File → Export → Project to FCP XML
 4. Save as `project_branch_b.xml`
@@ -65,7 +65,7 @@ Since FCP XML is text-based, you can now:
 
 2. Once verified, create a milestone commit:
    ```bash
-   oxenvcs-cli commit --project /path/to/project.logicx \
+   auxin commit --project /path/to/project.logicx \
      --message "Merge feature-branch into main via FCP XML reconciliation"
    ```
 

@@ -23,14 +23,14 @@ cargo install oxen
 oxen --version  # Should show version number
 ```
 
-### 2. Build OxVCS CLI
+### 2. Build Auxin CLI
 
 ```bash
-cd /path/to/oxen-vcs-logic/OxVCS-CLI-Wrapper
+cd /path/to/auxin/Auxin-CLI-Wrapper
 cargo build --release
 
 # Test CLI works
-./target/release/oxenvcs-cli --help
+./target/release/auxin --help
 ```
 
 ### 3. Create Oxen Hub Test Account
@@ -68,31 +68,31 @@ source ~/.zshrc  # or source ~/.bash_profile
 ### Quick Test
 
 ```bash
-cd OxVCS-CLI-Wrapper
+cd Auxin-CLI-Wrapper
 
 # Test 1: Login
-./target/release/oxenvcs-cli auth login
+./target/release/auxin auth login
 # Enter your username and API key when prompted
 # Expected: Success message
 
 # Test 2: Status
-./target/release/oxenvcs-cli auth status
+./target/release/auxin auth status
 # Expected: Shows "● Authenticated" with your username
 
 # Test 3: Connection test
-./target/release/oxenvcs-cli auth test
+./target/release/auxin auth test
 # Expected: "Connection successful" or similar
 
 # Test 4: Logout
-./target/release/oxenvcs-cli auth logout
+./target/release/auxin auth logout
 # Expected: Success message
 
 # Test 5: Verify logged out
-./target/release/oxenvcs-cli auth status
+./target/release/auxin auth status
 # Expected: "○ Not Authenticated"
 
 # Re-login for next tests
-./target/release/oxenvcs-cli auth login
+./target/release/auxin auth login
 ```
 
 ### Run Automated Tests
@@ -119,15 +119,15 @@ echo "test project data" > ~/Desktop/TestProject.logicx/projectData
 
 cd ~/Desktop/TestProject.logicx
 
-# Initialize OxVCS
-oxenvcs-cli init --logic .
+# Initialize Auxin
+auxin init --logic .
 
 # Configure remote
 oxen remote add origin $OXEN_TEST_REPO_URL
 
 # Create initial commit
-oxenvcs-cli add --all
-oxenvcs-cli commit -m "Initial test project" --bpm 120
+auxin add --all
+auxin commit -m "Initial test project" --bpm 120
 oxen push origin main
 ```
 
@@ -137,34 +137,34 @@ oxen push origin main
 cd ~/Desktop/TestProject.logicx
 
 # Test 1: Check status (should be unlocked)
-oxenvcs-cli lock status
+auxin lock status
 # Expected: "No lock" or "unlocked"
 
 # Test 2: Acquire lock
-oxenvcs-cli lock acquire --timeout 4
+auxin lock acquire --timeout 4
 # Expected: Success with lock ID
 
 # Test 3: Check status (should show locked)
-oxenvcs-cli lock status
+auxin lock status
 # Expected: "● Locked" with your username
 
 # Test 4: Try to acquire again (should fail)
-oxenvcs-cli lock acquire --timeout 4
+auxin lock acquire --timeout 4
 # Expected: Error "already locked"
 
 # Test 5: Release lock
-oxenvcs-cli lock release
+auxin lock release
 # Expected: Success message
 
 # Test 6: Verify released
-oxenvcs-cli lock status
+auxin lock status
 # Expected: "No lock"
 ```
 
 ### Run Automated Tests
 
 ```bash
-cd OxVCS-CLI-Wrapper
+cd Auxin-CLI-Wrapper
 cargo test test_lock_acquire_release -- --ignored --nocapture
 cargo test test_lock_force_break -- --ignored --nocapture
 ```
@@ -180,7 +180,7 @@ cargo test test_lock_force_break -- --ignored --nocapture
 **Machine A:**
 ```bash
 cd ~/Desktop/TestProject.logicx
-oxenvcs-cli lock acquire --timeout 4
+auxin lock acquire --timeout 4
 # Note the lock ID and expiration time
 ```
 
@@ -188,24 +188,24 @@ oxenvcs-cli lock acquire --timeout 4
 ```bash
 cd /path/to/cloned/TestProject.logicx
 oxen pull origin locks  # Get latest lock state
-oxenvcs-cli lock acquire --timeout 4
+auxin lock acquire --timeout 4
 # Expected: ERROR "Project locked by [user A]"
 
 # Check lock status
-oxenvcs-cli lock status
+auxin lock status
 # Expected: Shows lock held by user A
 ```
 
 **Machine A:**
 ```bash
-oxenvcs-cli lock release
+auxin lock release
 oxen push origin locks
 ```
 
 **Machine B:**
 ```bash
 oxen pull origin locks
-oxenvcs-cli lock acquire --timeout 4
+auxin lock acquire --timeout 4
 # Expected: SUCCESS (lock now available)
 ```
 
@@ -213,17 +213,17 @@ oxenvcs-cli lock acquire --timeout 4
 
 ```bash
 # Acquire lock
-oxenvcs-cli lock acquire --timeout 2
+auxin lock acquire --timeout 2
 # Note expiration time
 
 # Wait 1 hour (or manually edit lock file to simulate time passing)
 
 # Renew lock
-oxenvcs-cli lock renew --additional 2
+auxin lock renew --additional 2
 # Expected: New expiration 2 hours from now
 
 # Verify
-oxenvcs-cli lock status
+auxin lock status
 # Expected: Updated expiration time
 ```
 
@@ -231,18 +231,18 @@ oxenvcs-cli lock status
 
 ```bash
 # Acquire lock
-oxenvcs-cli lock acquire --timeout 4
+auxin lock acquire --timeout 4
 
 # Try break without --force
-oxenvcs-cli lock break
+auxin lock break
 # Expected: Error requiring --force
 
 # Force break
-oxenvcs-cli lock break --force
+auxin lock break --force
 # Expected: Success with warning
 
 # Verify
-oxenvcs-cli lock status
+auxin lock status
 # Expected: No lock
 ```
 
@@ -259,19 +259,19 @@ cd ~/Desktop/TestProject.logicx
 
 # Create some commits with metadata
 echo "track 1" > "Audio Files/track1.wav"
-oxenvcs-cli add --all
-oxenvcs-cli commit -m "First track" --bpm 120 --key "C Major"
+auxin add --all
+auxin commit -m "First track" --bpm 120 --key "C Major"
 
 echo "track 2" > "Audio Files/track2.wav"
-oxenvcs-cli add --all
-oxenvcs-cli commit -m "Added drums" --bpm 128 --tags "drums,tracking"
+auxin add --all
+auxin commit -m "Added drums" --bpm 128 --tags "drums,tracking"
 
 echo "track 3" > "Audio Files/track3.wav"
-oxenvcs-cli add --all
-oxenvcs-cli commit -m "Final mix" --bpm 128 --key "C Major" --tags "mixing,final"
+auxin add --all
+auxin commit -m "Final mix" --bpm 128 --key "C Major" --tags "mixing,final"
 
 # View activity feed
-oxenvcs-cli activity --limit 10
+auxin activity --limit 10
 # Expected: Shows all 3 commits with metadata (BPM, key, tags)
 ```
 
@@ -279,7 +279,7 @@ oxenvcs-cli activity --limit 10
 
 ```bash
 # View team members
-oxenvcs-cli team
+auxin team
 # Expected: Shows contributors with commit counts and percentages
 ```
 
@@ -287,14 +287,14 @@ oxenvcs-cli team
 
 ```bash
 # Get latest commit hash
-COMMIT=$(oxenvcs-cli log --limit 1 | grep -o '[a-f0-9]\{7,\}' | head -1)
+COMMIT=$(auxin log --limit 1 | grep -o '[a-f0-9]\{7,\}' | head -1)
 
 # Add comment
-oxenvcs-cli comment add $COMMIT "Great mix on this one!"
+auxin comment add $COMMIT "Great mix on this one!"
 # Expected: Success message
 
 # List comments
-oxenvcs-cli comment list $COMMIT
+auxin comment list $COMMIT
 # Expected: Shows the comment with author and timestamp
 
 # Verify comment file created
@@ -310,7 +310,7 @@ oxen push origin main
 ### Run Automated Tests
 
 ```bash
-cd OxVCS-CLI-Wrapper
+cd Auxin-CLI-Wrapper
 cargo test test_activity_feed -- --ignored --nocapture
 cargo test test_team_discovery -- --ignored --nocapture
 cargo test test_comment_system -- --ignored --nocapture
@@ -335,23 +335,23 @@ cd ~/Desktop/MusicProject.logicx
 oxen pull origin main
 
 # Acquire lock
-oxenvcs-cli lock acquire --timeout 8
+auxin lock acquire --timeout 8
 
 # Simulate work (copy real audio or create dummy files)
 echo "vocal recording" > "Audio Files/vocals.wav"
 
 # Commit work
-oxenvcs-cli add --all
-oxenvcs-cli commit -m "Recorded vocals for chorus" --bpm 120 --tags "recording,vocals"
+auxin add --all
+auxin commit -m "Recorded vocals for chorus" --bpm 120 --tags "recording,vocals"
 
 # Push to share
 oxen push origin main
 
 # Release lock
-oxenvcs-cli lock release
+auxin lock release
 
 # Verify lock released
-oxenvcs-cli lock status
+auxin lock status
 ```
 
 #### Mixer (Afternoon Session)
@@ -360,11 +360,11 @@ oxenvcs-cli lock status
 cd ~/Desktop/MusicProject.logicx
 
 # Check what happened
-oxenvcs-cli activity --limit 10
+auxin activity --limit 10
 # Should see Producer's commit
 
 # See team contributions
-oxenvcs-cli team
+auxin team
 
 # Get latest work
 oxen pull origin main
@@ -373,18 +373,18 @@ oxen pull origin main
 ls "Audio Files/"
 
 # Acquire lock
-oxenvcs-cli lock acquire --timeout 4
+auxin lock acquire --timeout 4
 
 # Simulate mixing work
 echo "processed vocals" > "Audio Files/vocals_processed.wav"
 
 # Commit work
-oxenvcs-cli add --all
-oxenvcs-cli commit -m "Mixed vocals, added reverb" --bpm 120 --tags "mixing"
+auxin add --all
+auxin commit -m "Mixed vocals, added reverb" --bpm 120 --tags "mixing"
 
 # Add feedback on Producer's commit
-PREV_COMMIT=$(oxenvcs-cli log --limit 2 | grep -o '[a-f0-9]\{7,\}' | tail -1)
-oxenvcs-cli comment add $PREV_COMMIT "Great vocal take, worked perfectly!"
+PREV_COMMIT=$(auxin log --limit 2 | grep -o '[a-f0-9]\{7,\}' | tail -1)
+auxin comment add $PREV_COMMIT "Great vocal take, worked perfectly!"
 
 # Push everything
 oxen add .oxen/comments/
@@ -392,7 +392,7 @@ oxen commit -m "Add review feedback"
 oxen push origin main
 
 # Release lock
-oxenvcs-cli lock release
+auxin lock release
 ```
 
 #### Producer (Next Day)
@@ -402,11 +402,11 @@ oxenvcs-cli lock release
 oxen pull origin main
 
 # See Mixer's activity
-oxenvcs-cli activity --limit 10
+auxin activity --limit 10
 
 # Check comments on my commit
-COMMIT=$(oxenvcs-cli log --limit 3 | grep -o '[a-f0-9]\{7,\}' | tail -1)
-oxenvcs-cli comment list $COMMIT
+COMMIT=$(auxin log --limit 3 | grep -o '[a-f0-9]\{7,\}' | tail -1)
+auxin comment list $COMMIT
 ```
 
 **✅ Pass Criteria:** Complete workflow succeeds, no conflicts, changes sync properly
@@ -428,12 +428,12 @@ for i in {1..5}; do
 done
 
 # Initialize and push
-oxenvcs-cli init --logic .
+auxin init --logic .
 oxen remote add origin $OXEN_TEST_REPO_URL
-oxenvcs-cli add --all
+auxin add --all
 
 # Time the commit
-time oxenvcs-cli commit -m "Large project initial commit" --bpm 120
+time auxin commit -m "Large project initial commit" --bpm 120
 
 # Time the push
 time oxen push origin main
@@ -465,8 +465,8 @@ oxen config user.api_key
 # Try Oxen CLI directly
 oxen login
 
-# Check OxVCS credentials
-cat ~/.oxenvcs/credentials
+# Check Auxin credentials
+cat ~/.auxin/credentials
 ```
 
 ### Lock Operations Fail
@@ -491,7 +491,7 @@ cat .oxen/locks/*.json
 
 ```bash
 # Check authentication
-oxenvcs-cli auth status
+auxin auth status
 
 # Check network connectivity
 ping hub.oxen.ai
@@ -504,7 +504,7 @@ oxen push origin main --verbose
 
 ```bash
 # Kill hung processes
-pkill -f oxenvcs-cli
+pkill -f auxin
 pkill -f oxen
 
 # Clean up test directories

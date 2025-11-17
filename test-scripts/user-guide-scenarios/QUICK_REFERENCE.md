@@ -40,8 +40,8 @@ cd test-scripts/user-guide-scenarios
 # ✓ Check Oxen CLI
 oxen --version
 
-# ✓ Check oxenvcs-cli
-./OxVCS-CLI-Wrapper/target/release/oxenvcs-cli --version
+# ✓ Check auxin
+./Auxin-CLI-Wrapper/target/release/auxin --version
 
 # ○ Check LaunchAgent (optional, for test 5)
 launchctl list | grep oxenvcs
@@ -65,11 +65,11 @@ launchctl list | grep oxenvcs
 # Missing Oxen CLI
 pip3 install oxen-ai
 
-# Missing oxenvcs-cli
-cd OxVCS-CLI-Wrapper && cargo build --release
+# Missing auxin
+cd Auxin-CLI-Wrapper && cargo build --release
 
 # LaunchAgent not running
-launchctl load ~/Library/LaunchAgents/com.oxenvcs.agent.plist
+launchctl load ~/Library/LaunchAgents/com.auxin.agent.plist
 
 # Clean up test projects
 rm -rf ~/Desktop/oxenvcs-test-projects
@@ -182,7 +182,7 @@ rm -rf ~/Desktop/oxenvcs-test-projects
 
 - **Full README**: [README.md](README.md)
 - **User Guide**: [../../docs/USER_GUIDE.md](../../docs/USER_GUIDE.md)
-- **Issues**: https://github.com/jbacus/oxen-vcs-logic/issues
+- **Issues**: https://github.com/jbacus/auxin/issues
 
 ---
 

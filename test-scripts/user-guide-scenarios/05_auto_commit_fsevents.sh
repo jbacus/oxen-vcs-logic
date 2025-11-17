@@ -24,7 +24,7 @@ TEST_DIR="$HOME/Desktop/oxenvcs-test-projects"
 TEST_PROJECT_PATH="$TEST_DIR/$TEST_PROJECT_NAME"
 
 # CLI path
-OXENVCS_CLI="./OxVCS-CLI-Wrapper/target/release/oxenvcs-cli"
+OXENVCS_CLI="./Auxin-CLI-Wrapper/target/release/auxin"
 
 # Auto-commit debounce interval (seconds)
 DEBOUNCE_WAIT=35
@@ -85,11 +85,11 @@ if launchctl list | grep -q "oxenvcs"; then
     DAEMON_PID=$(launchctl list | grep oxenvcs | awk '{print $1}')
     print_success "LaunchAgent is running (PID: $DAEMON_PID)"
 else
-    print_error "LaunchAgent not running. Start it with: launchctl load ~/Library/LaunchAgents/com.oxenvcs.agent.plist"
+    print_error "LaunchAgent not running. Start it with: launchctl load ~/Library/LaunchAgents/com.auxin.agent.plist"
 fi
 
 # Check if we can access logs
-if log show --predicate 'process == "OxVCS-LaunchAgent"' --last 1m --style syslog 2>&1 | grep -q "oxenvcs"; then
+if log show --predicate 'process == "Auxin-LaunchAgent"' --last 1m --style syslog 2>&1 | grep -q "oxenvcs"; then
     print_success "Can access daemon logs"
 else
     print_info "Note: Daemon logs may not be available yet (daemon just started)"
@@ -196,7 +196,7 @@ fi
 # Check daemon logs
 echo ""
 echo "Recent daemon activity:"
-log show --predicate 'process == "OxVCS-LaunchAgent"' --last 2m --style syslog | tail -10 || echo "(logs not available)"
+log show --predicate 'process == "Auxin-LaunchAgent"' --last 2m --style syslog | tail -10 || echo "(logs not available)"
 
 # ------------------------------------------------------------
 # Step 6: Make Multiple Rapid Changes (Test Debounce)

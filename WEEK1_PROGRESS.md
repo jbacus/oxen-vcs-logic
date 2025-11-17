@@ -62,11 +62,11 @@ Completed Week 1 of the CLI-First Release Plan, focusing on rich visual feedback
 
 **New Filters:**
 ```bash
-oxenvcs-cli log --bpm 128              # Filter by tempo
-oxenvcs-cli log --tag mixing           # Filter by tag
-oxenvcs-cli log --key "C Major"        # Filter by key signature
-oxenvcs-cli log --since "2025-01-01"   # Date filter (placeholder)
-oxenvcs-cli log --bpm 120 --tag vocals --limit 10   # Combine filters
+auxin log --bpm 128              # Filter by tempo
+auxin log --tag mixing           # Filter by tag
+auxin log --key "C Major"        # Filter by key signature
+auxin log --since "2025-01-01"   # Date filter (placeholder)
+auxin log --bpm 120 --tag vocals --limit 10   # Combine filters
 ```
 
 **Visual Improvements:**
@@ -95,7 +95,7 @@ oxenvcs-cli log --bpm 120 --tag vocals --limit 10   # Combine filters
 #### New `show` Command
 
 ```bash
-oxenvcs-cli show abc123f
+auxin show abc123f
 ```
 
 Displays:
@@ -122,14 +122,14 @@ Metadata:
   Key: C Major
   Tags: vocals, tracking
 
-ℹ Use 'oxenvcs-cli restore abc123f' to restore to this commit
+ℹ Use 'auxin restore abc123f' to restore to this commit
 ```
 
 #### New `diff` Command
 
 ```bash
-oxenvcs-cli diff              # Show uncommitted changes
-oxenvcs-cli diff abc123f      # Show changes since commit
+auxin diff              # Show uncommitted changes
+auxin diff abc123f      # Show changes since commit
 ```
 
 Displays:
@@ -166,8 +166,8 @@ Displays:
 
 #### `lock acquire`
 ```bash
-oxenvcs-cli lock acquire                 # 4-hour default
-oxenvcs-cli lock acquire --timeout 8     # Custom timeout
+auxin lock acquire                 # 4-hour default
+auxin lock acquire --timeout 8     # Custom timeout
 ```
 
 **Output:**
@@ -184,12 +184,12 @@ oxenvcs-cli lock acquire --timeout 8     # Custom timeout
 └──────────────────────────────────────────────────────────┘
 
 ℹ You can now safely edit the project in Logic Pro
-⚠ Remember to release the lock when done: oxenvcs-cli lock release
+⚠ Remember to release the lock when done: auxin lock release
 ```
 
 #### `lock release`
 ```bash
-oxenvcs-cli lock release
+auxin lock release
 ```
 
 **Output:**
@@ -203,7 +203,7 @@ oxenvcs-cli lock release
 
 #### `lock status`
 ```bash
-oxenvcs-cli lock status
+auxin lock status
 ```
 
 **Output (Unlocked):**
@@ -216,7 +216,7 @@ oxenvcs-cli lock status
 │                                                          │
 └──────────────────────────────────────────────────────────┘
 
-ℹ Acquire lock with: oxenvcs-cli lock acquire
+ℹ Acquire lock with: auxin lock acquire
 ```
 
 **Output (Locked - Future):**
@@ -233,7 +233,7 @@ oxenvcs-cli lock status
 
 #### `lock break`
 ```bash
-oxenvcs-cli lock break --force
+auxin lock break --force
 ```
 
 **Output:**
@@ -257,10 +257,10 @@ The lock holder may lose unsaved work!
 ## Summary Statistics
 
 ### Files Changed
-- `OxVCS-CLI-Wrapper/Cargo.toml` - Added 3 dependencies
-- `OxVCS-CLI-Wrapper/src/lib.rs` - Registered progress module
-- `OxVCS-CLI-Wrapper/src/main.rs` - 500+ lines of enhancements
-- `OxVCS-CLI-Wrapper/src/progress.rs` - New 87-line module
+- `Auxin-CLI-Wrapper/Cargo.toml` - Added 3 dependencies
+- `Auxin-CLI-Wrapper/src/lib.rs` - Registered progress module
+- `Auxin-CLI-Wrapper/src/main.rs` - 500+ lines of enhancements
+- `Auxin-CLI-Wrapper/src/progress.rs` - New 87-line module
 - `CLI_FIRST_PLAN.md` - Complete 3-week roadmap
 - `REALITY_CHECK.md` - Gap analysis document
 
@@ -285,7 +285,7 @@ The lock holder may lose unsaved work!
 
 ### Before (Basic CLI)
 ```
-$ oxenvcs-cli status
+$ auxin status
 
 Repository Status:
 
@@ -299,7 +299,7 @@ Modified files:
 
 ### After (Enhanced CLI)
 ```
-$ oxenvcs-cli status
+$ auxin status
 
 ┌─ Repository Status ─────────────────────────────────────┐
 │                                                          │
@@ -314,7 +314,7 @@ $ oxenvcs-cli status
 ◆ Modified files (1):
   M Alternatives/000/DisplayState.plist
 
-ℹ Next step: oxenvcs-cli commit -m "Your message"
+ℹ Next step: auxin commit -m "Your message"
 ```
 
 ---
@@ -324,61 +324,61 @@ $ oxenvcs-cli status
 ### Basic Workflow
 ```bash
 # 1. Initialize project
-oxenvcs-cli init --logic ~/Music/MyProject.logicx
+auxin init --logic ~/Music/MyProject.logicx
 
 # 2. Check what changed
-oxenvcs-cli status
+auxin status
 
 # 3. See detailed changes
-oxenvcs-cli diff
+auxin diff
 
 # 4. Stage changes
-oxenvcs-cli add --all
+auxin add --all
 
 # 5. Commit with metadata
-oxenvcs-cli commit -m "Vocal tracking done" --bpm 128 --tags "vocals"
+auxin commit -m "Vocal tracking done" --bpm 128 --tags "vocals"
 
 # 6. View history
-oxenvcs-cli log --limit 10
+auxin log --limit 10
 
 # 7. View specific commit
-oxenvcs-cli show abc123f
+auxin show abc123f
 
 # 8. Restore if needed
-oxenvcs-cli restore abc123f
+auxin restore abc123f
 ```
 
 ### Team Workflow
 ```bash
 # 1. Check if project is available
-oxenvcs-cli lock status
+auxin lock status
 
 # 2. Acquire lock
-oxenvcs-cli lock acquire --timeout 4
+auxin lock acquire --timeout 4
 
 # 3. Edit in Logic Pro
 
 # 4. Commit your changes
-oxenvcs-cli add --all
-oxenvcs-cli commit -m "Added drums" --bpm 120
+auxin add --all
+auxin commit -m "Added drums" --bpm 120
 
 # 5. Release lock
-oxenvcs-cli lock release
+auxin lock release
 ```
 
 ### Advanced Filtering
 ```bash
 # Find all commits at 128 BPM
-oxenvcs-cli log --bpm 128
+auxin log --bpm 128
 
 # Find mixing sessions
-oxenvcs-cli log --tag mixing
+auxin log --tag mixing
 
 # Find tracks in C Major
-oxenvcs-cli log --key "C Major"
+auxin log --key "C Major"
 
 # Combine filters
-oxenvcs-cli log --bpm 120 --tag vocals --limit 5
+auxin log --bpm 120 --tag vocals --limit 5
 ```
 
 ---

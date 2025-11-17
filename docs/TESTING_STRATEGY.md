@@ -14,9 +14,9 @@
 ## 1. Overview
 
 Oxen-VCS for Logic Pro is a native macOS version control system with three primary components:
-- **OxVCS-CLI-Wrapper** (Rust): High-performance FFI wrapper for Oxen.ai operations
-- **OxVCS-LaunchAgent** (Swift): Background daemon for file monitoring and auto-commits
-- **OxVCS-App** (Swift/AppKit): Native macOS UI application
+- **Auxin-CLI-Wrapper** (Rust): High-performance FFI wrapper for Oxen.ai operations
+- **Auxin-LaunchAgent** (Swift): Background daemon for file monitoring and auto-commits
+- **Auxin-App** (Swift/AppKit): Native macOS UI application
 
 This testing strategy provides a comprehensive approach to ensuring reliability, performance, and correctness across all components.
 
@@ -248,7 +248,7 @@ func testConcurrentLockAcquisition() {
 
 ## 4. Component-Specific Strategies
 
-### 4.1 OxVCS-CLI-Wrapper (Rust)
+### 4.1 Auxin-CLI-Wrapper (Rust)
 
 **Testing Priorities**:
 1. Logic Pro project detection (`logic_project.rs`)
@@ -316,7 +316,7 @@ async fn test_complete_commit_workflow() {
 - Integration tests: 70% coverage
 - Focus: Error handling, edge cases, Oxen.ai library interaction
 
-### 4.2 OxVCS-LaunchAgent (Swift Daemon)
+### 4.2 Auxin-LaunchAgent (Swift Daemon)
 
 **Testing Priorities**:
 1. File system monitoring (`FSEventsMonitor.swift`)
@@ -407,7 +407,7 @@ final class DaemonIntegrationTests: XCTestCase {
 - Mock XPC communication for testing without full system
 - Test all power management scenarios (sleep, shutdown, wake)
 
-### 4.3 OxVCS-App (Swift AppKit UI)
+### 4.3 Auxin-App (Swift AppKit UI)
 
 **Testing Priorities**:
 1. ViewModels (`ProjectListViewModel.swift`, `ProjectDetailViewModel.swift`)
@@ -528,7 +528,7 @@ final class EndToEndWorkflowTests: XCTestCase {
 
         // 2. Add project via UI
         let project = createTestLogicProject()
-        let app = OxVCSApp()
+        let app = AuxinApp()
         await app.addProject(project)
 
         // 3. Modify project file
@@ -634,7 +634,7 @@ class MockOxenDaemonXPCClient: OxenDaemonXPCClientProtocol {
 ```
 
 ```rust
-// OxVCS-CLI-Wrapper/tests/common/mod.rs
+// Auxin-CLI-Wrapper/tests/common/mod.rs
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
 
@@ -721,19 +721,19 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            OxVCS-CLI-Wrapper/target
+            Auxin-CLI-Wrapper/target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Run cargo test
-        working-directory: OxVCS-CLI-Wrapper
+        working-directory: Auxin-CLI-Wrapper
         run: cargo test --verbose
 
       - name: Run cargo clippy
-        working-directory: OxVCS-CLI-Wrapper
+        working-directory: Auxin-CLI-Wrapper
         run: cargo clippy -- -D warnings
 
       - name: Check formatting
-        working-directory: OxVCS-CLI-Wrapper
+        working-directory: Auxin-CLI-Wrapper
         run: cargo fmt -- --check
 
   swift-daemon-tests:
@@ -746,21 +746,21 @@ jobs:
         run: sudo xcode-select -s /Applications/Xcode_15.0.app
 
       - name: Run swift test
-        working-directory: OxVCS-LaunchAgent
+        working-directory: Auxin-LaunchAgent
         run: swift test --enable-code-coverage
 
       - name: Generate coverage report
-        working-directory: OxVCS-LaunchAgent
+        working-directory: Auxin-LaunchAgent
         run: |
           xcrun llvm-cov export \
             -format="lcov" \
-            .build/debug/OxVCS-LaunchAgentPackageTests.xctest/Contents/MacOS/OxVCS-LaunchAgentPackageTests \
+            .build/debug/Auxin-LaunchAgentPackageTests.xctest/Contents/MacOS/Auxin-LaunchAgentPackageTests \
             -instr-profile .build/debug/codecov/default.profdata > coverage.lcov
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
-          files: ./OxVCS-LaunchAgent/coverage.lcov
+          files: ./Auxin-LaunchAgent/coverage.lcov
           flags: daemon
 
   swift-app-tests:
@@ -773,21 +773,21 @@ jobs:
         run: sudo xcode-select -s /Applications/Xcode_15.0.app
 
       - name: Run swift test
-        working-directory: OxVCS-App
+        working-directory: Auxin-App
         run: swift test --enable-code-coverage
 
       - name: Generate coverage report
-        working-directory: OxVCS-App
+        working-directory: Auxin-App
         run: |
           xcrun llvm-cov export \
             -format="lcov" \
-            .build/debug/OxVCS-AppPackageTests.xctest/Contents/MacOS/OxVCS-AppPackageTests \
+            .build/debug/Auxin-AppPackageTests.xctest/Contents/MacOS/Auxin-AppPackageTests \
             -instr-profile .build/debug/codecov/default.profdata > coverage.lcov
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
-          files: ./OxVCS-App/coverage.lcov
+          files: ./Auxin-App/coverage.lcov
           flags: app
 
   integration-tests:
@@ -803,15 +803,15 @@ jobs:
           toolchain: stable
 
       - name: Build CLI wrapper
-        working-directory: OxVCS-CLI-Wrapper
+        working-directory: Auxin-CLI-Wrapper
         run: cargo build --release
 
       - name: Build daemon
-        working-directory: OxVCS-LaunchAgent
+        working-directory: Auxin-LaunchAgent
         run: swift build
 
       - name: Build app
-        working-directory: OxVCS-App
+        working-directory: Auxin-App
         run: swift build
 
       - name: Run integration tests
@@ -906,9 +906,9 @@ cargo tarpaulin --out Html --output-dir coverage-report
 
 | Component | Unit Test Coverage | Integration Coverage | Notes |
 |-----------|-------------------|---------------------|-------|
-| OxVCS-CLI-Wrapper | 80% | 70% | Focus on oxen_ops.rs, logic_project.rs |
-| OxVCS-LaunchAgent | 75% | 60% | Mock FSEvents, XPC for isolation |
-| OxVCS-App | 70% | 50% | ViewModels critical, Views basic |
+| Auxin-CLI-Wrapper | 80% | 70% | Focus on oxen_ops.rs, logic_project.rs |
+| Auxin-LaunchAgent | 75% | 60% | Mock FSEvents, XPC for isolation |
+| Auxin-App | 70% | 50% | ViewModels critical, Views basic |
 | Overall | 75% | 60% | Weighted by component importance |
 
 ### Critical Path Requirements
@@ -950,7 +950,7 @@ cargo tarpaulin --out Html --output-dir coverage-report
 echo "Running pre-commit checks..."
 
 # Rust formatting
-cd OxVCS-CLI-Wrapper
+cd Auxin-CLI-Wrapper
 if ! cargo fmt -- --check; then
     echo "❌ Rust code not formatted. Run: cargo fmt"
     exit 1
@@ -963,7 +963,7 @@ if ! cargo clippy -- -D warnings; then
 fi
 
 # Swift tests (fast unit tests only)
-cd ../OxVCS-LaunchAgent
+cd ../Auxin-LaunchAgent
 if ! swift test --filter ".*UnitTests"; then
     echo "❌ Swift unit tests failed"
     exit 1

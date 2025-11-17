@@ -24,7 +24,7 @@ TEST_PROJECT_PATH="$TEST_DIR/$TEST_PROJECT_NAME"
 TEST_REMOTE_DIR="$TEST_DIR/remote-repo.oxen"
 
 # CLI path
-OXENVCS_CLI="./OxVCS-CLI-Wrapper/target/release/oxenvcs-cli"
+OXENVCS_CLI="./Auxin-CLI-Wrapper/target/release/auxin"
 
 # Functions
 print_header() {

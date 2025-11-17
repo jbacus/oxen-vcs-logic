@@ -1,7 +1,7 @@
 #!/bin/bash
 #
-# OxVCS Installation Script
-# Automated installation for all OxVCS components
+# Auxin Installation Script
+# Automated installation for all Auxin components
 #
 
 set -e  # Exit on error
@@ -16,7 +16,7 @@ NC='\033[0m' # No Color
 # Configuration
 INSTALL_DIR="/usr/local/bin"
 LAUNCH_AGENTS_DIR="$HOME/Library/LaunchAgents"
-PLIST_NAME="com.oxen.logic.daemon.plist"
+PLIST_NAME="com.auxin.daemon.plist"
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Function to print colored messages
@@ -108,14 +108,14 @@ check_prerequisites() {
 build_cli() {
     print_header "Building Rust CLI Wrapper"
 
-    cd "$PROJECT_ROOT/OxVCS-CLI-Wrapper"
+    cd "$PROJECT_ROOT/Auxin-CLI-Wrapper"
 
-    print_info "Building oxenvcs-cli in release mode..."
+    print_info "Building auxin in release mode..."
     cargo build --release
 
-    if [ -f "target/release/oxenvcs-cli" ]; then
+    if [ -f "target/release/auxin" ]; then
         print_success "CLI built successfully"
-        ls -lh target/release/oxenvcs-cli
+        ls -lh target/release/auxin
     else
         print_error "CLI build failed"
         exit 1
@@ -129,14 +129,14 @@ build_cli() {
 build_daemon() {
     print_header "Building Swift LaunchAgent Daemon"
 
-    cd "$PROJECT_ROOT/OxVCS-LaunchAgent"
+    cd "$PROJECT_ROOT/Auxin-LaunchAgent"
 
-    print_info "Building oxvcs-daemon in release mode..."
+    print_info "Building auxin-daemon in release mode..."
     swift build -c release
 
-    if [ -f ".build/release/oxvcs-daemon" ]; then
+    if [ -f ".build/release/auxin-daemon" ]; then
         print_success "Daemon built successfully"
-        ls -lh .build/release/oxvcs-daemon
+        ls -lh .build/release/auxin-daemon
     else
         print_error "Daemon build failed"
         exit 1
@@ -148,12 +148,12 @@ build_daemon() {
 
 # Function to build Swift app
 build_app() {
-    print_header "Building OxVCS Application Bundle"
-    # Note: OxVCS-App uses SwiftUI (migrated from AppKit 2025-10-29)
+    print_header "Building Auxin Application Bundle"
+    # Note: Auxin-App uses SwiftUI (migrated from AppKit 2025-10-29)
 
-    cd "$PROJECT_ROOT/OxVCS-App"
+    cd "$PROJECT_ROOT/Auxin-App"
 
-    print_info "Building OxVCS-App (SwiftUI) in release mode..."
+    print_info "Building Auxin-App (SwiftUI) in release mode..."
     if swift build -c release; then
         print_success "App built successfully"
     else
@@ -162,9 +162,9 @@ build_app() {
         return 1
     fi
 
-    print_info "Creating OxVCS.app bundle..."
+    print_info "Creating Auxin.app bundle..."
     if ./create-app-bundle.sh; then
-        print_success "App bundle created: OxVCS.app"
+        print_success "App bundle created: Auxin.app"
     else
         print_error "App bundle creation failed"
         cd "$PROJECT_ROOT"
@@ -188,33 +188,33 @@ install_binaries() {
     fi
 
     # Install CLI
-    print_info "Installing oxenvcs-cli to $INSTALL_DIR..."
-    $USE_SUDO cp "$PROJECT_ROOT/OxVCS-CLI-Wrapper/target/release/oxenvcs-cli" "$INSTALL_DIR/"
-    $USE_SUDO chmod +x "$INSTALL_DIR/oxenvcs-cli"
-    print_success "CLI installed: $INSTALL_DIR/oxenvcs-cli"
+    print_info "Installing auxin to $INSTALL_DIR..."
+    $USE_SUDO cp "$PROJECT_ROOT/Auxin-CLI-Wrapper/target/release/auxin" "$INSTALL_DIR/"
+    $USE_SUDO chmod +x "$INSTALL_DIR/auxin"
+    print_success "CLI installed: $INSTALL_DIR/auxin"
 
     # Install daemon
-    print_info "Installing oxvcs-daemon to $INSTALL_DIR..."
-    $USE_SUDO cp "$PROJECT_ROOT/OxVCS-LaunchAgent/.build/release/oxvcs-daemon" "$INSTALL_DIR/"
-    $USE_SUDO chmod +x "$INSTALL_DIR/oxvcs-daemon"
-    print_success "Daemon installed: $INSTALL_DIR/oxvcs-daemon"
+    print_info "Installing auxin-daemon to $INSTALL_DIR..."
+    $USE_SUDO cp "$PROJECT_ROOT/Auxin-LaunchAgent/.build/release/auxin-daemon" "$INSTALL_DIR/"
+    $USE_SUDO chmod +x "$INSTALL_DIR/auxin-daemon"
+    print_success "Daemon installed: $INSTALL_DIR/auxin-daemon"
 
     echo ""
 }
 
 # Function to install app bundle
 install_app() {
-    print_header "Installing OxVCS Application"
+    print_header "Installing Auxin Application"
 
-    local APP_SOURCE="$PROJECT_ROOT/OxVCS-App/OxVCS.app"
-    local APP_DEST="/Applications/OxVCS.app"
+    local APP_SOURCE="$PROJECT_ROOT/Auxin-App/Auxin.app"
+    local APP_DEST="/Applications/Auxin.app"
 
     if [ ! -d "$APP_SOURCE" ]; then
         print_warning "App bundle not found at $APP_SOURCE (this is optional)"
         return 0
     fi
 
-    print_info "Installing OxVCS.app to /Applications..."
+    print_info "Installing Auxin.app to /Applications..."
 
     # Remove existing installation if present
     if [ -d "$APP_DEST" ]; then
@@ -229,8 +229,8 @@ install_app() {
         print_success "App installed: $APP_DEST"
         echo ""
         print_info "You can now:"
-        echo "  • Double-click OxVCS in Applications folder"
-        echo "  • Or run: open /Applications/OxVCS.app"
+        echo "  • Double-click Auxin in Applications folder"
+        echo "  • Or run: open /Applications/Auxin.app"
     else
         print_error "Failed to install app bundle"
         return 1
@@ -247,7 +247,7 @@ install_plist() {
     mkdir -p "$LAUNCH_AGENTS_DIR"
 
     # Read the plist template
-    local plist_source="$PROJECT_ROOT/OxVCS-LaunchAgent/Resources/$PLIST_NAME"
+    local plist_source="$PROJECT_ROOT/Auxin-LaunchAgent/Resources/$PLIST_NAME"
     local plist_target="$LAUNCH_AGENTS_DIR/$PLIST_NAME"
 
     if [ ! -f "$plist_source" ]; then
@@ -292,7 +292,7 @@ register_service() {
 
     # Also try the new method using the daemon itself
     print_info "Registering service using SMAppService..."
-    if "$INSTALL_DIR/oxvcs-daemon" --install 2>&1 | grep -q "requires approval"; then
+    if "$INSTALL_DIR/auxin-daemon" --install 2>&1 | grep -q "requires approval"; then
         print_warning "Service requires approval in System Settings"
         echo ""
         echo "  To complete installation:"
@@ -314,9 +314,9 @@ verify_installation() {
     local all_ok=true
 
     # Check CLI
-    if [ -x "$INSTALL_DIR/oxenvcs-cli" ]; then
-        print_success "CLI binary: $INSTALL_DIR/oxenvcs-cli"
-        if "$INSTALL_DIR/oxenvcs-cli" --help >/dev/null 2>&1; then
+    if [ -x "$INSTALL_DIR/auxin" ]; then
+        print_success "CLI binary: $INSTALL_DIR/auxin"
+        if "$INSTALL_DIR/auxin" --help >/dev/null 2>&1; then
             print_success "CLI is executable and working"
         else
             print_error "CLI binary exists but is not working properly"
@@ -328,8 +328,8 @@ verify_installation() {
     fi
 
     # Check daemon
-    if [ -x "$INSTALL_DIR/oxvcs-daemon" ]; then
-        print_success "Daemon binary: $INSTALL_DIR/oxvcs-daemon"
+    if [ -x "$INSTALL_DIR/auxin-daemon" ]; then
+        print_success "Daemon binary: $INSTALL_DIR/auxin-daemon"
     else
         print_error "Daemon binary not found or not executable"
         all_ok=false
@@ -345,7 +345,7 @@ verify_installation() {
 
     # Check service status
     print_info "Checking daemon status..."
-    "$INSTALL_DIR/oxvcs-daemon" --status || true
+    "$INSTALL_DIR/auxin-daemon" --status || true
 
     echo ""
 
@@ -365,24 +365,24 @@ print_next_steps() {
     echo ""
 
     # Check if app was installed
-    if [ -d "/Applications/OxVCS.app" ]; then
-        echo "1. Launch the OxVCS application:"
-        echo "   - Open Finder → Applications → OxVCS"
-        echo "   - Or run: open /Applications/OxVCS.app"
+    if [ -d "/Applications/Auxin.app" ]; then
+        echo "1. Launch the Auxin application:"
+        echo "   - Open Finder → Applications → Auxin"
+        echo "   - Or run: open /Applications/Auxin.app"
         echo "   - Use the GUI to initialize and manage projects"
         echo ""
         echo "2. Or use the command-line interface:"
         echo "   cd ~/Music/YourProject.logicx"
-        echo "   oxenvcs-cli init --logic ."
+        echo "   auxin init --logic ."
     else
         echo "1. Initialize your first Logic Pro project:"
         echo "   cd ~/Music/YourProject.logicx"
-        echo "   oxenvcs-cli init --logic ."
+        echo "   auxin init --logic ."
     fi
 
     echo ""
     echo "3. Check daemon status:"
-    echo "   oxvcs-daemon --status"
+    echo "   auxin-daemon --status"
     echo ""
     echo "4. If the daemon requires approval:"
     echo "   - Open System Settings"
@@ -394,14 +394,14 @@ print_next_steps() {
     echo ""
     echo "For more information, see:"
     echo "  - Quick Start: $PROJECT_ROOT/docs/QUICKSTART.md"
-    echo "  - Usage Guide: $PROJECT_ROOT/OxVCS-CLI-Wrapper/USAGE.md"
+    echo "  - Usage Guide: $PROJECT_ROOT/Auxin-CLI-Wrapper/USAGE.md"
     echo ""
 }
 
 # Function to show usage
 show_usage() {
     cat << EOF
-OxVCS Installation Script
+Auxin Installation Script
 
 Usage: $0 [OPTIONS]
 
@@ -409,7 +409,7 @@ Options:
   --help              Show this help message
   --skip-checks       Skip prerequisite checks (not recommended)
   --skip-app          Skip building the UI app
-  --uninstall         Uninstall OxVCS components
+  --uninstall         Uninstall Auxin components
 
 Examples:
   $0                  # Full installation
@@ -421,18 +421,18 @@ EOF
 
 # Function to uninstall
 uninstall() {
-    print_header "Uninstalling OxVCS"
+    print_header "Uninstalling Auxin"
 
     print_info "Stopping and unregistering service..."
     launchctl unload "$LAUNCH_AGENTS_DIR/$PLIST_NAME" 2>/dev/null || true
-    "$INSTALL_DIR/oxvcs-daemon" --uninstall 2>/dev/null || true
+    "$INSTALL_DIR/auxin-daemon" --uninstall 2>/dev/null || true
     print_success "Service stopped"
 
     print_info "Removing binaries..."
     if [ -w "$INSTALL_DIR" ]; then
-        rm -f "$INSTALL_DIR/oxenvcs-cli" "$INSTALL_DIR/oxvcs-daemon"
+        rm -f "$INSTALL_DIR/auxin" "$INSTALL_DIR/auxin-daemon"
     else
-        sudo rm -f "$INSTALL_DIR/oxenvcs-cli" "$INSTALL_DIR/oxvcs-daemon"
+        sudo rm -f "$INSTALL_DIR/auxin" "$INSTALL_DIR/auxin-daemon"
     fi
     print_success "Binaries removed"
 
@@ -441,13 +441,13 @@ uninstall() {
     print_success "Plist removed"
 
     print_info "Removing logs (optional)..."
-    rm -f /tmp/com.oxen.logic.daemon.stdout
-    rm -f /tmp/com.oxen.logic.daemon.stderr
+    rm -f /tmp/com.auxin.daemon.stdout
+    rm -f /tmp/com.auxin.daemon.stderr
     print_success "Logs removed"
 
     print_info "Removing app bundle (if installed)..."
-    if [ -d "/Applications/OxVCS.app" ]; then
-        rm -rf "/Applications/OxVCS.app"
+    if [ -d "/Applications/Auxin.app" ]; then
+        rm -rf "/Applications/Auxin.app"
         print_success "App bundle removed"
     else
         print_info "App bundle not found (skipping)"
@@ -494,7 +494,7 @@ main() {
     # Print banner
     echo ""
     echo "╔════════════════════════════════════════════╗"
-    echo "║    OxVCS for Logic Pro - Installer        ║"
+    echo "║    Auxin for Logic Pro - Installer        ║"
     echo "║    Version Control for DAW Projects       ║"
     echo "╚════════════════════════════════════════════╝"
     echo ""

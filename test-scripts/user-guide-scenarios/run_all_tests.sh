@@ -159,11 +159,11 @@ check_prerequisites() {
         missing=true
     fi
 
-    # Check oxenvcs-cli
-    if [ -f "./OxVCS-CLI-Wrapper/target/release/oxenvcs-cli" ]; then
-        echo -e "${GREEN}✓${NC} oxenvcs-cli built"
+    # Check auxin
+    if [ -f "./Auxin-CLI-Wrapper/target/release/auxin" ]; then
+        echo -e "${GREEN}✓${NC} auxin built"
     else
-        echo -e "${RED}✗${NC} oxenvcs-cli not built (run: cd OxVCS-CLI-Wrapper && cargo build --release)"
+        echo -e "${RED}✗${NC} auxin not built (run: cd Auxin-CLI-Wrapper && cargo build --release)"
         missing=true
     fi
 

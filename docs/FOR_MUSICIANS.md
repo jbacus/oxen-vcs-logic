@@ -1,4 +1,4 @@
-# OxVCS: Version Control for Music Producers
+# Auxin: Version Control for Music Producers
 
 **Think of it like "Track Changes" for Logic Pro**
 
@@ -8,7 +8,7 @@ Last Updated: November 2025
 
 ## What is This?
 
-**OxVCS** is like having an unlimited "undo" button for your entire Logic Pro project. It automatically saves snapshots of your work so you can go back to any previous version - even from weeks ago.
+**Auxin** is like having an unlimited "undo" button for your entire Logic Pro project. It automatically saves snapshots of your work so you can go back to any previous version - even from weeks ago.
 
 ### The Problem It Solves
 
@@ -19,7 +19,7 @@ Have you ever:
 - Had Logic crash and lost recent changes?
 - Worked with bandmates and wondered "who changed the drums?"
 
-**OxVCS solves all of these problems.**
+**Auxin solves all of these problems.**
 
 ---
 
@@ -32,9 +32,9 @@ Think of it like this:
 - Your project is saved over the old version
 - The old version is **gone forever**
 
-**With OxVCS:**
+**With Auxin:**
 - You hit Save (⌘S) in Logic Pro
-- OxVCS automatically creates a "snapshot" of your entire project
+- Auxin automatically creates a "snapshot" of your entire project
 - **Every previous version is still available**
 - You can jump back to any snapshot, anytime
 
@@ -82,23 +82,23 @@ It's like having a time machine for your music.
 
 ## Real-World Workflow Example
 
-Let's say you're producing a song. Here's how OxVCS works in practice:
+Let's say you're producing a song. Here's how Auxin works in practice:
 
 ### Morning Session
 ```
 9:00 AM  - Open Logic Pro, start working on drums
 9:15 AM  - Save your work (⌘S)
-9:16 AM  - OxVCS automatically snapshots: "draft_09-15-2025_09-16"
+9:16 AM  - Auxin automatically snapshots: "draft_09-15-2025_09-16"
 9:45 AM  - Try adding a new snare layer
 9:46 AM  - Save
-9:47 AM  - OxVCS snapshots: "draft_09-15-2025_09-47"
+9:47 AM  - Auxin snapshots: "draft_09-15-2025_09-47"
 10:00 AM - Hate the snare. Click "Restore" → pick 9:16 version → snare is gone!
 ```
 
 ### Creating Milestones
 ```
 2:00 PM  - Drums sound perfect!
-2:01 PM  - Create "Milestone Commit" in OxVCS app:
+2:01 PM  - Create "Milestone Commit" in Auxin app:
            Message: "Drum tracking complete"
            BPM: 128
            Tags: tracking, drums
@@ -108,7 +108,7 @@ Let's say you're producing a song. Here's how OxVCS works in practice:
 ### Collaboration
 ```
 Next Day - Send project to vocalist
-        - They acquire "lock" in OxVCS (so you can't edit at same time)
+        - They acquire "lock" in Auxin (so you can't edit at same time)
         - They record vocals, create milestone: "Vocal tracking done"
         - They release lock
         - You pull their changes → vocals are now in your project
@@ -144,13 +144,13 @@ This means your version history stays manageable even for huge projects.
 ```
 Open Logic Pro
 Make changes, hit Save (⌘S)
-Work normally - OxVCS watches in the background
+Work normally - Auxin watches in the background
 ```
 
 **2. During Work - Automatic Safety Net**
 ```
 Every 30-60 seconds after you stop editing:
-→ OxVCS creates a "draft snapshot"
+→ Auxin creates a "draft snapshot"
 → You don't need to do anything
 → Keep working!
 ```
@@ -158,7 +158,7 @@ Every 30-60 seconds after you stop editing:
 **3. Important Moments - Create Milestones**
 ```
 Just finished tracking guitar?
-→ Open OxVCS app
+→ Open Auxin app
 → Click "Create Milestone"
 → Add note: "Lead guitar tracking complete"
 → Add BPM, key signature, any tags
@@ -168,7 +168,7 @@ Just finished tracking guitar?
 **4. When You Mess Up - Easy Recovery**
 ```
 "Oh no, I deleted the wrong track!"
-→ Open OxVCS app
+→ Open Auxin app
 → Browse recent snapshots
 → Click the one from 10 minutes ago
 → Click "Restore"
@@ -213,8 +213,8 @@ Just finished tracking guitar?
 # Open Terminal (Applications → Utilities → Terminal)
 # Copy and paste these commands:
 
-git clone https://github.com/jbacus/oxen-vcs-logic.git
-cd oxen-vcs-logic
+git clone https://github.com/jbacus/auxin.git
+cd auxin
 ./install.sh
 ```
 
@@ -227,7 +227,7 @@ See the [Installation Guide](../INSTALL.md) for detailed manual installation.
 ### First-Time Setup
 
 **1. Launch the App**
-- Open Applications → OxVCS.app
+- Open Applications → Auxin.app
 - You'll see a menu bar icon (looks like a folder with a clock)
 
 **2. Add Your First Project**
@@ -239,11 +239,11 @@ See the [Installation Guide](../INSTALL.md) for detailed manual installation.
 **3. Start Working!**
 - Open your project in Logic Pro
 - Work normally - hit Save (⌘S) when you want
-- OxVCS handles everything else automatically
+- Auxin handles everything else automatically
 
 ---
 
-## Using OxVCS from Terminal (Alternative to GUI)
+## Using Auxin from Terminal (Alternative to GUI)
 
 **Note:** The GUI app (above) and command line tool do the exact same thing. Pick whichever you prefer!
 
@@ -260,16 +260,16 @@ See the [Installation Guide](../INSTALL.md) for detailed manual installation.
 ```bash
 # Initialize your project (one time only)
 cd ~/Music/MyProject.logicx
-oxenvcs-cli init --logic .
+auxin init --logic .
 
 # Daily workflow after working in Logic Pro
-oxenvcs-cli status              # See what changed
-oxenvcs-cli add --all           # Stage your changes
-oxenvcs-cli commit -m "Finished vocals" --bpm 120 --tags "vocals"
+auxin status              # See what changed
+auxin add --all           # Stage your changes
+auxin commit -m "Finished vocals" --bpm 120 --tags "vocals"
 
 # View history and restore
-oxenvcs-cli log --limit 10      # See recent versions
-oxenvcs-cli restore abc123f     # Go back to a version
+auxin log --limit 10      # See recent versions
+auxin restore abc123f     # Go back to a version
 ```
 
 **What You'll See:**
@@ -287,7 +287,7 @@ The CLI has beautiful visual output with colors and progress indicators:
   + projectData
   + Resources/vocals.wav
 
-ℹ Next step: oxenvcs-cli commit -m "Your message"
+ℹ Next step: auxin commit -m "Your message"
 ```
 
 **Full CLI Guide:** See [CLI Examples for Musicians](CLI_EXAMPLES.md) for detailed examples, real production scenarios, and team workflows.
@@ -317,11 +317,11 @@ Both methods work equally well and use the same underlying system!
 
 ### "Will this slow down Logic Pro?"
 
-**No!** OxVCS runs in the background and doesn't affect Logic's performance at all. It waits until you **stop** editing before creating snapshots.
+**No!** Auxin runs in the background and doesn't affect Logic's performance at all. It waits until you **stop** editing before creating snapshots.
 
 ### "How much disk space does this use?"
 
-**Way less than you'd think!** OxVCS only stores the parts of files that changed, not entire copies.
+**Way less than you'd think!** Auxin only stores the parts of files that changed, not entire copies.
 
 **Example:**
 - 5 GB Logic project
@@ -334,7 +334,7 @@ Compare this to manually duplicating your project 50 times (250 GB!).
 
 **You're protected!** Your last snapshot (usually 30-60 seconds old) is safe. When you reopen Logic:
 1. Logic may offer its own crash recovery
-2. Check OxVCS for the latest snapshot
+2. Check Auxin for the latest snapshot
 3. If needed, restore from there
 4. You'll lose at most ~1 minute of work
 
@@ -344,13 +344,13 @@ Compare this to manually duplicating your project 50 times (250 GB!).
 
 **Better approach:**
 - Store projects **locally** on your Mac
-- Use OxVCS for version history
+- Use Auxin for version history
 - Use Time Machine for backups
 - Optionally push to Oxen Hub for cloud storage
 
 ### "Do I need to know programming or 'Git'?"
 
-**Absolutely not!** OxVCS was designed for musicians, not programmers. The app has a simple point-and-click interface. The only time you might use Terminal is for installation.
+**Absolutely not!** Auxin was designed for musicians, not programmers. The app has a simple point-and-click interface. The only time you might use Terminal is for installation.
 
 ### "What's the difference between this and Splice?"
 
@@ -360,14 +360,14 @@ Compare this to manually duplicating your project 50 times (250 GB!).
 - Supports multiple DAWs
 - Automatic cloud backup
 
-**OxVCS:**
+**Auxin:**
 - Works offline (local-first)
 - Free and open-source
 - Logic Pro only (for now)
 - You control your data
 - More efficient storage
 
-**You can use both!** Splice for cloud backup, OxVCS for local version control.
+**You can use both!** Splice for cloud backup, Auxin for local version control.
 
 ---
 
@@ -382,7 +382,7 @@ Compare this to manually duplicating your project 50 times (250 GB!).
 **How It Works:**
 
 1. **Acquire Lock**
-   - Open OxVCS app → "Acquire Lock"
+   - Open Auxin app → "Acquire Lock"
    - You now have exclusive editing rights
    - Others see "Locked by [your name]"
 
@@ -473,8 +473,8 @@ Like it? Create "Mix v3 - parallel compression works!"
 
 **Fix:**
 1. Open Activity Monitor (Applications → Utilities)
-2. Search for "OxVCS"
-3. If not running, open OxVCS.app to restart it
+2. Search for "Auxin"
+3. If not running, open Auxin.app to restart it
 
 ### "I can't initialize my Logic Pro project"
 
@@ -486,7 +486,7 @@ Like it? Create "Mix v3 - parallel compression works!"
 1. Open project in Logic Pro
 2. File → Save As → Change Format to "Folder"
 3. Save
-4. Try initializing again in OxVCS
+4. Try initializing again in Auxin
 
 ### "Lock is stuck / held by someone who's gone home"
 
@@ -502,7 +502,7 @@ For more help, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
 ## Next Steps
 
 ### Getting Started
-1. ✅ Install OxVCS (see Installation above)
+1. ✅ Install Auxin (see Installation above)
 2. ✅ Initialize your first project
 3. ✅ Work normally - let drafts accumulate
 4. ✅ Create your first milestone commit
@@ -514,7 +514,7 @@ For more help, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
 - **Troubleshooting:** [docs/TROUBLESHOOTING.md](TROUBLESHOOTING.md)
 
 ### Getting Help
-- **Questions:** Open an issue on [GitHub](https://github.com/jbacus/oxen-vcs-logic/issues)
+- **Questions:** Open an issue on [GitHub](https://github.com/jbacus/auxin/issues)
 - **Discord:** Join our community (coming soon)
 - **Email:** support@oxen-vcs.com
 
@@ -548,7 +548,7 @@ For more help, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
 
 **Ready to never lose your work again?**
 
-[Install OxVCS](../INSTALL.md) · [Read Full Guide](USER_GUIDE.md) · [Get Help](TROUBLESHOOTING.md)
+[Install Auxin](../INSTALL.md) · [Read Full Guide](USER_GUIDE.md) · [Get Help](TROUBLESHOOTING.md)
 
 ---
 

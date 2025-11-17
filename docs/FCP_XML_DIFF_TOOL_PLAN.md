@@ -47,7 +47,7 @@ An intelligent, automated FCP XML diff tool that:
 - **Understands** the semantic structure of Logic Pro projects
 - **Highlights** meaningful musical/production differences
 - **Visualizes** changes in multiple formats (CLI, JSON, HTML)
-- **Integrates** seamlessly with the existing OxVCS workflow
+- **Integrates** seamlessly with the existing Auxin workflow
 - **Accelerates** merge reconciliation by 80%+
 
 ### Key Features
@@ -64,7 +64,7 @@ An intelligent, automated FCP XML diff tool that:
 7. **Auto-merge suggestions**: Propose non-conflicting auto-merge operations
 8. **Plugin state comparison**: Deep comparison of plugin parameters
 9. **Automation curve diff**: Visual comparison of automation data
-10. **Integration with OxVCS UI**: Native diff viewer in the macOS application
+10. **Integration with Auxin UI**: Native diff viewer in the macOS application
 
 ---
 
@@ -74,7 +74,7 @@ An intelligent, automated FCP XML diff tool that:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                   OxVCS FCP XML Diff Tool                   │
+│                   Auxin FCP XML Diff Tool                   │
 └─────────────────────────────────────────────────────────────┘
                               │
            ┌──────────────────┼──────────────────┐
@@ -388,7 +388,7 @@ oxenvcs-fcpxml-diff base.xml feature.xml --track "Vocal 1"
 
 ### Phase 4: Integration & UI (6-8 weeks)
 
-**Goal**: Integration with OxVCS workflow and native UI
+**Goal**: Integration with Auxin workflow and native UI
 
 **Tasks**:
 1. Swift FFI bindings
@@ -396,14 +396,14 @@ oxenvcs-fcpxml-diff base.xml feature.xml --track "Vocal 1"
    - Create Swift wrapper package
    - Handle error propagation
 
-2. OxVCS UI integration
+2. Auxin UI integration
    - Add "Diff FCP XML" window
    - Display diff results in native UI
    - Integration with merge workflow
    - Export diff reports
 
 3. CLI integration
-   - Add `oxenvcs-cli diff-xml` subcommand
+   - Add `auxin diff-xml` subcommand
    - Integrate with existing merge helper
    - Update documentation
 
@@ -419,7 +419,7 @@ oxenvcs-fcpxml-diff base.xml feature.xml --track "Vocal 1"
 - Updated merge workflow documentation
 
 **Success Criteria**:
-- Users can view diffs in OxVCS app
+- Users can view diffs in Auxin app
 - Merge workflow is streamlined
 - Documentation is complete and tested
 
@@ -608,7 +608,7 @@ Interactive report with:
 
 ```
         ┌─────────────────┐
-        │  E2E Tests (5%) │  Integration with OxVCS
+        │  E2E Tests (5%) │  Integration with Auxin
         └─────────────────┘
        ┌─────────────────────┐
        │ Integration (15%)   │  CLI + file I/O
@@ -663,7 +663,7 @@ Interactive report with:
    - Performance benchmarks
 
 #### End-to-End Tests
-1. **OxVCS Integration**:
+1. **Auxin Integration**:
    - Export XML from Logic Pro
    - Run diff tool
    - View results in UI
@@ -691,7 +691,7 @@ Create sample FCP XML files representing:
 4. Import back to Logic Pro
 
 **Enhanced Workflow** (Semi-automated):
-1. Export both versions to FCP XML (or auto-export via OxVCS)
+1. Export both versions to FCP XML (or auto-export via Auxin)
 2. **Run `oxenvcs-fcpxml-diff base.xml feature.xml --format html`**
 3. **Review intelligent diff report with semantic changes highlighted**
 4. **Use report to guide manual reconciliation** (80% faster)
@@ -701,29 +701,29 @@ Create sample FCP XML files representing:
 1. Merge conflict detected
 2. **Auto-export both versions to FCP XML**
 3. **Auto-run diff tool, identify conflicts**
-4. **Present conflict resolution UI in OxVCS app**
+4. **Present conflict resolution UI in Auxin app**
 5. **User resolves conflicts in-app** (select ours/theirs/manual)
 6. **Auto-generate merged XML**
 7. **Auto-import via Logic Pro scripting** (if possible)
 
 ### CLI Integration
 
-Add new subcommand to `oxenvcs-cli`:
+Add new subcommand to `auxin`:
 
 ```bash
 # Diff current version against another branch
-oxenvcs-cli diff-xml main feature-vocals
+auxin diff-xml main feature-vocals
 
 # Diff two specific commits
-oxenvcs-cli diff-xml --commit abc123 --commit def456
+auxin diff-xml --commit abc123 --commit def456
 
 # Auto-export and diff
-oxenvcs-cli diff-xml --auto-export main feature-vocals
+auxin diff-xml --auto-export main feature-vocals
 ```
 
 ### UI Integration
 
-New "FCP XML Diff Viewer" window in OxVCS-App:
+New "FCP XML Diff Viewer" window in Auxin-App:
 - **Left pane**: Track list with change indicators
 - **Right pane**: Detailed changes for selected track
 - **Bottom pane**: Conflict resolution controls
@@ -799,7 +799,7 @@ New "FCP XML Diff Viewer" window in OxVCS-App:
 ### Runtime Requirements
 
 - **Logic Pro**: 10.7+ (for FCP XML export/import)
-- **OxVCS CLI**: 0.19+ (for integration)
+- **Auxin CLI**: 0.19+ (for integration)
 - **macOS**: 14.0+
 
 ### External Dependencies
@@ -841,7 +841,7 @@ New "FCP XML Diff Viewer" window in OxVCS-App:
 2. **Accuracy**: 95%+ correct identification of changes
 3. **Coverage**: 75%+ test coverage
 4. **Time Savings**: 80% reduction in merge reconciliation time
-5. **User Adoption**: 50%+ of OxVCS users try the tool within 3 months
+5. **User Adoption**: 50%+ of Auxin users try the tool within 3 months
 
 ### Qualitative Metrics
 
@@ -883,7 +883,7 @@ Q3 2025:
 1. **CLI MVP** (Week 6): Basic diff tool with text output
 2. **Semantic Diff** (Week 12): Full semantic analysis
 3. **Advanced Features** (Week 18): Three-way merge, HTML reports
-4. **v1.0 Release** (Week 26): Full integration with OxVCS
+4. **v1.0 Release** (Week 26): Full integration with Auxin
 
 ---
 
@@ -938,7 +938,7 @@ The Automated FCP XML Diff Tool will transform the Logic Pro merge workflow from
 - **Reduce merge time by 80%+**
 - **Improve merge accuracy and reduce data loss**
 - **Enable more effective collaboration workflows**
-- **Integrate seamlessly with existing OxVCS tools**
+- **Integrate seamlessly with existing Auxin tools**
 
 The phased implementation approach ensures incremental value delivery, with a working CLI tool available in 6 weeks, full semantic diffing in 12 weeks, and complete UI integration in 26 weeks.
 

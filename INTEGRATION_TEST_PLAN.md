@@ -8,7 +8,7 @@
 
 ## Overview
 
-This document outlines the integration testing strategy for OxVCS collaboration features. Tests are designed to run against **real Oxen Hub** to validate production readiness.
+This document outlines the integration testing strategy for Auxin collaboration features. Tests are designed to run against **real Oxen Hub** to validate production readiness.
 
 ### Test Environment Requirements
 
@@ -39,12 +39,12 @@ This document outlines the integration testing strategy for OxVCS collaboration 
 **Objective:** Verify complete login workflow with real Oxen Hub
 
 **Steps:**
-1. Run `oxenvcs-cli auth login`
+1. Run `auxin auth login`
 2. Enter test username when prompted
 3. Enter valid API key when prompted
 4. Verify success message displayed
 5. Check `~/.oxen/user_config.toml` contains credentials
-6. Check `~/.oxenvcs/credentials` contains fallback data
+6. Check `~/.auxin/credentials` contains fallback data
 7. Verify file permissions are 0600
 
 **Expected Result:**
@@ -65,12 +65,12 @@ This document outlines the integration testing strategy for OxVCS collaboration 
 **Objective:** Verify status command shows correct authentication state
 
 **Steps:**
-1. Run `oxenvcs-cli auth status` (when authenticated)
+1. Run `auxin auth status` (when authenticated)
 2. Verify output shows "● Authenticated"
 3. Verify username displayed correctly
 4. Verify hub URL displayed
-5. Run `oxenvcs-cli auth logout`
-6. Run `oxenvcs-cli auth status` (when not authenticated)
+5. Run `auxin auth logout`
+6. Run `auxin auth status` (when not authenticated)
 7. Verify output shows "○ Not Authenticated"
 
 **Expected Result:**
@@ -85,10 +85,10 @@ This document outlines the integration testing strategy for OxVCS collaboration 
 
 **Steps:**
 1. Login with valid credentials
-2. Run `oxenvcs-cli auth test`
+2. Run `auxin auth test`
 3. Verify success message
 4. Manually corrupt API key in config
-5. Run `oxenvcs-cli auth test`
+5. Run `auxin auth test`
 6. Verify failure with clear error message
 
 **Expected Result:**
@@ -104,11 +104,11 @@ This document outlines the integration testing strategy for OxVCS collaboration 
 **Steps:**
 1. Login with valid credentials
 2. Verify credentials exist in both config files
-3. Run `oxenvcs-cli auth logout`
+3. Run `auxin auth logout`
 4. Verify success message
 5. Check `~/.oxen/user_config.toml` - credentials removed
-6. Check `~/.oxenvcs/credentials` - file removed or empty
-7. Run `oxenvcs-cli auth status` - should show not authenticated
+6. Check `~/.auxin/credentials` - file removed or empty
+7. Run `auxin auth status` - should show not authenticated
 
 **Expected Result:**
 - Logout clears all stored credentials
@@ -123,7 +123,7 @@ This document outlines the integration testing strategy for OxVCS collaboration 
 **Steps:**
 1. Login with valid credentials
 2. Exit terminal/restart shell
-3. Run `oxenvcs-cli auth status`
+3. Run `auxin auth status`
 4. Verify still authenticated
 5. Run any command requiring auth (e.g., lock operations)
 6. Verify command succeeds without re-login
@@ -147,18 +147,18 @@ This document outlines the integration testing strategy for OxVCS collaboration 
 ```bash
 cd /path/to/test-project.logicx
 oxen remote add origin https://hub.oxen.ai/testuser/test-project
-oxenvcs-cli init --logic .
-oxenvcs-cli add --all
-oxenvcs-cli commit -m "Initial commit" --bpm 120
+auxin init --logic .
+auxin add --all
+auxin commit -m "Initial commit" --bpm 120
 oxen push origin main
 ```
 
 **Steps:**
-1. Run `oxenvcs-cli lock status` - should show "No lock"
-2. Run `oxenvcs-cli lock acquire --timeout 4`
+1. Run `auxin lock status` - should show "No lock"
+2. Run `auxin lock acquire --timeout 4`
 3. Verify success message with lock ID
 4. Verify expiration shown (4 hours from now)
-5. Run `oxenvcs-cli lock status`
+5. Run `auxin lock status`
 6. Verify status shows "● Locked" with your user
 7. Verify lock stored remotely (check locks branch)
 
@@ -183,9 +183,9 @@ cat .oxen/locks/*.json  # Should show your lock
 
 **Steps:**
 1. Acquire lock (see Test 2.1)
-2. Run `oxenvcs-cli lock release`
+2. Run `auxin lock release`
 3. Verify success message
-4. Run `oxenvcs-cli lock status`
+4. Run `auxin lock status`
 5. Verify status shows "No lock"
 6. Check remote locks branch
 7. Verify lock file removed
@@ -204,22 +204,22 @@ cat .oxen/locks/*.json  # Should show your lock
 **Setup:** Requires two machines or two separate repos
 
 **Machine A (User A):**
-1. Acquire lock: `oxenvcs-cli lock acquire --timeout 4`
+1. Acquire lock: `auxin lock acquire --timeout 4`
 2. Verify success
 
 **Machine B (User B):**
 1. Pull latest: `oxen pull origin main`
-2. Attempt to acquire lock: `oxenvcs-cli lock acquire --timeout 4`
+2. Attempt to acquire lock: `auxin lock acquire --timeout 4`
 3. **Expected:** Failure with message "Project locked by userA@machineA until [timestamp]"
-4. Run `oxenvcs-cli lock status`
+4. Run `auxin lock status`
 5. Verify status shows lock held by User A
 
 **Machine A:**
-1. Release lock: `oxenvcs-cli lock release`
+1. Release lock: `auxin lock release`
 2. Push: `oxen push origin locks`
 
 **Machine B:**
-1. Run `oxenvcs-cli lock acquire --timeout 4`
+1. Run `auxin lock acquire --timeout 4`
 2. **Expected:** Success (lock is now available)
 
 **Expected Result:**
@@ -236,7 +236,7 @@ cat .oxen/locks/*.json  # Should show your lock
 **Setup:** Requires precise timing or script coordination
 
 **Machine A & B (simultaneously):**
-1. Both users run `oxenvcs-cli lock acquire --timeout 4` at same time
+1. Both users run `auxin lock acquire --timeout 4` at same time
 2. **Expected Behavior:**
    - One user succeeds (first to push)
    - Other user fails after verification (detects race)
@@ -252,7 +252,7 @@ echo "2..."
 sleep 1
 echo "1..."
 sleep 1
-oxenvcs-cli lock acquire --timeout 4
+auxin lock acquire --timeout 4
 ```
 
 **Expected Result:**
@@ -267,9 +267,9 @@ oxenvcs-cli lock acquire --timeout 4
 **Objective:** Verify locks expire after timeout
 
 **Steps:**
-1. Acquire lock with short timeout: `oxenvcs-cli lock acquire --timeout 1` (1 hour)
+1. Acquire lock with short timeout: `auxin lock acquire --timeout 1` (1 hour)
 2. Wait 61 minutes (or manually adjust system clock)
-3. Run `oxenvcs-cli lock status`
+3. Run `auxin lock status`
 4. Verify status shows "○ Expired"
 5. From second machine, acquire lock
 6. **Expected:** Success (expired lock can be overwritten)
@@ -296,10 +296,10 @@ oxen push origin locks
 **Objective:** Verify stale locks (no heartbeat >1hr) are detected
 
 **Steps:**
-1. Acquire lock: `oxenvcs-cli lock acquire --timeout 4`
+1. Acquire lock: `auxin lock acquire --timeout 4`
 2. Manually edit lock file to set `last_heartbeat` to 2 hours ago
 3. Commit and push
-4. Run `oxenvcs-cli lock status`
+4. Run `auxin lock status`
 5. Verify status shows "◐ Stale" warning
 6. Verify message: "No heartbeat for >1 hour (may be abandoned)"
 
@@ -315,11 +315,11 @@ oxen push origin locks
 **Objective:** Verify lock renewal extends expiration
 
 **Steps:**
-1. Acquire lock: `oxenvcs-cli lock acquire --timeout 2`
+1. Acquire lock: `auxin lock acquire --timeout 2`
 2. Note expiration time (2 hours from now)
 3. Wait 1 hour (or adjust clock)
-4. Renew lock: `oxenvcs-cli lock renew --additional 2`
-5. Run `oxenvcs-cli lock status`
+4. Renew lock: `auxin lock renew --additional 2`
+5. Run `auxin lock status`
 6. Verify new expiration is 2 hours from current time
 7. Verify `last_heartbeat` updated
 
@@ -339,13 +339,13 @@ oxen push origin locks
 - User B needs to break it
 
 **Steps (User B):**
-1. Run `oxenvcs-cli lock break` (without --force)
+1. Run `auxin lock break` (without --force)
 2. **Expected:** Error "Must use --force flag"
-3. Run `oxenvcs-cli lock break --force`
+3. Run `auxin lock break --force`
 4. Verify warning message about data loss
 5. Confirm break (if prompted)
 6. Verify success message
-7. Run `oxenvcs-cli lock status`
+7. Run `auxin lock status`
 8. Verify lock removed
 
 **Expected Result:**
@@ -395,14 +395,14 @@ oxen push origin locks
 **Setup:**
 ```bash
 # Create commits with metadata
-oxenvcs-cli commit -m "First track" --bpm 120 --key "C Major"
-oxenvcs-cli commit -m "Added drums" --bpm 128
-oxenvcs-cli commit -m "Mixed" --bpm 128 --key "C Major" --tags "mixing,final"
+auxin commit -m "First track" --bpm 120 --key "C Major"
+auxin commit -m "Added drums" --bpm 128
+auxin commit -m "Mixed" --bpm 128 --key "C Major" --tags "mixing,final"
 oxen push origin main
 ```
 
 **Steps:**
-1. Run `oxenvcs-cli activity --limit 10`
+1. Run `auxin activity --limit 10`
 2. Verify all commits appear in timeline
 3. Verify metadata displayed (BPM, key, tags)
 4. Verify icons shown (● for commits)
@@ -423,7 +423,7 @@ oxen push origin main
 **Setup:** Repository with commits from multiple users
 
 **Steps:**
-1. Run `oxenvcs-cli team`
+1. Run `auxin team`
 2. Verify all contributors listed
 3. Verify commit counts accurate
 4. Verify contribution percentages sum to 100%
@@ -442,10 +442,10 @@ oxen push origin main
 **Objective:** Verify comments can be added and synced
 
 **Steps:**
-1. Get commit hash: `oxenvcs-cli log --limit 1`
-2. Add comment: `oxenvcs-cli comment add abc123 "Great mix!"`
+1. Get commit hash: `auxin log --limit 1`
+2. Add comment: `auxin comment add abc123 "Great mix!"`
 3. Verify success message
-4. List comments: `oxenvcs-cli comment list abc123`
+4. List comments: `auxin comment list abc123`
 5. Verify comment appears with author and timestamp
 6. Check local file: `cat .oxen/comments/abc123.json`
 7. Commit and push comments:
@@ -469,11 +469,11 @@ oxen push origin main
 **Objective:** Verify lock events appear in activity feed
 
 **Steps:**
-1. Acquire lock: `oxenvcs-cli lock acquire --timeout 4`
-2. Run `oxenvcs-cli activity --limit 10`
+1. Acquire lock: `auxin lock acquire --timeout 4`
+2. Run `auxin activity --limit 10`
 3. **Expected:** Lock acquisition event shown with 🔒 icon
-4. Release lock: `oxenvcs-cli lock release`
-5. Run `oxenvcs-cli activity --limit 10`
+4. Release lock: `auxin lock release`
+5. Run `auxin activity --limit 10`
 6. **Expected:** Lock release event shown with 🔓 icon
 
 **Expected Result:**
@@ -498,40 +498,40 @@ oxen push origin main
 # Start of day
 cd MyProject.logicx
 oxen pull origin main                    # Get latest
-oxenvcs-cli lock acquire --timeout 8      # Lock for day
+auxin lock acquire --timeout 8      # Lock for day
 # ... work in Logic Pro (simulated) ...
 # Modify some files
 touch "Audio Files/vocals.wav"
-oxenvcs-cli add --all
-oxenvcs-cli commit -m "Recorded vocals" --bpm 120 --tags "recording"
+auxin add --all
+auxin commit -m "Recorded vocals" --bpm 120 --tags "recording"
 oxen push origin main
-oxenvcs-cli lock release                  # Done for now
+auxin lock release                  # Done for now
 ```
 
 **Afternoon - User B (Mixer):**
 ```bash
 # Check what happened
-oxenvcs-cli activity --limit 10           # See A's work
-oxenvcs-cli team                          # Check team stats
+auxin activity --limit 10           # See A's work
+auxin team                          # Check team stats
 oxen pull origin main                     # Get A's vocals
-oxenvcs-cli lock acquire --timeout 4      # Lock for mixing
+auxin lock acquire --timeout 4      # Lock for mixing
 # ... mixing work (simulated) ...
 touch "Audio Files/vocals_processed.wav"
-oxenvcs-cli add --all
-oxenvcs-cli commit -m "Mixed vocals, added reverb" --bpm 120 --tags "mixing"
-oxenvcs-cli comment add <prev_commit> "Great vocal take!"  # Comment on A's commit
+auxin add --all
+auxin commit -m "Mixed vocals, added reverb" --bpm 120 --tags "mixing"
+auxin comment add <prev_commit> "Great vocal take!"  # Comment on A's commit
 oxen add .oxen/comments/
 oxen commit -m "Add review comment"
 oxen push origin main
-oxenvcs-cli lock release
+auxin lock release
 ```
 
 **Next Day - User A:**
 ```bash
 # Check updates
 oxen pull origin main
-oxenvcs-cli activity --limit 10           # See B's work
-oxenvcs-cli comment list <commit>         # See B's comment
+auxin activity --limit 10           # See B's work
+auxin comment list <commit>         # See B's comment
 # Continue work...
 ```
 
@@ -551,9 +551,9 @@ oxenvcs-cli comment list <commit>         # See B's comment
 **Setup:** Create project with ~5 GB of audio files
 
 **Steps:**
-1. Initialize OxVCS: `oxenvcs-cli init --logic .`
-2. Add all: `oxenvcs-cli add --all`
-3. Commit: `oxenvcs-cli commit -m "Initial project" --bpm 120`
+1. Initialize Auxin: `auxin init --logic .`
+2. Add all: `auxin add --all`
+3. Commit: `auxin commit -m "Initial project" --bpm 120`
 4. Push to hub: `oxen push origin main` (note duration)
 5. From second machine, clone: `oxen clone <url> Project.logicx` (note duration)
 6. Acquire lock, make changes, commit, push
@@ -601,7 +601,7 @@ oxenvcs-cli comment list <commit>         # See B's comment
 
 - [ ] macOS 14.0+ environment ready
 - [ ] Oxen CLI installed and working: `oxen --version`
-- [ ] OxVCS CLI built: `cd OxVCS-CLI-Wrapper && cargo build --release`
+- [ ] Auxin CLI built: `cd Auxin-CLI-Wrapper && cargo build --release`
 - [ ] Test Oxen Hub account created
 - [ ] API key generated from hub.oxen.ai
 - [ ] Test repository created on hub

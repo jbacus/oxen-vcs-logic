@@ -37,7 +37,7 @@ oxen --version
 launchctl list | grep oxenvcs
 
 # 4. Recent Logs (last 30 minutes)
-log show --predicate 'process == "OxVCS-LaunchAgent"' --last 30m
+log show --predicate 'process == "Auxin-LaunchAgent"' --last 30m
 
 # 5. Disk Space
 df -h
@@ -192,20 +192,20 @@ launchctl list | grep oxenvcs
 
 **Solution 1: Manual Start**
 ```bash
-launchctl load ~/Library/LaunchAgents/com.oxenvcs.agent.plist
+launchctl load ~/Library/LaunchAgents/com.auxin.agent.plist
 ```
 
 **Solution 2: Check Plist File**
 ```bash
 # Verify plist exists
-ls -la ~/Library/LaunchAgents/com.oxenvcs.agent.plist
+ls -la ~/Library/LaunchAgents/com.auxin.agent.plist
 
 # If missing, reinstall Oxen-VCS.app
 ```
 
 **Solution 3: Check Logs for Crash**
 ```bash
-log show --predicate 'process == "OxVCS-LaunchAgent"' --last 1h --info
+log show --predicate 'process == "Auxin-LaunchAgent"' --last 1h --info
 
 # Look for:
 # - "Fatal error"
@@ -216,14 +216,14 @@ log show --predicate 'process == "OxVCS-LaunchAgent"' --last 1h --info
 **Solution 4: Reinstall Daemon**
 ```bash
 # Unload
-launchctl unload ~/Library/LaunchAgents/com.oxenvcs.agent.plist
+launchctl unload ~/Library/LaunchAgents/com.auxin.agent.plist
 
 # Delete plist
-rm ~/Library/LaunchAgents/com.oxenvcs.agent.plist
+rm ~/Library/LaunchAgents/com.auxin.agent.plist
 
 # Reinstall Oxen-VCS.app (will recreate plist)
 # Then load:
-launchctl load ~/Library/LaunchAgents/com.oxenvcs.agent.plist
+launchctl load ~/Library/LaunchAgents/com.auxin.agent.plist
 ```
 
 ### Daemon Keeps Crashing
@@ -237,7 +237,7 @@ launchctl list | grep oxenvcs
 **Diagnosis:**
 ```bash
 # Check crash logs
-log show --predicate 'process == "OxVCS-LaunchAgent" AND eventMessage CONTAINS "error"' --last 1h
+log show --predicate 'process == "Auxin-LaunchAgent" AND eventMessage CONTAINS "error"' --last 1h
 ```
 
 **Common Causes:**
@@ -261,10 +261,10 @@ System Preferences → Security & Privacy → Privacy → Full Disk Access
 **3. Corrupted Configuration**
 ```bash
 # Reset configuration
-rm -rf ~/.oxenvcs/config
+rm -rf ~/.auxin/config
 # Restart daemon
-launchctl unload ~/Library/LaunchAgents/com.oxenvcs.agent.plist
-launchctl load ~/Library/LaunchAgents/com.oxenvcs.agent.plist
+launchctl unload ~/Library/LaunchAgents/com.auxin.agent.plist
+launchctl load ~/Library/LaunchAgents/com.auxin.agent.plist
 ```
 
 **4. Oxen CLI Issues**
@@ -287,7 +287,7 @@ oxen status
 **Diagnosis:**
 ```bash
 # Check if process is hung
-ps aux | grep OxVCS-LaunchAgent
+ps aux | grep Auxin-LaunchAgent
 
 # Check CPU usage (should be <5%)
 top -pid <PID> -stats cpu
@@ -296,10 +296,10 @@ top -pid <PID> -stats cpu
 **Solution:**
 ```bash
 # Force kill
-killall OxVCS-LaunchAgent
+killall Auxin-LaunchAgent
 
 # Restart
-launchctl load ~/Library/LaunchAgents/com.oxenvcs.agent.plist
+launchctl load ~/Library/LaunchAgents/com.auxin.agent.plist
 ```
 
 ---
@@ -320,7 +320,7 @@ If not running, see [Daemon Not Running](#daemon-not-running)
 **Step 2: Check Project Registration**
 ```bash
 # Verify project is monitored
-cat ~/.oxenvcs/monitored_projects
+cat ~/.auxin/monitored_projects
 # Should list your project path
 ```
 
@@ -343,7 +343,7 @@ oxen init
 
 **Step 4: Check Logs**
 ```bash
-log show --predicate 'process == "OxVCS-LaunchAgent"' --last 10m --info
+log show --predicate 'process == "Auxin-LaunchAgent"' --last 10m --info
 
 # Look for:
 # - "File change detected"
@@ -375,18 +375,18 @@ If manual test works, but Logic Pro saves don't:
 **Solution:**
 ```bash
 # Check current debounce setting
-cat ~/.oxenvcs/config | grep debounce
+cat ~/.auxin/config | grep debounce
 
 # Should be 30-60 seconds
 # If not, edit config:
-nano ~/.oxenvcs/config
+nano ~/.auxin/config
 
 # Set:
 debounce_seconds = 60
 
 # Restart daemon
-launchctl unload ~/Library/LaunchAgents/com.oxenvcs.agent.plist
-launchctl load ~/Library/LaunchAgents/com.oxenvcs.agent.plist
+launchctl unload ~/Library/LaunchAgents/com.auxin.agent.plist
+launchctl load ~/Library/LaunchAgents/com.auxin.agent.plist
 ```
 
 ### Auto-Commits Too Slow
@@ -413,7 +413,7 @@ top -l 1 | grep "CPU usage"
 3. **Increase debounce** (reduce commit frequency):
    ```bash
    # Edit config
-   nano ~/.oxenvcs/config
+   nano ~/.auxin/config
    # Set debounce_seconds = 120
    ```
 4. **Verify .oxenignore** (ensure Bounces/ and Freeze Files/ are excluded)
@@ -484,7 +484,7 @@ rm -rf "MyProject.logicx/Freeze Files"/*
 **4. Reduce Commit Frequency**
 ```bash
 # Increase debounce to reduce how often commits happen
-nano ~/.oxenvcs/config
+nano ~/.auxin/config
 # Set: debounce_seconds = 90
 ```
 
@@ -497,7 +497,7 @@ nano ~/.oxenvcs/config
 **Diagnosis:**
 ```bash
 # Check current usage
-ps aux | grep OxVCS-LaunchAgent | awk '{print $4, $6}'
+ps aux | grep Auxin-LaunchAgent | awk '{print $4, $6}'
 # Shows % and KB
 ```
 
@@ -510,8 +510,8 @@ ps aux | grep OxVCS-LaunchAgent | awk '{print $4, $6}'
 **Temporary Fix:**
 ```bash
 # Restart daemon daily
-launchctl unload ~/Library/LaunchAgents/com.oxenvcs.agent.plist
-launchctl load ~/Library/LaunchAgents/com.oxenvcs.agent.plist
+launchctl unload ~/Library/LaunchAgents/com.auxin.agent.plist
+launchctl load ~/Library/LaunchAgents/com.auxin.agent.plist
 ```
 
 **2. Monitoring Too Many Projects**
@@ -532,7 +532,7 @@ launchctl load ~/Library/LaunchAgents/com.oxenvcs.agent.plist
 **Diagnosis:**
 ```bash
 # Monitor CPU over time
-top -pid $(pgrep OxVCS-LaunchAgent) -stats cpu -l 10
+top -pid $(pgrep Auxin-LaunchAgent) -stats cpu -l 10
 ```
 
 **Causes:**
@@ -540,7 +540,7 @@ top -pid $(pgrep OxVCS-LaunchAgent) -stats cpu -l 10
 **1. Stuck in Commit Loop**
 ```bash
 # Check logs for repeated commits
-log show --predicate 'process == "OxVCS-LaunchAgent"' --last 5m | grep "Committing"
+log show --predicate 'process == "Auxin-LaunchAgent"' --last 5m | grep "Committing"
 # If you see many rapid commits, this is the problem
 ```
 
@@ -553,7 +553,7 @@ log show --predicate 'process == "OxVCS-LaunchAgent"' --last 5m | grep "Committi
 **3. Runaway Process**
 ```bash
 # Check for errors in logs
-log show --predicate 'process == "OxVCS-LaunchAgent" AND messageType == error' --last 10m
+log show --predicate 'process == "Auxin-LaunchAgent" AND messageType == error' --last 10m
 ```
 
 **Solution:** Restart daemon
@@ -769,7 +769,7 @@ OUTPUT=~/Desktop/oxenvcs-diagnostics-$(date +%Y%m%d-%H%M%S).txt
     echo ""
 
     echo "=== Recent Logs (last 30 min) ==="
-    log show --predicate 'process == "OxVCS-LaunchAgent"' --last 30m --style compact
+    log show --predicate 'process == "Auxin-LaunchAgent"' --last 30m --style compact
     echo ""
 
     echo "=== Disk Space ==="
@@ -781,7 +781,7 @@ OUTPUT=~/Desktop/oxenvcs-diagnostics-$(date +%Y%m%d-%H%M%S).txt
     echo ""
 
     echo "=== Monitored Projects ==="
-    cat ~/.oxenvcs/monitored_projects 2>/dev/null || echo "None"
+    cat ~/.auxin/monitored_projects 2>/dev/null || echo "None"
     echo ""
 
 } > "$OUTPUT"
@@ -798,7 +798,7 @@ chmod +x diagnostic-script.sh
 
 ### Reporting Bugs
 
-**GitHub Issues:** [https://github.com/jbacus/oxen-vcs-logic/issues](https://github.com/jbacus/oxen-vcs-logic/issues)
+**GitHub Issues:** [https://github.com/jbacus/auxin/issues](https://github.com/jbacus/auxin/issues)
 
 **Include:**
 1. macOS version
@@ -821,8 +821,8 @@ chmod +x diagnostic-script.sh
    ```bash
    # Uninstall
    rm -rf /Applications/Oxen-VCS.app
-   launchctl unload ~/Library/LaunchAgents/com.oxenvcs.agent.plist
-   rm ~/Library/LaunchAgents/com.oxenvcs.agent.plist
+   launchctl unload ~/Library/LaunchAgents/com.auxin.agent.plist
+   rm ~/Library/LaunchAgents/com.auxin.agent.plist
 
    # Reinstall
    # Download latest from GitHub
@@ -837,7 +837,7 @@ chmod +x diagnostic-script.sh
 - **User Guide:** [USER_GUIDE.md](USER_GUIDE.md)
 - **FAQ:** [FAQ.md](FAQ.md)
 - **Quick Start:** [USER_GUIDE.md](USER_GUIDE.md)
-- **GitHub Issues:** [https://github.com/jbacus/oxen-vcs-logic/issues](https://github.com/jbacus/oxen-vcs-logic/issues)
+- **GitHub Issues:** [https://github.com/jbacus/auxin/issues](https://github.com/jbacus/auxin/issues)
 
 **Emergency Contact:** support@oxen-vcs.com
 

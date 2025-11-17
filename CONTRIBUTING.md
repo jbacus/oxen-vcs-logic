@@ -68,7 +68,7 @@ act -j swift-app-tests
 
 #### Rust Tests (CLI Wrapper)
 ```bash
-cd OxVCS-CLI-Wrapper
+cd Auxin-CLI-Wrapper
 
 # Run all tests
 cargo test
@@ -85,7 +85,7 @@ cargo test -- --nocapture
 
 #### Swift Tests (LaunchAgent Daemon)
 ```bash
-cd OxVCS-LaunchAgent
+cd Auxin-LaunchAgent
 
 # Run all tests
 swift test
@@ -99,7 +99,7 @@ swift test --filter LockManagerTests
 
 #### Swift Tests (App UI)
 ```bash
-cd OxVCS-App
+cd Auxin-App
 
 # Run all tests
 swift test
@@ -121,16 +121,16 @@ We provide test utilities to make testing easier:
 
 **Rust**:
 - `TestFixture` - Creates temporary Logic Pro projects
-- See `OxVCS-CLI-Wrapper/tests/common/mod.rs`
-- Example: `OxVCS-CLI-Wrapper/tests/example_test.rs`
+- See `Auxin-CLI-Wrapper/tests/common/mod.rs`
+- Example: `Auxin-CLI-Wrapper/tests/example_test.rs`
 
 **Swift (LaunchAgent)**:
 - `TestFixtures` - Creates test projects and environments
-- See `OxVCS-LaunchAgent/Tests/TestUtils/TestFixtures.swift`
+- See `Auxin-LaunchAgent/Tests/TestUtils/TestFixtures.swift`
 
 **Swift (App)**:
 - `MockOxenDaemonXPCClient` - Mock XPC client for UI testing
-- See `OxVCS-App/Tests/TestUtils/MockXPCClient.swift`
+- See `Auxin-App/Tests/TestUtils/MockXPCClient.swift`
 
 #### Test Naming Conventions
 
@@ -157,12 +157,12 @@ We use coverage tracking to ensure test quality:
 **View Coverage Reports**:
 ```bash
 # Rust
-cd OxVCS-CLI-Wrapper
+cd Auxin-CLI-Wrapper
 cargo tarpaulin --out Html
 open tarpaulin-report.html
 
 # Swift
-cd OxVCS-LaunchAgent
+cd Auxin-LaunchAgent
 swift test --enable-code-coverage
 xcrun llvm-cov show .build/debug/...xctest -instr-profile=... -format=html -output-dir=coverage
 open coverage/index.html
@@ -190,7 +190,7 @@ All tests run automatically on:
 We use benchmarking to track performance:
 
 ```bash
-cd OxVCS-CLI-Wrapper
+cd Auxin-CLI-Wrapper
 cargo bench
 
 # Compare with baseline

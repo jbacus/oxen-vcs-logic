@@ -1,11 +1,30 @@
 # Changelog
 
-All notable changes to the Oxen-VCS for Logic Pro project will be documented in this file.
+All notable changes to the Auxin project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.2.0] - 2025-11-17
+
+### Changed
+- **BREAKING: Project Renamed from Auxin-VCS to Auxin** (2025-11-17)
+  - Binary renamed: `auxin-cli` → `auxin`
+  - Package name: `auxin-cli` → `auxin`
+  - GitHub repository: `jbacus/oxen-vcs-logic` → `jbacus/auxin`
+  - macOS service IDs:
+    - `com.oxenvcs.agent` → `com.auxin.agent`
+    - `com.oxen.logic.daemon` → `com.auxin.daemon`
+    - `com.oxenvcs.app` → `com.auxin.app`
+  - Configuration directory: `~/.auxin` → `~/.auxin`
+  - Environment variables: `OXENVCS_*` → `AUXIN_*`
+  - Shell completions updated for new binary name
+  - All documentation updated to reflect new branding
+  - **Migration Required**: See MIGRATION.md for upgrade instructions
+
+## [0.1.0] - Previous Release
 
 ### Added
 - **Week 3: Advanced CLI Features** (2025-11-15)
@@ -70,7 +89,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Documentation: Updated test counts and statistics throughout
 
 - **SwiftUI Migration** (2025-10-29)
-  - Migrated OxVCS-App from AppKit to SwiftUI for improved reliability
+  - Migrated Auxin-App from AppKit to SwiftUI for improved reliability
   - Replaced manual NSWindow/NSViewController management with declarative NavigationSplitView
   - Fixed persistent window sizing issues that plagued AppKit implementation
   - Reduced UI code complexity by ~80% through declarative patterns
@@ -88,16 +107,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added (Previous)
 - Comprehensive documentation update (2025-10-27)
-  - Completely rewrote OxVCS-CLI-Wrapper/README.md (62→435 lines) with architecture, features, usage, testing, and troubleshooting
-  - Completely rewrote OxVCS-LaunchAgent/README.md (49→558 lines) with daemon details, XPC API, configuration, and development guide
-  - Completely rewrote OxVCS-App/README.md (47→637 lines) with UI features, MVVM architecture, and complete user guide
+  - Completely rewrote Auxin-CLI-Wrapper/README.md (62→435 lines) with architecture, features, usage, testing, and troubleshooting
+  - Completely rewrote Auxin-LaunchAgent/README.md (49→558 lines) with daemon details, XPC API, configuration, and development guide
+  - Completely rewrote Auxin-App/README.md (47→637 lines) with UI features, MVVM architecture, and complete user guide
   - Updated main README.md to reflect all three phases complete
   - Updated CONTRIBUTING.md to reflect production-ready status
 
 ## [3.0.0] - 2025-10-25
 
 ### Added - Phase 3: UI Application & Collaboration
-- Native macOS AppKit UI application (OxVCS-App)
+- Native macOS AppKit UI application (Auxin-App)
 - Repository browser with real-time project status
 - Project initialization wizard
 - Milestone commit interface with rich metadata (BPM, sample rate, key, time signature, tags)
@@ -142,7 +161,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Automatic staging and commit
   - Multi-project monitoring support
 - XPC communication service
-  - Mach service (com.oxen.logic.daemon.xpc)
+  - Mach service (com.auxin.daemon.xpc)
   - Protocol for UI integration
   - Async operations support
 - Draft branch management
@@ -174,7 +193,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Oxen initialization wrapper
   - Repository setup
   - Template installation
-- Core VCS operations (oxenvcs-cli)
+- Core VCS operations (auxin)
   - `init --logic` - Initialize Logic Pro project
   - `add` - Stage changes
   - `commit` - Create commits with metadata
@@ -191,7 +210,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - FSEvents monitoring proof of concept
   - Real-time file change detection
   - Debounce logic (30-second threshold)
-- Rust CLI wrapper (OxVCS-CLI-Wrapper)
+- Rust CLI wrapper (Auxin-CLI-Wrapper)
   - Direct liboxen integration
   - Logic project detection (logic_project.rs)
   - Oxen operations wrapper (oxen_ops.rs)
@@ -201,7 +220,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Documentation
 - Phase 1 Completion Report (docs/PHASE1_COMPLETE.md)
 - Quick Start Guide (docs/QUICKSTART.md)
-- Usage Guide (OxVCS-CLI-Wrapper/USAGE.md)
+- Usage Guide (Auxin-CLI-Wrapper/USAGE.md)
 - Implementation Plan (docs/IMPLEMENTATION_PLAN.md)
 - Contributing Guidelines (CONTRIBUTING.md)
 - Testing Strategy (docs/TESTING_STRATEGY.md)

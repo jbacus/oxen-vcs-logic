@@ -1,6 +1,6 @@
 # Oxen-VCS for Logic Pro
 
-[![Test Suite](https://github.com/jbacus/oxen-vcs-logic/actions/workflows/test.yml/badge.svg)](https://github.com/jbacus/oxen-vcs-logic/actions/workflows/test.yml)
+[![Test Suite](https://github.com/jbacus/auxin/actions/workflows/test.yml/badge.svg)](https://github.com/jbacus/auxin/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![macOS](https://img.shields.io/badge/macOS-14.0+-blue.svg)](https://www.apple.com/macos)
 [![Rust](https://img.shields.io/badge/rust-stable-orange.svg)](https://www.rust-lang.org)
@@ -10,7 +10,7 @@ A native macOS version control system for Apple Logic Pro projects, leveraging O
 
 ## Overview
 
-Professional DAW projects contain massive binary assets that overwhelm traditional version control systems like Git. OxVCS provides:
+Professional DAW projects contain massive binary assets that overwhelm traditional version control systems like Git. Auxin provides:
 
 - **Block-level deduplication** for efficient storage of large audio files
 - **Automatic background tracking** via FSEvents monitoring
@@ -22,7 +22,7 @@ Professional DAW projects contain massive binary assets that overwhelm tradition
 
 ### ✨ SwiftUI Migration (October 29, 2025)
 
-Migrated OxVCS.app from AppKit to SwiftUI for improved reliability:
+Migrated Auxin.app from AppKit to SwiftUI for improved reliability:
 - **Migrated**: Complete UI rewrite using SwiftUI instead of AppKit
 - **Fixed**: Window sizing issues that plagued the AppKit implementation
 - **Simplified**: 80% reduction in UI code complexity
@@ -74,9 +74,9 @@ See [CHANGELOG.md](CHANGELOG.md) for complete project history.
 
 ### Three-Component System
 
-1. **OxVCS-App** (Swift/SwiftUI) - Native macOS UI application with modern declarative interface
-2. **OxVCS-LaunchAgent** (Swift/FSEvents) - Persistent background daemon for file monitoring and draft tracking
-3. **OxVCS-CLI-Wrapper** (Rust/liboxen) - Optimized command executor for Oxen operations
+1. **Auxin-App** (Swift/SwiftUI) - Native macOS UI application with modern declarative interface
+2. **Auxin-LaunchAgent** (Swift/FSEvents) - Persistent background daemon for file monitoring and draft tracking
+3. **Auxin-CLI-Wrapper** (Rust/liboxen) - Optimized command executor for Oxen operations
 
 ## Requirements
 
@@ -92,14 +92,14 @@ See [CHANGELOG.md](CHANGELOG.md) for complete project history.
 
 ```bash
 # Clone the repository
-git clone https://github.com/YOUR_USERNAME/oxen-vcs-logic.git
-cd oxen-vcs-logic
+git clone https://github.com/YOUR_USERNAME/auxin.git
+cd auxin
 
 # Run the automated installer
 ./install.sh
 ```
 
-The installer will build all components, install binaries, configure the daemon service, and install the GUI app to `/Applications/OxVCS.app`.
+The installer will build all components, install binaries, configure the daemon service, and install the GUI app to `/Applications/Auxin.app`.
 
 See [Installation Guide](INSTALL.md) for detailed instructions and troubleshooting.
 
@@ -113,7 +113,7 @@ See [Installation Guide](INSTALL.md) for step-by-step manual installation instru
 
 After installation, launch the double-clickable app:
 
-1. Open Finder → Applications → OxVCS
+1. Open Finder → Applications → Auxin
 2. Click "Add Project..." to initialize a Logic Pro project
 3. The app will monitor changes and create automatic draft commits
 4. Create milestone commits with rich metadata (BPM, sample rate, tags)
@@ -126,25 +126,25 @@ After installation, launch the double-clickable app:
 ```bash
 # Initialize a Logic Pro project
 cd ~/Music/YourProject.logicx
-oxenvcs-cli init --logic .
+auxin init --logic .
 # ⠹ Validating Logic Pro project structure...
 # ✓ Logic Pro project repository initialized
 
 # Check what changed
-oxenvcs-cli status
+auxin status
 # Shows: staged, modified, and untracked files with color coding
 
 # Stage and commit with metadata
-oxenvcs-cli add --all
-oxenvcs-cli commit -m "Vocal tracking done" --bpm 120 --tags "vocals"
+auxin add --all
+auxin commit -m "Vocal tracking done" --bpm 120 --tags "vocals"
 # ✓ Commit created: abc123f
 
 # View history with filtering
-oxenvcs-cli log --bpm 120 --tag vocals --limit 10
+auxin log --bpm 120 --tag vocals --limit 10
 # Shows: filtered commits with metadata
 
 # Restore to previous version
-oxenvcs-cli restore abc123f
+auxin restore abc123f
 ```
 
 ### Option C: Advanced CLI Features ✨ NEW!
@@ -152,41 +152,41 @@ oxenvcs-cli restore abc123f
 **Compare commits semantically:**
 ```bash
 # Compare two commits (shows BPM, key, sample rate changes)
-oxenvcs-cli compare abc123f def456g
+auxin compare abc123f def456g
 # Shows colored diff of metadata changes
 
 # Compare in different formats
-oxenvcs-cli compare abc123f def456g --format json
-oxenvcs-cli compare abc123f def456g --format compact
+auxin compare abc123f def456g --format json
+auxin compare abc123f def456g --format compact
 ```
 
 **Search with natural language:**
 ```bash
 # Find all commits with specific criteria
-oxenvcs-cli search "bpm:120-140 key:minor tag:mixing"
-oxenvcs-cli search "bpm:>128 tag:vocals,final"
+auxin search "bpm:120-140 key:minor tag:mixing"
+auxin search "bpm:>128 tag:vocals,final"
 
 # Get ranked results
-oxenvcs-cli search "bpm:120-140 key:minor" --ranked
+auxin search "bpm:120-140 key:minor" --ranked
 ```
 
 **Automate workflows with hooks:**
 ```bash
 # Initialize hooks directory
-oxenvcs-cli hooks init
+auxin hooks init
 
 # Install built-in hooks
-oxenvcs-cli hooks install validate-metadata --type pre-commit
-oxenvcs-cli hooks install backup --type post-commit
+auxin hooks install validate-metadata --type pre-commit
+auxin hooks install backup --type post-commit
 
 # List installed hooks
-oxenvcs-cli hooks list
+auxin hooks list
 ```
 
 **Interactive console mode:**
 ```bash
 # Launch full-screen TUI
-oxenvcs-cli console
+auxin console
 
 # Keyboard shortcuts:
 # i - Create commit (with metadata fields)
@@ -213,11 +213,11 @@ We maintain comprehensive test coverage across all components:
 
 ```bash
 # Run all Rust tests
-cd OxVCS-CLI-Wrapper && cargo test
+cd Auxin-CLI-Wrapper && cargo test
 
 # Run all Swift tests
-cd OxVCS-LaunchAgent && swift test
-cd OxVCS-App && swift test
+cd Auxin-LaunchAgent && swift test
+cd Auxin-App && swift test
 ```
 
 **Documentation**:
@@ -230,8 +230,8 @@ cd OxVCS-App && swift test
 
 ```bash
 # Clone repository
-git clone https://github.com/YOUR_USERNAME/oxen-vcs-logic.git
-cd oxen-vcs-logic
+git clone https://github.com/YOUR_USERNAME/auxin.git
+cd auxin
 
 # Install dependencies
 pip install oxen-ai  # Optional
@@ -291,10 +291,10 @@ System power observers force immediate draft commits before sleep/shutdown to pr
 ## Project Structure
 
 ```
-oxen-vcs-logic/
-├── OxVCS-App/              # Swift/SwiftUI UI application
-├── OxVCS-LaunchAgent/      # Background monitoring daemon
-├── OxVCS-CLI-Wrapper/      # Rust wrapper for Oxen CLI
+auxin/
+├── Auxin-App/              # Swift/SwiftUI UI application
+├── Auxin-LaunchAgent/      # Background monitoring daemon
+├── Auxin-CLI-Wrapper/      # Rust wrapper for Oxen CLI
 ├── docs/                   # User and developer documentation
 │   ├── FOR_MUSICIANS.md    # User guide for music producers
 │   ├── FOR_DEVELOPERS.md   # Technical guide for contributors
@@ -308,8 +308,8 @@ oxen-vcs-logic/
 - [For Musicians](docs/FOR_MUSICIANS.md) - Complete guide for music producers (non-technical, covers both GUI and CLI)
 - [CLI Examples](docs/CLI_EXAMPLES.md) - Real-world command line examples with visual output
 - [Installation Guide](INSTALL.md) - Complete installation instructions
-- [App Bundle Guide](OxVCS-App/APP_BUNDLE.md) - Double-clickable app creation
-- [CLI Usage Guide](OxVCS-CLI-Wrapper/USAGE.md) - Complete CLI reference
+- [App Bundle Guide](Auxin-App/APP_BUNDLE.md) - Double-clickable app creation
+- [CLI Usage Guide](Auxin-CLI-Wrapper/USAGE.md) - Complete CLI reference
 
 ### Technical Documentation
 - [For Developers](docs/FOR_DEVELOPERS.md) - Full technical specification, architecture, and API reference

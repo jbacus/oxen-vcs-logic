@@ -1,4 +1,4 @@
-# OxVCS Cloud Sharing Guide
+# Auxin Cloud Sharing Guide
 
 **Last Updated**: 2025-11-15
 **Status**: Phases 1-3 Complete (Authentication, Locks, Collaboration), Phase 4+ In Development
@@ -20,7 +20,7 @@
 
 ## Overview
 
-OxVCS Cloud Sharing enables GitHub-like collaboration for Logic Pro projects through Oxen Hub. Key features include:
+Auxin Cloud Sharing enables GitHub-like collaboration for Logic Pro projects through Oxen Hub. Key features include:
 
 - **Remote repository hosting** via Oxen Hub (https://hub.oxen.ai)
 - **Distributed pessimistic locking** to prevent merge conflicts
@@ -30,7 +30,7 @@ OxVCS Cloud Sharing enables GitHub-like collaboration for Logic Pro projects thr
 
 ### Why Cloud Sharing?
 
-Logic Pro projects consist of large binary files that cannot be merged algorithmically. OxVCS solves this with:
+Logic Pro projects consist of large binary files that cannot be merged algorithmically. Auxin solves this with:
 - **Block-level deduplication** (10-100x more efficient than Git-LFS)
 - **Pessimistic locking** (one editor at a time, no conflicts)
 - **Automatic sync** with progress tracking
@@ -53,34 +53,34 @@ Logic Pro projects consist of large binary files that cannot be merged algorithm
    - Sign up for a free account
    - Generate an API key from Settings → API Keys
 
-3. **OxVCS CLI** installed:
+3. **Auxin CLI** installed:
    ```bash
    ./install.sh
    # or manually build
-   cd OxVCS-CLI-Wrapper && cargo build --release
+   cd Auxin-CLI-Wrapper && cargo build --release
    ```
 
 ### Quick Start (5 minutes)
 
 ```bash
 # 1. Authenticate with Oxen Hub
-oxenvcs-cli auth login
+auxin auth login
 # Enter username and API key when prompted
 
 # 2. Initialize project (if not already done)
 cd MyProject.logicx
-oxenvcs-cli init --logic .
+auxin init --logic .
 
 # 3. Add remote repository (create repo on hub.oxen.ai first)
 oxen remote add origin https://hub.oxen.ai/username/my-project
 
 # 4. Push to cloud
-oxenvcs-cli add --all
-oxenvcs-cli commit -m "Initial commit" --bpm 120
+auxin add --all
+auxin commit -m "Initial commit" --bpm 120
 oxen push origin main
 
 # 5. Verify
-oxenvcs-cli auth status
+auxin auth status
 ```
 
 ---
@@ -90,7 +90,7 @@ oxenvcs-cli auth status
 ### Login to Oxen Hub
 
 ```bash
-oxenvcs-cli auth login
+auxin auth login
 ```
 
 You will be prompted for:
@@ -99,13 +99,13 @@ You will be prompted for:
 
 #### Where Credentials Are Stored
 
-OxVCS uses **dual storage** for maximum compatibility:
+Auxin uses **dual storage** for maximum compatibility:
 
 1. **Primary**: Oxen CLI config (`~/.oxen/user_config.toml`)
    - Leverages Oxen's built-in credential management
    - Shared with `oxen` CLI commands
 
-2. **Fallback**: OxVCS config (`~/.oxenvcs/credentials`)
+2. **Fallback**: Auxin config (`~/.auxin/credentials`)
    - Stores username and hub URL
    - API key stored only in Oxen config
    - File permissions: `0600` (user read/write only)
@@ -113,7 +113,7 @@ OxVCS uses **dual storage** for maximum compatibility:
 ### Check Authentication Status
 
 ```bash
-oxenvcs-cli auth status
+auxin auth status
 ```
 
 **Output:**
@@ -127,13 +127,13 @@ oxenvcs-cli auth status
 │                                                          │
 └──────────────────────────────────────────────────────────┘
 
-Run 'oxenvcs-cli auth test' to verify connection
+Run 'auxin auth test' to verify connection
 ```
 
 ### Test Connection
 
 ```bash
-oxenvcs-cli auth test
+auxin auth test
 ```
 
 Verifies that your stored credentials are valid by testing connection to Oxen Hub.
@@ -141,10 +141,10 @@ Verifies that your stored credentials are valid by testing connection to Oxen Hu
 ### Logout
 
 ```bash
-oxenvcs-cli auth logout
+auxin auth logout
 ```
 
-Removes credentials from both Oxen CLI config and OxVCS config.
+Removes credentials from both Oxen CLI config and Auxin config.
 
 ---
 
@@ -174,10 +174,10 @@ oxen remote -v
 
 ```bash
 # Stage all files
-oxenvcs-cli add --all
+auxin add --all
 
 # Create initial commit
-oxenvcs-cli commit -m "Initial project setup" --bpm 120
+auxin commit -m "Initial project setup" --bpm 120
 
 # Push to Oxen Hub
 oxen push origin main
@@ -192,7 +192,7 @@ To collaborate on an existing project:
 ```bash
 oxen clone https://hub.oxen.ai/username/my-logic-project MyProject.logicx
 cd MyProject.logicx
-oxenvcs-cli auth status  # Verify authentication
+auxin auth status  # Verify authentication
 ```
 
 ---
@@ -203,11 +203,11 @@ oxenvcs-cli auth status  # Verify authentication
 
 1. **Always acquire lock before editing**:
    ```bash
-   oxenvcs-cli lock acquire --timeout 4
+   auxin lock acquire --timeout 4
    # Open project in Logic Pro
    # Make changes
    # Commit and push
-   oxenvcs-cli lock release
+   auxin lock release
    ```
 
 2. **Pull latest changes before starting work**:
@@ -217,7 +217,7 @@ oxenvcs-cli auth status  # Verify authentication
 
 3. **Commit frequently with descriptive messages**:
    ```bash
-   oxenvcs-cli commit -m "Added bass track, adjusted mix" --bpm 128
+   auxin commit -m "Added bass track, adjusted mix" --bpm 128
    ```
 
 4. **Push milestone commits to share with team**:
@@ -232,12 +232,12 @@ oxenvcs-cli auth status  # Verify authentication
 # Morning: Start work
 cd MyProject.logicx
 oxen pull origin main                  # Get latest changes
-oxenvcs-cli lock acquire --timeout 8   # Lock for 8 hours
+auxin lock acquire --timeout 8   # Lock for 8 hours
 # ... work in Logic Pro ...
-oxenvcs-cli add --all
-oxenvcs-cli commit -m "Recorded vocals" --bpm 120
+auxin add --all
+auxin commit -m "Recorded vocals" --bpm 120
 oxen push origin main
-oxenvcs-cli lock release
+auxin lock release
 ```
 
 **Team Member B** (Mixer):
@@ -245,11 +245,11 @@ oxenvcs-cli lock release
 # Afternoon: Continue work
 cd MyProject.logicx
 oxen pull origin main                  # Get A's vocal recordings
-oxenvcs-cli lock acquire --timeout 4
+auxin lock acquire --timeout 4
 # ... mixing work ...
-oxenvcs-cli commit -m "Mixed vocals, added reverb" --bpm 120
+auxin commit -m "Mixed vocals, added reverb" --bpm 120
 oxen push origin main
-oxenvcs-cli lock release
+auxin lock release
 ```
 
 ### Communication & Tracking
@@ -257,7 +257,7 @@ oxenvcs-cli lock release
 **View Project Activity:**
 ```bash
 # See what the team has been working on
-oxenvcs-cli activity --limit 20
+auxin activity --limit 20
 ```
 
 **Output:**
@@ -280,7 +280,7 @@ oxenvcs-cli activity --limit 20
 **Discover Team Members:**
 ```bash
 # See who's contributing to the project
-oxenvcs-cli team
+auxin team
 ```
 
 **Output:**
@@ -300,10 +300,10 @@ oxenvcs-cli team
 **Add Comments to Commits:**
 ```bash
 # Provide feedback on a specific commit
-oxenvcs-cli comment add abc123 "Love the vocal processing! Can we try more compression?"
+auxin comment add abc123 "Love the vocal processing! Can we try more compression?"
 
 # View comments on a commit
-oxenvcs-cli comment list abc123
+auxin comment list abc123
 
 # Share comments with team (must commit and push)
 oxen add .oxen/comments/
@@ -322,7 +322,7 @@ oxen push origin main
 ### Acquire Lock
 
 ```bash
-oxenvcs-cli lock acquire --timeout 4
+auxin lock acquire --timeout 4
 ```
 
 **Parameters:**
@@ -339,13 +339,13 @@ oxenvcs-cli lock acquire --timeout 4
 └──────────────────────────────────────────────────────────┘
 
 You can now safely edit the project in Logic Pro
-Remember to release the lock when done: oxenvcs-cli lock release
+Remember to release the lock when done: auxin lock release
 ```
 
 ### Check Lock Status
 
 ```bash
-oxenvcs-cli lock status
+auxin lock status
 ```
 
 Shows who holds the lock and when it expires.
@@ -353,7 +353,7 @@ Shows who holds the lock and when it expires.
 ### Release Lock
 
 ```bash
-oxenvcs-cli lock release
+auxin lock release
 ```
 
 **When to release**:
@@ -364,7 +364,7 @@ oxenvcs-cli lock release
 ### Break Lock (Emergency)
 
 ```bash
-oxenvcs-cli lock break --force
+auxin lock break --force
 ```
 
 **WARNING**: Only use in emergencies:
@@ -391,10 +391,10 @@ Breaking someone else's lock may cause them to lose unsaved work!
 
 **Usage:**
 ```bash
-oxenvcs-cli auth login      # Authenticate
-oxenvcs-cli auth status     # Check status
-oxenvcs-cli auth test       # Verify connection
-oxenvcs-cli auth logout     # Sign out
+auxin auth login      # Authenticate
+auxin auth status     # Check status
+auxin auth test       # Verify connection
+auxin auth logout     # Sign out
 ```
 
 ### ✅ Phase 2: Distributed Lock Management (COMPLETE)
@@ -413,16 +413,16 @@ oxenvcs-cli auth logout     # Sign out
 **Usage:**
 ```bash
 # Acquire exclusive lock (4 hour timeout)
-oxenvcs-cli lock acquire --timeout 4
+auxin lock acquire --timeout 4
 
 # Check lock status
-oxenvcs-cli lock status
+auxin lock status
 
 # Release lock when done
-oxenvcs-cli lock release
+auxin lock release
 
 # Emergency break (with confirmation)
-oxenvcs-cli lock break --force
+auxin lock break --force
 ```
 
 **Lock Storage:**
@@ -445,16 +445,16 @@ oxenvcs-cli lock break --force
 **Usage:**
 ```bash
 # View recent project activity
-oxenvcs-cli activity --limit 10
+auxin activity --limit 10
 
 # Discover team members and contributions
-oxenvcs-cli team
+auxin team
 
 # Add comment to a commit
-oxenvcs-cli comment add <commit-id> "Great mix on the drums!"
+auxin comment add <commit-id> "Great mix on the drums!"
 
 # View comments on a commit
-oxenvcs-cli comment list <commit-id>
+auxin comment list <commit-id>
 ```
 
 **Activity Feed Features:**
@@ -493,7 +493,7 @@ oxenvcs-cli comment list <commit-id>
 
 ### Authentication Issues
 
-**Problem**: `oxenvcs-cli auth test` fails with "Authentication failed"
+**Problem**: `auxin auth test` fails with "Authentication failed"
 
 **Solutions:**
 1. Verify credentials:
@@ -504,8 +504,8 @@ oxenvcs-cli comment list <commit-id>
 
 2. Re-login:
    ```bash
-   oxenvcs-cli auth logout
-   oxenvcs-cli auth login
+   auxin auth logout
+   auxin auth login
    ```
 
 3. Check API key validity at https://hub.oxen.ai/settings/api-keys
@@ -516,8 +516,8 @@ oxenvcs-cli comment list <commit-id>
 
 **Solution**:
 ```bash
-oxenvcs-cli auth test  # Verify authentication
-oxenvcs-cli auth login # Re-authenticate if needed
+auxin auth test  # Verify authentication
+auxin auth login # Re-authenticate if needed
 ```
 
 **Problem**: Push times out on large files
@@ -548,7 +548,7 @@ oxen push origin main --verbose
 
 3. Ensure you're authenticated:
    ```bash
-   oxenvcs-cli auth status
+   auxin auth status
    ```
 
 ### Lock Conflicts
@@ -558,13 +558,13 @@ oxen push origin main --verbose
 **Solution**:
 ```bash
 # Check lock status
-oxenvcs-cli lock status
+auxin lock status
 
 # Wait for lock to expire OR
 # Contact lock holder to release
 
 # Emergency only (with team approval):
-oxenvcs-cli lock break --force
+auxin lock break --force
 ```
 
 ---
@@ -577,12 +577,12 @@ Use descriptive messages that explain **what** and **why**:
 
 ✅ Good:
 ```bash
-oxenvcs-cli commit -m "Added drum automation, fixed timing issues in chorus" --bpm 128
+auxin commit -m "Added drum automation, fixed timing issues in chorus" --bpm 128
 ```
 
 ❌ Bad:
 ```bash
-oxenvcs-cli commit -m "updates"
+auxin commit -m "updates"
 ```
 
 ### 2. Lock Hygiene
@@ -627,7 +627,7 @@ Autosave/
 
 ## FAQ
 
-### Q: How is OxVCS different from Git-LFS?
+### Q: How is Auxin different from Git-LFS?
 
 **A**: Key differences:
 - **Storage efficiency**: Oxen uses block-level deduplication vs. file-level in Git-LFS (10-100x better)
@@ -635,7 +635,7 @@ Autosave/
 - **Performance**: Optimized for large binary datasets (GB-TB scale)
 - **Native integration**: Designed for DAW workflows, not generic version control
 
-### Q: Can I use OxVCS with self-hosted Oxen server?
+### Q: Can I use Auxin with self-hosted Oxen server?
 
 **A**: Yes! Configure custom hub URL during login:
 ```bash
@@ -651,11 +651,11 @@ oxen config remote.hub_url https://your-oxen-server.com
 
 **A**: Check https://hub.oxen.ai/pricing for current plans. Free tier available for small projects.
 
-### Q: Can I migrate from Git to OxVCS?
+### Q: Can I migrate from Git to Auxin?
 
 **A**: Yes, but history won't transfer. Workflow:
 1. Archive Git repository
-2. Initialize OxVCS repository
+2. Initialize Auxin repository
 3. Create initial commit with current state
 4. Push to Oxen Hub
 5. Team clones from Oxen Hub
@@ -665,12 +665,12 @@ oxen config remote.hub_url https://your-oxen-server.com
 ## Resources
 
 ### Documentation
-- [OxVCS User Guide](USER_GUIDE.md)
+- [Auxin User Guide](USER_GUIDE.md)
 - [Oxen.ai Documentation](https://docs.oxen.ai)
 - [Architecture Overview](FOR_DEVELOPERS.md)
 
 ### Getting Help
-- **GitHub Issues**: https://github.com/jbacus/oxen-vcs-logic/issues
+- **GitHub Issues**: https://github.com/jbacus/auxin/issues
 - **Oxen Community**: hello@oxen.ai
 - **Documentation**: Check [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
 
@@ -698,4 +698,4 @@ oxen config remote.hub_url https://your-oxen-server.com
 
 ---
 
-*Last updated: 2025-11-15 | OxVCS v0.1.0 | Oxen integration via subprocess wrapper*
+*Last updated: 2025-11-15 | Auxin v0.1.0 | Oxen integration via subprocess wrapper*

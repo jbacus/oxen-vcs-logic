@@ -266,7 +266,7 @@ cat > ../findings/tempo.md << 'EOF'
 EOF
 
 # 7. Update parser
-# Edit: ../../OxVCS-CLI-Wrapper/src/logic_parser/binary_parser.rs
+# Edit: ../../Auxin-CLI-Wrapper/src/logic_parser/binary_parser.rs
 # Replace: parse_tempo_placeholder()
 # With:    const TEMPO_OFFSET: usize = 0x312;
 ```
@@ -319,16 +319,16 @@ done
 4. **Analyze offsets** to identify data types
 5. **Validate** with multiple projects
 6. **Document** findings in `findings/*.md`
-7. **Update parser** in `../../OxVCS-CLI-Wrapper/src/logic_parser/binary_parser.rs`
-8. **Write tests** in `../../OxVCS-CLI-Wrapper/tests/`
+7. **Update parser** in `../../Auxin-CLI-Wrapper/src/logic_parser/binary_parser.rs`
+8. **Write tests** in `../../Auxin-CLI-Wrapper/tests/`
 
 ---
 
 ## Resources
 
 - **Setup Guide**: `../docs/REVERSE_ENGINEERING_SETUP.md`
-- **Parser Code**: `../OxVCS-CLI-Wrapper/src/logic_parser/binary_parser.rs`
-- **Data Structures**: `../OxVCS-CLI-Wrapper/src/logic_parser/project_data.rs`
+- **Parser Code**: `../Auxin-CLI-Wrapper/src/logic_parser/binary_parser.rs`
+- **Data Structures**: `../Auxin-CLI-Wrapper/src/logic_parser/project_data.rs`
 
 ---
 

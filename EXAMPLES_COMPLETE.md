@@ -30,8 +30,8 @@
 ✓ Repository created at: MyProject.logicx
 ℹ Next steps:
   1. cd MyProject.logicx
-  2. oxenvcs-cli add --all
-  3. oxenvcs-cli commit -m "Initial commit"
+  2. auxin add --all
+  3. auxin commit -m "Initial commit"
 ```
 
 #### Common Workflows
@@ -82,20 +82,20 @@
 
 #### Quick Reference Card
 ```
-┌─ OxVCS Quick Commands ──────────────────────────────────┐
+┌─ Auxin Quick Commands ──────────────────────────────────┐
 │                                                          │
-│  oxenvcs-cli status              See what changed       │
-│  oxenvcs-cli diff                See file details       │
-│  oxenvcs-cli add --all           Stage changes          │
-│  oxenvcs-cli commit -m "msg"     Save version           │
-│  oxenvcs-cli log --limit 10      Recent history         │
-│  oxenvcs-cli show <id>           View commit details    │
-│  oxenvcs-cli restore <id>        Go back to version     │
+│  auxin status              See what changed       │
+│  auxin diff                See file details       │
+│  auxin add --all           Stage changes          │
+│  auxin commit -m "msg"     Save version           │
+│  auxin log --limit 10      Recent history         │
+│  auxin show <id>           View commit details    │
+│  auxin restore <id>        Go back to version     │
 │                                                          │
 │  Team Commands:                                          │
-│  oxenvcs-cli lock status         Check availability     │
-│  oxenvcs-cli lock acquire        Start editing          │
-│  oxenvcs-cli lock release        Finish editing         │
+│  auxin lock status         Check availability     │
+│  auxin lock acquire        Start editing          │
+│  auxin lock release        Finish editing         │
 │                                                          │
 └──────────────────────────────────────────────────────────┘
 ```
@@ -106,7 +106,7 @@
 
 ### 2. **FOR_MUSICIANS.md** - Updated with CLI Section
 
-**Added:** "Using OxVCS from Terminal (Alternative to GUI)" section
+**Added:** "Using Auxin from Terminal (Alternative to GUI)" section
 
 **New Content:**
 - Why use Terminal? (4 clear use cases)
@@ -176,7 +176,7 @@
 - [For Musicians](docs/FOR_MUSICIANS.md) - GUI and CLI coverage
 - [CLI Examples](docs/CLI_EXAMPLES.md) - Real-world CLI examples ✨ NEW!
 - [Installation Guide](INSTALL.md)
-- [CLI Usage Guide](OxVCS-CLI-Wrapper/USAGE.md)
+- [CLI Usage Guide](Auxin-CLI-Wrapper/USAGE.md)
 
 ### Technical Documentation
 - [For Developers](docs/FOR_DEVELOPERS.md)
@@ -198,7 +198,7 @@
 
 ```bash
 # Find all 128 BPM mixes
-oxenvcs-cli log --bpm 128 --tag mixing
+auxin log --bpm 128 --tag mixing
 ```
 
 **Output shown:**
@@ -215,8 +215,8 @@ oxenvcs-cli log --bpm 128 --tag mixing
 
 **Follow-up:**
 ```bash
-oxenvcs-cli show o4p5q6r      # See full details
-oxenvcs-cli restore o4p5q6r   # Get it back
+auxin show o4p5q6r      # See full details
+auxin restore o4p5q6r   # Get it back
 ```
 
 **Time Saved:** 2 minutes vs. hours of searching/recreating
@@ -232,11 +232,11 @@ oxenvcs-cli restore o4p5q6r   # Get it back
 **Drummer:**
 ```bash
 # Finish work
-oxenvcs-cli add --all
-oxenvcs-cli commit -m "Finished drum tracking" --bpm 120 --tags "drums,done"
+auxin add --all
+auxin commit -m "Finished drum tracking" --bpm 120 --tags "drums,done"
 
 # Release lock
-oxenvcs-cli lock release
+auxin lock release
 
 # Message bassist: "Drums are done, lock is released!"
 ```
@@ -244,16 +244,16 @@ oxenvcs-cli lock release
 **Bassist:**
 ```bash
 # Check availability
-oxenvcs-cli lock status
+auxin lock status
 
 # Acquire lock
-oxenvcs-cli lock acquire
+auxin lock acquire
 
 # Work on bass
-oxenvcs-cli commit -m "Added bass line" --tags "bass"
+auxin commit -m "Added bass line" --tags "bass"
 
 # Release when done
-oxenvcs-cli lock release
+auxin lock release
 ```
 
 **Outcome:** Clean handoff, no merge conflicts, clear ownership
@@ -268,7 +268,7 @@ oxenvcs-cli lock release
 
 ```bash
 # Check if auto-save happened
-oxenvcs-cli log --limit 3
+auxin log --limit 3
 ```
 
 **Output shown:**
@@ -358,7 +358,7 @@ oxenvcs-cli log --limit 3
 ? Untracked files (1):
   ? Resources/vocals.wav
 
-ℹ Next step: oxenvcs-cli commit -m "Your message"
+ℹ Next step: auxin commit -m "Your message"
 ```
 
 **Shown in:** CLI_EXAMPLES.md §Quick Start
@@ -379,7 +379,7 @@ oxenvcs-cli log --limit 3
 └──────────────────────────────────────────────────────────┘
 
 ℹ You can now safely edit the project in Logic Pro
-⚠ Remember to release the lock when done: oxenvcs-cli lock release
+⚠ Remember to release the lock when done: auxin lock release
 ```
 
 **Shown in:** CLI_EXAMPLES.md §Working with a Team
@@ -448,7 +448,7 @@ oxenvcs-cli log --limit 3
 
 ### Updated Files
 1. **docs/FOR_MUSICIANS.md** - Added ~70 lines
-   - New "Using OxVCS from Terminal" section
+   - New "Using Auxin from Terminal" section
    - GUI vs CLI comparison
    - Integration with CLI_EXAMPLES.md
 

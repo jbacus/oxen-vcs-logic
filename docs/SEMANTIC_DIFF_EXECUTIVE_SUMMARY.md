@@ -10,7 +10,7 @@
 
 An **intelligent audio analysis system** that understands what changed between versions of a Logic Pro project, not just that something changed.
 
-### Current State (OxVCS MVP)
+### Current State (Auxin MVP)
 - ✅ Tracks files (binary blobs)
 - ✅ Commits/rollback
 - ❌ No understanding of changes
@@ -213,7 +213,7 @@ This is **causal reporting** - not just detecting changes, but explaining them.
 
 ## Conclusion
 
-The semantic audio diff system is **technically feasible but ambitious**. It represents a **multi-year research project** that could transform OxVCS into an industry-leading tool.
+The semantic audio diff system is **technically feasible but ambitious**. It represents a **multi-year research project** that could transform Auxin into an industry-leading tool.
 
 **Core Trade-off**: Time/complexity vs. competitive differentiation
 

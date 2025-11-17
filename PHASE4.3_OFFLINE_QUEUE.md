@@ -9,7 +9,7 @@
 
 ## Summary
 
-Successfully implemented a persistent offline operation queue that allows OxVCS to queue collaboration operations when the network is unavailable and automatically sync them when connectivity is restored.
+Successfully implemented a persistent offline operation queue that allows Auxin to queue collaboration operations when the network is unavailable and automatically sync them when connectivity is restored.
 
 ---
 
@@ -44,14 +44,14 @@ pub struct QueueEntry {
 
 /// Offline queue manager
 pub struct OfflineQueue {
-    queue_dir: PathBuf,                // .oxenvcs/queue/
+    queue_dir: PathBuf,                // .auxin/queue/
     entries: Vec<QueueEntry>,
 }
 ```
 
 #### Key Features
 
-- **Persistent Storage**: Queue entries saved as JSON files in `.oxenvcs/queue/`
+- **Persistent Storage**: Queue entries saved as JSON files in `.auxin/queue/`
 - **Priority System**: Operations ordered by priority (higher first), then by age (older first)
 - **Automatic Retry**: Failed operations remain queued for retry
 - **Atomic Operations**: Each queue entry is an atomic file operation
@@ -63,7 +63,7 @@ pub struct OfflineQueue {
 
 ```rust
 impl OfflineQueue {
-    /// Create queue (uses default queue dir ~/.oxenvcs/queue)
+    /// Create queue (uses default queue dir ~/.auxin/queue)
     pub fn new() -> Result<Self>
 
     /// Create queue with custom directory
@@ -160,7 +160,7 @@ let entry_id = queue.enqueue(QueuedOperation::AcquireLock {
     timeout_hours: 4,
 })?;
 
-// Entry saved to ~/.oxenvcs/queue/{entry_id}.json
+// Entry saved to ~/.auxin/queue/{entry_id}.json
 ```
 
 ### 2. Sync When Online
@@ -250,7 +250,7 @@ execute_entry() -> OxenSubprocess::push() / pull()
 ## File Structure
 
 ```
-.oxenvcs/
+.auxin/
 └── queue/
     ├── 01234567-89ab-cdef-0123-456789abcdef.json  (AcquireLock)
     ├── 12345678-9abc-def0-1234-56789abcdef0.json  (PushCommits)
@@ -380,20 +380,20 @@ oxen.push(...)
 
 ```bash
 # Queue operations when offline
-oxenvcs-cli lock acquire --timeout 4    # Auto-queues if offline
+auxin lock acquire --timeout 4    # Auto-queues if offline
 
 # View pending operations
-oxenvcs-cli queue status
+auxin queue status
 # Output:
 # Pending operations:
 #   1. AcquireLock for MyProject.logicx (queued 5m ago)
 #   2. PushCommits for main (queued 2m ago)
 
 # Manual sync
-oxenvcs-cli queue sync
+auxin queue sync
 
 # Clear completed
-oxenvcs-cli queue clear
+auxin queue clear
 ```
 
 ### Phase 4.4: Partial Push Recovery (Future)
@@ -409,7 +409,7 @@ oxenvcs-cli queue clear
 ### Unit Tests
 
 ```bash
-cd OxVCS-CLI-Wrapper
+cd Auxin-CLI-Wrapper
 cargo test offline_queue
 
 # Output:
@@ -431,20 +431,20 @@ cargo test offline_queue
 ```bash
 # 1. Go offline (disconnect WiFi)
 # 2. Try to acquire lock
-oxenvcs-cli lock acquire --timeout 4
+auxin lock acquire --timeout 4
 # Should queue the operation
 
 # 3. Check queue
-oxenvcs-cli queue status
+auxin queue status
 # Should show 1 pending operation
 
 # 4. Go online (reconnect WiFi)
 # 5. Sync queue
-oxenvcs-cli queue sync
+auxin queue sync
 # Should execute the queued lock acquisition
 
 # 6. Verify
-oxenvcs-cli lock status
+auxin lock status
 # Should show lock acquired
 ```
 
@@ -567,7 +567,7 @@ oxenvcs-cli lock status
 
 **Phase 4.3 Offline Queue: 100% Complete** ✅
 
-We've successfully implemented a robust offline operation queue that seamlessly integrates with OxVCS collaboration features. Users can now work offline and have their operations automatically synced when connectivity is restored.
+We've successfully implemented a robust offline operation queue that seamlessly integrates with Auxin collaboration features. Users can now work offline and have their operations automatically synced when connectivity is restored.
 
 ### Key Achievements
 
@@ -586,7 +586,7 @@ We've successfully implemented a robust offline operation queue that seamlessly 
 3. Test end-to-end offline workflow
 4. Consider Phase 4.4 (Partial Push Recovery)
 
-**Bottom Line:** OxVCS collaboration features are now resilient to network failures, with automatic queuing and sync. The system gracefully handles offline/online transitions without user intervention.
+**Bottom Line:** Auxin collaboration features are now resilient to network failures, with automatic queuing and sync. The system gracefully handles offline/online transitions without user intervention.
 
 ---
 

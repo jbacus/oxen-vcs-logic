@@ -27,7 +27,7 @@ USER1="alice@studio.com"
 USER2="bob@studio.com"
 
 # CLI path
-OXENVCS_CLI="./OxVCS-CLI-Wrapper/target/release/oxenvcs-cli"
+OXENVCS_CLI="./Auxin-CLI-Wrapper/target/release/auxin"
 
 # Functions
 print_header() {

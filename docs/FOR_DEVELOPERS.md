@@ -1,4 +1,4 @@
-# OxVCS Developer Documentation
+# Auxin Developer Documentation
 
 **Technical Architecture, Development Roadmap, and Deployment Guide**
 
@@ -26,7 +26,7 @@ Status: Production Ready (All Phases Complete)
 
 ### Purpose
 
-OxVCS is a macOS-native version control system for Logic Pro projects, solving the fundamental incompatibility between traditional VCS (Git) and DAW workflows.
+Auxin is a macOS-native version control system for Logic Pro projects, solving the fundamental incompatibility between traditional VCS (Git) and DAW workflows.
 
 ### The Problem
 
@@ -85,11 +85,11 @@ Logic Pro projects consist of:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    OxVCS Ecosystem                       │
+│                    Auxin Ecosystem                       │
 ├─────────────────────────────────────────────────────────┤
 │                                                           │
 │  ┌─────────────┐      ┌──────────────┐      ┌────────┐ │
-│  │  OxVCS.app  │◄────►│LaunchAgent   │◄────►│  CLI   │ │
+│  │  Auxin.app  │◄────►│LaunchAgent   │◄────►│  CLI   │ │
 │  │ (SwiftUI)   │ XPC  │ (FSEvents)   │ Exec │ (Rust) │ │
 │  └─────────────┘      └──────────────┘      └────────┘ │
 │         │                     │                    │     │
@@ -187,9 +187,9 @@ Logic Pro projects consist of:
 
 ## Component Deep Dive
 
-### 1. OxVCS-CLI-Wrapper (Rust)
+### 1. Auxin-CLI-Wrapper (Rust)
 
-**Location:** `OxVCS-CLI-Wrapper/`
+**Location:** `Auxin-CLI-Wrapper/`
 
 **Architecture:**
 ```
@@ -276,9 +276,9 @@ impl OxenSubprocess {
 
 ---
 
-### 2. OxVCS-LaunchAgent (Swift Daemon)
+### 2. Auxin-LaunchAgent (Swift Daemon)
 
-**Location:** `OxVCS-LaunchAgent/`
+**Location:** `Auxin-LaunchAgent/`
 
 **Architecture:**
 ```
@@ -423,14 +423,14 @@ class LockManager {
 
 ---
 
-### 3. OxVCS-App (SwiftUI GUI)
+### 3. Auxin-App (SwiftUI GUI)
 
-**Location:** `OxVCS-App/`
+**Location:** `Auxin-App/`
 
 **Architecture (Post-SwiftUI Migration):**
 ```
 Sources/
-├── OxVCSApp.swift                    # App entry (@main)
+├── AuxinApp.swift                    # App entry (@main)
 ├── AppDelegate.swift                 # Legacy menu bar support
 ├── Views/
 │   ├── SwiftUI/
@@ -510,7 +510,7 @@ class OxenDaemonXPCClient {
     }
 
     private func setupConnection() {
-        connection = NSXPCConnection(serviceName: "com.oxen.logic.daemon.xpc")
+        connection = NSXPCConnection(serviceName: "com.auxin.daemon.xpc")
         connection?.remoteObjectInterface = NSXPCInterface(with: OxenDaemonXPCProtocol.self)
         connection?.resume()
     }
@@ -557,8 +557,8 @@ class OxenDaemonXPCClient {
 
 ```bash
 # Clone repository
-git clone https://github.com/jbacus/oxen-vcs-logic.git
-cd oxen-vcs-logic
+git clone https://github.com/jbacus/auxin.git
+cd auxin
 
 # Automated installation (recommended)
 ./install.sh
@@ -568,26 +568,26 @@ cd oxen-vcs-logic
 
 ```bash
 # Build CLI wrapper
-cd OxVCS-CLI-Wrapper
+cd Auxin-CLI-Wrapper
 cargo build --release
 cargo test
 
 # Build LaunchAgent
-cd ../OxVCS-LaunchAgent
+cd ../Auxin-LaunchAgent
 swift build -c release
 swift test
 
 # Build GUI App
-cd ../OxVCS-App
+cd ../Auxin-App
 swift build -c release
-./create-app-bundle.sh  # Creates OxVCS.app
+./create-app-bundle.sh  # Creates Auxin.app
 ```
 
 ### Development Workflow
 
 **Rust Development:**
 ```bash
-cd OxVCS-CLI-Wrapper
+cd Auxin-CLI-Wrapper
 
 # Run tests (fast iteration)
 cargo test
@@ -610,7 +610,7 @@ cargo build --release
 
 **Swift Development:**
 ```bash
-cd OxVCS-LaunchAgent  # or OxVCS-App
+cd Auxin-LaunchAgent  # or Auxin-App
 
 # Run tests
 swift test
@@ -629,13 +629,13 @@ swift run
 
 1. **Daemon Logs:**
    ```bash
-   log show --predicate 'process == "OxVCS-LaunchAgent"' --last 1h --style syslog
+   log show --predicate 'process == "Auxin-LaunchAgent"' --last 1h --style syslog
    ```
 
 2. **CLI Verbose Mode:**
    ```bash
-   export OXENVCS_VERBOSE=1
-   oxenvcs-cli init --logic /path/to/project
+   export AUXIN_VERBOSE=1
+   auxin init --logic /path/to/project
    ```
 
 3. **XPC Debugging:**
@@ -687,17 +687,17 @@ swift run
 **Component-Specific:**
 ```bash
 # Rust CLI
-cd OxVCS-CLI-Wrapper
+cd Auxin-CLI-Wrapper
 cargo test --lib          # Unit tests only
 cargo test --tests        # Integration tests only
 cargo test               # All tests
 
 # Swift LaunchAgent
-cd OxVCS-LaunchAgent
+cd Auxin-LaunchAgent
 swift test
 
 # Swift App
-cd OxVCS-App
+cd Auxin-App
 swift test
 ```
 
@@ -705,7 +705,7 @@ swift test
 
 **Logic Pro Project Simulation:**
 ```rust
-// OxVCS-CLI-Wrapper/tests/common/mod.rs
+// Auxin-CLI-Wrapper/tests/common/mod.rs
 pub struct TestFixture {
     temp_dir: TempDir,
 }
@@ -798,14 +798,14 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-      - run: cd OxVCS-CLI-Wrapper && cargo test
+      - run: cd Auxin-CLI-Wrapper && cargo test
 
   swift-tests:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v3
-      - run: cd OxVCS-LaunchAgent && swift test
-      - run: cd OxVCS-App && swift test
+      - run: cd Auxin-LaunchAgent && swift test
+      - run: cd Auxin-App && swift test
 ```
 
 ---
@@ -820,15 +820,15 @@ jobs:
 ./build-release.sh
 
 # Manual steps:
-cd OxVCS-CLI-Wrapper && cargo build --release
-cd ../OxVCS-LaunchAgent && swift build -c release
-cd ../OxVCS-App && swift build -c release && ./create-app-bundle.sh
+cd Auxin-CLI-Wrapper && cargo build --release
+cd ../Auxin-LaunchAgent && swift build -c release
+cd ../Auxin-App && swift build -c release && ./create-app-bundle.sh
 ```
 
 **Output Artifacts:**
-- `OxVCS-CLI-Wrapper/target/release/oxenvcs-cli` (binary)
-- `OxVCS-LaunchAgent/.build/release/OxVCS-LaunchAgent` (binary)
-- `OxVCS-App/OxVCS.app` (app bundle)
+- `Auxin-CLI-Wrapper/target/release/auxin` (binary)
+- `Auxin-LaunchAgent/.build/release/Auxin-LaunchAgent` (binary)
+- `Auxin-App/Auxin.app` (app bundle)
 
 ### Installation Process
 
@@ -838,25 +838,25 @@ cd ../OxVCS-App && swift build -c release && ./create-app-bundle.sh
 set -e
 
 echo "Building Rust CLI wrapper..."
-cd OxVCS-CLI-Wrapper
+cd Auxin-CLI-Wrapper
 cargo build --release
-sudo cp target/release/oxenvcs-cli /usr/local/bin/
-sudo chmod +x /usr/local/bin/oxenvcs-cli
+sudo cp target/release/auxin /usr/local/bin/
+sudo chmod +x /usr/local/bin/auxin
 
 echo "Building Swift LaunchAgent..."
-cd ../OxVCS-LaunchAgent
+cd ../Auxin-LaunchAgent
 swift build -c release
-cp .build/release/OxVCS-LaunchAgent ~/Library/Application\ Support/OxVCS/
+cp .build/release/Auxin-LaunchAgent ~/Library/Application\ Support/Auxin/
 
 echo "Installing LaunchAgent..."
-cp Resources/com.oxenvcs.agent.plist ~/Library/LaunchAgents/
-launchctl load ~/Library/LaunchAgents/com.oxenvcs.agent.plist
+cp Resources/com.auxin.agent.plist ~/Library/LaunchAgents/
+launchctl load ~/Library/LaunchAgents/com.auxin.agent.plist
 
 echo "Building GUI App..."
-cd ../OxVCS-App
+cd ../Auxin-App
 swift build -c release
 ./create-app-bundle.sh
-cp -R OxVCS.app /Applications/
+cp -R Auxin.app /Applications/
 
 echo "✅ Installation complete!"
 ```
@@ -868,20 +868,20 @@ echo "✅ Installation complete!"
 # Sign CLI binary
 codesign --force --sign "Developer ID Application: Your Name" \
          --options runtime \
-         /usr/local/bin/oxenvcs-cli
+         /usr/local/bin/auxin
 
 # Sign LaunchAgent
 codesign --force --sign "Developer ID Application: Your Name" \
          --options runtime \
-         ~/Library/Application\ Support/OxVCS/OxVCS-LaunchAgent
+         ~/Library/Application\ Support/Auxin/Auxin-LaunchAgent
 
 # Sign App Bundle
 codesign --force --deep --sign "Developer ID Application: Your Name" \
          --options runtime \
-         /Applications/OxVCS.app
+         /Applications/Auxin.app
 
 # Notarize for Gatekeeper
-xcrun notarytool submit OxVCS.app.zip \
+xcrun notarytool submit Auxin.app.zip \
          --apple-id "your@email.com" \
          --password "app-specific-password" \
          --wait
@@ -894,14 +894,14 @@ xcrun notarytool submit OxVCS.app.zip \
 # Create release archive
 VERSION=0.1.0
 tar -czf oxvcs-${VERSION}-macos.tar.gz \
-    /usr/local/bin/oxenvcs-cli \
-    ~/Library/Application\ Support/OxVCS/ \
-    /Applications/OxVCS.app
+    /usr/local/bin/auxin \
+    ~/Library/Application\ Support/Auxin/ \
+    /Applications/Auxin.app
 
 # Upload to GitHub Releases
 gh release create v${VERSION} \
    oxvcs-${VERSION}-macos.tar.gz \
-   --title "OxVCS ${VERSION}" \
+   --title "Auxin ${VERSION}" \
    --notes "See CHANGELOG.md for details"
 ```
 
@@ -911,13 +911,13 @@ cask "oxvcs" do
   version "0.1.0"
   sha256 "..."
 
-  url "https://github.com/jbacus/oxen-vcs-logic/releases/download/v#{version}/oxvcs-#{version}-macos.tar.gz"
-  name "OxVCS"
+  url "https://github.com/jbacus/auxin/releases/download/v#{version}/oxvcs-#{version}-macos.tar.gz"
+  name "Auxin"
   desc "Version control for Logic Pro projects"
-  homepage "https://github.com/jbacus/oxen-vcs-logic"
+  homepage "https://github.com/jbacus/auxin"
 
-  app "OxVCS.app"
-  binary "oxenvcs-cli"
+  app "Auxin.app"
+  binary "auxin"
 end
 ```
 
@@ -927,27 +927,27 @@ end
 
 ### CLI Commands
 
-**`oxenvcs-cli init`**
+**`auxin init`**
 ```
 Initialize Oxen repository for Logic Pro project
 
 USAGE:
-    oxenvcs-cli init [OPTIONS] <PATH>
+    auxin init [OPTIONS] <PATH>
 
 OPTIONS:
     --logic    Validate as Logic Pro project and generate .oxenignore
     -v         Verbose output
 
 EXAMPLES:
-    oxenvcs-cli init --logic ~/Music/MyProject.logicx
+    auxin init --logic ~/Music/MyProject.logicx
 ```
 
-**`oxenvcs-cli commit`**
+**`auxin commit`**
 ```
 Create commit with metadata
 
 USAGE:
-    oxenvcs-cli commit [OPTIONS]
+    auxin commit [OPTIONS]
 
 OPTIONS:
     -m, --message <MSG>       Commit message (required)
@@ -957,15 +957,15 @@ OPTIONS:
     --tags <TAGS>             Comma-separated tags (e.g., "mix,v2,final")
 
 EXAMPLES:
-    oxenvcs-cli commit -m "Mix v2" --bpm 128 --tags "mix,final"
+    auxin commit -m "Mix v2" --bpm 128 --tags "mix,final"
 ```
 
-**`oxenvcs-cli restore`**
+**`auxin restore`**
 ```
 Restore project to specific commit
 
 USAGE:
-    oxenvcs-cli restore <COMMIT_ID>
+    auxin restore <COMMIT_ID>
 
 NOTES:
     - Supports short hashes (7+ chars)
@@ -973,8 +973,8 @@ NOTES:
     - Non-destructive operation
 
 EXAMPLES:
-    oxenvcs-cli restore abc123f
-    oxenvcs-cli restore abc123f7  # Full hash also works
+    auxin restore abc123f
+    auxin restore abc123f7  # Full hash also works
 ```
 
 ### XPC Protocol
@@ -1155,7 +1155,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 - [XPC Services Guide](https://developer.apple.com/documentation/xpc)
 
 **Community:**
-- GitHub Issues: [Report bugs](https://github.com/jbacus/oxen-vcs-logic/issues)
+- GitHub Issues: [Report bugs](https://github.com/jbacus/auxin/issues)
 - Discord: Coming soon
 - Email: dev@oxen-vcs.com
 
@@ -1163,5 +1163,5 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 
 **Document Version:** 1.0
 **Last Updated:** November 2025
-**Maintained By:** OxVCS Development Team
+**Maintained By:** Auxin Development Team
 **License:** MIT

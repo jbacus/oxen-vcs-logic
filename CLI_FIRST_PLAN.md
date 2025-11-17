@@ -20,7 +20,7 @@
 
 ## Executive Summary
 
-**Goal:** Make OxVCS fully functional via CLI with rich visual feedback, interactive features, and real-time monitoring.
+**Goal:** Make Auxin fully functional via CLI with rich visual feedback, interactive features, and real-time monitoring.
 
 **Why CLI-First:**
 - ✅ Plays to our strengths (85% test coverage, working backend)
@@ -43,13 +43,13 @@
 
 **Core Commands:**
 ```bash
-oxenvcs-cli init --logic <path>          # Initialize Logic Pro project
-oxenvcs-cli add --all                     # Stage changes
-oxenvcs-cli commit -m "msg" --bpm 120     # Commit with metadata
-oxenvcs-cli log --limit 10                # View history
-oxenvcs-cli restore <commit_id>           # Restore to version
-oxenvcs-cli status                        # Show working directory status
-oxenvcs-cli metadata-diff <a> <b>         # Compare project versions
+auxin init --logic <path>          # Initialize Logic Pro project
+auxin add --all                     # Stage changes
+auxin commit -m "msg" --bpm 120     # Commit with metadata
+auxin log --limit 10                # View history
+auxin restore <commit_id>           # Restore to version
+auxin status                        # Show working directory status
+auxin metadata-diff <a> <b>         # Compare project versions
 ```
 
 **Features:**
@@ -123,7 +123,7 @@ pb.finish_with_message("✓ Commit created");
 Enhance `status` command with visual formatting:
 
 ```bash
-$ oxenvcs-cli status
+$ auxin status
 
 ┌─ Repository Status ─────────────────────────────────────┐
 │ Branch: draft                                            │
@@ -141,14 +141,14 @@ $ oxenvcs-cli status
 ? Untracked (1 file)
   ? Resources/new-bass.wav
 
-Next: oxenvcs-cli commit -m "Your message"
+Next: auxin commit -m "Your message"
 ```
 
 #### 1.3 Enhanced Log Output
 Make commit history more visual:
 
 ```bash
-$ oxenvcs-cli log --limit 5
+$ auxin log --limit 5
 
 ┌─ Commit History ────────────────────────────────────────┐
 
@@ -188,13 +188,13 @@ dialoguer = "0.11"      # Interactive prompts
 #### 2.1 Console Architecture
 
 ```bash
-$ oxenvcs-cli console
+$ auxin console
 ```
 
 **Interface Design:**
 
 ```
-┏━ OxVCS Console ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┏━ Auxin Console ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
 ┃                                                             ┃
 ┃ Project: ~/Music/MyTrack.logicx                           ┃
 ┃ Daemon:  ● Running (PID: 12345)                           ┃
@@ -374,7 +374,7 @@ Press 'r' → History browser appears
 
 ```bash
 # Check daemon status
-oxenvcs-cli daemon status
+auxin daemon status
 > Daemon Status:
 > Running: ✓ (PID: 12345)
 > Monitored projects: 2
@@ -383,39 +383,39 @@ oxenvcs-cli daemon status
 > Next auto-commit: 23 seconds
 
 # Start daemon
-oxenvcs-cli daemon start
+auxin daemon start
 
 # Stop daemon
-oxenvcs-cli daemon stop
+auxin daemon stop
 
 # Restart daemon
-oxenvcs-cli daemon restart
+auxin daemon restart
 
 # View daemon logs (tail -f style)
-oxenvcs-cli daemon logs --follow
+auxin daemon logs --follow
 
 # Add project to monitoring
-oxenvcs-cli daemon monitor ~/Music/NewTrack.logicx
+auxin daemon monitor ~/Music/NewTrack.logicx
 
 # Remove project from monitoring
-oxenvcs-cli daemon unmonitor ~/Music/OldTrack.logicx
+auxin daemon unmonitor ~/Music/OldTrack.logicx
 
 # Pause monitoring (useful during long edit sessions)
-oxenvcs-cli daemon pause
-oxenvcs-cli daemon resume
+auxin daemon pause
+auxin daemon resume
 
 # Force immediate commit (override debounce)
-oxenvcs-cli daemon commit-now
+auxin daemon commit-now
 ```
 
 #### 3.2 Watch Mode
 
 ```bash
 # Watch mode: continuous status updates
-oxenvcs-cli watch
+auxin watch
 
 Output:
-Every 2s: oxenvcs-cli status
+Every 2s: auxin status
 
 ┌─ Repository Status (Auto-refreshing) ───────────────┐
 │ Last update: 14:32:48                                │
@@ -437,24 +437,24 @@ Every 2s: oxenvcs-cli status
 
 ```bash
 # Acquire lock (for team workflows)
-oxenvcs-cli lock acquire --timeout 4h
+auxin lock acquire --timeout 4h
 > ✓ Lock acquired
 > Lock expires: 2025-11-15 18:30:00
-> To release early: oxenvcs-cli lock release
+> To release early: auxin lock release
 
 # Check lock status
-oxenvcs-cli lock status
+auxin lock status
 > Lock Status:
 > Locked by: john@macbook.local
 > Acquired: 2025-11-15 14:30:00
 > Expires: 2025-11-15 18:30:00 (3h 45m remaining)
 
 # Release lock
-oxenvcs-cli lock release
+auxin lock release
 > ✓ Lock released
 
 # Force break lock (admin only)
-oxenvcs-cli lock break --force
+auxin lock break --force
 > ⚠ Warning: This will break the lock held by jane@macbook.local
 > Are you sure? [y/N]: y
 > ✓ Lock forcibly broken
@@ -469,7 +469,7 @@ oxenvcs-cli lock break --force
 **Enhance diff to show file-level changes:**
 
 ```bash
-oxenvcs-cli diff
+auxin diff
 
 Output:
 ┌─ Changes Since Last Commit ─────────────────────────┐
@@ -497,19 +497,19 @@ Use --verbose to see detailed metadata diff
 
 ```bash
 # List branches
-oxenvcs-cli branch list
+auxin branch list
 > Branches:
 > * draft   (12 commits ahead of main)
 >   main    (latest: abc123f "Vocal tracking complete")
 
 # Create milestone from draft
-oxenvcs-cli branch merge-to-main -m "Week 1 progress"
+auxin branch merge-to-main -m "Week 1 progress"
 > ✓ Merged draft branch to main
 > ✓ Created commit: def456a
 > ✓ Draft branch reset
 
 # View draft commits
-oxenvcs-cli branch show-drafts
+auxin branch show-drafts
 > Draft Commits (12):
 > abc123f  3 min ago   Auto-save
 > def456a  5 min ago   Auto-save
@@ -521,10 +521,10 @@ oxenvcs-cli branch show-drafts
 
 ```bash
 # Export project at specific commit
-oxenvcs-cli export <commit_id> --output ~/Desktop/MyTrack_v2.logicx
+auxin export <commit_id> --output ~/Desktop/MyTrack_v2.logicx
 
 # Create archive (for sharing)
-oxenvcs-cli archive --commit <commit_id> --output track_archive.tar.gz
+auxin archive --commit <commit_id> --output track_archive.tar.gz
 > ✓ Archived commit abc123f to track_archive.tar.gz
 > Size: 450 MB (compressed from 1.2 GB)
 ```
@@ -532,7 +532,7 @@ oxenvcs-cli archive --commit <commit_id> --output track_archive.tar.gz
 #### 4.4 Statistics
 
 ```bash
-oxenvcs-cli stats
+auxin stats
 
 Output:
 ┌─ Repository Statistics ──────────────────────────────┐
@@ -662,7 +662,7 @@ Output:
 ## Documentation Updates
 
 ### Update FOR_MUSICIANS.md
-**New section: "Using OxVCS from the Command Line"**
+**New section: "Using Auxin from the Command Line"**
 
 ```markdown
 ### Daily Workflow (Terminal)
@@ -670,26 +670,26 @@ Output:
 **Morning - Check Status**
 ```bash
 cd ~/Music/MyProject.logicx
-oxenvcs-cli status
+auxin status
 ```
 
 **During Work - Watch Changes**
 ```bash
 # Open in one terminal window
-oxenvcs-cli console
+auxin console
 # See real-time updates as you edit in Logic Pro
 ```
 
 **End of Session - Create Milestone**
 ```bash
-oxenvcs-cli add --all
-oxenvcs-cli commit -m "Finished vocal tracking" --bpm 128 --tags "vocals,tracking"
+auxin add --all
+auxin commit -m "Finished vocal tracking" --bpm 128 --tags "vocals,tracking"
 ```
 
 **Need to Roll Back?**
 ```bash
 # Browse history interactively
-oxenvcs-cli console
+auxin console
 # Press 'r' to restore to previous version
 ```
 ```
@@ -697,26 +697,26 @@ oxenvcs-cli console
 ### Create CLI_QUICK_START.md
 
 ```markdown
-# OxVCS CLI Quick Start
+# Auxin CLI Quick Start
 
 ## 5-Minute Setup
 
-1. **Install OxVCS**
+1. **Install Auxin**
    ```bash
-   git clone https://github.com/jbacus/oxen-vcs-logic.git
-   cd oxen-vcs-logic
+   git clone https://github.com/jbacus/auxin.git
+   cd auxin
    ./install.sh
    ```
 
 2. **Initialize Your First Project**
    ```bash
    cd ~/Music/YourProject.logicx
-   oxenvcs-cli init --logic .
+   auxin init --logic .
    ```
 
 3. **Start the Console**
    ```bash
-   oxenvcs-cli console
+   auxin console
    ```
 
    You'll see real-time updates as you work in Logic Pro!
@@ -731,10 +731,10 @@ oxenvcs-cli console
 ## Essential Commands
 
 ```bash
-oxenvcs-cli console          # Interactive monitoring & control
-oxenvcs-cli status           # Quick status check
-oxenvcs-cli log --limit 10   # Recent history
-oxenvcs-cli watch            # Auto-refreshing status
+auxin console          # Interactive monitoring & control
+auxin status           # Quick status check
+auxin log --limit 10   # Recent history
+auxin watch            # Auto-refreshing status
 ```
 ```
 

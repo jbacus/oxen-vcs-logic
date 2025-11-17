@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-This document provides a **complete, systematic plan** to rename the project from "oxen-vcs-logic" / "OxVCS" to "Auxin". This is a critical operation that requires 100% completeness - any missed references will cause:
+This document provides a **complete, systematic plan** to rename the project from "auxin" / "Auxin" to "Auxin". This is a critical operation that requires 100% completeness - any missed references will cause:
 - Broken builds
 - Failed tests
 - Broken installation
@@ -25,73 +25,73 @@ This document provides a **complete, systematic plan** to rename the project fro
 
 | Pattern | Old Name | New Name | Occurrences | Usage Context |
 |---------|----------|----------|-------------|---------------|
-| **Repository** | `oxen-vcs-logic` | `auxin` | ~15 | GitHub URLs, clone commands |
-| **Binary/CLI** | `oxenvcs-cli` | `auxin` | ~400 | Binary name, command invocations |
-| **Crate/Package** | `oxenvcs-cli` | `auxin` | ~5 | Cargo.toml, Package.swift |
+| **Repository** | `auxin` | `auxin` | ~15 | GitHub URLs, clone commands |
+| **Binary/CLI** | `auxin` | `auxin` | ~400 | Binary name, command invocations |
+| **Crate/Package** | `auxin` | `auxin` | ~5 | Cargo.toml, Package.swift |
 | **Short form** | `oxenvcs` | `auxin` | ~40 | Code comments, docs |
-| **Capitalized** | `OxVCS` | `Auxin` | ~150 | Headers, class names, UI text |
+| **Capitalized** | `Auxin` | `Auxin` | ~150 | Headers, class names, UI text |
 | **Uppercase** | `OXENVCS` | `AUXIN` | ~40 | Environment variables |
-| **Config dir** | `.oxenvcs` | `.auxin` | ~35 | File system paths |
-| **Service ID (CLI)** | `com.oxenvcs.agent` | `com.auxin.agent` | ~5 | Rust daemon client |
-| **Service ID (LaunchAgent)** | `com.oxen.logic.daemon` | `com.auxin.daemon` | ~25 | macOS LaunchAgent & XPC |
-| **App Bundle ID** | `com.oxenvcs.app` | `com.auxin.app` | ~5 | macOS App Info.plist |
-| **Directories** | `OxVCS-*` | `Auxin-*` | ~10 | Directory structure |
-| **GitHub Repo** | `jbacus/oxen-vcs-logic` | `jbacus/auxin` | ~30 | Repository URLs |
+| **Config dir** | `.auxin` | `.auxin` | ~35 | File system paths |
+| **Service ID (CLI)** | `com.auxin.agent` | `com.auxin.agent` | ~5 | Rust daemon client |
+| **Service ID (LaunchAgent)** | `com.auxin.daemon` | `com.auxin.daemon` | ~25 | macOS LaunchAgent & XPC |
+| **App Bundle ID** | `com.auxin.app` | `com.auxin.app` | ~5 | macOS App Info.plist |
+| **Directories** | `Auxin-*` | `Auxin-*` | ~10 | Directory structure |
+| **GitHub Repo** | `jbacus/auxin` | `jbacus/auxin` | ~30 | Repository URLs |
 
 ### Detailed Naming Decisions
 
-**Binary Name**: `oxenvcs-cli` → `auxin`
+**Binary Name**: `auxin` → `auxin`
 - Rationale: Simpler, cleaner, matches modern CLI conventions (git, cargo, npm)
-- Impact: All command examples must change from `oxenvcs-cli` to `auxin`
+- Impact: All command examples must change from `auxin` to `auxin`
 
-**Crate Name**: `oxenvcs-cli` → `auxin`
+**Crate Name**: `auxin` → `auxin`
 - Impact: Cargo.toml package name, lib name
 - Impact: Homebrew formula class name
 
 **Directory Structure**:
 ```
 OLD:                           NEW:
-oxen-vcs-logic/               auxin/
-├── OxVCS-CLI-Wrapper/        ├── Auxin-CLI-Wrapper/
-├── OxVCS-LaunchAgent/        ├── Auxin-LaunchAgent/
-└── OxVCS-App/                └── Auxin-App/
+auxin/               auxin/
+├── Auxin-CLI-Wrapper/        ├── Auxin-CLI-Wrapper/
+├── Auxin-LaunchAgent/        ├── Auxin-LaunchAgent/
+└── Auxin-App/                └── Auxin-App/
 ```
 
-**Config Directory**: `~/.oxenvcs/` → `~/.auxin/`
+**Config Directory**: `~/.auxin/` → `~/.auxin/`
 - Impact: User config path, queue directory, credentials storage
 - Migration: Users will need to copy their config
 
 **Environment Variables**:
 ```
-OXENVCS_VERBOSE      → AUXIN_VERBOSE
-OXENVCS_COLOR        → AUXIN_COLOR
-OXENVCS_LOCK_TIMEOUT → AUXIN_LOCK_TIMEOUT
-OXENVCS_MAX_RETRIES  → AUXIN_MAX_RETRIES
-OXENVCS_QUEUE_DIR    → AUXIN_QUEUE_DIR
-OXENVCS_AUTO_SYNC    → AUXIN_AUTO_SYNC
-OXENVCS_LOG          → AUXIN_LOG
-OXENVCS_DRAFT_BRANCH → AUXIN_DRAFT_BRANCH
-OXENVCS_MAX_DRAFT_COMMITS → AUXIN_MAX_DRAFT_COMMITS
+AUXIN_VERBOSE      → AUXIN_VERBOSE
+AUXIN_COLOR        → AUXIN_COLOR
+AUXIN_LOCK_TIMEOUT → AUXIN_LOCK_TIMEOUT
+AUXIN_MAX_RETRIES  → AUXIN_MAX_RETRIES
+AUXIN_QUEUE_DIR    → AUXIN_QUEUE_DIR
+AUXIN_AUTO_SYNC    → AUXIN_AUTO_SYNC
+AUXIN_LOG          → AUXIN_LOG
+AUXIN_DRAFT_BRANCH → AUXIN_DRAFT_BRANCH
+AUXIN_MAX_DRAFT_COMMITS → AUXIN_MAX_DRAFT_COMMITS
 ```
 
 **macOS Service Identifiers** (CRITICAL - Multiple IDs):
 ```
 Rust Daemon Client (src/daemon_client.rs):
-  com.oxenvcs.agent → com.auxin.agent
+  com.auxin.agent → com.auxin.agent
 
-Swift LaunchAgent (OxVCS-LaunchAgent/Resources/*.plist):
-  com.oxen.logic.daemon → com.auxin.daemon
-  com.oxen.logic.daemon.xpc → com.auxin.daemon.xpc
+Swift LaunchAgent (Auxin-LaunchAgent/Resources/*.plist):
+  com.auxin.daemon → com.auxin.daemon
+  com.auxin.daemon.xpc → com.auxin.daemon.xpc
 
-Swift App (OxVCS-App/Resources/Info.plist):
-  com.oxenvcs.app → com.auxin.app
+Swift App (Auxin-App/Resources/Info.plist):
+  com.auxin.app → com.auxin.app
 ```
 - Impact: Users must unload old LaunchAgent before installing new one
 - Impact: XPC service communication will fail if IDs don't match
 - Impact: macOS app signing/notarization requires new bundle ID
 - Migration: Critical for daemon/app communication
 
-**GitHub Repository**: `jbacus/oxen-vcs-logic` → `jbacus/auxin`
+**GitHub Repository**: `jbacus/auxin` → `jbacus/auxin`
 - Impact: All clone URLs, documentation links, badges
 - Impact: GitHub Actions workflows (may auto-update)
 - Impact: Homebrew tap URL (if published)
@@ -105,16 +105,16 @@ Swift App (OxVCS-App/Resources/Info.plist):
 
 **Completion Files**:
 ```
-_oxenvcs-cli        → _auxin
-oxenvcs-cli.bash    → auxin.bash
-oxenvcs-cli.fish    → auxin.fish
-oxenvcs-cli.ps1     → auxin.ps1
+_auxin        → _auxin
+auxin.bash    → auxin.bash
+auxin.fish    → auxin.fish
+auxin.ps1     → auxin.ps1
 ```
 
 **Homebrew Formula**:
 ```
 Class: OxenvcsLi    → Auxin
-File: oxenvcs-cli.rb → auxin.rb
+File: auxin.rb → auxin.rb
 ```
 
 ---
@@ -132,12 +132,12 @@ git push -u origin rename-to-auxin
 **Step 1.2**: Backup current state
 ```bash
 cd ..
-cp -r oxen-vcs-logic oxen-vcs-logic-backup
+cp -r auxin auxin-backup
 ```
 
 **Step 1.3**: Verify all tests pass before rename
 ```bash
-cd OxVCS-CLI-Wrapper
+cd Auxin-CLI-Wrapper
 cargo test --lib  # Should show 331 passed
 ```
 
@@ -154,14 +154,14 @@ These files control the build system. Change these first to catch compilation er
 
 **Priority Order**:
 
-**2.1 - Rust Cargo.toml** (OxVCS-CLI-Wrapper/Cargo.toml)
+**2.1 - Rust Cargo.toml** (Auxin-CLI-Wrapper/Cargo.toml)
 ```toml
 OLD:
 [package]
-name = "oxenvcs-cli"
+name = "auxin"
 ...
 [[bin]]
-name = "oxenvcs-cli"
+name = "auxin"
 
 NEW:
 [package]
@@ -187,8 +187,8 @@ cargo test --lib
 
 **2.4 - Swift Package.swift files** (if they exist)
 - Search for `name:` fields
-- Change: `OxVCS-LaunchAgent` → `Auxin-LaunchAgent`
-- Change: `OxVCS-App` → `Auxin-App`
+- Change: `Auxin-LaunchAgent` → `Auxin-LaunchAgent`
+- Change: `Auxin-App` → `Auxin-App`
 
 ---
 
@@ -198,14 +198,14 @@ Change in this exact order to maintain compilation:
 
 **3.1 - Constants in daemon_client.rs** (src/daemon_client.rs)
 ```rust
-OLD: const LAUNCH_AGENT_LABEL: &str = "com.oxenvcs.agent";
+OLD: const LAUNCH_AGENT_LABEL: &str = "com.auxin.agent";
 NEW: const LAUNCH_AGENT_LABEL: &str = "com.auxin.agent";
 ```
 - Lines: 11, 230, 245
 
 **3.2 - Config paths in config.rs** (src/config.rs)
 ```rust
-OLD: dirs::home_dir().map(|home| home.join(".oxenvcs").join("config.toml"))
+OLD: dirs::home_dir().map(|home| home.join(".auxin").join("config.toml"))
 NEW: dirs::home_dir().map(|home| home.join(".auxin").join("config.toml"))
 ```
 - Lines: 259, 266
@@ -213,14 +213,14 @@ NEW: dirs::home_dir().map(|home| home.join(".auxin").join("config.toml"))
 
 **3.3 - Queue directory in offline_queue.rs** (src/offline_queue.rs)
 ```rust
-OLD: const DEFAULT_QUEUE_DIR: &str = ".oxenvcs/queue";
+OLD: const DEFAULT_QUEUE_DIR: &str = ".auxin/queue";
 NEW: const DEFAULT_QUEUE_DIR: &str = ".auxin/queue";
 ```
 - Line: 48
 
 **3.4 - Credentials path in auth.rs** (src/auth.rs)
 ```rust
-OLD: home.join(".oxenvcs").join("credentials.json")
+OLD: home.join(".auxin").join("credentials.json")
 NEW: home.join(".auxin").join("credentials.json")
 ```
 - Lines: 108, 112, 119, 444, 457
@@ -228,11 +228,11 @@ NEW: home.join(".auxin").join("credentials.json")
 **3.5 - Environment variables in config.rs** (src/config.rs:283-314)
 ```rust
 OLD:
-std::env::var("OXENVCS_VERBOSE")
-std::env::var("OXENVCS_COLOR")
-std::env::var("OXENVCS_LOCK_TIMEOUT")
-std::env::var("OXENVCS_MAX_RETRIES")
-std::env::var("OXENVCS_QUEUE_DIR")
+std::env::var("AUXIN_VERBOSE")
+std::env::var("AUXIN_COLOR")
+std::env::var("AUXIN_LOCK_TIMEOUT")
+std::env::var("AUXIN_MAX_RETRIES")
+std::env::var("AUXIN_QUEUE_DIR")
 
 NEW:
 std::env::var("AUXIN_VERBOSE")
@@ -244,7 +244,7 @@ std::env::var("AUXIN_QUEUE_DIR")
 
 **3.6 - Help text and error messages in main.rs** (src/main.rs)
 - Update CLI description (line 8): "Oxen.ai CLI wrapper" → "Auxin - Version control for Logic Pro"
-- Update all command examples showing `oxenvcs-cli` → `auxin`
+- Update all command examples showing `auxin` → `auxin`
 - Lines: ~127 occurrences throughout file
 
 **3.7 - Module documentation** (All src/*.rs files)
@@ -276,14 +276,14 @@ cargo test --lib
 
 **CRITICAL**: Swift files reference macOS service identifiers that enable IPC communication between the CLI, LaunchAgent, and App. These MUST match exactly.
 
-**3A.1 - LaunchAgent plist** (OxVCS-LaunchAgent/Resources/com.oxen.logic.daemon.plist)
+**3A.1 - LaunchAgent plist** (Auxin-LaunchAgent/Resources/com.auxin.daemon.plist)
 ```xml
 OLD:
 <key>Label</key>
-<string>com.oxen.logic.daemon</string>
+<string>com.auxin.daemon</string>
 <key>MachServices</key>
 <dict>
-    <key>com.oxen.logic.daemon.xpc</key>
+    <key>com.auxin.daemon.xpc</key>
     <true/>
 </dict>
 
@@ -296,52 +296,52 @@ NEW:
     <true/>
 </dict>
 ```
-- **Rename file**: `com.oxen.logic.daemon.plist` → `com.auxin.daemon.plist`
+- **Rename file**: `com.auxin.daemon.plist` → `com.auxin.daemon.plist`
 - Impact: LaunchAgent registration path changes to `~/Library/LaunchAgents/com.auxin.daemon.plist`
 
-**3A.2 - XPCService.swift** (OxVCS-LaunchAgent/Sources/XPCService.swift)
-- Update service name constant: `com.oxen.logic.daemon.xpc` → `com.auxin.daemon.xpc`
+**3A.2 - XPCService.swift** (Auxin-LaunchAgent/Sources/XPCService.swift)
+- Update service name constant: `com.auxin.daemon.xpc` → `com.auxin.daemon.xpc`
 - Search for all references to the service identifier
 
-**3A.3 - OxenDaemonXPCClient.swift** (OxVCS-App/Sources/Services/OxenDaemonXPCClient.swift)
-- Update XPC connection: `com.oxen.logic.daemon.xpc` → `com.auxin.daemon.xpc`
+**3A.3 - OxenDaemonXPCClient.swift** (Auxin-App/Sources/Services/OxenDaemonXPCClient.swift)
+- Update XPC connection: `com.auxin.daemon.xpc` → `com.auxin.daemon.xpc`
 - This is how the App communicates with the LaunchAgent
 
-**3A.4 - ServiceManager.swift** (OxVCS-LaunchAgent/Sources/ServiceManager.swift)
-- Update service label: `com.oxen.logic.daemon` → `com.auxin.daemon`
+**3A.4 - ServiceManager.swift** (Auxin-LaunchAgent/Sources/ServiceManager.swift)
+- Update service label: `com.auxin.daemon` → `com.auxin.daemon`
 - Update plist path reference
 
-**3A.5 - CommitOrchestrator.swift** (OxVCS-LaunchAgent/Sources/CommitOrchestrator.swift)
+**3A.5 - CommitOrchestrator.swift** (Auxin-LaunchAgent/Sources/CommitOrchestrator.swift)
 - Check for any hardcoded service references
 
-**3A.6 - FSEventsMonitor.swift** (OxVCS-LaunchAgent/Sources/FSEventsMonitor.swift)
+**3A.6 - FSEventsMonitor.swift** (Auxin-LaunchAgent/Sources/FSEventsMonitor.swift)
 - Check for service ID references
 
-**3A.7 - LockManager.swift** (OxVCS-LaunchAgent/Sources/LockManager.swift)
+**3A.7 - LockManager.swift** (Auxin-LaunchAgent/Sources/LockManager.swift)
 - Check for service ID references
 
-**3A.8 - App Info.plist** (OxVCS-App/Resources/Info.plist)
+**3A.8 - App Info.plist** (Auxin-App/Resources/Info.plist)
 ```xml
 OLD:
 <key>CFBundleIdentifier</key>
-<string>com.oxenvcs.app</string>
+<string>com.auxin.app</string>
 
 NEW:
 <key>CFBundleIdentifier</key>
 <string>com.auxin.app</string>
 ```
 
-**3A.9 - Built App plist** (OxVCS-App/OxVCS.app/Contents/Info.plist)
+**3A.9 - Built App plist** (Auxin-App/Auxin.app/Contents/Info.plist)
 - Same change as above (this is the generated bundle)
 
 **Test after Swift changes**:
 ```bash
 # Can only test on macOS with Xcode
-cd OxVCS-LaunchAgent
+cd Auxin-LaunchAgent
 swift build
 swift test
 
-cd ../OxVCS-App
+cd ../Auxin-App
 swift build
 ```
 
@@ -355,20 +355,20 @@ swift build
 ### Phase 4: Configuration Files (CRITICAL PATHS)
 
 **4.1 - config.toml.example**
-- Update all `OXENVCS_*` env var references → `AUXIN_*`
-- Update config paths: `.oxenvcs` → `.auxin`
-- Update command examples: `oxenvcs-cli` → `auxin`
+- Update all `AUXIN_*` env var references → `AUXIN_*`
+- Update config paths: `.auxin` → `.auxin`
+- Update command examples: `auxin` → `auxin`
 - Lines: 33, 50, 74, 75, 80, 81, 112-116, 125, 128, 160
 
 **4.2 - .claude/settings.local.json**
-- Update all 50+ occurrences of `oxenvcs-cli` → `auxin`
+- Update all 50+ occurrences of `auxin` → `auxin`
 - This affects test configurations
 
-**4.3 - Homebrew formula** (formula/oxenvcs-cli.rb → formula/auxin.rb)
-- Rename file: `oxenvcs-cli.rb` → `auxin.rb`
+**4.3 - Homebrew formula** (formula/auxin.rb → formula/auxin.rb)
+- Rename file: `auxin.rb` → `auxin.rb`
 - Change class name: `OxenvcsLi` → `Auxin`
 - Update description
-- Update homepage URL: `github.com/jbacus/oxen-vcs-logic` → `github.com/jbacus/auxin`
+- Update homepage URL: `github.com/jbacus/auxin` → `github.com/jbacus/auxin`
 - Update url field
 - Update all installation references
 - Lines: Entire file (~95 lines)
@@ -378,8 +378,8 @@ swift build
 ### Phase 5: Installation & Distribution Files
 
 **5.1 - install.sh**
-- Update binary references: `oxenvcs-cli` → `auxin`
-- Update config directory: `.oxenvcs` → `.auxin`
+- Update binary references: `auxin` → `auxin`
+- Update config directory: `.auxin` → `.auxin`
 - Update completion file names
 - Lines: 95, 105, 106, 110, 122, 123, 126, 127, 130, 234, 235, 294
 
@@ -393,10 +393,10 @@ swift build
 ```
 - Delete old files:
 ```bash
-rm completions/oxenvcs-cli.bash
-rm completions/_oxenvcs-cli
-rm completions/oxenvcs-cli.fish
-rm completions/oxenvcs-cli.ps1
+rm completions/auxin.bash
+rm completions/_auxin
+rm completions/auxin.fish
+rm completions/auxin.ps1
 ```
 
 **5.3 - Test scripts** (test-scripts/)
@@ -410,7 +410,7 @@ rm completions/oxenvcs-cli.ps1
 **Priority order** (most visible to users first):
 
 **6.1 - README.md**
-- Update title: "OxVCS" → "Auxin"
+- Update title: "Auxin" → "Auxin"
 - Update badge URLs
 - Update clone command
 - Update all usage examples
@@ -465,11 +465,11 @@ rm completions/oxenvcs-cli.ps1
 ### Phase 7: Tests (CRITICAL FOR VALIDATION)
 
 **7.1 - Update test assertions**
-Search for test code checking for "oxenvcs-cli" in output:
+Search for test code checking for "auxin" in output:
 ```rust
 // Example patterns to find and fix:
-assert!(output.contains("oxenvcs-cli"));  → assert!(output.contains("auxin"));
-assert_eq!(cmd, "oxenvcs-cli");          → assert_eq!(cmd, "auxin");
+assert!(output.contains("auxin"));  → assert!(output.contains("auxin"));
+assert_eq!(cmd, "auxin");          → assert_eq!(cmd, "auxin");
 ```
 
 **7.2 - Update integration tests**
@@ -498,13 +498,13 @@ cargo test
 cd "/Users/johnbacus/My Projects/Unit3"
 
 # Rename main directory
-mv oxen-vcs-logic auxin
+mv auxin auxin
 
 # Rename subdirectories
 cd auxin
-mv OxVCS-CLI-Wrapper Auxin-CLI-Wrapper
-mv OxVCS-LaunchAgent Auxin-LaunchAgent
-mv OxVCS-App Auxin-App
+mv Auxin-CLI-Wrapper Auxin-CLI-Wrapper
+mv Auxin-LaunchAgent Auxin-LaunchAgent
+mv Auxin-App Auxin-App
 
 # Update any internal references to old directory names
 ```
@@ -523,7 +523,7 @@ mv OxVCS-App Auxin-App
 cd Auxin-CLI-Wrapper
 cargo clean
 cargo build --release
-# Should create: target/release/auxin (not oxenvcs-cli)
+# Should create: target/release/auxin (not auxin)
 ```
 
 **9.2 - Binary verification**:
@@ -532,7 +532,7 @@ cargo build --release
 # Should output: auxin 0.1.0
 
 ./target/release/auxin --help
-# Should show "Auxin" not "OxVCS" or "oxenvcs-cli"
+# Should show "Auxin" not "Auxin" or "auxin"
 ```
 
 **9.3 - Test suite verification**:
@@ -558,7 +558,7 @@ auxin --version
 
 **9.5 - Config test**:
 ```bash
-# Should create ~/.auxin/ (not ~/.oxenvcs/)
+# Should create ~/.auxin/ (not ~/.auxin/)
 mkdir -p ~/.auxin
 cp config.toml.example ~/.auxin/config.toml
 auxin --help  # Should load config from ~/.auxin/
@@ -576,12 +576,12 @@ auxin completions zsh
 **9.7 - Search for any remaining old names**:
 ```bash
 # From repository root
-grep -r "oxenvcs-cli" . --exclude-dir=target --exclude-dir=.git
-grep -r "OxVCS" . --exclude-dir=target --exclude-dir=.git
+grep -r "auxin" . --exclude-dir=target --exclude-dir=.git
+grep -r "Auxin" . --exclude-dir=target --exclude-dir=.git
 grep -r "OXENVCS" . --exclude-dir=target --exclude-dir=.git
-grep -r ".oxenvcs" . --exclude-dir=target --exclude-dir=.git
-grep -r "com.oxenvcs" . --exclude-dir=target --exclude-dir=.git
-grep -r "oxen-vcs-logic" . --exclude-dir=target --exclude-dir=.git
+grep -r ".auxin" . --exclude-dir=target --exclude-dir=.git
+grep -r "com.auxin" . --exclude-dir=target --exclude-dir=.git
+grep -r "auxin" . --exclude-dir=target --exclude-dir=.git
 
 # These should return ZERO results (except this plan document)
 ```
@@ -601,25 +601,25 @@ Document for existing users explaining:
 **10.2 - Migration steps for users**:
 ```bash
 # 1. Backup old config
-cp -r ~/.oxenvcs ~/.oxenvcs-backup
+cp -r ~/.auxin ~/.auxin-backup
 
 # 2. Uninstall old version
-sudo rm /usr/local/bin/oxenvcs-cli
-rm completions/oxenvcs-cli.*
-rm completions/_oxenvcs-cli
+sudo rm /usr/local/bin/auxin
+rm completions/auxin.*
+rm completions/_auxin
 
 # 3. Unload old LaunchAgent (if installed)
-launchctl unload ~/Library/LaunchAgents/com.oxenvcs.agent.plist
-rm ~/Library/LaunchAgents/com.oxenvcs.agent.plist
+launchctl unload ~/Library/LaunchAgents/com.auxin.agent.plist
+rm ~/Library/LaunchAgents/com.auxin.agent.plist
 
 # 4. Install new version
 ./install.sh
 
 # 5. Copy config
-cp -r ~/.oxenvcs ~/.auxin
+cp -r ~/.auxin ~/.auxin
 
 # 6. Update environment variables in shell config
-# Change OXENVCS_* → AUXIN_* in ~/.bashrc, ~/.zshrc, etc.
+# Change AUXIN_* → AUXIN_* in ~/.bashrc, ~/.zshrc, etc.
 ```
 
 ---
@@ -638,9 +638,9 @@ cp -r ~/.oxenvcs ~/.auxin
 **11.2 - GitHub Repository Rename Procedure**:
 
 1. **On GitHub web interface**:
-   - Go to https://github.com/jbacus/oxen-vcs-logic/settings
+   - Go to https://github.com/jbacus/auxin/settings
    - Scroll to "Repository name"
-   - Change `oxen-vcs-logic` → `auxin`
+   - Change `auxin` → `auxin`
    - Click "Rename"
    - GitHub will automatically redirect old URLs to new repository
 
@@ -675,7 +675,7 @@ cp -r ~/.oxenvcs ~/.auxin
 **11.3 - Post-Rename Actions**:
 
 1. **Update GitHub Actions badges in README.md**:
-   - Old: `https://github.com/jbacus/oxen-vcs-logic/actions/workflows/test.yml`
+   - Old: `https://github.com/jbacus/auxin/actions/workflows/test.yml`
    - New: `https://github.com/jbacus/auxin/actions/workflows/test.yml`
    - Note: Workflows themselves auto-update, only badge URLs need manual change
 
@@ -691,7 +691,7 @@ cp -r ~/.oxenvcs ~/.auxin
 4. **Verify GitHub redirect**:
    ```bash
    # Test that old URLs redirect properly
-   curl -I https://github.com/jbacus/oxen-vcs-logic
+   curl -I https://github.com/jbacus/auxin
    # Should show 301 redirect to https://github.com/jbacus/auxin
    ```
 
@@ -768,8 +768,8 @@ Use this checklist to track progress:
   - [ ] Test fixtures
   - [ ] Verify all tests pass
 - [ ] **Phase 8**: Rename directories (DO LAST)
-  - [ ] oxen-vcs-logic → auxin
-  - [ ] OxVCS-* → Auxin-*
+  - [ ] auxin → auxin
+  - [ ] Auxin-* → Auxin-*
   - [ ] Update directory references
 - [ ] **Phase 9**: Comprehensive verification
   - [ ] Build succeeds
@@ -811,7 +811,7 @@ Use this checklist to track progress:
 
 **Risk 4**: Users lose their config/data
 - **Mitigation**: Migration guide with backup instructions
-- **Validation**: Document ~/.oxenvcs → ~/.auxin migration
+- **Validation**: Document ~/.auxin → ~/.auxin migration
 
 ### Recovery Plan
 
@@ -825,10 +825,10 @@ cd "/Users/johnbacus/My Projects/Unit3"
 rm -rf auxin
 
 # 3. Restore from backup
-cp -r oxen-vcs-logic-backup oxen-vcs-logic
+cp -r auxin-backup auxin
 
 # 4. Checkout original branch
-cd oxen-vcs-logic
+cd auxin
 git checkout main
 ```
 
@@ -839,7 +839,7 @@ git checkout main
 The rename is **ONLY** complete when ALL of the following are true:
 
 1. ✅ All 331 unit tests pass
-2. ✅ Binary is named `auxin` (not `oxenvcs-cli`)
+2. ✅ Binary is named `auxin` (not `auxin`)
 3. ✅ `cargo build --release` succeeds
 4. ✅ `./install.sh` creates `/usr/local/bin/auxin`
 5. ✅ `auxin --version` outputs "auxin 0.1.0"

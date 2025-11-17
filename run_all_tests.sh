@@ -1,5 +1,5 @@
 #!/bin/bash
-# Comprehensive test runner for Oxen-VCS Logic
+# Comprehensive test runner for Auxin
 # This script runs all available tests in the project
 
 set -e
@@ -12,7 +12,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 echo -e "${BLUE}========================================${NC}"
-echo -e "${BLUE}   Oxen-VCS Logic Test Suite${NC}"
+echo -e "${BLUE}   Auxin Test Suite${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo ""
 
@@ -38,7 +38,7 @@ FAILED_SUITES=0
 # ==========================================
 
 echo -e "${BLUE}[1/4] Running Rust Unit Tests...${NC}"
-cd "OxVCS-CLI-Wrapper" || exit 1
+cd "Auxin-CLI-Wrapper" || exit 1
 
 if cargo test --lib --quiet 2>&1 | tee /tmp/rust_tests.log | grep -q "test result: ok"; then
     echo -e "${GREEN}✓ Rust unit tests passed${NC}"
@@ -65,7 +65,7 @@ echo -e "${BLUE}[2/4] Running Rust Integration Tests...${NC}"
 # Check if oxen CLI is installed
 if command -v oxen &> /dev/null; then
     echo -e "${GREEN}✓ oxen CLI found${NC}"
-    cd "OxVCS-CLI-Wrapper" || exit 1
+    cd "Auxin-CLI-Wrapper" || exit 1
 
     if cargo test --test oxen_subprocess_integration_test --quiet 2>&1 | tee /tmp/rust_integration.log | grep -q "test result: ok"; then
         echo -e "${GREEN}✓ Integration tests passed${NC}"
@@ -94,7 +94,7 @@ echo ""
 echo -e "${BLUE}[3/4] Running Swift LaunchAgent Tests...${NC}"
 
 if [ "$CAN_RUN_SWIFT" = true ]; then
-    cd "OxVCS-LaunchAgent" || exit 1
+    cd "Auxin-LaunchAgent" || exit 1
 
     swift test 2>&1 | tee /tmp/swift_agent_tests.log
     if grep -q "Test Suite 'All tests' passed" /tmp/swift_agent_tests.log; then
@@ -125,7 +125,7 @@ echo ""
 echo -e "${BLUE}[4/4] Running Swift App Tests...${NC}"
 
 if [ "$CAN_RUN_SWIFT" = true ]; then
-    cd "OxVCS-App" || exit 1
+    cd "Auxin-App" || exit 1
 
     swift test 2>&1 | tee /tmp/swift_app_tests.log
     if grep -q "Test Suite 'All tests' passed" /tmp/swift_app_tests.log; then

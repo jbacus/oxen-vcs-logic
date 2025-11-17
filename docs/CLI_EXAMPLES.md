@@ -1,4 +1,4 @@
-# OxVCS Command Line Examples for Musicians
+# Auxin Command Line Examples for Musicians
 
 **For:** Music producers who prefer Terminal or need remote access
 **Skill Level:** Beginner-friendly (no programming required!)
@@ -27,7 +27,7 @@
 
 ```bash
 cd ~/Music/MyProject.logicx
-oxenvcs-cli init --logic .
+auxin init --logic .
 ```
 
 **What you'll see:**
@@ -38,19 +38,19 @@ oxenvcs-cli init --logic .
 ✓ Repository created at: MyProject.logicx
 ℹ Next steps:
   1. cd MyProject.logicx
-  2. oxenvcs-cli add --all
-  3. oxenvcs-cli commit -m "Initial commit"
+  2. auxin add --all
+  3. auxin commit -m "Initial commit"
 ```
 
-**What just happened:** OxVCS checked your Logic Pro project and set up version control!
+**What just happened:** Auxin checked your Logic Pro project and set up version control!
 
 ---
 
 ### 2. Create Your First Commit
 
 ```bash
-oxenvcs-cli add --all
-oxenvcs-cli commit -m "Initial project setup" --bpm 120 --sample-rate 48000
+auxin add --all
+auxin commit -m "Initial project setup" --bpm 120 --sample-rate 48000
 ```
 
 **What you'll see:**
@@ -58,7 +58,7 @@ oxenvcs-cli commit -m "Initial project setup" --bpm 120 --sample-rate 48000
 ⠹ Staging all changes...
 ✓ All changes staged
 
-ℹ Next step: oxenvcs-cli commit -m "Your message"
+ℹ Next step: auxin commit -m "Your message"
 
 ⠹ Preparing commit...
 ⠹ Creating commit...
@@ -79,7 +79,7 @@ oxenvcs-cli commit -m "Initial project setup" --bpm 120 --sample-rate 48000
 After working in Logic Pro for a while:
 
 ```bash
-oxenvcs-cli status
+auxin status
 ```
 
 **What you'll see:**
@@ -98,7 +98,7 @@ oxenvcs-cli status
 ? Untracked files (1):
   ? Resources/vocals.wav
 
-ℹ Next step: oxenvcs-cli add --all
+ℹ Next step: auxin add --all
 ```
 
 **What this means:**
@@ -111,8 +111,8 @@ oxenvcs-cli status
 ### 4. Save Your Progress
 
 ```bash
-oxenvcs-cli add --all
-oxenvcs-cli commit -m "Recorded lead vocals" --bpm 120 --tags "vocals,tracking"
+auxin add --all
+auxin commit -m "Recorded lead vocals" --bpm 120 --tags "vocals,tracking"
 ```
 
 **What you'll see:**
@@ -138,7 +138,7 @@ oxenvcs-cli commit -m "Recorded lead vocals" --bpm 120 --tags "vocals,tracking"
 ### Morning: Check What You Did Yesterday
 
 ```bash
-oxenvcs-cli log --limit 5
+auxin log --limit 5
 ```
 
 **What you'll see:**
@@ -172,15 +172,15 @@ You're about to try something risky (like completely rearranging your song).
 
 ```bash
 # Save current state
-oxenvcs-cli add --all
-oxenvcs-cli commit -m "Pre-experiment checkpoint - current mix sounds good" --tags "checkpoint"
+auxin add --all
+auxin commit -m "Pre-experiment checkpoint - current mix sounds good" --tags "checkpoint"
 
 # Now experiment in Logic Pro!
 ```
 
 **If experiment goes wrong:**
 ```bash
-oxenvcs-cli log --tag checkpoint
+auxin log --tag checkpoint
 ```
 
 **What you'll see:**
@@ -197,7 +197,7 @@ oxenvcs-cli log --tag checkpoint
 
 **Restore to that checkpoint:**
 ```bash
-oxenvcs-cli restore k1l2m3n
+auxin restore k1l2m3n
 ```
 
 **What you'll see:**
@@ -208,8 +208,8 @@ oxenvcs-cli restore k1l2m3n
 
 ⚠ Your working directory has been updated to match this commit
 ℹ To create a new commit from here, use:
-  oxenvcs-cli add --all
-  oxenvcs-cli commit -m "Your message"
+  auxin add --all
+  auxin commit -m "Your message"
 ```
 
 **What just happened:** Your project is back to how it was before the experiment!
@@ -221,7 +221,7 @@ oxenvcs-cli restore k1l2m3n
 You remember making a great mix at 128 BPM but can't remember which version.
 
 ```bash
-oxenvcs-cli log --bpm 128 --tag mixing
+auxin log --bpm 128 --tag mixing
 ```
 
 **What you'll see:**
@@ -248,7 +248,7 @@ oxenvcs-cli log --bpm 128 --tag mixing
 
 **See details of one:**
 ```bash
-oxenvcs-cli show o4p5q6r
+auxin show o4p5q6r
 ```
 
 **What you'll see:**
@@ -267,7 +267,7 @@ Metadata:
   Sample Rate: 48000 Hz
   Tags: mixing, final
 
-ℹ Use 'oxenvcs-cli restore o4p5q6r' to restore to this commit
+ℹ Use 'auxin restore o4p5q6r' to restore to this commit
 ```
 
 ---
@@ -277,7 +277,7 @@ Metadata:
 Before committing, see what's different:
 
 ```bash
-oxenvcs-cli diff
+auxin diff
 ```
 
 **What you'll see:**
@@ -309,7 +309,7 @@ oxenvcs-cli diff
 ### Check if Someone is Editing
 
 ```bash
-oxenvcs-cli lock status
+auxin lock status
 ```
 
 **If unlocked:**
@@ -322,7 +322,7 @@ oxenvcs-cli lock status
 │                                                          │
 └──────────────────────────────────────────────────────────┘
 
-ℹ Acquire lock with: oxenvcs-cli lock acquire
+ℹ Acquire lock with: auxin lock acquire
 ```
 
 **If locked by someone else:**
@@ -346,7 +346,7 @@ oxenvcs-cli lock status
 When the project is unlocked:
 
 ```bash
-oxenvcs-cli lock acquire --timeout 4
+auxin lock acquire --timeout 4
 ```
 
 **What you'll see:**
@@ -363,7 +363,7 @@ oxenvcs-cli lock acquire --timeout 4
 └──────────────────────────────────────────────────────────┘
 
 ℹ You can now safely edit the project in Logic Pro
-⚠ Remember to release the lock when done: oxenvcs-cli lock release
+⚠ Remember to release the lock when done: auxin lock release
 ```
 
 **What just happened:** You have exclusive access! Others can't edit until you release the lock.
@@ -379,11 +379,11 @@ oxenvcs-cli lock acquire --timeout 4
 
 ```bash
 # Save your work
-oxenvcs-cli add --all
-oxenvcs-cli commit -m "Added bass line" --bpm 120 --tags "bass,tracking"
+auxin add --all
+auxin commit -m "Added bass line" --bpm 120 --tags "bass,tracking"
 
 # Release the lock
-oxenvcs-cli lock release
+auxin lock release
 ```
 
 **What you'll see:**
@@ -408,14 +408,14 @@ oxenvcs-cli lock release
 **Solution:**
 ```bash
 # Find yesterday's mix
-oxenvcs-cli log --tag mix --limit 10
+auxin log --tag mix --limit 10
 
 # Let's say yesterday was commit a1b2c3d
 # View details to confirm
-oxenvcs-cli show a1b2c3d
+auxin show a1b2c3d
 
 # Yep, that's it! Restore it
-oxenvcs-cli restore a1b2c3d
+auxin restore a1b2c3d
 
 # Now export for client
 # (Open Logic Pro → File → Bounce → Project)
@@ -432,7 +432,7 @@ oxenvcs-cli restore a1b2c3d
 **Solution:**
 ```bash
 # Check if auto-save happened
-oxenvcs-cli log --limit 3
+auxin log --limit 3
 
 # See the most recent commit
 # If it's within the last minute, you're saved!
@@ -463,17 +463,17 @@ oxenvcs-cli log --limit 3
 **Solution:**
 ```bash
 # Find all mixing commits
-oxenvcs-cli log --tag mixing
+auxin log --tag mixing
 
 # Compare specific ones
-oxenvcs-cli show m1x2i3n4   # Mix 1
-oxenvcs-cli show m5x6i7n8   # Mix 2
-oxenvcs-cli show m9x0i1n2   # Mix 3
+auxin show m1x2i3n4   # Mix 1
+auxin show m5x6i7n8   # Mix 2
+auxin show m9x0i1n2   # Mix 3
 
 # Restore each one to listen in Logic Pro
-oxenvcs-cli restore m1x2i3n4
+auxin restore m1x2i3n4
 # (Listen in Logic Pro)
-oxenvcs-cli restore m5x6i7n8
+auxin restore m5x6i7n8
 # (Listen in Logic Pro)
 ```
 
@@ -488,11 +488,11 @@ oxenvcs-cli restore m5x6i7n8
 **Solution (You):**
 ```bash
 # Finish your work
-oxenvcs-cli add --all
-oxenvcs-cli commit -m "Finished drum tracking" --bpm 120 --tags "drums,done"
+auxin add --all
+auxin commit -m "Finished drum tracking" --bpm 120 --tags "drums,done"
 
 # Release lock
-oxenvcs-cli lock release
+auxin lock release
 
 # Tell bandmate on Slack: "Drums are done, lock is released!"
 ```
@@ -500,19 +500,19 @@ oxenvcs-cli lock release
 **Solution (Bandmate):**
 ```bash
 # Check if available
-oxenvcs-cli lock status
+auxin lock status
 
 # Acquire lock
-oxenvcs-cli lock acquire
+auxin lock acquire
 
 # Pull your changes (future feature - push/pull)
 # For now, use shared Dropbox/drive
 
 # Work on bass
-oxenvcs-cli commit -m "Added bass line" --tags "bass"
+auxin commit -m "Added bass line" --tags "bass"
 
 # Release when done
-oxenvcs-cli lock release
+auxin lock release
 ```
 
 ---
@@ -523,7 +523,7 @@ oxenvcs-cli lock release
 
 ```bash
 # Find vocal tracking at 128 BPM in C Major
-oxenvcs-cli log --bpm 128 --tag vocals --key "C Major"
+auxin log --bpm 128 --tag vocals --key "C Major"
 ```
 
 **Perfect for:** Projects with many versions across different keys and tempos
@@ -533,7 +533,7 @@ oxenvcs-cli log --bpm 128 --tag vocals --key "C Major"
 ### See File Sizes Before Committing
 
 ```bash
-oxenvcs-cli diff
+auxin diff
 ```
 
 **Useful to know:**
@@ -549,8 +549,8 @@ Add this to your morning routine:
 
 ```bash
 cd ~/Music/MyProject.logicx
-oxenvcs-cli status
-oxenvcs-cli log --limit 3
+auxin status
+auxin log --limit 3
 ```
 
 **Shows you:**
@@ -565,12 +565,12 @@ oxenvcs-cli log --limit 3
 
 **Bad:**
 ```bash
-oxenvcs-cli commit -m "changes"
+auxin commit -m "changes"
 ```
 
 **Good:**
 ```bash
-oxenvcs-cli commit -m "Vocal tracking session 1 - 8 takes recorded" --tags "vocals,tracking"
+auxin commit -m "Vocal tracking session 1 - 8 takes recorded" --tags "vocals,tracking"
 ```
 
 **Why:** Future you will thank you when searching!
@@ -601,8 +601,8 @@ Pick a tagging system and stick to it:
 - Major tempo/key changes
 
 ```bash
-oxenvcs-cli add --all
-oxenvcs-cli commit -m "Before [risky thing]" --tags "checkpoint"
+auxin add --all
+auxin commit -m "Before [risky thing]" --tags "checkpoint"
 ```
 
 **Then:** If it goes wrong, restore in 5 seconds!
@@ -615,9 +615,9 @@ Get in the habit:
 
 ```bash
 # After every Logic Pro session
-oxenvcs-cli status
-oxenvcs-cli add --all
-oxenvcs-cli commit -m "End of session" --tags "wip"
+auxin status
+auxin add --all
+auxin commit -m "End of session" --tags "wip"
 ```
 
 **Prevents:** "Wait, did I save that?"
@@ -632,10 +632,10 @@ oxenvcs-cli commit -m "End of session" --tags "wip"
 
 **Fix:**
 ```bash
-oxenvcs-cli status    # See what changed
-oxenvcs-cli diff      # See details
-oxenvcs-cli add --all
-oxenvcs-cli commit -m "Yesterday's changes - [describe what you did]"
+auxin status    # See what changed
+auxin diff      # See details
+auxin add --all
+auxin commit -m "Yesterday's changes - [describe what you did]"
 ```
 
 ---
@@ -647,8 +647,8 @@ oxenvcs-cli commit -m "Yesterday's changes - [describe what you did]"
 **Fix:**
 ```bash
 # Just make another commit! It's cheap.
-oxenvcs-cli add --all
-oxenvcs-cli commit -m "Additional changes"
+auxin add --all
+auxin commit -m "Additional changes"
 ```
 
 **Don't worry:** Commits are free! Make as many as you want.
@@ -662,12 +662,12 @@ oxenvcs-cli commit -m "Additional changes"
 **Fix:**
 ```bash
 # Use filters to find it
-oxenvcs-cli log --tag final           # Find final versions
-oxenvcs-cli log --bpm 120             # Find by tempo
-oxenvcs-cli log --key "A Minor"       # Find by key
+auxin log --tag final           # Find final versions
+auxin log --bpm 120             # Find by tempo
+auxin log --key "A Minor"       # Find by key
 
 # Or just browse recent history
-oxenvcs-cli log --limit 20
+auxin log --limit 20
 ```
 
 ---
@@ -679,10 +679,10 @@ oxenvcs-cli log --limit 20
 **Fix:**
 ```bash
 # Find the right one
-oxenvcs-cli log --limit 10
+auxin log --limit 10
 
 # Restore to the correct one
-oxenvcs-cli restore [correct-id]
+auxin restore [correct-id]
 ```
 
 **Good news:** Restoring doesn't delete anything! You can restore back and forth.
@@ -699,10 +699,10 @@ oxenvcs-cli restore [correct-id]
 
 ```bash
 # View your recent commits
-oxenvcs-cli log --limit 5
+auxin log --limit 5
 
 # Compare two commits
-oxenvcs-cli compare abc123f def456g
+auxin compare abc123f def456g
 ```
 
 **What you'll see:**
@@ -727,14 +727,14 @@ Tags:
 **Different formats:**
 ```bash
 # Compact one-line summary
-oxenvcs-cli compare abc123f def456g --format compact
+auxin compare abc123f def456g --format compact
 # Output: BPM: 120->128, Key: A Minor->C Major
 
 # Plain text (no colors)
-oxenvcs-cli compare abc123f def456g --format plain
+auxin compare abc123f def456g --format plain
 
 # JSON (for scripts)
-oxenvcs-cli compare abc123f def456g --format json
+auxin compare abc123f def456g --format json
 ```
 
 **Why:** See exactly what changed between versions without opening Logic Pro!
@@ -749,7 +749,7 @@ oxenvcs-cli compare abc123f def456g --format json
 
 ```bash
 # Search with multiple criteria
-oxenvcs-cli search "bpm:128-140 key:minor"
+auxin search "bpm:128-140 key:minor"
 ```
 
 **What you'll see:**
@@ -765,16 +765,16 @@ Found 12 matching commits:
 **Advanced searches:**
 ```bash
 # Find fast tracks tagged with "final"
-oxenvcs-cli search "bpm:>128 tag:final"
+auxin search "bpm:>128 tag:final"
 
 # Find tracks with specific sample rate
-oxenvcs-cli search "sr:96000"
+auxin search "sr:96000"
 
 # Combine multiple filters
-oxenvcs-cli search "bpm:120-140 key:minor tag:mixing,vocals"
+auxin search "bpm:120-140 key:minor tag:mixing,vocals"
 
 # Get ranked results (best matches first)
-oxenvcs-cli search "bpm:128 key:minor" --ranked
+auxin search "bpm:128 key:minor" --ranked
 ```
 
 **Search syntax:**
@@ -798,7 +798,7 @@ oxenvcs-cli search "bpm:128 key:minor" --ranked
 
 ```bash
 # Set up hooks directory
-oxenvcs-cli hooks init
+auxin hooks init
 ```
 
 **What you'll see:**
@@ -812,19 +812,19 @@ oxenvcs-cli hooks init
 **Install built-in hooks:**
 ```bash
 # Require BPM/sample rate on all commits
-oxenvcs-cli hooks install validate-metadata --type pre-commit
+auxin hooks install validate-metadata --type pre-commit
 
 # Auto-backup after each commit
-oxenvcs-cli hooks install backup --type post-commit
+auxin hooks install backup --type post-commit
 
 # Warn about large files
-oxenvcs-cli hooks install check-file-sizes --type pre-commit
+auxin hooks install check-file-sizes --type pre-commit
 ```
 
 **What happens:**
 ```bash
 # Now when you commit without BPM...
-oxenvcs-cli commit -m "Test"
+auxin commit -m "Test"
 
 # Hook runs:
 Running pre-commit hook: validate-metadata
@@ -836,12 +836,12 @@ Hook failed: validate-metadata
 
 **List your hooks:**
 ```bash
-oxenvcs-cli hooks list
+auxin hooks list
 ```
 
 **Remove a hook:**
 ```bash
-oxenvcs-cli hooks remove validate-metadata --type pre-commit
+auxin hooks remove validate-metadata --type pre-commit
 ```
 
 **Create custom hooks:**
@@ -875,12 +875,12 @@ curl -X POST https://hooks.slack.com/YOUR_WEBHOOK \
 **Solution:** Launch the interactive console:
 
 ```bash
-oxenvcs-cli console
+auxin console
 ```
 
 **What you'll see:**
 ```
-┌─ OxVCS Console - MyProject.logicx ────────────────────────┐
+┌─ Auxin Console - MyProject.logicx ────────────────────────┐
 │                                                            │
 │  Daemon: ● Running                                         │
 │                                                            │
@@ -940,25 +940,25 @@ q:Quit  i:Commit  l:Log  d:Diff  s:Search  k:Hooks  ?:Help
 **Print this and keep it by your keyboard:**
 
 ```
-┌─ OxVCS Quick Commands ──────────────────────────────────┐
+┌─ Auxin Quick Commands ──────────────────────────────────┐
 │                                                          │
 │  Basic Commands:                                         │
-│  oxenvcs-cli status              See what changed       │
-│  oxenvcs-cli add --all           Stage changes          │
-│  oxenvcs-cli commit -m "msg"     Save version           │
-│  oxenvcs-cli log --limit 10      Recent history         │
-│  oxenvcs-cli restore <id>        Go back to version     │
+│  auxin status              See what changed       │
+│  auxin add --all           Stage changes          │
+│  auxin commit -m "msg"     Save version           │
+│  auxin log --limit 10      Recent history         │
+│  auxin restore <id>        Go back to version     │
 │                                                          │
 │  Advanced (Week 3):                                      │
-│  oxenvcs-cli compare <a> <b>     Semantic diff          │
-│  oxenvcs-cli search "bpm:120"    Smart search           │
-│  oxenvcs-cli hooks install <h>   Workflow automation    │
-│  oxenvcs-cli console             Interactive TUI        │
+│  auxin compare <a> <b>     Semantic diff          │
+│  auxin search "bpm:120"    Smart search           │
+│  auxin hooks install <h>   Workflow automation    │
+│  auxin console             Interactive TUI        │
 │                                                          │
 │  Team Commands:                                          │
-│  oxenvcs-cli lock status         Check availability     │
-│  oxenvcs-cli lock acquire        Start editing          │
-│  oxenvcs-cli lock release        Finish editing         │
+│  auxin lock status         Check availability     │
+│  auxin lock acquire        Start editing          │
+│  auxin lock release        Finish editing         │
 │                                                          │
 │  Filters (combine any):                                  │
 │  --bpm 120                       Find by tempo          │
@@ -986,9 +986,9 @@ q:Quit  i:Commit  l:Log  d:Diff  s:Search  k:Hooks  ?:Help
 - Set up team workflows with locks
 
 **Get help:**
-- Full command reference: `oxenvcs-cli --help`
-- Specific command help: `oxenvcs-cli commit --help`
-- Community: [GitHub Issues](https://github.com/jbacus/oxen-vcs-logic/issues)
+- Full command reference: `auxin --help`
+- Specific command help: `auxin commit --help`
+- Community: [GitHub Issues](https://github.com/jbacus/auxin/issues)
 
 ---
 

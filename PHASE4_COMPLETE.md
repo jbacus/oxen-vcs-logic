@@ -10,7 +10,7 @@
 
 ## Executive Summary
 
-Successfully implemented comprehensive network resilience and offline operation capabilities for OxVCS collaboration features. The system now gracefully handles network failures, automatically queues operations when offline, and syncs seamlessly when connectivity is restored.
+Successfully implemented comprehensive network resilience and offline operation capabilities for Auxin collaboration features. The system now gracefully handles network failures, automatically queues operations when offline, and syncs seamlessly when connectivity is restored.
 
 ### Key Achievements
 
@@ -71,7 +71,7 @@ match check_connectivity() {
 **Implementation:**
 - `src/offline_queue.rs` (470 lines)
 - 8 unit tests, all passing
-- Queue stored in `~/.oxenvcs/queue/`
+- Queue stored in `~/.auxin/queue/`
 
 **Data Structures:**
 ```rust
@@ -110,26 +110,26 @@ pub struct QueueEntry {
 
 ```bash
 # View pending operations
-oxenvcs-cli queue status
+auxin queue status
 
 # Manually sync
-oxenvcs-cli queue sync
+auxin queue sync
 
 # Clear completed
-oxenvcs-cli queue clear
+auxin queue clear
 
 # Clear all (including pending)
-oxenvcs-cli queue clear --all
+auxin queue clear --all
 
 # Remove specific operation
-oxenvcs-cli queue remove <ENTRY_ID>
+auxin queue remove <ENTRY_ID>
 ```
 
 **Auto-Queue for Lock Commands:**
 
 ```bash
 # When offline, automatically queues instead of failing
-oxenvcs-cli lock acquire --timeout 4
+auxin lock acquire --timeout 4
 # ⚠️  Network is offline - operation queued
 #   Queued: Acquire lock
 #   User: john@laptop
@@ -138,7 +138,7 @@ oxenvcs-cli lock acquire --timeout 4
 # ℹ  Lock will be acquired when network is available
 
 # When online, auto-syncs pending queue first
-oxenvcs-cli lock acquire --timeout 4
+auxin lock acquire --timeout 4
 # [Auto-syncing 2 pending operation(s)...]
 # ✓ Lock acquired successfully
 ```
@@ -238,14 +238,14 @@ oxenvcs-cli lock acquire --timeout 4
 
 **Offline Behavior:**
 ```bash
-$ oxenvcs-cli lock acquire --timeout 4
+$ auxin lock acquire --timeout 4
 ✗ Failed to acquire lock: Connection timeout
 # User must manually retry later
 ```
 
 **Network Issues:**
 ```bash
-$ oxenvcs-cli lock acquire --timeout 4
+$ auxin lock acquire --timeout 4
 ✗ Failed to acquire lock: Connection timeout
 # Immediate failure, no retry
 ```
@@ -254,7 +254,7 @@ $ oxenvcs-cli lock acquire --timeout 4
 
 **Offline Behavior:**
 ```bash
-$ oxenvcs-cli lock acquire --timeout 4
+$ auxin lock acquire --timeout 4
 ⚠️  Network is offline - operation queued
 
   Queued: Acquire lock
@@ -263,14 +263,14 @@ $ oxenvcs-cli lock acquire --timeout 4
   Entry ID: 01234567
 
 ℹ  Lock will be acquired when network is available
-ℹ  Use 'oxenvcs-cli queue sync' to retry manually
+ℹ  Use 'auxin queue sync' to retry manually
 
 # User can continue working, operation saved
 ```
 
 **Network Issues:**
 ```bash
-$ oxenvcs-cli lock acquire --timeout 4
+$ auxin lock acquire --timeout 4
 ⚠️  Attempt 1 failed: Connection timeout
    Retrying in 1.0s... (4/5 attempts remaining)
 ⚠️  Attempt 2 failed: Connection timeout
@@ -283,7 +283,7 @@ Lock acquired successfully
 
 **Auto-Sync:**
 ```bash
-$ oxenvcs-cli lock acquire --timeout 4
+$ auxin lock acquire --timeout 4
 [Auto-syncing 2 pending operation(s)...]
 ✓ Completed: Release lock for Project1.logicx
 ✓ Completed: Acquire lock for Project2.logicx
@@ -301,7 +301,7 @@ Lock acquired successfully
 ### View Pending Operations
 
 ```bash
-$ oxenvcs-cli queue status
+$ auxin queue status
 
 Offline Operation Queue
 ==================================================
@@ -316,13 +316,13 @@ Offline Operation Queue
   2. Push main to remote (2m ago)
      ID: 89abcdef | Priority: 0 | Attempts: 1
 
-  Use 'oxenvcs-cli queue sync' to sync pending operations
+  Use 'auxin queue sync' to sync pending operations
 ```
 
 ### Manual Sync
 
 ```bash
-$ oxenvcs-cli queue sync
+$ auxin queue sync
 
 Syncing Offline Queue
 ==================================================
@@ -347,11 +347,11 @@ Sync Results
 
 ```bash
 # Clear only completed operations
-$ oxenvcs-cli queue clear
+$ auxin queue clear
 ✓ Cleared 3 completed operation(s)
 
 # Clear everything (including pending)
-$ oxenvcs-cli queue clear --all
+$ auxin queue clear --all
 ✓ Cleared 5 total operation(s)
 ```
 
@@ -411,7 +411,7 @@ $ oxenvcs-cli queue clear --all
 ```
 ⚠️  Network is offline - operation queued
 ℹ  Lock will be acquired when network is available
-ℹ  Use 'oxenvcs-cli queue sync' to retry manually
+ℹ  Use 'auxin queue sync' to retry manually
 ```
 
 **Retry in Progress:**
@@ -475,7 +475,7 @@ RetryPolicy {
 ### Queue Storage
 
 ```
-~/.oxenvcs/queue/
+~/.auxin/queue/
 ├── 01234567-89ab-cdef-0123-456789abcdef.json
 ├── 12345678-9abc-def0-1234-56789abcdef0.json
 └── 23456789-abcd-ef01-2345-6789abcdef01.json
@@ -560,7 +560,7 @@ lock_heartbeat.start(project_path)?;
 **Priority:** Low (defaults work well)
 
 ```toml
-# ~/.oxenvcs/config.toml
+# ~/.auxin/config.toml
 [network]
 max_retries = 5
 initial_backoff_ms = 1000
@@ -602,12 +602,12 @@ connectivity_check_interval_s = 30
 **New capabilities available immediately:**
 ```bash
 # Offline operations now automatically queue
-oxenvcs-cli lock acquire --timeout 4  # Works offline!
+auxin lock acquire --timeout 4  # Works offline!
 
 # View and manage queue
-oxenvcs-cli queue status
-oxenvcs-cli queue sync
-oxenvcs-cli queue clear
+auxin queue status
+auxin queue sync
+auxin queue clear
 ```
 
 **No configuration changes needed:**
@@ -620,22 +620,22 @@ oxenvcs-cli queue clear
 **Getting started:**
 ```bash
 # Initialize project
-oxenvcs-cli init --logic MyProject.logicx
+auxin init --logic MyProject.logicx
 
 # Configure remote
 oxen remote add origin https://hub.oxen.ai/username/my-project
 
 # Authenticate
-oxenvcs-cli auth login
+auxin auth login
 
 # Start working (even offline!)
-oxenvcs-cli lock acquire --timeout 4
+auxin lock acquire --timeout 4
 
 # Check what's queued (if offline)
-oxenvcs-cli queue status
+auxin queue status
 
 # Sync when back online
-oxenvcs-cli queue sync
+auxin queue sync
 ```
 
 ---
@@ -645,7 +645,7 @@ oxenvcs-cli queue sync
 ### Unit Tests
 
 ```bash
-cd OxVCS-CLI-Wrapper
+cd Auxin-CLI-Wrapper
 
 # Run all tests
 cargo test --lib
@@ -666,27 +666,27 @@ cargo test --lib -- --nocapture
 ```bash
 # 1. Disconnect WiFi
 # 2. Try to acquire lock
-oxenvcs-cli lock acquire --timeout 4
+auxin lock acquire --timeout 4
 # Should queue the operation
 
 # 3. Check queue
-oxenvcs-cli queue status
+auxin queue status
 # Should show 1 pending operation
 
 # 4. Reconnect WiFi
 # 5. Sync queue
-oxenvcs-cli queue sync
+auxin queue sync
 # Should execute the lock acquisition
 
 # 6. Verify
-oxenvcs-cli lock status
+auxin lock status
 # Should show lock acquired
 ```
 
 **Test Auto-Retry:**
 ```bash
 # 1. Acquire lock normally (should retry automatically on transient errors)
-RUST_LOG=info oxenvcs-cli lock acquire --timeout 4
+RUST_LOG=info auxin lock acquire --timeout 4
 
 # Look for retry messages in output:
 # ⚠️  Attempt 1 failed: Connection timeout
@@ -697,11 +697,11 @@ RUST_LOG=info oxenvcs-cli lock acquire --timeout 4
 ```bash
 # 1. Disconnect WiFi
 # 2. Queue some operations
-oxenvcs-cli lock acquire --timeout 4
+auxin lock acquire --timeout 4
 
 # 3. Reconnect WiFi
 # 4. Run any lock command (auto-sync should trigger)
-RUST_LOG=info oxenvcs-cli lock status
+RUST_LOG=info auxin lock status
 
 # Look for: "Auto-syncing N pending operation(s)..."
 ```
@@ -712,7 +712,7 @@ RUST_LOG=info oxenvcs-cli lock status
 
 **Phase 4: Network Resilience & Offline Mode - 100% COMPLETE** ✅
 
-We've successfully transformed OxVCS collaboration features into a production-grade, network-resilient system:
+We've successfully transformed Auxin collaboration features into a production-grade, network-resilient system:
 
 ### What We Built
 
@@ -743,7 +743,7 @@ We've successfully transformed OxVCS collaboration features into a production-gr
 - Integration testing with real Oxen Hub
 - Performance tuning for large queues
 
-**Bottom Line:** OxVCS collaboration features are now production-ready with enterprise-grade network resilience. Users can work confidently knowing their operations will succeed, whether online or offline.
+**Bottom Line:** Auxin collaboration features are now production-ready with enterprise-grade network resilience. Users can work confidently knowing their operations will succeed, whether online or offline.
 
 ---
 

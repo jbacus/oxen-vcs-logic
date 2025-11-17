@@ -1,15 +1,15 @@
-# OxVCS Installation Guide
+# Auxin Installation Guide
 
-Complete installation guide for OxVCS (Oxen Version Control System for Logic Pro).
+Complete installation guide for Auxin (Oxen Version Control System for Logic Pro).
 
 ## Quick Installation (Recommended)
 
-The easiest way to install OxVCS is using the automated installation script:
+The easiest way to install Auxin is using the automated installation script:
 
 ```bash
 # Clone the repository
-git clone https://github.com/YOUR_USERNAME/oxen-vcs-logic.git
-cd oxen-vcs-logic
+git clone https://github.com/YOUR_USERNAME/auxin.git
+cd auxin
 
 # Run the installer
 ./install.sh
@@ -88,10 +88,10 @@ Check that everything is working:
 
 ```bash
 # Check CLI
-oxenvcs-cli --help
+auxin --help
 
 # Check daemon status
-oxvcs-daemon --status
+auxin-daemon --status
 
 # Should show:
 # ✓ Enabled and running
@@ -103,7 +103,7 @@ oxvcs-daemon --status
 
 ```bash
 cd ~/Music/YourProject.logicx
-oxenvcs-cli init --logic .
+auxin init --logic .
 ```
 
 See [User Guide](docs/USER_GUIDE.md) for detailed usage instructions.
@@ -113,19 +113,19 @@ See [User Guide](docs/USER_GUIDE.md) for detailed usage instructions.
 The installation script installs the following components:
 
 ### Binaries
-- `/usr/local/bin/oxenvcs-cli` - Command-line interface for Oxen operations
-- `/usr/local/bin/oxvcs-daemon` - Background daemon for automatic tracking
+- `/usr/local/bin/auxin` - Command-line interface for Oxen operations
+- `/usr/local/bin/auxin-daemon` - Background daemon for automatic tracking
 
 ### Application
-- `/Applications/OxVCS.app` - Native macOS GUI application (if installed)
+- `/Applications/Auxin.app` - Native macOS GUI application (if installed)
 
 ### Configuration
-- `~/Library/LaunchAgents/com.oxen.logic.daemon.plist` - LaunchAgent configuration
-- `/Applications/OxVCS.app/Contents/Info.plist` - App bundle metadata
+- `~/Library/LaunchAgents/com.auxin.daemon.plist` - LaunchAgent configuration
+- `/Applications/Auxin.app/Contents/Info.plist` - App bundle metadata
 
 ### Logs (created at runtime)
-- `/tmp/com.oxen.logic.daemon.stdout` - Standard output log
-- `/tmp/com.oxen.logic.daemon.stderr` - Error log
+- `/tmp/com.auxin.daemon.stdout` - Standard output log
+- `/tmp/com.auxin.daemon.stderr` - Error log
 
 ## Manual Installation
 
@@ -135,33 +135,33 @@ If you prefer to install manually, follow these steps:
 
 ```bash
 # Build Rust CLI
-cd OxVCS-CLI-Wrapper
+cd Auxin-CLI-Wrapper
 cargo build --release
 
 # Build Swift daemon
-cd ../OxVCS-LaunchAgent
+cd ../Auxin-LaunchAgent
 swift build -c release
 
 # Build Swift app (optional)
-cd ../OxVCS-App
+cd ../Auxin-App
 swift build -c release
-./create-app-bundle.sh  # Creates OxVCS.app bundle
+./create-app-bundle.sh  # Creates Auxin.app bundle
 ```
 
 **Note**: The app requires a proper `.app` bundle structure to render correctly. The `create-app-bundle.sh` script creates the bundle with the necessary `Info.plist` and directory structure.
 
-**SwiftUI Migration**: As of October 29, 2025, OxVCS-App uses SwiftUI instead of AppKit for improved window management and simplified UI code. No additional configuration is needed.
+**SwiftUI Migration**: As of October 29, 2025, Auxin-App uses SwiftUI instead of AppKit for improved window management and simplified UI code. No additional configuration is needed.
 
 ### 2. Install Binaries
 
 ```bash
 # Install to /usr/local/bin
-sudo cp OxVCS-CLI-Wrapper/target/release/oxenvcs-cli /usr/local/bin/
-sudo cp OxVCS-LaunchAgent/.build/release/oxvcs-daemon /usr/local/bin/
+sudo cp Auxin-CLI-Wrapper/target/release/auxin /usr/local/bin/
+sudo cp Auxin-LaunchAgent/.build/release/auxin-daemon /usr/local/bin/
 
 # Set permissions
-sudo chmod +x /usr/local/bin/oxenvcs-cli
-sudo chmod +x /usr/local/bin/oxvcs-daemon
+sudo chmod +x /usr/local/bin/auxin
+sudo chmod +x /usr/local/bin/auxin-daemon
 ```
 
 ### 3. Configure LaunchAgent
@@ -171,25 +171,25 @@ sudo chmod +x /usr/local/bin/oxvcs-daemon
 mkdir -p ~/Library/LaunchAgents
 
 # Copy plist
-cp OxVCS-LaunchAgent/Resources/com.oxen.logic.daemon.plist \
+cp Auxin-LaunchAgent/Resources/com.auxin.daemon.plist \
    ~/Library/LaunchAgents/
 
 # Update the username in the plist
 sed -i.bak "s|<string><!-- Will be dynamically set during installation --></string>|<string>$USER</string>|g" \
-   ~/Library/LaunchAgents/com.oxen.logic.daemon.plist
+   ~/Library/LaunchAgents/com.auxin.daemon.plist
 
 # Set permissions
-chmod 644 ~/Library/LaunchAgents/com.oxen.logic.daemon.plist
+chmod 644 ~/Library/LaunchAgents/com.auxin.daemon.plist
 ```
 
 ### 4. Register Service
 
 ```bash
 # Load with launchctl
-launchctl load ~/Library/LaunchAgents/com.oxen.logic.daemon.plist
+launchctl load ~/Library/LaunchAgents/com.auxin.daemon.plist
 
 # Register with SMAppService
-oxvcs-daemon --install
+auxin-daemon --install
 ```
 
 ## Troubleshooting
@@ -245,7 +245,7 @@ source ~/.zshrc
 1. Open **System Settings**
 2. Go to **General** → **Login Items & Extensions**
 3. Find **Oxen VCS Daemon** and toggle **ON**
-4. Run `oxvcs-daemon --status` to verify
+4. Run `auxin-daemon --status` to verify
 
 ### Permission Denied: Can't Write to /usr/local/bin
 
@@ -254,7 +254,7 @@ source ~/.zshrc
 **Solution**: The installer will automatically request sudo privileges. If you run commands manually, use sudo:
 
 ```bash
-sudo cp OxVCS-CLI-Wrapper/target/release/oxenvcs-cli /usr/local/bin/
+sudo cp Auxin-CLI-Wrapper/target/release/auxin /usr/local/bin/
 ```
 
 ### Service Not Starting
@@ -265,14 +265,14 @@ sudo cp OxVCS-CLI-Wrapper/target/release/oxenvcs-cli /usr/local/bin/
 
 ```bash
 # View logs
-tail -f /tmp/com.oxen.logic.daemon.stdout
-tail -f /tmp/com.oxen.logic.daemon.stderr
+tail -f /tmp/com.auxin.daemon.stdout
+tail -f /tmp/com.auxin.daemon.stderr
 
 # Check launchctl status
-launchctl list | grep com.oxen.logic.daemon
+launchctl list | grep com.auxin.daemon
 
 # Try manual start for debugging
-oxvcs-daemon --daemon
+auxin-daemon --daemon
 ```
 
 ### Build Fails: Proxy Blocking crates.io
@@ -291,7 +291,7 @@ oxvcs-daemon --daemon
 
 ## Uninstallation
 
-To completely remove OxVCS:
+To completely remove Auxin:
 
 ```bash
 ./install.sh --uninstall
@@ -301,18 +301,18 @@ Or manually:
 
 ```bash
 # Stop and unregister service
-oxvcs-daemon --uninstall
-launchctl unload ~/Library/LaunchAgents/com.oxen.logic.daemon.plist
+auxin-daemon --uninstall
+launchctl unload ~/Library/LaunchAgents/com.auxin.daemon.plist
 
 # Remove binaries
-sudo rm /usr/local/bin/oxenvcs-cli
-sudo rm /usr/local/bin/oxvcs-daemon
+sudo rm /usr/local/bin/auxin
+sudo rm /usr/local/bin/auxin-daemon
 
 # Remove plist
-rm ~/Library/LaunchAgents/com.oxen.logic.daemon.plist
+rm ~/Library/LaunchAgents/com.auxin.daemon.plist
 
 # Remove logs (optional)
-rm /tmp/com.oxen.logic.daemon.*
+rm /tmp/com.auxin.daemon.*
 ```
 
 **Note**: This does not remove repository data (`.oxen` directories in your projects).
@@ -356,19 +356,19 @@ The `install.sh` script supports several options:
 
 After installation, verify everything is working:
 
-- [ ] `oxenvcs-cli --help` shows help message
-- [ ] `oxvcs-daemon --status` shows "✓ Enabled and running"
+- [ ] `auxin --help` shows help message
+- [ ] `auxin-daemon --status` shows "✓ Enabled and running"
 - [ ] Binaries exist: `ls -l /usr/local/bin/oxenvcs-*`
-- [ ] Plist exists: `ls -l ~/Library/LaunchAgents/com.oxen.logic.daemon.plist`
-- [ ] Can initialize project: `oxenvcs-cli init --logic ~/Music/TestProject.logicx`
+- [ ] Plist exists: `ls -l ~/Library/LaunchAgents/com.auxin.daemon.plist`
+- [ ] Can initialize project: `auxin init --logic ~/Music/TestProject.logicx`
 
 ## Next Steps
 
 Once installation is complete:
 
 1. **Read the Quick Start Guide**: [docs/USER_GUIDE.md](docs/USER_GUIDE.md)
-2. **Initialize your first project**: `oxenvcs-cli init --logic ~/Music/YourProject.logicx`
-3. **Learn the CLI**: [OxVCS-CLI-Wrapper/USAGE.md](OxVCS-CLI-Wrapper/USAGE.md)
+2. **Initialize your first project**: `auxin init --logic ~/Music/YourProject.logicx`
+3. **Learn the CLI**: [Auxin-CLI-Wrapper/USAGE.md](Auxin-CLI-Wrapper/USAGE.md)
 4. **Understand the architecture**: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
 ## Getting Help
@@ -376,17 +376,17 @@ Once installation is complete:
 If you encounter issues:
 
 1. Check the [Troubleshooting](#troubleshooting) section above
-2. Review the logs: `/tmp/com.oxen.logic.daemon.stdout` and `.stderr`
-3. Run with verbose output: `oxvcs-daemon --verify`
-4. Open an issue: https://github.com/YOUR_USERNAME/oxen-vcs-logic/issues
+2. Review the logs: `/tmp/com.auxin.daemon.stdout` and `.stderr`
+3. Run with verbose output: `auxin-daemon --verify`
+4. Open an issue: https://github.com/YOUR_USERNAME/auxin/issues
 
 ## Additional Resources
 
 - [Quick Start Guide](docs/QUICKSTART.md) - Get started in 5 minutes
-- [Usage Guide](OxVCS-CLI-Wrapper/USAGE.md) - Complete CLI reference
+- [Usage Guide](Auxin-CLI-Wrapper/USAGE.md) - Complete CLI reference
 - [Testing Strategy](docs/TESTING_STRATEGY.md) - Development and testing
 - [Architecture](docs/ARCHITECTURE.md) - Technical details
 
 ---
 
-**Installation complete?** Head to the [Quick Start Guide](docs/QUICKSTART.md) to start using OxVCS!
+**Installation complete?** Head to the [Quick Start Guide](docs/QUICKSTART.md) to start using Auxin!

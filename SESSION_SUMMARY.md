@@ -55,7 +55,7 @@ wait_for_connectivity(Duration::from_secs(60), Duration::from_secs(5))?;
 
 **User Experience:**
 ```
-$ oxenvcs-cli lock acquire --timeout 4
+$ auxin lock acquire --timeout 4
 ⚠️  Attempt 1 failed: Connection timeout
    Retrying in 1.0s... (4/5 attempts remaining)
 ⚠️  Attempt 2 failed: Connection timeout
@@ -177,7 +177,7 @@ Lock acquired successfully
 ## Files Created/Modified
 
 ### New Files (6)
-1. `OxVCS-CLI-Wrapper/src/network_resilience.rs` (590 lines)
+1. `Auxin-CLI-Wrapper/src/network_resilience.rs` (590 lines)
 2. `tests/collaboration_integration_test.rs` (600 lines)
 3. `tests/common/mock_oxen_hub.rs` (600 lines)
 4. `test_network_resilience.sh` (executable script)
@@ -185,8 +185,8 @@ Lock acquired successfully
 6. `SESSION_SUMMARY.md` (this file)
 
 ### Modified Files (2)
-1. `OxVCS-CLI-Wrapper/src/lib.rs` (+4 lines - exports)
-2. `OxVCS-CLI-Wrapper/src/remote_lock.rs` (+50 lines - retry logic)
+1. `Auxin-CLI-Wrapper/src/lib.rs` (+4 lines - exports)
+2. `Auxin-CLI-Wrapper/src/remote_lock.rs` (+50 lines - retry logic)
 
 ### Documentation Created (4)
 1. `INTEGRATION_TEST_PLAN.md` (4,500 lines)
@@ -204,7 +204,7 @@ Lock acquired successfully
 
 ```bash
 # Build CLI
-cd OxVCS-CLI-Wrapper
+cd Auxin-CLI-Wrapper
 cargo build --release
 cd ..
 
@@ -226,21 +226,21 @@ mkdir -p ~/Desktop/TestProject.logicx
 cd ~/Desktop/TestProject.logicx
 
 # Initialize
-oxenvcs-cli init --logic .
+auxin init --logic .
 oxen remote add origin https://hub.oxen.ai/YOUR_USERNAME/test-repo
 
 # Test lock with retry
-oxenvcs-cli lock acquire --timeout 4
+auxin lock acquire --timeout 4
 
 # DURING OPERATION: Disconnect WiFi for 5 seconds
 # EXPECTED: See retry messages, operation succeeds when WiFi restored
 
 # Verify
-oxenvcs-cli lock status
+auxin lock status
 # Should show locked
 
 # Release
-oxenvcs-cli lock release
+auxin lock release
 ```
 
 ### Integration Tests
@@ -253,7 +253,7 @@ export OXEN_TEST_API_KEY='your-api-key'
 export OXEN_TEST_REPO_URL='https://hub.oxen.ai/username/test-repo'
 
 # Run tests
-cd OxVCS-CLI-Wrapper
+cd Auxin-CLI-Wrapper
 cargo test --test collaboration_integration_test -- --ignored --test-threads=1
 ```
 
@@ -290,23 +290,23 @@ cargo test --test collaboration_integration_test -- --ignored --test-threads=1
 
 ```bash
 # Normal operation (should be fast)
-oxenvcs-cli lock acquire --timeout 4
+auxin lock acquire --timeout 4
 
 # With verbose logging (see retry details)
-RUST_LOG=info oxenvcs-cli lock acquire --timeout 4
+RUST_LOG=info auxin lock acquire --timeout 4
 
 # Test release with retry
-RUST_LOG=info oxenvcs-cli lock release
+RUST_LOG=info auxin lock release
 
 # Check connectivity
-RUST_LOG=debug oxenvcs-cli lock status
+RUST_LOG=debug auxin lock status
 ```
 
 ### Simulate Network Failure
 
 ```bash
 # Start lock operation
-oxenvcs-cli lock acquire --timeout 4 &
+auxin lock acquire --timeout 4 &
 
 # Wait 2 seconds
 sleep 2
@@ -412,7 +412,7 @@ echo $?  # Should be 0 (success)
 
 **Phase 4 Network Resilience: 95% Complete** ✅
 
-We've successfully implemented robust network resilience for OxVCS collaboration features:
+We've successfully implemented robust network resilience for Auxin collaboration features:
 
 **What Works Now:**
 - ✅ Automatic retry on network failures

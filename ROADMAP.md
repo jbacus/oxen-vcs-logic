@@ -1,4 +1,4 @@
-# OxVCS Roadmap & Project Assessment
+# Auxin Roadmap & Project Assessment
 
 **Last Updated:** November 17, 2025
 **Status:** CLI-First MVP Complete, Production Testing Phase
@@ -74,11 +74,11 @@ Code is 95% complete and well-tested in isolation. The fundamental architecture 
 **Evidence:**
 ```bash
 # These commands work TODAY (tested in CI):
-oxenvcs-cli init --logic ~/Music/Project.logicx
-oxenvcs-cli add --all
-oxenvcs-cli commit -m "Done" --bpm 120 --key "C Major"
-oxenvcs-cli log --limit 10
-oxenvcs-cli restore abc123f
+auxin init --logic ~/Music/Project.logicx
+auxin add --all
+auxin commit -m "Done" --bpm 120 --key "C Major"
+auxin log --limit 10
+auxin restore abc123f
 ```
 
 ### Phase 2: Service Architecture ✅ CODE COMPLETE
@@ -168,10 +168,10 @@ oxenvcs-cli restore abc123f
 **Evidence:**
 ```bash
 # These advanced features work TODAY:
-oxenvcs-cli compare abc123f def456g --format colored
-oxenvcs-cli search "bpm:120-140 key:minor tag:mixing"
-oxenvcs-cli hooks install validate-metadata --type pre-commit
-oxenvcs-cli console  # Full-screen interactive TUI
+auxin compare abc123f def456g --format colored
+auxin search "bpm:120-140 key:minor tag:mixing"
+auxin hooks install validate-metadata --type pre-commit
+auxin console  # Full-screen interactive TUI
 ```
 
 ---

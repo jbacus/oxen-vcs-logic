@@ -45,25 +45,25 @@ Oxen-VCS leverages Oxen.ai's block-level deduplication and implements:
 ./run_all_tests.sh
 
 # Build Rust CLI wrapper
-cd OxVCS-CLI-Wrapper && cargo build --release && cargo test
+cd Auxin-CLI-Wrapper && cargo build --release && cargo test
 
 # Build Swift components (macOS only)
-cd OxVCS-LaunchAgent && swift build
-cd OxVCS-App && swift build
+cd Auxin-LaunchAgent && swift build
+cd Auxin-App && swift build
 
 # Build and create app bundle (REQUIRED for GUI app)
-cd OxVCS-App && swift build -c release && ./create-app-bundle.sh
+cd Auxin-App && swift build -c release && ./create-app-bundle.sh
 
 # Run the app bundle
-open OxVCS-App/OxVCS.app
+open Auxin-App/Auxin.app
 
 # Run specific test suites
-cd OxVCS-CLI-Wrapper && cargo test                    # Rust unit tests
-cd OxVCS-LaunchAgent && swift test                    # LaunchAgent tests
-cd OxVCS-App && swift test                            # App tests
+cd Auxin-CLI-Wrapper && cargo test                    # Rust unit tests
+cd Auxin-LaunchAgent && swift test                    # LaunchAgent tests
+cd Auxin-App && swift test                            # App tests
 
 # Lint and format
-cd OxVCS-CLI-Wrapper && cargo fmt && cargo clippy     # Rust
+cd Auxin-CLI-Wrapper && cargo fmt && cargo clippy     # Rust
 swiftlint lint && swiftlint autocorrect               # Swift (if configured)
 ```
 
@@ -79,7 +79,7 @@ swiftlint lint && swiftlint autocorrect               # Swift (if configured)
 
 ### Critical Source Files
 
-**Rust CLI Wrapper** (`OxVCS-CLI-Wrapper/src/`):
+**Rust CLI Wrapper** (`Auxin-CLI-Wrapper/src/`):
 - `main.rs:1` - CLI entry point and command handling
 - `oxen_subprocess.rs:1` - **CRITICAL**: Oxen CLI subprocess integration (primary Oxen interface)
 - `oxen_ops.rs:1` - High-level Oxen operation wrappers
@@ -89,7 +89,7 @@ swiftlint lint && swiftlint autocorrect               # Swift (if configured)
 - `draft_manager.rs:1` - Draft branch management logic
 - `liboxen_stub/` - Stub implementation (not connected to real Oxen)
 
-**Swift LaunchAgent** (`OxVCS-LaunchAgent/Sources/`):
+**Swift LaunchAgent** (`Auxin-LaunchAgent/Sources/`):
 - `Daemon.swift:1` - Main daemon orchestration and lifecycle
 - `FSEventsMonitor.swift:1` - File system change monitoring
 - `PowerManagement.swift:1` - Sleep/shutdown event handling
@@ -98,8 +98,8 @@ swiftlint lint && swiftlint autocorrect               # Swift (if configured)
 - `XPCService.swift:1` - IPC communication with app
 - `ServiceManager.swift:1` - LaunchAgent registration
 
-**Swift App** (`OxVCS-App/Sources/`):
-- `OxVCSApp.swift:1` - SwiftUI app entry point with @main attribute
+**Swift App** (`Auxin-App/Sources/`):
+- `AuxinApp.swift:1` - SwiftUI app entry point with @main attribute
 - `AppDelegate.swift:1` - App delegate for menu actions and legacy features
 - `Views/SwiftUI/` - SwiftUI declarative UI components (migrated from AppKit)
   - `ContentView.swift` - Main view with NavigationSplitView
@@ -123,16 +123,16 @@ swiftlint lint && swiftlint autocorrect               # Swift (if configured)
 **Debugging the Daemon:**
 ```bash
 # View daemon logs
-log show --predicate 'process == "OxVCS-LaunchAgent"' --last 1h --style syslog
+log show --predicate 'process == "Auxin-LaunchAgent"' --last 1h --style syslog
 
 # Stop daemon
-launchctl unload ~/Library/LaunchAgents/com.oxenvcs.agent.plist
+launchctl unload ~/Library/LaunchAgents/com.auxin.agent.plist
 
 # Start daemon with manual logging
-cd OxVCS-LaunchAgent && swift run
+cd Auxin-LaunchAgent && swift run
 
 # Check daemon status
-launchctl list | grep com.oxenvcs
+launchctl list | grep com.auxin
 ```
 
 **Testing Oxen Integration:**
@@ -142,7 +142,7 @@ pip3 install oxen-ai
 # or: cargo install oxen
 
 # Run integration tests
-cd OxVCS-CLI-Wrapper && cargo test --test oxen_subprocess_integration_test
+cd Auxin-CLI-Wrapper && cargo test --test oxen_subprocess_integration_test
 ```
 
 **Building for Distribution:**
@@ -151,9 +151,9 @@ cd OxVCS-CLI-Wrapper && cargo test --test oxen_subprocess_integration_test
 ./install.sh
 
 # Or manually build release versions
-cd OxVCS-CLI-Wrapper && cargo build --release
-cd OxVCS-LaunchAgent && swift build -c release
-cd OxVCS-App && swift build -c release && ./create-app-bundle.sh
+cd Auxin-CLI-Wrapper && cargo build --release
+cd Auxin-LaunchAgent && swift build -c release
+cd Auxin-App && swift build -c release && ./create-app-bundle.sh
 
 # The create-app-bundle.sh script creates a proper macOS .app bundle
 # with Info.plist and correct directory structure for GUI rendering
@@ -267,7 +267,7 @@ cd OxVCS-App && swift build -c release && ./create-app-bundle.sh
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│                    OxVCS-App (Swift/AppKit)              │
+│                    Auxin-App (Swift/AppKit)              │
 │  • UI for history browsing, commits, rollback           │
 │  • Repository initialization wizard                      │
 │  • SMAppService daemon registration                      │
@@ -275,7 +275,7 @@ cd OxVCS-App && swift build -c release && ./create-app-bundle.sh
 └────────────────────┬─────────────────────────────────────┘
                      │ IPC (XPC)
 ┌────────────────────┴─────────────────────────────────────┐
-│              OxVCS-LaunchAgent (Swift)                   │
+│              Auxin-LaunchAgent (Swift)                   │
 │  • FSEvents monitoring (30-60s debounce)                │
 │  • Power management observers (NSWorkspace)              │
 │  • Draft commit automation                               │
@@ -283,7 +283,7 @@ cd OxVCS-App && swift build -c release && ./create-app-bundle.sh
 └────────────────────┬─────────────────────────────────────┘
                      │ IPC
 ┌────────────────────┴─────────────────────────────────────┐
-│          OxVCS-CLI-Wrapper (Rust/liboxen)               │
+│          Auxin-CLI-Wrapper (Rust/liboxen)               │
 │  • FFI wrapper around liboxen                           │
 │  • Low-latency Oxen operations (<10ms add, <100ms commit)│
 │  • Embedded as app bundle helper tool                   │
@@ -293,8 +293,8 @@ cd OxVCS-App && swift build -c release && ./create-app-bundle.sh
 ### Directory Structure
 
 ```
-oxen-vcs-logic/
-├── OxVCS-App/                    # Swift/AppKit UI application
+auxin/
+├── Auxin-App/                    # Swift/AppKit UI application
 │   ├── Sources/
 │   │   ├── Views/                # SwiftUI/AppKit views
 │   │   ├── ViewModels/           # Business logic layer
@@ -306,7 +306,7 @@ oxen-vcs-logic/
 │   │   └── Info.plist
 │   └── Tests/
 │
-├── OxVCS-LaunchAgent/            # Background daemon
+├── Auxin-LaunchAgent/            # Background daemon
 │   ├── Sources/
 │   │   ├── main.swift            # Daemon entry point
 │   │   ├── FSEventsMonitor.swift # File system monitoring
@@ -315,10 +315,10 @@ oxen-vcs-logic/
 │   │   ├── IPCService.swift      # XPC communication
 │   │   └── LockManager.swift     # File lock enforcement
 │   ├── Resources/
-│   │   └── com.oxenvcs.agent.plist
+│   │   └── com.auxin.agent.plist
 │   └── Tests/
 │
-├── OxVCS-CLI-Wrapper/            # Rust CLI wrapper
+├── Auxin-CLI-Wrapper/            # Rust CLI wrapper
 │   ├── Cargo.toml
 │   ├── src/
 │   │   ├── main.rs               # CLI entry point
@@ -416,8 +416,8 @@ When feature branches diverge:
 
 ```bash
 # Clone and install
-git clone https://github.com/jbacus/oxen-vcs-logic.git
-cd oxen-vcs-logic
+git clone https://github.com/jbacus/auxin.git
+cd auxin
 ./install.sh  # Automated installation (recommended)
 
 # Or install Oxen CLI manually for development
@@ -431,37 +431,37 @@ pip3 install oxen-ai  # or: cargo install oxen
 ./run_all_tests.sh
 
 # Component-specific tests
-cd OxVCS-CLI-Wrapper && cargo test           # Rust unit tests
-cd OxVCS-CLI-Wrapper && cargo test --test oxen_subprocess_integration_test  # Integration tests
-cd OxVCS-LaunchAgent && swift test           # LaunchAgent tests (macOS only)
-cd OxVCS-App && swift test                   # App tests (macOS only)
+cd Auxin-CLI-Wrapper && cargo test           # Rust unit tests
+cd Auxin-CLI-Wrapper && cargo test --test oxen_subprocess_integration_test  # Integration tests
+cd Auxin-LaunchAgent && swift test           # LaunchAgent tests (macOS only)
+cd Auxin-App && swift test                   # App tests (macOS only)
 
 # With coverage
-cd OxVCS-CLI-Wrapper && cargo tarpaulin --out Html
-cd OxVCS-LaunchAgent && swift test --enable-code-coverage
+cd Auxin-CLI-Wrapper && cargo tarpaulin --out Html
+cd Auxin-LaunchAgent && swift test --enable-code-coverage
 ```
 
 ### Building
 
 ```bash
 # Using Swift Package Manager (recommended)
-cd OxVCS-LaunchAgent && swift build -c release
-cd OxVCS-App && swift build -c release
+cd Auxin-LaunchAgent && swift build -c release
+cd Auxin-App && swift build -c release
 
 # Using Xcode (alternative)
-xcodebuild -project OxVCS-App/OxVCS.xcodeproj -scheme OxVCS -configuration Release
+xcodebuild -project Auxin-App/Auxin.xcodeproj -scheme Auxin -configuration Release
 ```
 
 ### LaunchAgent Management
 
 ```bash
 # View logs (most useful for debugging)
-log show --predicate 'process == "OxVCS-LaunchAgent"' --last 1h --style syslog
+log show --predicate 'process == "Auxin-LaunchAgent"' --last 1h --style syslog
 
 # Service control
-launchctl load ~/Library/LaunchAgents/com.oxenvcs.agent.plist
-launchctl unload ~/Library/LaunchAgents/com.oxenvcs.agent.plist
-launchctl list | grep com.oxenvcs
+launchctl load ~/Library/LaunchAgents/com.auxin.agent.plist
+launchctl unload ~/Library/LaunchAgents/com.auxin.agent.plist
+launchctl list | grep com.auxin
 ```
 
 ---
@@ -706,7 +706,7 @@ class IPCClient {
     private var connection: NSXPCConnection?
     
     func connect() {
-        connection = NSXPCConnection(serviceName: "com.oxenvcs.cli-wrapper")
+        connection = NSXPCConnection(serviceName: "com.auxin.cli-wrapper")
         connection?.remoteObjectInterface = NSXPCInterface(with: OxenVCSServiceProtocol.self)
         connection?.resume()
     }
@@ -847,16 +847,16 @@ func testDraftCommitWorkflow() async throws {
 **Quick Diagnostics:**
 ```bash
 # Check daemon status
-launchctl list | grep com.oxenvcs
+launchctl list | grep com.auxin
 
 # View logs (most useful)
-log show --predicate 'process == "OxVCS-LaunchAgent"' --last 1h --style syslog
+log show --predicate 'process == "Auxin-LaunchAgent"' --last 1h --style syslog
 
 # Verify Oxen CLI installation
 which oxen && oxen --version
 
 # Test Rust CLI wrapper
-cd OxVCS-CLI-Wrapper && cargo test
+cd Auxin-CLI-Wrapper && cargo test
 ```
 
 **Common Issues:**
@@ -922,8 +922,8 @@ Architectural patterns extensible to:
 - [DVC](https://dvc.org/) - Data versioning comparison point
 
 ### Contact & Support
-- **GitHub Repository**: https://github.com/jbacus/oxen-vcs-logic
-- **Issue Tracker**: [Create an issue](https://github.com/jbacus/oxen-vcs-logic/issues)
+- **GitHub Repository**: https://github.com/jbacus/auxin
+- **Issue Tracker**: [Create an issue](https://github.com/jbacus/auxin/issues)
 - **Oxen.ai Community**: hello@oxen.ai
 
 ---
@@ -939,7 +939,7 @@ Architectural patterns extensible to:
 
 **Development environment constraint**: This project requires macOS 14.0+ for building/testing Swift components. Current Linux environment can only handle Rust development.
 
-**Documentation status**: All markdown documentation consolidated and streamlined (42 files → 23 essential files) on 2025-10-29. OxVCS-App migrated from AppKit to SwiftUI on 2025-10-29 for improved window management and code simplicity.
+**Documentation status**: All markdown documentation consolidated and streamlined (42 files → 23 essential files) on 2025-10-29. Auxin-App migrated from AppKit to SwiftUI on 2025-10-29 for improved window management and code simplicity.
 
 ---
 

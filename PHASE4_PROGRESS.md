@@ -152,7 +152,7 @@ pub fn acquire_lock(&self, repo_path: &Path, user_id: &str, timeout_hours: u32) 
 **Tasks:**
 - Create `OfflineQueue` struct
 - Queue commits when offline
-- Store queue in `.oxenvcs/queue/`
+- Store queue in `.auxin/queue/`
 - Sync queue when online
 - Handle queue conflicts
 
@@ -201,7 +201,7 @@ pub fn acquire_lock(&self, repo_path: &Path, user_id: &str, timeout_hours: u32) 
 **Setup:**
 ```bash
 # On macOS with network access
-cd OxVCS-CLI-Wrapper
+cd Auxin-CLI-Wrapper
 
 # Test with real network
 cargo test --test collaboration_integration_test -- --ignored
@@ -390,7 +390,7 @@ match check_connectivity() {
 
 ```bash
 # Test resilient lock acquisition
-oxenvcs-cli lock acquire --timeout 4
+auxin lock acquire --timeout 4
 # Disconnect network mid-operation
 # Should see: "⚠️  Attempt 1 failed: connection timeout"
 # Should see: "   Retrying in 1.0s..."
@@ -398,15 +398,15 @@ oxenvcs-cli lock acquire --timeout 4
 # Should see: "✓ Operation succeeded after 2 attempt(s)"
 
 # Test with verbose retry
-RUST_LOG=debug oxenvcs-cli lock acquire --timeout 4
+RUST_LOG=debug auxin lock acquire --timeout 4
 
 # Test offline detection
 # Disconnect network
-oxenvcs-cli lock acquire --timeout 4
+auxin lock acquire --timeout 4
 # Should see: "⚠️  Network appears offline. Operation cannot be performed."
 
 # Test with no retry (fail fast)
-oxenvcs-cli lock acquire --timeout 4 --no-retry
+auxin lock acquire --timeout 4 --no-retry
 ```
 
 ---

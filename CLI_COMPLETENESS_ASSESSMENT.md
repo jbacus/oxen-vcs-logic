@@ -1,7 +1,7 @@
 # CLI Completeness Assessment
 
 **Date:** November 17, 2025
-**Component:** OxVCS-CLI-Wrapper (Rust)
+**Component:** Auxin-CLI-Wrapper (Rust)
 **Overall Grade:** A+ (95/100)
 
 ---

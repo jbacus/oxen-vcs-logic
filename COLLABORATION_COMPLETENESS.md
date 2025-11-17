@@ -33,7 +33,7 @@ You have a **production-ready collaboration system** for local+remote workflows 
 | Feature | Status | Implementation | Tests | Notes |
 |---------|--------|----------------|-------|-------|
 | **Login** | ✅ COMPLETE | `auth.rs:150-210` | ✅ Tested | Interactive prompts, secure storage |
-| **Logout** | ✅ COMPLETE | `auth.rs:212-240` | ✅ Tested | Clears both Oxen + OxVCS configs |
+| **Logout** | ✅ COMPLETE | `auth.rs:212-240` | ✅ Tested | Clears both Oxen + Auxin configs |
 | **Status** | ✅ COMPLETE | `auth.rs:242-280` | ✅ Tested | Shows username, hub URL, auth state |
 | **Test Connection** | ✅ COMPLETE | `auth.rs:282-320` | ✅ Tested | Verifies credentials with hub |
 | **Credential Storage** | ✅ COMPLETE | `auth.rs:50-120` | ✅ Tested | Dual storage (Oxen config + fallback) |
@@ -46,15 +46,15 @@ You have a **production-ready collaboration system** for local+remote workflows 
 **Evidence:**
 ```bash
 # All these commands work TODAY
-oxenvcs-cli auth login          ✅
-oxenvcs-cli auth logout         ✅
-oxenvcs-cli auth status         ✅
-oxenvcs-cli auth test           ✅
+auxin auth login          ✅
+auxin auth logout         ✅
+auxin auth status         ✅
+auxin auth test           ✅
 ```
 
 **What Works:**
 - ✅ Secure credential storage in `~/.oxen/user_config.toml`
-- ✅ Fallback storage in `~/.oxenvcs/credentials`
+- ✅ Fallback storage in `~/.auxin/credentials`
 - ✅ File permissions: 0600 (user-only read/write)
 - ✅ Integration with Oxen Hub API
 - ✅ Clear error messages with actionable suggestions
@@ -83,10 +83,10 @@ oxenvcs-cli auth test           ✅
 **Evidence:**
 ```bash
 # All these commands work TODAY
-oxenvcs-cli lock acquire --timeout 4   ✅
-oxenvcs-cli lock release                ✅
-oxenvcs-cli lock status                 ✅
-oxenvcs-cli lock break --force          ✅
+auxin lock acquire --timeout 4   ✅
+auxin lock release                ✅
+auxin lock status                 ✅
+auxin lock break --force          ✅
 ```
 
 **What Works:**
@@ -127,10 +127,10 @@ oxenvcs-cli lock break --force          ✅
 **Evidence:**
 ```bash
 # All these commands work TODAY
-oxenvcs-cli activity --limit 10      ✅
-oxenvcs-cli team                     ✅
-oxenvcs-cli comment add abc123 "text" ✅
-oxenvcs-cli comment list abc123      ✅
+auxin activity --limit 10      ✅
+auxin team                     ✅
+auxin comment add abc123 "text" ✅
+auxin comment list abc123      ✅
 ```
 
 **What Works:**
@@ -249,9 +249,9 @@ Without network resilience, the system **assumes reliable connectivity**:
 
 **1. Authentication (100% production-ready)**
 ```bash
-oxenvcs-cli auth login     # ✅ Works
-oxenvcs-cli auth test      # ✅ Works
-oxenvcs-cli auth status    # ✅ Works
+auxin auth login     # ✅ Works
+auxin auth test      # ✅ Works
+auxin auth status    # ✅ Works
 ```
 **Requirements:**
 - Oxen Hub account
@@ -259,9 +259,9 @@ oxenvcs-cli auth status    # ✅ Works
 
 **2. Remote Lock Management (95% production-ready)**
 ```bash
-oxenvcs-cli lock acquire --timeout 4   # ✅ Works
-oxenvcs-cli lock status                 # ✅ Works
-oxenvcs-cli lock release                # ✅ Works
+auxin lock acquire --timeout 4   # ✅ Works
+auxin lock status                 # ✅ Works
+auxin lock release                # ✅ Works
 ```
 **Requirements:**
 - Remote Oxen repository configured
@@ -270,9 +270,9 @@ oxenvcs-cli lock release                # ✅ Works
 
 **3. Team Collaboration (90% production-ready)**
 ```bash
-oxenvcs-cli activity     # ✅ Works
-oxenvcs-cli team         # ✅ Works
-oxenvcs-cli comment add  # ✅ Works (local)
+auxin activity     # ✅ Works
+auxin team         # ✅ Works
+auxin comment add  # ✅ Works (local)
 ```
 **Requirements:**
 - Commit history exists

@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-The semantic audio diff system transforms OxVCS from a simple version control tool into an **intelligent audio production assistant** that:
+The semantic audio diff system transforms Auxin from a simple version control tool into an **intelligent audio production assistant** that:
 
 1. **Understands** what changed (not just that something changed)
 2. **Explains** changes in producer-friendly language ("Harshness increased" vs "spectral delta at 5kHz")
@@ -80,7 +80,7 @@ The semantic audio diff system transforms OxVCS from a simple version control to
 - ✓ .oxenignore patterns
 - ⚠ **No semantic diff** - just track changes
 
-**Status**: Nearly complete (existing OxVCS architecture)
+**Status**: Nearly complete (existing Auxin architecture)
 
 ---
 
@@ -94,7 +94,7 @@ The semantic audio diff system transforms OxVCS from a simple version control to
 
 **Approach**:
 ```rust
-// OxVCS-CLI-Wrapper/src/logic_parser.rs
+// Auxin-CLI-Wrapper/src/logic_parser.rs
 
 use std::path::Path;
 use serde::{Deserialize, Serialize};
@@ -153,7 +153,7 @@ pub fn parse_logic_project(path: &Path) -> Result<LogicProjectData> {
 #### 1.2 Structured Metadata Diff
 
 ```rust
-// OxVCS-CLI-Wrapper/src/metadata_diff.rs
+// Auxin-CLI-Wrapper/src/metadata_diff.rs
 
 pub struct MetadataDiff {
     pub track_changes: Vec<TrackChange>,
@@ -235,7 +235,7 @@ New Track Added: "Strings" (MIDI)
 #### 2.1 Perceptual Hashing (Pre-Filter)
 
 ```rust
-// OxVCS-CLI-Wrapper/src/audio_hash.rs
+// Auxin-CLI-Wrapper/src/audio_hash.rs
 
 use chromaprint::Fingerprinter;
 
@@ -692,7 +692,7 @@ class MLAudioClassifier:
 #### 5.1 Spectrogram Diff Viewer
 
 ```swift
-// OxVCS-App/Sources/Views/SemanticDiffView.swift
+// Auxin-App/Sources/Views/SemanticDiffView.swift
 
 import SwiftUI
 import Accelerate
@@ -939,7 +939,7 @@ struct ABComparisonControls: View {
 
 **Rust/Swift Components**:
 ```toml
-# OxVCS-CLI-Wrapper/Cargo.toml
+# Auxin-CLI-Wrapper/Cargo.toml
 
 [dependencies]
 # Existing
@@ -1104,7 +1104,7 @@ pypesq==1.2.4
 
 ## Conclusion
 
-The semantic audio diff system is **ambitious but feasible**. It transforms OxVCS from a basic file tracker into an intelligent production assistant.
+The semantic audio diff system is **ambitious but feasible**. It transforms Auxin from a basic file tracker into an intelligent production assistant.
 
 **Recommendation**:
 1. **Ship MVP (Phase 0)** first - solve basic VCS need

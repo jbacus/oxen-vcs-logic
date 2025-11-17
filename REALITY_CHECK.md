@@ -1,4 +1,4 @@
-# OxVCS Reality Check: Promises vs Implementation
+# Auxin Reality Check: Promises vs Implementation
 
 **Date:** November 15, 2025
 **Purpose:** Compare user-facing promises in FOR_MUSICIANS.md against actual implementation status
@@ -25,11 +25,11 @@
 **Reality:** ✅ **WORKING**
 - ✅ Oxen CLI installed and functional (v0.38.4)
 - ✅ Rust CLI wrapper complete with 335 passing tests (85% coverage)
-- ✅ `oxenvcs-cli init --logic` works
-- ✅ `oxenvcs-cli add --all` works
-- ✅ `oxenvcs-cli commit` with metadata (BPM, sample rate, key) works
-- ✅ `oxenvcs-cli log` works
-- ✅ `oxenvcs-cli restore` works (with short hash support)
+- ✅ `auxin init --logic` works
+- ✅ `auxin add --all` works
+- ✅ `auxin commit` with metadata (BPM, sample rate, key) works
+- ✅ `auxin log` works
+- ✅ `auxin restore` works (with short hash support)
 - ✅ Draft branch management implemented and tested
 
 **Evidence:**
@@ -38,7 +38,7 @@ $ which oxen && oxen --version
 /opt/homebrew/bin/oxen
 oxen 0.38.4
 
-$ cd OxVCS-CLI-Wrapper && cargo test
+$ cd Auxin-CLI-Wrapper && cargo test
 running 335 tests
 test result: ok. 335 passed; 0 failed
 ```
@@ -61,7 +61,7 @@ test result: ok. 335 passed; 0 failed
 ---
 
 #### 3. Storage Efficiency
-**Promise:** "Way less than you'd think! OxVCS only stores the parts of files that changed"
+**Promise:** "Way less than you'd think! Auxin only stores the parts of files that changed"
 
 **Reality:** ✅ **WORKING**
 - ✅ Oxen's block-level deduplication is real (proven technology)
@@ -75,7 +75,7 @@ test result: ok. 335 passed; 0 failed
 ### 🟡 PARTIAL: Half-Working Features
 
 #### 4. Automatic Draft Tracking
-**Promise:** "Every 30-60 seconds after you stop editing: OxVCS creates a 'draft snapshot'"
+**Promise:** "Every 30-60 seconds after you stop editing: Auxin creates a 'draft snapshot'"
 
 **Reality:** 🟡 **CODE COMPLETE, UNTESTED**
 - ✅ FSEvents monitoring implemented in Swift
@@ -98,7 +98,7 @@ test result: ok. 335 passed; 0 failed
 
 #### 5. GUI Application
 **Promise:**
-- "Open Applications → OxVCS.app"
+- "Open Applications → Auxin.app"
 - "Click 'Add Project...'"
 - "Create Milestone" commits
 - "Browse history and rollback"
@@ -174,7 +174,7 @@ test result: ok. 335 passed; 0 failed
 
 #### 8. First-Time Setup
 **Promise:**
-1. "Launch the App → Open Applications → OxVCS.app"
+1. "Launch the App → Open Applications → Auxin.app"
 2. "Click 'Add Project...'"
 3. "Navigate to your Logic Pro project"
 4. "Click 'Initialize'"
@@ -198,7 +198,7 @@ test result: ok. 335 passed; 0 failed
 ---
 
 #### 9. Daily Workflow: Create Milestones
-**Promise:** "Open OxVCS app → Click 'Create Milestone' → Add note, BPM, key, tags"
+**Promise:** "Open Auxin app → Click 'Create Milestone' → Add note, BPM, key, tags"
 
 **Reality:** 🔴 **UI MISSING**
 - ✅ Backend commit with metadata works (CLI tested)
@@ -246,7 +246,7 @@ test result: ok. 335 passed; 0 failed
 ---
 
 #### 11. Troubleshooting: Daemon Status
-**Promise:** "If not running, open OxVCS.app to restart it"
+**Promise:** "If not running, open Auxin.app to restart it"
 
 **Reality:** 🔴 **DAEMON NEVER TESTED**
 - ✅ LaunchAgent code exists
@@ -271,7 +271,7 @@ test result: ok. 335 passed; 0 failed
 
 ### What We Have
 
-**Rust CLI (OxVCS-CLI-Wrapper):**
+**Rust CLI (Auxin-CLI-Wrapper):**
 - ✅ 335 tests passing
 - ✅ 85% code coverage
 - ✅ Unit tests for all core operations
@@ -422,7 +422,7 @@ test result: ok. 335 passed; 0 failed
 
 ### What We Can Honestly Say Today
 
-✅ **"OxVCS has a working CLI that can version control Logic Pro projects using Oxen's block-level deduplication."**
+✅ **"Auxin has a working CLI that can version control Logic Pro projects using Oxen's block-level deduplication."**
 
 ✅ **"The automatic draft tracking daemon is implemented but needs real-world testing."**
 
@@ -430,7 +430,7 @@ test result: ok. 335 passed; 0 failed
 
 ### What We Can't Say Yet
 
-❌ **"OxVCS is ready for musicians who don't know programming."** (No GUI workflow)
+❌ **"Auxin is ready for musicians who don't know programming."** (No GUI workflow)
 
 ❌ **"Just install and start using it in 10 minutes."** (Installation untested)
 

@@ -22,7 +22,7 @@ TEST_DIR="$HOME/Desktop/oxenvcs-test-projects"
 TEST_PROJECT_PATH="$TEST_DIR/$TEST_PROJECT_NAME"
 
 # CLI path
-OXENVCS_CLI="./OxVCS-CLI-Wrapper/target/release/oxenvcs-cli"
+OXENVCS_CLI="./Auxin-CLI-Wrapper/target/release/auxin"
 
 # Function to print test header
 print_header() {
@@ -91,9 +91,9 @@ print_step 1 "Checking prerequisites"
 verify_prerequisite "oxen" "Oxen CLI"
 
 if [ ! -f "$OXENVCS_CLI" ]; then
-    print_error "oxenvcs-cli not found. Build it first: cd OxVCS-CLI-Wrapper && cargo build --release"
+    print_error "auxin not found. Build it first: cd Auxin-CLI-Wrapper && cargo build --release"
 fi
-print_success "oxenvcs-cli is available"
+print_success "auxin is available"
 
 # ------------------------------------------------------------
 # Step 2: Create Test Logic Pro Project Structure
@@ -129,7 +129,7 @@ echo "  - Audio files: 2 files, $(du -sh "$TEST_PROJECT_PATH/Resources/Audio Fil
 # ------------------------------------------------------------
 # Step 3: Initialize with Oxen-VCS
 # ------------------------------------------------------------
-print_step 3 "Initializing project with oxenvcs-cli"
+print_step 3 "Initializing project with auxin"
 
 cd "$TEST_PROJECT_PATH"
 $OXENVCS_CLI init --logic .

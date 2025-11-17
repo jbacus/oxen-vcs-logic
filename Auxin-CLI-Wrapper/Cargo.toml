@@ -1,0 +1,53 @@
+[package]
+name = "auxin"
+version = "0.2.0"
+edition = "2021"
+authors = ["Auxin Contributors"]
+license = "MIT"
+description = "Version control for Logic Pro projects, powered by Oxen.ai"
+
+[dependencies]
+# NOTE: liboxen does not exist on crates.io yet
+# This is commented out until Oxen.ai publishes Rust bindings
+# liboxen = "0.19"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"
+tokio = { version = "1.0", features = ["full"] }
+anyhow = "1.0"
+clap = { version = "4.0", features = ["derive"] }
+clap_complete = "4.0"
+chrono = { version = "0.4.42", features = ["serde"] }
+colored = "2.0"
+atty = "0.2"
+log = "0.4"
+uuid = { version = "1.0", features = ["v4"] }
+hostname = "0.3"
+dirs = "5.0"
+
+# Visual feedback and interactivity
+indicatif = "0.17"     # Progress bars and spinners
+console = "0.15"       # Terminal utilities
+dialoguer = "0.11"     # Interactive prompts
+ratatui = "0.25"       # TUI framework
+crossterm = "0.27"     # Terminal control
+
+[dev-dependencies]
+criterion = "0.5"
+tempfile = "3.8"
+
+[[bin]]
+name = "auxin"
+path = "src/main.rs"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+
+# [[bench]]
+# name = "oxen_operations"
+# harness = false

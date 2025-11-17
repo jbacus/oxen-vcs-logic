@@ -19,7 +19,7 @@ These scripts test the complete Oxen-VCS workflow for Logic Pro projects, coveri
 ### Required
 - **macOS 14.0+** with terminal access
 - **Oxen CLI** installed: `pip3 install oxen-ai` or `cargo install oxen`
-- **OxVCS-CLI** built: `cd OxVCS-CLI-Wrapper && cargo build --release`
+- **Auxin-CLI** built: `cd Auxin-CLI-Wrapper && cargo build --release`
 
 ### Optional (for full testing)
 - **LaunchAgent** running (for auto-commit tests)
@@ -32,8 +32,8 @@ These scripts test the complete Oxen-VCS workflow for Logic Pro projects, coveri
 # Check Oxen CLI
 oxen --version
 
-# Check OxVCS-CLI
-./OxVCS-CLI-Wrapper/target/release/oxenvcs-cli --version
+# Check Auxin-CLI
+./Auxin-CLI-Wrapper/target/release/auxin --version
 
 # Check LaunchAgent (optional)
 launchctl list | grep oxenvcs
@@ -88,7 +88,7 @@ Each script can be run independently:
 
 Tests:
 - Create Logic Pro project structure
-- Initialize with `oxenvcs-cli init`
+- Initialize with `auxin init`
 - Verify `.oxen` directory created
 - Verify `.oxenignore` configured correctly
 - Verify initial commit created
@@ -228,14 +228,14 @@ TEST: Initialize Project
 
 STEP 1: Checking prerequisites
 ✓ Oxen CLI is available
-✓ oxenvcs-cli is available
+✓ auxin is available
 
 STEP 2: Creating test Logic Pro project
 ✓ Test project created at: /Users/.../TestProject.logicx
   - ProjectData: 512B
   - Audio files: 2 files, 1.5M
 
-STEP 3: Initializing project with oxenvcs-cli
+STEP 3: Initializing project with auxin
 ✓ .oxen directory created
 
 ...
@@ -289,22 +289,22 @@ pip3 install oxen-ai
 oxen --version
 ```
 
-### Script Fails: "oxenvcs-cli not found"
+### Script Fails: "auxin not found"
 
 ```bash
 # Build CLI
-cd OxVCS-CLI-Wrapper
+cd Auxin-CLI-Wrapper
 cargo build --release
 
 # Verify
-./target/release/oxenvcs-cli --version
+./target/release/auxin --version
 ```
 
 ### Auto-Commit Test Fails: "LaunchAgent not running"
 
 ```bash
 # Start LaunchAgent
-launchctl load ~/Library/LaunchAgents/com.oxenvcs.agent.plist
+launchctl load ~/Library/LaunchAgents/com.auxin.agent.plist
 
 # Verify
 launchctl list | grep oxenvcs
@@ -367,8 +367,8 @@ jobs:
       - uses: actions/checkout@v3
       - name: Install Oxen CLI
         run: pip3 install oxen-ai
-      - name: Build OxVCS-CLI
-        run: cd OxVCS-CLI-Wrapper && cargo build --release
+      - name: Build Auxin-CLI
+        run: cd Auxin-CLI-Wrapper && cargo build --release
       - name: Run tests
         run: cd test-scripts/user-guide-scenarios && ./run_all_tests.sh
 ```
@@ -379,8 +379,8 @@ See [LICENSE](../../LICENSE) in root directory.
 
 ## Support
 
-- **Issues**: https://github.com/jbacus/oxen-vcs-logic/issues
-- **Docs**: https://github.com/jbacus/oxen-vcs-logic/docs
+- **Issues**: https://github.com/jbacus/auxin/issues
+- **Docs**: https://github.com/jbacus/auxin/docs
 - **Email**: support@oxen-vcs.com
 
 ---

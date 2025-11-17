@@ -1,0 +1,1802 @@
+#compdef auxin
+
+autoload -U is-at-least
+
+_auxin() {
+    typeset -A opt_args
+    typeset -a _arguments_options
+    local ret=1
+
+    if is-at-least 5.2; then
+        _arguments_options=(-s -S -C)
+    else
+        _arguments_options=(-s -C)
+    fi
+
+    local context curcontext="$curcontext" state line
+    _arguments "${_arguments_options[@]}" : \
+'-v[Enable verbose debug output]' \
+'--verbose[Enable verbose debug output]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'-V[Print version]' \
+'--version[Print version]' \
+":: :_auxin_commands" \
+"*::: :->auxin" \
+&& ret=0
+    case $state in
+    (auxin)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:auxin-command-$line[1]:"
+        case $line[1] in
+            (init)
+_arguments "${_arguments_options[@]}" : \
+'--logic[Initialize for Logic Pro project (auto-detect and configure)]' \
+'-v[Enable verbose debug output]' \
+'--verbose[Enable verbose debug output]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+':path -- Path to the project directory:_files' \
+&& ret=0
+;;
+(add)
+_arguments "${_arguments_options[@]}" : \
+'-a[Stage all changes in the repository]' \
+'--all[Stage all changes in the repository]' \
+'-v[Enable verbose debug output]' \
+'--verbose[Enable verbose debug output]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'*::paths -- Files or directories to stage:_files' \
+&& ret=0
+;;
+(commit)
+_arguments "${_arguments_options[@]}" : \
+'-m+[Commit message describing the changes]:MESSAGE:_default' \
+'--message=[Commit message describing the changes]:MESSAGE:_default' \
+'--bpm=[Beats per minute (tempo) of the project]:BPM:_default' \
+'--sample-rate=[Sample rate in Hz (e.g., 44100, 48000, 96000)]:SAMPLE_RATE:_default' \
+'--key=[Key signature (e.g., '\''C Major'\'', '\''A Minor'\'', '\''F# Minor'\'')]:KEY:_default' \
+'--tags=[Tags for categorization (comma-separated, e.g., '\''mixing,draft'\'')]:TAGS:_default' \
+'-v[Enable verbose debug output]' \
+'--verbose[Enable verbose debug output]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+&& ret=0
+;;
+(log)
+_arguments "${_arguments_options[@]}" : \
+'-l+[Maximum number of commits to display]:LIMIT:_default' \
+'--limit=[Maximum number of commits to display]:LIMIT:_default' \
+'--bpm=[Filter by BPM (e.g., 120, 128)]:BPM:_default' \
+'--tag=[Filter by tag (e.g., '\''mixing'\'', '\''vocals'\'')]:TAG:_default' \
+'--key=[Filter by key signature (e.g., '\''C Major'\'')]:KEY:_default' \
+'--since=[Show commits since date (YYYY-MM-DD)]:SINCE:_default' \
+'-v[Enable verbose debug output]' \
+'--verbose[Enable verbose debug output]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+&& ret=0
+;;
+(restore)
+_arguments "${_arguments_options[@]}" : \
+'-v[Enable verbose debug output]' \
+'--verbose[Enable verbose debug output]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+':commit_id -- Commit ID to restore to (from '\''log'\'' command):_default' \
+&& ret=0
+;;
+(status)
+_arguments "${_arguments_options[@]}" : \
+'-v[Enable verbose debug output]' \
+'--verbose[Enable verbose debug output]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+&& ret=0
+;;
+(show)
+_arguments "${_arguments_options[@]}" : \
+'-v[Enable verbose debug output]' \
+'--verbose[Enable verbose debug output]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+':commit_id -- Commit ID to show details for:_default' \
+&& ret=0
+;;
+(diff)
+_arguments "${_arguments_options[@]}" : \
+'-v[Enable verbose debug output]' \
+'--verbose[Enable verbose debug output]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'::commit_id -- Commit ID to compare against (optional):_default' \
+&& ret=0
+;;
+(compare)
+_arguments "${_arguments_options[@]}" : \
+'--format=[Output format (text, colored, json, compact)]:FORMAT:_default' \
+'--plain[Disable colored output]' \
+'-v[Enable verbose debug output]' \
+'--verbose[Enable verbose debug output]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+':commit_a -- First commit ID (older):_default' \
+':commit_b -- Second commit ID (newer):_default' \
+&& ret=0
+;;
+(search)
+_arguments "${_arguments_options[@]}" : \
+'--format=[Output format (list, compact, json)]:FORMAT:_default' \
+'--ranked[Sort results by relevance score]' \
+'-v[Enable verbose debug output]' \
+'--verbose[Enable verbose debug output]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+':query -- Search query string:_default' \
+&& ret=0
+;;
+(lock)
+_arguments "${_arguments_options[@]}" : \
+'-v[Enable verbose debug output]' \
+'--verbose[Enable verbose debug output]' \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_auxin__lock_commands" \
+"*::: :->lock" \
+&& ret=0
+
+    case $state in
+    (lock)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:auxin-lock-command-$line[1]:"
+        case $line[1] in
+            (acquire)
+_arguments "${_arguments_options[@]}" : \
+'--timeout=[Lock timeout in hours]:TIMEOUT:_default' \
+'-v[Enable verbose debug output]' \
+'--verbose[Enable verbose debug output]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+&& ret=0
+;;
+(release)
+_arguments "${_arguments_options[@]}" : \
+'-v[Enable verbose debug output]' \
+'--verbose[Enable verbose debug output]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+&& ret=0
+;;
+(status)
+_arguments "${_arguments_options[@]}" : \
+'-v[Enable verbose debug output]' \
+'--verbose[Enable verbose debug output]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+&& ret=0
+;;
+(break)
+_arguments "${_arguments_options[@]}" : \
+'--force[Confirm you want to force break the lock]' \
+'-v[Enable verbose debug output]' \
+'--verbose[Enable verbose debug output]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_auxin__lock__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:auxin-lock-help-command-$line[1]:"
+        case $line[1] in
+            (acquire)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(release)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(status)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(break)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(auth)
+_arguments "${_arguments_options[@]}" : \
+'-v[Enable verbose debug output]' \
+'--verbose[Enable verbose debug output]' \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_auxin__auth_commands" \
+"*::: :->auth" \
+&& ret=0
+
+    case $state in
+    (auth)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:auxin-auth-command-$line[1]:"
+        case $line[1] in
+            (login)
+_arguments "${_arguments_options[@]}" : \
+'-v[Enable verbose debug output]' \
+'--verbose[Enable verbose debug output]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+&& ret=0
+;;
+(logout)
+_arguments "${_arguments_options[@]}" : \
+'-v[Enable verbose debug output]' \
+'--verbose[Enable verbose debug output]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+&& ret=0
+;;
+(status)
+_arguments "${_arguments_options[@]}" : \
+'-v[Enable verbose debug output]' \
+'--verbose[Enable verbose debug output]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+&& ret=0
+;;
+(test)
+_arguments "${_arguments_options[@]}" : \
+'-v[Enable verbose debug output]' \
+'--verbose[Enable verbose debug output]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_auxin__auth__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:auxin-auth-help-command-$line[1]:"
+        case $line[1] in
+            (login)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(logout)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(status)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(test)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(metadata-diff)
+_arguments "${_arguments_options[@]}" : \
+'--output=[Output format (text or json)]:FORMAT:_default' \
+'--color[Use colored output (default\: auto-detect)]' \
+'-v[Include technical details in output]' \
+'--verbose[Include technical details in output]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+':project_a -- First Logic Pro project (.logicx):_files' \
+':project_b -- Second Logic Pro project (.logicx):_files' \
+&& ret=0
+;;
+(daemon)
+_arguments "${_arguments_options[@]}" : \
+'-v[Enable verbose debug output]' \
+'--verbose[Enable verbose debug output]' \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_auxin__daemon_commands" \
+"*::: :->daemon" \
+&& ret=0
+
+    case $state in
+    (daemon)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:auxin-daemon-command-$line[1]:"
+        case $line[1] in
+            (status)
+_arguments "${_arguments_options[@]}" : \
+'-v[Enable verbose debug output]' \
+'--verbose[Enable verbose debug output]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+&& ret=0
+;;
+(start)
+_arguments "${_arguments_options[@]}" : \
+'-v[Enable verbose debug output]' \
+'--verbose[Enable verbose debug output]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+&& ret=0
+;;
+(stop)
+_arguments "${_arguments_options[@]}" : \
+'-v[Enable verbose debug output]' \
+'--verbose[Enable verbose debug output]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+&& ret=0
+;;
+(restart)
+_arguments "${_arguments_options[@]}" : \
+'-v[Enable verbose debug output]' \
+'--verbose[Enable verbose debug output]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+&& ret=0
+;;
+(logs)
+_arguments "${_arguments_options[@]}" : \
+'--lines=[Number of log lines to show]:LINES:_default' \
+'-v[Enable verbose debug output]' \
+'--verbose[Enable verbose debug output]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_auxin__daemon__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:auxin-daemon-help-command-$line[1]:"
+        case $line[1] in
+            (status)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(start)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(stop)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(restart)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(logs)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(hooks)
+_arguments "${_arguments_options[@]}" : \
+'-v[Enable verbose debug output]' \
+'--verbose[Enable verbose debug output]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+":: :_auxin__hooks_commands" \
+"*::: :->hooks" \
+&& ret=0
+
+    case $state in
+    (hooks)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:auxin-hooks-command-$line[1]:"
+        case $line[1] in
+            (init)
+_arguments "${_arguments_options[@]}" : \
+'-v[Enable verbose debug output]' \
+'--verbose[Enable verbose debug output]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(list)
+_arguments "${_arguments_options[@]}" : \
+'-v[Enable verbose debug output]' \
+'--verbose[Enable verbose debug output]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(builtins)
+_arguments "${_arguments_options[@]}" : \
+'-v[Enable verbose debug output]' \
+'--verbose[Enable verbose debug output]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(install)
+_arguments "${_arguments_options[@]}" : \
+'--hook-type=[Hook type (pre-commit or post-commit)]:TYPE:_default' \
+'-v[Enable verbose debug output]' \
+'--verbose[Enable verbose debug output]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':name -- Name of built-in hook to install:_default' \
+&& ret=0
+;;
+(remove)
+_arguments "${_arguments_options[@]}" : \
+'--hook-type=[Hook type (pre-commit or post-commit)]:TYPE:_default' \
+'-v[Enable verbose debug output]' \
+'--verbose[Enable verbose debug output]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':name -- Name of hook to remove:_default' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_auxin__hooks__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:auxin-hooks-help-command-$line[1]:"
+        case $line[1] in
+            (init)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(builtins)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(install)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(remove)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(console)
+_arguments "${_arguments_options[@]}" : \
+'-v[Enable verbose debug output]' \
+'--verbose[Enable verbose debug output]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'::path -- Path to Logic Pro project (default\: current directory):_files' \
+&& ret=0
+;;
+(activity)
+_arguments "${_arguments_options[@]}" : \
+'--limit=[Number of activities to show]:LIMIT:_default' \
+'-v[Enable verbose debug output]' \
+'--verbose[Enable verbose debug output]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+&& ret=0
+;;
+(team)
+_arguments "${_arguments_options[@]}" : \
+'-v[Enable verbose debug output]' \
+'--verbose[Enable verbose debug output]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+&& ret=0
+;;
+(queue)
+_arguments "${_arguments_options[@]}" : \
+'-v[Enable verbose debug output]' \
+'--verbose[Enable verbose debug output]' \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_auxin__queue_commands" \
+"*::: :->queue" \
+&& ret=0
+
+    case $state in
+    (queue)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:auxin-queue-command-$line[1]:"
+        case $line[1] in
+            (status)
+_arguments "${_arguments_options[@]}" : \
+'-v[Enable verbose debug output]' \
+'--verbose[Enable verbose debug output]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+&& ret=0
+;;
+(sync)
+_arguments "${_arguments_options[@]}" : \
+'-v[Enable verbose debug output]' \
+'--verbose[Enable verbose debug output]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+&& ret=0
+;;
+(clear)
+_arguments "${_arguments_options[@]}" : \
+'--all[Clear all operations including pending]' \
+'-v[Enable verbose debug output]' \
+'--verbose[Enable verbose debug output]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+&& ret=0
+;;
+(remove)
+_arguments "${_arguments_options[@]}" : \
+'-v[Enable verbose debug output]' \
+'--verbose[Enable verbose debug output]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+':entry_id -- Queue entry ID to remove:_default' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_auxin__queue__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:auxin-queue-help-command-$line[1]:"
+        case $line[1] in
+            (status)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(sync)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(clear)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(remove)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(comment)
+_arguments "${_arguments_options[@]}" : \
+'-v[Enable verbose debug output]' \
+'--verbose[Enable verbose debug output]' \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_auxin__comment_commands" \
+"*::: :->comment" \
+&& ret=0
+
+    case $state in
+    (comment)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:auxin-comment-command-$line[1]:"
+        case $line[1] in
+            (add)
+_arguments "${_arguments_options[@]}" : \
+'-v[Enable verbose debug output]' \
+'--verbose[Enable verbose debug output]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+':commit_id -- Commit ID or HEAD:_default' \
+':text -- Comment text:_default' \
+&& ret=0
+;;
+(list)
+_arguments "${_arguments_options[@]}" : \
+'-v[Enable verbose debug output]' \
+'--verbose[Enable verbose debug output]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+'::commit_id -- Commit ID or HEAD (optional):_default' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_auxin__comment__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:auxin-comment-help-command-$line[1]:"
+        case $line[1] in
+            (add)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(completions)
+_arguments "${_arguments_options[@]}" : \
+'-v[Enable verbose debug output]' \
+'--verbose[Enable verbose debug output]' \
+'-h[Print help (see more with '\''--help'\'')]' \
+'--help[Print help (see more with '\''--help'\'')]' \
+':shell -- Shell to generate completions for (bash, zsh, fish, powershell):_default' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_auxin__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:auxin-help-command-$line[1]:"
+        case $line[1] in
+            (init)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(add)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(commit)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(log)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(restore)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(status)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(show)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(diff)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(compare)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(search)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(lock)
+_arguments "${_arguments_options[@]}" : \
+":: :_auxin__help__lock_commands" \
+"*::: :->lock" \
+&& ret=0
+
+    case $state in
+    (lock)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:auxin-help-lock-command-$line[1]:"
+        case $line[1] in
+            (acquire)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(release)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(status)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(break)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(auth)
+_arguments "${_arguments_options[@]}" : \
+":: :_auxin__help__auth_commands" \
+"*::: :->auth" \
+&& ret=0
+
+    case $state in
+    (auth)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:auxin-help-auth-command-$line[1]:"
+        case $line[1] in
+            (login)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(logout)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(status)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(test)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(metadata-diff)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(daemon)
+_arguments "${_arguments_options[@]}" : \
+":: :_auxin__help__daemon_commands" \
+"*::: :->daemon" \
+&& ret=0
+
+    case $state in
+    (daemon)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:auxin-help-daemon-command-$line[1]:"
+        case $line[1] in
+            (status)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(start)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(stop)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(restart)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(logs)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(hooks)
+_arguments "${_arguments_options[@]}" : \
+":: :_auxin__help__hooks_commands" \
+"*::: :->hooks" \
+&& ret=0
+
+    case $state in
+    (hooks)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:auxin-help-hooks-command-$line[1]:"
+        case $line[1] in
+            (init)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(builtins)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(install)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(remove)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(console)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(activity)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(team)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(queue)
+_arguments "${_arguments_options[@]}" : \
+":: :_auxin__help__queue_commands" \
+"*::: :->queue" \
+&& ret=0
+
+    case $state in
+    (queue)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:auxin-help-queue-command-$line[1]:"
+        case $line[1] in
+            (status)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(sync)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(clear)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(remove)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(comment)
+_arguments "${_arguments_options[@]}" : \
+":: :_auxin__help__comment_commands" \
+"*::: :->comment" \
+&& ret=0
+
+    case $state in
+    (comment)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:auxin-help-comment-command-$line[1]:"
+        case $line[1] in
+            (add)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(completions)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+}
+
+(( $+functions[_auxin_commands] )) ||
+_auxin_commands() {
+    local commands; commands=(
+'init:Initialize a new Oxen repository for a Logic Pro project' \
+'add:Stage changes to be committed' \
+'commit:Create a commit with optional audio metadata' \
+'log:Show commit history' \
+'restore:Restore project to a previous commit' \
+'status:Show repository status' \
+'show:Show detailed information about a commit' \
+'diff:Show changes between commits or working directory' \
+'compare:Compare metadata between two commits' \
+'search:Search commit history with advanced filtering' \
+'lock:Manage project locks for team collaboration' \
+'auth:Authenticate with Oxen Hub for remote collaboration' \
+'metadata-diff:Compare metadata between two Logic Pro project versions' \
+'daemon:Control the background daemon service' \
+'hooks:Manage workflow automation hooks' \
+'console:Launch interactive console for real-time monitoring' \
+'activity:Show recent project activity timeline' \
+'team:Show team members and their contributions' \
+'queue:Manage offline operation queue' \
+'comment:Manage comments on commits' \
+'completions:Generate shell completion scripts' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'auxin commands' commands "$@"
+}
+(( $+functions[_auxin__activity_commands] )) ||
+_auxin__activity_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin activity commands' commands "$@"
+}
+(( $+functions[_auxin__add_commands] )) ||
+_auxin__add_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin add commands' commands "$@"
+}
+(( $+functions[_auxin__auth_commands] )) ||
+_auxin__auth_commands() {
+    local commands; commands=(
+'login:Login to Oxen Hub with API credentials' \
+'logout:Logout from Oxen Hub' \
+'status:Show current authentication status' \
+'test:Test authentication with Oxen Hub' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'auxin auth commands' commands "$@"
+}
+(( $+functions[_auxin__auth__help_commands] )) ||
+_auxin__auth__help_commands() {
+    local commands; commands=(
+'login:Login to Oxen Hub with API credentials' \
+'logout:Logout from Oxen Hub' \
+'status:Show current authentication status' \
+'test:Test authentication with Oxen Hub' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'auxin auth help commands' commands "$@"
+}
+(( $+functions[_auxin__auth__help__help_commands] )) ||
+_auxin__auth__help__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin auth help help commands' commands "$@"
+}
+(( $+functions[_auxin__auth__help__login_commands] )) ||
+_auxin__auth__help__login_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin auth help login commands' commands "$@"
+}
+(( $+functions[_auxin__auth__help__logout_commands] )) ||
+_auxin__auth__help__logout_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin auth help logout commands' commands "$@"
+}
+(( $+functions[_auxin__auth__help__status_commands] )) ||
+_auxin__auth__help__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin auth help status commands' commands "$@"
+}
+(( $+functions[_auxin__auth__help__test_commands] )) ||
+_auxin__auth__help__test_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin auth help test commands' commands "$@"
+}
+(( $+functions[_auxin__auth__login_commands] )) ||
+_auxin__auth__login_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin auth login commands' commands "$@"
+}
+(( $+functions[_auxin__auth__logout_commands] )) ||
+_auxin__auth__logout_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin auth logout commands' commands "$@"
+}
+(( $+functions[_auxin__auth__status_commands] )) ||
+_auxin__auth__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin auth status commands' commands "$@"
+}
+(( $+functions[_auxin__auth__test_commands] )) ||
+_auxin__auth__test_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin auth test commands' commands "$@"
+}
+(( $+functions[_auxin__comment_commands] )) ||
+_auxin__comment_commands() {
+    local commands; commands=(
+'add:Add a comment to a commit' \
+'list:List comments on a commit' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'auxin comment commands' commands "$@"
+}
+(( $+functions[_auxin__comment__add_commands] )) ||
+_auxin__comment__add_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin comment add commands' commands "$@"
+}
+(( $+functions[_auxin__comment__help_commands] )) ||
+_auxin__comment__help_commands() {
+    local commands; commands=(
+'add:Add a comment to a commit' \
+'list:List comments on a commit' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'auxin comment help commands' commands "$@"
+}
+(( $+functions[_auxin__comment__help__add_commands] )) ||
+_auxin__comment__help__add_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin comment help add commands' commands "$@"
+}
+(( $+functions[_auxin__comment__help__help_commands] )) ||
+_auxin__comment__help__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin comment help help commands' commands "$@"
+}
+(( $+functions[_auxin__comment__help__list_commands] )) ||
+_auxin__comment__help__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin comment help list commands' commands "$@"
+}
+(( $+functions[_auxin__comment__list_commands] )) ||
+_auxin__comment__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin comment list commands' commands "$@"
+}
+(( $+functions[_auxin__commit_commands] )) ||
+_auxin__commit_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin commit commands' commands "$@"
+}
+(( $+functions[_auxin__compare_commands] )) ||
+_auxin__compare_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin compare commands' commands "$@"
+}
+(( $+functions[_auxin__completions_commands] )) ||
+_auxin__completions_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin completions commands' commands "$@"
+}
+(( $+functions[_auxin__console_commands] )) ||
+_auxin__console_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin console commands' commands "$@"
+}
+(( $+functions[_auxin__daemon_commands] )) ||
+_auxin__daemon_commands() {
+    local commands; commands=(
+'status:Check daemon status' \
+'start:Start the daemon service' \
+'stop:Stop the daemon service' \
+'restart:Restart the daemon service' \
+'logs:Show daemon logs' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'auxin daemon commands' commands "$@"
+}
+(( $+functions[_auxin__daemon__help_commands] )) ||
+_auxin__daemon__help_commands() {
+    local commands; commands=(
+'status:Check daemon status' \
+'start:Start the daemon service' \
+'stop:Stop the daemon service' \
+'restart:Restart the daemon service' \
+'logs:Show daemon logs' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'auxin daemon help commands' commands "$@"
+}
+(( $+functions[_auxin__daemon__help__help_commands] )) ||
+_auxin__daemon__help__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin daemon help help commands' commands "$@"
+}
+(( $+functions[_auxin__daemon__help__logs_commands] )) ||
+_auxin__daemon__help__logs_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin daemon help logs commands' commands "$@"
+}
+(( $+functions[_auxin__daemon__help__restart_commands] )) ||
+_auxin__daemon__help__restart_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin daemon help restart commands' commands "$@"
+}
+(( $+functions[_auxin__daemon__help__start_commands] )) ||
+_auxin__daemon__help__start_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin daemon help start commands' commands "$@"
+}
+(( $+functions[_auxin__daemon__help__status_commands] )) ||
+_auxin__daemon__help__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin daemon help status commands' commands "$@"
+}
+(( $+functions[_auxin__daemon__help__stop_commands] )) ||
+_auxin__daemon__help__stop_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin daemon help stop commands' commands "$@"
+}
+(( $+functions[_auxin__daemon__logs_commands] )) ||
+_auxin__daemon__logs_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin daemon logs commands' commands "$@"
+}
+(( $+functions[_auxin__daemon__restart_commands] )) ||
+_auxin__daemon__restart_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin daemon restart commands' commands "$@"
+}
+(( $+functions[_auxin__daemon__start_commands] )) ||
+_auxin__daemon__start_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin daemon start commands' commands "$@"
+}
+(( $+functions[_auxin__daemon__status_commands] )) ||
+_auxin__daemon__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin daemon status commands' commands "$@"
+}
+(( $+functions[_auxin__daemon__stop_commands] )) ||
+_auxin__daemon__stop_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin daemon stop commands' commands "$@"
+}
+(( $+functions[_auxin__diff_commands] )) ||
+_auxin__diff_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin diff commands' commands "$@"
+}
+(( $+functions[_auxin__help_commands] )) ||
+_auxin__help_commands() {
+    local commands; commands=(
+'init:Initialize a new Oxen repository for a Logic Pro project' \
+'add:Stage changes to be committed' \
+'commit:Create a commit with optional audio metadata' \
+'log:Show commit history' \
+'restore:Restore project to a previous commit' \
+'status:Show repository status' \
+'show:Show detailed information about a commit' \
+'diff:Show changes between commits or working directory' \
+'compare:Compare metadata between two commits' \
+'search:Search commit history with advanced filtering' \
+'lock:Manage project locks for team collaboration' \
+'auth:Authenticate with Oxen Hub for remote collaboration' \
+'metadata-diff:Compare metadata between two Logic Pro project versions' \
+'daemon:Control the background daemon service' \
+'hooks:Manage workflow automation hooks' \
+'console:Launch interactive console for real-time monitoring' \
+'activity:Show recent project activity timeline' \
+'team:Show team members and their contributions' \
+'queue:Manage offline operation queue' \
+'comment:Manage comments on commits' \
+'completions:Generate shell completion scripts' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'auxin help commands' commands "$@"
+}
+(( $+functions[_auxin__help__activity_commands] )) ||
+_auxin__help__activity_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin help activity commands' commands "$@"
+}
+(( $+functions[_auxin__help__add_commands] )) ||
+_auxin__help__add_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin help add commands' commands "$@"
+}
+(( $+functions[_auxin__help__auth_commands] )) ||
+_auxin__help__auth_commands() {
+    local commands; commands=(
+'login:Login to Oxen Hub with API credentials' \
+'logout:Logout from Oxen Hub' \
+'status:Show current authentication status' \
+'test:Test authentication with Oxen Hub' \
+    )
+    _describe -t commands 'auxin help auth commands' commands "$@"
+}
+(( $+functions[_auxin__help__auth__login_commands] )) ||
+_auxin__help__auth__login_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin help auth login commands' commands "$@"
+}
+(( $+functions[_auxin__help__auth__logout_commands] )) ||
+_auxin__help__auth__logout_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin help auth logout commands' commands "$@"
+}
+(( $+functions[_auxin__help__auth__status_commands] )) ||
+_auxin__help__auth__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin help auth status commands' commands "$@"
+}
+(( $+functions[_auxin__help__auth__test_commands] )) ||
+_auxin__help__auth__test_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin help auth test commands' commands "$@"
+}
+(( $+functions[_auxin__help__comment_commands] )) ||
+_auxin__help__comment_commands() {
+    local commands; commands=(
+'add:Add a comment to a commit' \
+'list:List comments on a commit' \
+    )
+    _describe -t commands 'auxin help comment commands' commands "$@"
+}
+(( $+functions[_auxin__help__comment__add_commands] )) ||
+_auxin__help__comment__add_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin help comment add commands' commands "$@"
+}
+(( $+functions[_auxin__help__comment__list_commands] )) ||
+_auxin__help__comment__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin help comment list commands' commands "$@"
+}
+(( $+functions[_auxin__help__commit_commands] )) ||
+_auxin__help__commit_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin help commit commands' commands "$@"
+}
+(( $+functions[_auxin__help__compare_commands] )) ||
+_auxin__help__compare_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin help compare commands' commands "$@"
+}
+(( $+functions[_auxin__help__completions_commands] )) ||
+_auxin__help__completions_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin help completions commands' commands "$@"
+}
+(( $+functions[_auxin__help__console_commands] )) ||
+_auxin__help__console_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin help console commands' commands "$@"
+}
+(( $+functions[_auxin__help__daemon_commands] )) ||
+_auxin__help__daemon_commands() {
+    local commands; commands=(
+'status:Check daemon status' \
+'start:Start the daemon service' \
+'stop:Stop the daemon service' \
+'restart:Restart the daemon service' \
+'logs:Show daemon logs' \
+    )
+    _describe -t commands 'auxin help daemon commands' commands "$@"
+}
+(( $+functions[_auxin__help__daemon__logs_commands] )) ||
+_auxin__help__daemon__logs_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin help daemon logs commands' commands "$@"
+}
+(( $+functions[_auxin__help__daemon__restart_commands] )) ||
+_auxin__help__daemon__restart_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin help daemon restart commands' commands "$@"
+}
+(( $+functions[_auxin__help__daemon__start_commands] )) ||
+_auxin__help__daemon__start_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin help daemon start commands' commands "$@"
+}
+(( $+functions[_auxin__help__daemon__status_commands] )) ||
+_auxin__help__daemon__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin help daemon status commands' commands "$@"
+}
+(( $+functions[_auxin__help__daemon__stop_commands] )) ||
+_auxin__help__daemon__stop_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin help daemon stop commands' commands "$@"
+}
+(( $+functions[_auxin__help__diff_commands] )) ||
+_auxin__help__diff_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin help diff commands' commands "$@"
+}
+(( $+functions[_auxin__help__help_commands] )) ||
+_auxin__help__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin help help commands' commands "$@"
+}
+(( $+functions[_auxin__help__hooks_commands] )) ||
+_auxin__help__hooks_commands() {
+    local commands; commands=(
+'init:Initialize hooks directory' \
+'list:List all installed hooks' \
+'builtins:List available built-in hooks' \
+'install:Install a built-in hook' \
+'remove:Remove an installed hook' \
+    )
+    _describe -t commands 'auxin help hooks commands' commands "$@"
+}
+(( $+functions[_auxin__help__hooks__builtins_commands] )) ||
+_auxin__help__hooks__builtins_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin help hooks builtins commands' commands "$@"
+}
+(( $+functions[_auxin__help__hooks__init_commands] )) ||
+_auxin__help__hooks__init_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin help hooks init commands' commands "$@"
+}
+(( $+functions[_auxin__help__hooks__install_commands] )) ||
+_auxin__help__hooks__install_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin help hooks install commands' commands "$@"
+}
+(( $+functions[_auxin__help__hooks__list_commands] )) ||
+_auxin__help__hooks__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin help hooks list commands' commands "$@"
+}
+(( $+functions[_auxin__help__hooks__remove_commands] )) ||
+_auxin__help__hooks__remove_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin help hooks remove commands' commands "$@"
+}
+(( $+functions[_auxin__help__init_commands] )) ||
+_auxin__help__init_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin help init commands' commands "$@"
+}
+(( $+functions[_auxin__help__lock_commands] )) ||
+_auxin__help__lock_commands() {
+    local commands; commands=(
+'acquire:Acquire exclusive lock for editing' \
+'release:Release the lock you currently hold' \
+'status:Show current lock status' \
+'break:Force break an existing lock (admin only)' \
+    )
+    _describe -t commands 'auxin help lock commands' commands "$@"
+}
+(( $+functions[_auxin__help__lock__acquire_commands] )) ||
+_auxin__help__lock__acquire_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin help lock acquire commands' commands "$@"
+}
+(( $+functions[_auxin__help__lock__break_commands] )) ||
+_auxin__help__lock__break_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin help lock break commands' commands "$@"
+}
+(( $+functions[_auxin__help__lock__release_commands] )) ||
+_auxin__help__lock__release_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin help lock release commands' commands "$@"
+}
+(( $+functions[_auxin__help__lock__status_commands] )) ||
+_auxin__help__lock__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin help lock status commands' commands "$@"
+}
+(( $+functions[_auxin__help__log_commands] )) ||
+_auxin__help__log_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin help log commands' commands "$@"
+}
+(( $+functions[_auxin__help__metadata-diff_commands] )) ||
+_auxin__help__metadata-diff_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin help metadata-diff commands' commands "$@"
+}
+(( $+functions[_auxin__help__queue_commands] )) ||
+_auxin__help__queue_commands() {
+    local commands; commands=(
+'status:Show pending operations in the queue' \
+'sync:Manually sync all pending operations' \
+'clear:Clear completed operations from the queue' \
+'remove:Remove a specific operation from the queue' \
+    )
+    _describe -t commands 'auxin help queue commands' commands "$@"
+}
+(( $+functions[_auxin__help__queue__clear_commands] )) ||
+_auxin__help__queue__clear_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin help queue clear commands' commands "$@"
+}
+(( $+functions[_auxin__help__queue__remove_commands] )) ||
+_auxin__help__queue__remove_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin help queue remove commands' commands "$@"
+}
+(( $+functions[_auxin__help__queue__status_commands] )) ||
+_auxin__help__queue__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin help queue status commands' commands "$@"
+}
+(( $+functions[_auxin__help__queue__sync_commands] )) ||
+_auxin__help__queue__sync_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin help queue sync commands' commands "$@"
+}
+(( $+functions[_auxin__help__restore_commands] )) ||
+_auxin__help__restore_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin help restore commands' commands "$@"
+}
+(( $+functions[_auxin__help__search_commands] )) ||
+_auxin__help__search_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin help search commands' commands "$@"
+}
+(( $+functions[_auxin__help__show_commands] )) ||
+_auxin__help__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin help show commands' commands "$@"
+}
+(( $+functions[_auxin__help__status_commands] )) ||
+_auxin__help__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin help status commands' commands "$@"
+}
+(( $+functions[_auxin__help__team_commands] )) ||
+_auxin__help__team_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin help team commands' commands "$@"
+}
+(( $+functions[_auxin__hooks_commands] )) ||
+_auxin__hooks_commands() {
+    local commands; commands=(
+'init:Initialize hooks directory' \
+'list:List all installed hooks' \
+'builtins:List available built-in hooks' \
+'install:Install a built-in hook' \
+'remove:Remove an installed hook' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'auxin hooks commands' commands "$@"
+}
+(( $+functions[_auxin__hooks__builtins_commands] )) ||
+_auxin__hooks__builtins_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin hooks builtins commands' commands "$@"
+}
+(( $+functions[_auxin__hooks__help_commands] )) ||
+_auxin__hooks__help_commands() {
+    local commands; commands=(
+'init:Initialize hooks directory' \
+'list:List all installed hooks' \
+'builtins:List available built-in hooks' \
+'install:Install a built-in hook' \
+'remove:Remove an installed hook' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'auxin hooks help commands' commands "$@"
+}
+(( $+functions[_auxin__hooks__help__builtins_commands] )) ||
+_auxin__hooks__help__builtins_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin hooks help builtins commands' commands "$@"
+}
+(( $+functions[_auxin__hooks__help__help_commands] )) ||
+_auxin__hooks__help__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin hooks help help commands' commands "$@"
+}
+(( $+functions[_auxin__hooks__help__init_commands] )) ||
+_auxin__hooks__help__init_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin hooks help init commands' commands "$@"
+}
+(( $+functions[_auxin__hooks__help__install_commands] )) ||
+_auxin__hooks__help__install_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin hooks help install commands' commands "$@"
+}
+(( $+functions[_auxin__hooks__help__list_commands] )) ||
+_auxin__hooks__help__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin hooks help list commands' commands "$@"
+}
+(( $+functions[_auxin__hooks__help__remove_commands] )) ||
+_auxin__hooks__help__remove_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin hooks help remove commands' commands "$@"
+}
+(( $+functions[_auxin__hooks__init_commands] )) ||
+_auxin__hooks__init_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin hooks init commands' commands "$@"
+}
+(( $+functions[_auxin__hooks__install_commands] )) ||
+_auxin__hooks__install_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin hooks install commands' commands "$@"
+}
+(( $+functions[_auxin__hooks__list_commands] )) ||
+_auxin__hooks__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin hooks list commands' commands "$@"
+}
+(( $+functions[_auxin__hooks__remove_commands] )) ||
+_auxin__hooks__remove_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin hooks remove commands' commands "$@"
+}
+(( $+functions[_auxin__init_commands] )) ||
+_auxin__init_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin init commands' commands "$@"
+}
+(( $+functions[_auxin__lock_commands] )) ||
+_auxin__lock_commands() {
+    local commands; commands=(
+'acquire:Acquire exclusive lock for editing' \
+'release:Release the lock you currently hold' \
+'status:Show current lock status' \
+'break:Force break an existing lock (admin only)' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'auxin lock commands' commands "$@"
+}
+(( $+functions[_auxin__lock__acquire_commands] )) ||
+_auxin__lock__acquire_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin lock acquire commands' commands "$@"
+}
+(( $+functions[_auxin__lock__break_commands] )) ||
+_auxin__lock__break_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin lock break commands' commands "$@"
+}
+(( $+functions[_auxin__lock__help_commands] )) ||
+_auxin__lock__help_commands() {
+    local commands; commands=(
+'acquire:Acquire exclusive lock for editing' \
+'release:Release the lock you currently hold' \
+'status:Show current lock status' \
+'break:Force break an existing lock (admin only)' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'auxin lock help commands' commands "$@"
+}
+(( $+functions[_auxin__lock__help__acquire_commands] )) ||
+_auxin__lock__help__acquire_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin lock help acquire commands' commands "$@"
+}
+(( $+functions[_auxin__lock__help__break_commands] )) ||
+_auxin__lock__help__break_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin lock help break commands' commands "$@"
+}
+(( $+functions[_auxin__lock__help__help_commands] )) ||
+_auxin__lock__help__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin lock help help commands' commands "$@"
+}
+(( $+functions[_auxin__lock__help__release_commands] )) ||
+_auxin__lock__help__release_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin lock help release commands' commands "$@"
+}
+(( $+functions[_auxin__lock__help__status_commands] )) ||
+_auxin__lock__help__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin lock help status commands' commands "$@"
+}
+(( $+functions[_auxin__lock__release_commands] )) ||
+_auxin__lock__release_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin lock release commands' commands "$@"
+}
+(( $+functions[_auxin__lock__status_commands] )) ||
+_auxin__lock__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin lock status commands' commands "$@"
+}
+(( $+functions[_auxin__log_commands] )) ||
+_auxin__log_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin log commands' commands "$@"
+}
+(( $+functions[_auxin__metadata-diff_commands] )) ||
+_auxin__metadata-diff_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin metadata-diff commands' commands "$@"
+}
+(( $+functions[_auxin__queue_commands] )) ||
+_auxin__queue_commands() {
+    local commands; commands=(
+'status:Show pending operations in the queue' \
+'sync:Manually sync all pending operations' \
+'clear:Clear completed operations from the queue' \
+'remove:Remove a specific operation from the queue' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'auxin queue commands' commands "$@"
+}
+(( $+functions[_auxin__queue__clear_commands] )) ||
+_auxin__queue__clear_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin queue clear commands' commands "$@"
+}
+(( $+functions[_auxin__queue__help_commands] )) ||
+_auxin__queue__help_commands() {
+    local commands; commands=(
+'status:Show pending operations in the queue' \
+'sync:Manually sync all pending operations' \
+'clear:Clear completed operations from the queue' \
+'remove:Remove a specific operation from the queue' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'auxin queue help commands' commands "$@"
+}
+(( $+functions[_auxin__queue__help__clear_commands] )) ||
+_auxin__queue__help__clear_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin queue help clear commands' commands "$@"
+}
+(( $+functions[_auxin__queue__help__help_commands] )) ||
+_auxin__queue__help__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin queue help help commands' commands "$@"
+}
+(( $+functions[_auxin__queue__help__remove_commands] )) ||
+_auxin__queue__help__remove_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin queue help remove commands' commands "$@"
+}
+(( $+functions[_auxin__queue__help__status_commands] )) ||
+_auxin__queue__help__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin queue help status commands' commands "$@"
+}
+(( $+functions[_auxin__queue__help__sync_commands] )) ||
+_auxin__queue__help__sync_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin queue help sync commands' commands "$@"
+}
+(( $+functions[_auxin__queue__remove_commands] )) ||
+_auxin__queue__remove_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin queue remove commands' commands "$@"
+}
+(( $+functions[_auxin__queue__status_commands] )) ||
+_auxin__queue__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin queue status commands' commands "$@"
+}
+(( $+functions[_auxin__queue__sync_commands] )) ||
+_auxin__queue__sync_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin queue sync commands' commands "$@"
+}
+(( $+functions[_auxin__restore_commands] )) ||
+_auxin__restore_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin restore commands' commands "$@"
+}
+(( $+functions[_auxin__search_commands] )) ||
+_auxin__search_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin search commands' commands "$@"
+}
+(( $+functions[_auxin__show_commands] )) ||
+_auxin__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin show commands' commands "$@"
+}
+(( $+functions[_auxin__status_commands] )) ||
+_auxin__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin status commands' commands "$@"
+}
+(( $+functions[_auxin__team_commands] )) ||
+_auxin__team_commands() {
+    local commands; commands=()
+    _describe -t commands 'auxin team commands' commands "$@"
+}
+
+if [ "$funcstack[1]" = "_auxin" ]; then
+    _auxin "$@"
+else
+    compdef _auxin auxin
+fi

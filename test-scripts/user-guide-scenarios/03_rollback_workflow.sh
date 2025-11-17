@@ -22,7 +22,7 @@ TEST_DIR="$HOME/Desktop/oxenvcs-test-projects"
 TEST_PROJECT_PATH="$TEST_DIR/$TEST_PROJECT_NAME"
 
 # CLI path
-OXENVCS_CLI="./OxVCS-CLI-Wrapper/target/release/oxenvcs-cli"
+OXENVCS_CLI="./Auxin-CLI-Wrapper/target/release/auxin"
 
 # Functions
 print_header() {
