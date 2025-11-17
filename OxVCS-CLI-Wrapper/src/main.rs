@@ -938,6 +938,22 @@ EXAMPLES:
     /// Manage comments on commits
     #[command(subcommand)]
     Comment(CommentCommands),
+
+    /// View operation history and audit trail
+    #[command(subcommand)]
+    History(HistoryCommands),
+
+    /// Workflow automation and smart suggestions
+    #[command(subcommand)]
+    Workflow(WorkflowCommands),
+
+    /// Backup and snapshot management
+    #[command(subcommand)]
+    Snapshot(SnapshotCommands),
+
+    /// Recovery guides for common scenarios
+    #[command(subcommand)]
+    Recovery(RecoveryCommands),
 }
 
 #[derive(Subcommand)]
@@ -992,6 +1008,352 @@ EXAMPLES:
         #[arg(value_name = "COMMIT_ID", help = "Commit ID or HEAD (optional)")]
         commit_id: Option<String>,
     },
+}
+
+#[derive(Subcommand)]
+enum HistoryCommands {
+    /// View recent operation history
+    #[command(long_about = "View recent operation history
+
+USAGE:
+    oxenvcs-cli history view [--limit <N>]
+    oxenvcs-cli history view --repo <PATH>
+
+DESCRIPTION:
+    Displays a timeline of all operations performed, including:
+      • Lock operations (acquire, release, renew, break)
+      • Commits and pushes
+      • Authentication events
+      • Comments and activity views
+      • Success/failure status for each operation
+
+    Operations are stored persistently and survive restarts.
+
+OPTIONS:
+    --limit <N>     Number of recent operations to show (default: 20)
+    --repo <PATH>   Filter by repository path
+
+EXAMPLES:
+    # Show last 20 operations
+    oxenvcs-cli history view
+
+    # Show last 50 operations
+    oxenvcs-cli history view --limit 50
+
+    # Show operations for specific repository
+    oxenvcs-cli history view --repo /path/to/project.logicx")]
+    View {
+        #[arg(long, default_value = "20", help = "Number of operations to show")]
+        limit: usize,
+
+        #[arg(long, value_name = "PATH", help = "Filter by repository path")]
+        repo: Option<PathBuf>,
+    },
+
+    /// Export history to CSV file
+    #[command(long_about = "Export history to CSV file
+
+USAGE:
+    oxenvcs-cli history export <OUTPUT_FILE>
+
+DESCRIPTION:
+    Exports complete operation history to a CSV file for analysis,
+    compliance, or reporting. CSV includes:
+      • Timestamp
+      • Operation type
+      • User and machine
+      • Result (success/failure)
+      • Repository path
+
+EXAMPLES:
+    # Export to CSV
+    oxenvcs-cli history export operations.csv
+
+    # Export and open in Excel
+    oxenvcs-cli history export report.csv && open report.csv")]
+    Export {
+        #[arg(value_name = "OUTPUT_FILE", help = "CSV file to write")]
+        output: PathBuf,
+    },
+
+    /// Show operation statistics
+    #[command(long_about = "Show operation statistics
+
+USAGE:
+    oxenvcs-cli history stats
+
+DESCRIPTION:
+    Displays statistics about all operations:
+      • Total operations
+      • Success rate
+      • Lock operation count
+      • Network operation count
+      • Failure breakdown
+
+EXAMPLES:
+    # View statistics
+    oxenvcs-cli history stats")]
+    Stats,
+}
+
+#[derive(Subcommand)]
+enum WorkflowCommands {
+    /// Get smart suggestions based on repository state
+    #[command(long_about = "Get smart suggestions based on repository state
+
+USAGE:
+    oxenvcs-cli workflow suggest [PATH]
+
+DESCRIPTION:
+    Analyzes current repository state and provides context-aware
+    suggestions for next actions. Checks:
+      • Lock status and expiration
+      • Recent operation failures
+      • Uncommitted changes
+      • Recommended workflows
+
+EXAMPLES:
+    # Get suggestions for current directory
+    oxenvcs-cli workflow suggest
+
+    # Get suggestions for specific project
+    oxenvcs-cli workflow suggest /path/to/project.logicx")]
+    Suggest {
+        #[arg(value_name = "PATH", help = "Repository path (default: current directory)")]
+        path: Option<PathBuf>,
+    },
+
+    /// Run lock renewal daemon (keeps lock alive)
+    #[command(long_about = "Run lock renewal daemon (keeps lock alive)
+
+USAGE:
+    oxenvcs-cli workflow lock-daemon <PATH>
+
+DESCRIPTION:
+    Starts a background daemon that automatically renews your lock
+    before it expires. Useful for long editing sessions (>4 hours).
+
+    The daemon:
+      • Checks every 15 minutes
+      • Renews when <60 minutes remaining
+      • Records all renewals in history
+      • Stops when lock is released
+
+OPTIONS:
+    Daemon runs in foreground. Use '&' to run in background:
+    oxenvcs-cli workflow lock-daemon . &
+
+EXAMPLES:
+    # Start lock renewal daemon
+    oxenvcs-cli workflow lock-daemon .
+
+    # Run in background
+    oxenvcs-cli workflow lock-daemon . &")]
+    LockDaemon {
+        #[arg(value_name = "PATH", help = "Repository path")]
+        path: PathBuf,
+    },
+
+    /// Show current workflow configuration
+    #[command(long_about = "Show current workflow configuration
+
+USAGE:
+    oxenvcs-cli workflow config
+
+DESCRIPTION:
+    Displays current workflow automation settings:
+      • Auto-lock renewal (enabled/disabled)
+      • Lock check interval
+      • Lock renew threshold
+      • Auto-pull on startup
+      • Auto-push after commit
+      • Confirmation prompts
+      • Dry-run mode
+
+    Configuration file: ~/.oxenvcs/workflow_config.json
+
+EXAMPLES:
+    # View configuration
+    oxenvcs-cli workflow config")]
+    Config,
+}
+
+#[derive(Subcommand)]
+enum SnapshotCommands {
+    /// Create a manual backup snapshot
+    #[command(long_about = "Create a manual backup snapshot
+
+USAGE:
+    oxenvcs-cli snapshot create <PATH> [DESCRIPTION]
+
+DESCRIPTION:
+    Creates a manual backup snapshot of the repository state.
+    Snapshots include:
+      • Current commit ID
+      • Timestamp
+      • Repository path
+      • User description
+
+    Automatic snapshots are also created before:
+      • Push operations
+      • Pull operations
+      • Lock break operations
+      • Rollback operations
+
+EXAMPLES:
+    # Create snapshot with description
+    oxenvcs-cli snapshot create . \"Before major refactor\"
+
+    # Create snapshot without description
+    oxenvcs-cli snapshot create /path/to/project.logicx")]
+    Create {
+        #[arg(value_name = "PATH", help = "Repository path")]
+        path: PathBuf,
+
+        #[arg(value_name = "DESCRIPTION", help = "Optional description")]
+        description: Option<String>,
+    },
+
+    /// List all backup snapshots
+    #[command(long_about = "List all backup snapshots
+
+USAGE:
+    oxenvcs-cli snapshot list [OPTIONS]
+
+DESCRIPTION:
+    Lists all backup snapshots with:
+      • Snapshot ID
+      • Type (manual, auto-before-push, etc.)
+      • Timestamp
+      • Description
+      • Associated commit ID
+      • Repository path
+
+OPTIONS:
+    --all           Show all snapshots (default: last 20)
+    --repo <PATH>   Filter by repository
+
+EXAMPLES:
+    # List recent snapshots
+    oxenvcs-cli snapshot list
+
+    # List all snapshots
+    oxenvcs-cli snapshot list --all
+
+    # List snapshots for specific repository
+    oxenvcs-cli snapshot list --repo /path/to/project.logicx")]
+    List {
+        #[arg(long, help = "Show all snapshots")]
+        all: bool,
+
+        #[arg(long, value_name = "PATH", help = "Filter by repository")]
+        repo: Option<PathBuf>,
+    },
+
+    /// Get restore instructions for a snapshot
+    #[command(long_about = "Get restore instructions for a snapshot
+
+USAGE:
+    oxenvcs-cli snapshot restore <SNAPSHOT_ID>
+
+DESCRIPTION:
+    Displays step-by-step instructions for restoring from a snapshot.
+    Does NOT actually perform the restore (dry-run only).
+
+    Instructions include:
+      • Snapshot details
+      • Commit to restore
+      • Commands to run
+      • Warnings about uncommitted changes
+
+EXAMPLES:
+    # Get restore instructions
+    oxenvcs-cli snapshot restore abc123def456")]
+    Restore {
+        #[arg(value_name = "SNAPSHOT_ID", help = "Snapshot ID to restore from")]
+        snapshot_id: String,
+    },
+
+    /// Delete a snapshot
+    #[command(long_about = "Delete a snapshot
+
+USAGE:
+    oxenvcs-cli snapshot delete <SNAPSHOT_ID>
+
+DESCRIPTION:
+    Permanently deletes a snapshot. Cannot be undone.
+
+    Note: Automatic cleanup keeps only the 50 most recent snapshots.
+
+EXAMPLES:
+    # Delete snapshot
+    oxenvcs-cli snapshot delete abc123def456")]
+    Delete {
+        #[arg(value_name = "SNAPSHOT_ID", help = "Snapshot ID to delete")]
+        snapshot_id: String,
+    },
+}
+
+#[derive(Subcommand)]
+enum RecoveryCommands {
+    /// Show recovery guide for failed push
+    #[command(long_about = "Show recovery guide for failed push
+
+USAGE:
+    oxenvcs-cli recovery push
+
+DESCRIPTION:
+    Displays step-by-step recovery guide for push failures.
+
+    Common push failure causes:
+      • Network connectivity issues
+      • Authentication problems
+      • Missing lock
+      • Diverged branches
+
+EXAMPLES:
+    # Show push recovery guide
+    oxenvcs-cli recovery push")]
+    Push,
+
+    /// Show recovery guide for failed pull
+    #[command(long_about = "Show recovery guide for failed pull
+
+USAGE:
+    oxenvcs-cli recovery pull
+
+DESCRIPTION:
+    Displays step-by-step recovery guide for pull failures.
+
+    Common pull failure causes:
+      • Network connectivity issues
+      • Authentication problems
+      • Uncommitted local changes
+      • Merge conflicts
+
+EXAMPLES:
+    # Show pull recovery guide
+    oxenvcs-cli recovery pull")]
+    Pull,
+
+    /// Show recovery guide for lock conflicts
+    #[command(long_about = "Show recovery guide for lock conflicts
+
+USAGE:
+    oxenvcs-cli recovery lock
+
+DESCRIPTION:
+    Displays step-by-step recovery guide for lock conflicts.
+
+    Common lock conflict scenarios:
+      • Lock held by another user
+      • Expired lock not auto-released
+      • Stale lock after crash
+
+EXAMPLES:
+    # Show lock recovery guide
+    oxenvcs-cli recovery lock")]
+    Lock,
 }
 
 #[tokio::main]
@@ -2388,6 +2750,183 @@ async fn main() -> anyhow::Result<()> {
                     println!();
                     progress::success(&format!("Showing {} comments", comments.len()));
 
+                    Ok(())
+                }
+            }
+        }
+
+        Commands::History(history_cmd) => {
+            use oxenvcs_cli::OperationHistoryManager;
+
+            let manager = OperationHistoryManager::new();
+
+            match history_cmd {
+                HistoryCommands::View { limit, repo } => {
+                    manager.display_recent(limit)?;
+                    Ok(())
+                }
+
+                HistoryCommands::Export { output } => {
+                    let pb = progress::spinner("Exporting history to CSV...");
+                    manager.export_csv(&output)?;
+                    progress::finish_success(&pb, "History exported successfully");
+                    println!();
+                    progress::success(&format!("CSV written to: {}", output.display()));
+                    Ok(())
+                }
+
+                HistoryCommands::Stats => {
+                    let stats = manager.get_stats()?;
+                    println!();
+                    println!("┌─ Operation Statistics ──────────────────────────────────┐");
+                    println!("│                                                          │");
+                    println!("│  Total Operations:    {}                                │", stats.total);
+                    println!("│  Successful:          {} ({:.1}%)                        │",
+                        stats.successful,
+                        if stats.total > 0 { (stats.successful as f64 / stats.total as f64) * 100.0 } else { 0.0 }
+                    );
+                    println!("│  Failed:              {} ({:.1}%)                        │",
+                        stats.failed,
+                        if stats.total > 0 { (stats.failed as f64 / stats.total as f64) * 100.0 } else { 0.0 }
+                    );
+                    println!("│                                                          │");
+                    println!("│  Lock Operations:     {}                                │", stats.lock_operations);
+                    println!("│  Network Operations:  {}                                │", stats.network_operations);
+                    println!("│                                                          │");
+                    println!("└──────────────────────────────────────────────────────────┘");
+                    println!();
+                    Ok(())
+                }
+            }
+        }
+
+        Commands::Workflow(workflow_cmd) => {
+            use oxenvcs_cli::WorkflowAutomation;
+            use std::env;
+
+            let automation = WorkflowAutomation::new();
+
+            match workflow_cmd {
+                WorkflowCommands::Suggest { path } => {
+                    let repo_path = path.as_ref()
+                        .map(|p| p.to_path_buf())
+                        .unwrap_or_else(|| env::current_dir().unwrap());
+
+                    automation.display_suggestions(&repo_path)?;
+                    Ok(())
+                }
+
+                WorkflowCommands::LockDaemon { path } => {
+                    println!();
+                    progress::info("Starting lock renewal daemon...");
+                    println!("  • Checks every 15 minutes");
+                    println!("  • Renews when <60 minutes remaining");
+                    println!("  • Press Ctrl+C to stop");
+                    println!();
+
+                    automation.run_lock_renewal_daemon(&path)?;
+                    Ok(())
+                }
+
+                WorkflowCommands::Config => {
+                    let config = automation.config();
+                    println!();
+                    println!("┌─ Workflow Configuration ────────────────────────────────┐");
+                    println!("│                                                          │");
+                    println!("│  Auto-lock renewal:           {}                        │",
+                        if config.auto_renew_locks { "enabled".green() } else { "disabled".red() });
+                    println!("│  Lock check interval:         {} minutes                │",
+                        config.lock_check_interval_minutes);
+                    println!("│  Lock renew threshold:        {} minutes                │",
+                        config.lock_renew_threshold_minutes);
+                    println!("│  Auto-pull on startup:        {}                        │",
+                        if config.auto_pull_on_startup { "enabled".green() } else { "disabled".red() });
+                    println!("│  Auto-push after commit:      {}                        │",
+                        if config.auto_push_after_commit { "enabled".green() } else { "disabled".red() });
+                    println!("│  Confirm destructive ops:     {}                        │",
+                        if config.confirm_destructive_operations { "enabled".green() } else { "disabled".red() });
+                    println!("│  Dry-run mode:                {}                        │",
+                        if config.dry_run_mode { "enabled".yellow() } else { "disabled".green() });
+                    println!("│                                                          │");
+                    println!("└──────────────────────────────────────────────────────────┘");
+                    println!();
+                    progress::info("Config file: ~/.oxenvcs/workflow_config.json");
+                    Ok(())
+                }
+            }
+        }
+
+        Commands::Snapshot(snapshot_cmd) => {
+            use oxenvcs_cli::{BackupRecoveryManager, Snapshot, SnapshotType};
+
+            let manager = BackupRecoveryManager::new();
+
+            match snapshot_cmd {
+                SnapshotCommands::Create { path, description } => {
+                    let pb = progress::spinner("Creating snapshot...");
+
+                    let snapshot = Snapshot::new(SnapshotType::Manual, path)
+                        .with_description(description.as_deref().unwrap_or("Manual snapshot"));
+
+                    let created = manager.create_snapshot(snapshot)?;
+
+                    progress::finish_success(&pb, "Snapshot created");
+                    println!();
+                    progress::success(&format!("Snapshot ID: {}", created.id.bright_cyan()));
+                    println!("  Path: {}", created.repo_path.display());
+                    println!("  Description: {}", created.description);
+                    Ok(())
+                }
+
+                SnapshotCommands::List { all, repo } => {
+                    let limit = if all { None } else { Some(20) };
+                    manager.display_snapshots(limit)?;
+                    Ok(())
+                }
+
+                SnapshotCommands::Restore { snapshot_id } => {
+                    let instructions = manager.get_restore_instructions(&snapshot_id)?;
+
+                    println!();
+                    println!("┌─ Restore Instructions ──────────────────────────────────┐");
+                    for instruction in instructions {
+                        if instruction.is_empty() {
+                            println!("│                                                          │");
+                        } else {
+                            println!("│ {}                                                       │", instruction);
+                        }
+                    }
+                    println!("└──────────────────────────────────────────────────────────┘");
+                    println!();
+
+                    Ok(())
+                }
+
+                SnapshotCommands::Delete { snapshot_id } => {
+                    let pb = progress::spinner("Deleting snapshot...");
+                    manager.delete_snapshot(&snapshot_id)?;
+                    progress::finish_success(&pb, "Snapshot deleted");
+                    Ok(())
+                }
+            }
+        }
+
+        Commands::Recovery(recovery_cmd) => {
+            use oxenvcs_cli::RecoveryHelper;
+
+            match recovery_cmd {
+                RecoveryCommands::Push => {
+                    RecoveryHelper::display_recovery_guide("push");
+                    Ok(())
+                }
+
+                RecoveryCommands::Pull => {
+                    RecoveryHelper::display_recovery_guide("pull");
+                    Ok(())
+                }
+
+                RecoveryCommands::Lock => {
+                    RecoveryHelper::display_recovery_guide("lock");
                     Ok(())
                 }
             }

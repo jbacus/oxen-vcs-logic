@@ -148,6 +148,19 @@ impl RemoteLock {
         self.last_heartbeat = now;
         self.expires_at = now + Duration::hours(additional_hours as i64);
     }
+
+    /// Check if lock is expiring soon (within threshold minutes)
+    pub fn is_expiring_soon(&self, threshold_minutes: i64) -> bool {
+        let now = Utc::now();
+        let time_until_expiry = self.expires_at.signed_duration_since(now);
+        time_until_expiry < Duration::minutes(threshold_minutes)
+    }
+
+    /// Get minutes until lock expires
+    pub fn minutes_until_expiry(&self) -> i64 {
+        let now = Utc::now();
+        self.expires_at.signed_duration_since(now).num_minutes()
+    }
 }
 
 /// Manages distributed locks stored in Oxen repository
@@ -358,6 +371,41 @@ impl RemoteLockManager {
 
         crate::info!("Lock forcibly broken");
         Ok(())
+    }
+
+    /// Emergency unlock: Break lock if expired or stale
+    pub fn emergency_unlock_if_expired(&self, repo_path: &Path) -> Result<bool> {
+        match self.get_lock(repo_path)? {
+            Some(lock) => {
+                if lock.is_expired() || lock.is_stale() {
+                    crate::info!("Lock is expired/stale, performing emergency unlock");
+                    self.force_break_lock(repo_path)?;
+                    Ok(true)
+                } else {
+                    Ok(false)
+                }
+            }
+            None => Ok(false),
+        }
+    }
+
+    /// Check if lock can be emergency unlocked
+    pub fn can_emergency_unlock(&self, repo_path: &Path) -> Result<bool> {
+        match self.get_lock(repo_path)? {
+            Some(lock) => Ok(lock.is_expired() || lock.is_stale()),
+            None => Ok(false),
+        }
+    }
+
+    /// Get lock age in hours
+    pub fn get_lock_age_hours(&self, repo_path: &Path) -> Result<Option<i64>> {
+        match self.get_lock(repo_path)? {
+            Some(lock) => {
+                let age = Utc::now() - lock.acquired_at;
+                Ok(Some(age.num_hours()))
+            }
+            None => Ok(None),
+        }
     }
 
     // ========== Private Helper Methods ==========
