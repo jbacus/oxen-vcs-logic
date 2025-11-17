@@ -3,6 +3,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
 
+pub mod mock_oxen_hub;
+
 /// Test fixture for creating Logic Pro project structures
 pub struct TestFixture {
     #[allow(dead_code)] // Kept alive to prevent directory deletion

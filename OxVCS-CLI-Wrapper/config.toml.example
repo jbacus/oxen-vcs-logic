@@ -1,0 +1,164 @@
+# OxVCS CLI Configuration File
+# This file contains default settings for the OxVCS command-line interface.
+# Copy this file to ~/.oxenvcs/config.toml to customize your settings.
+#
+# Configuration precedence (highest to lowest):
+#   1. Environment variables (OXENVCS_*)
+#   2. Project config (.oxenvcs/config.toml)
+#   3. User config (~/.oxenvcs/config.toml)
+#   4. Built-in defaults
+
+# ============================================================================
+# Default Settings
+# ============================================================================
+[defaults]
+# Enable verbose output by default
+# Can be overridden with: --verbose or -v flag
+# Environment variable: OXENVCS_VERBOSE=true
+verbose = false
+
+# Color output mode: "auto", "always", or "never"
+# - auto: Use colors if output is a terminal (default)
+# - always: Always use colors
+# - never: Never use colors (useful for CI/piping)
+# Environment variable: OXENVCS_COLOR=always
+color = "auto"
+
+# ============================================================================
+# Lock Operations
+# ============================================================================
+[lock]
+# Default lock timeout in hours
+# How long to hold a lock before automatic expiration
+# Environment variable: OXENVCS_LOCK_TIMEOUT=4
+timeout_hours = 4
+
+# Automatically renew locks before expiration (NOT YET IMPLEMENTED)
+# Requires background daemon to be running
+auto_renew = false
+
+# Minutes before expiration to trigger auto-renewal (NOT YET IMPLEMENTED)
+# Only applies if auto_renew = true
+renew_before_minutes = 30
+
+# ============================================================================
+# Network Operations
+# ============================================================================
+[network]
+# Maximum number of retry attempts for network operations
+# Higher values = more resilient but slower on permanent failures
+# Environment variable: OXENVCS_MAX_RETRIES=5
+max_retries = 5
+
+# Initial backoff delay in milliseconds (first retry)
+# Exponential backoff will increase this on subsequent retries
+initial_backoff_ms = 1000
+
+# Maximum backoff delay in milliseconds (caps exponential growth)
+# Prevents excessive wait times on many retries
+max_backoff_ms = 15000
+
+# How often to check network connectivity in seconds
+# Used by auto-sync and offline detection
+connectivity_check_interval_s = 30
+
+# Timeout for connectivity checks in seconds
+# How long to wait before declaring network unreachable
+connectivity_check_timeout_s = 5
+
+# ============================================================================
+# Offline Queue
+# ============================================================================
+[queue]
+# Automatically sync pending queue when network becomes available
+# If false, you must manually run: oxenvcs-cli queue sync
+# Environment variable: OXENVCS_AUTO_SYNC=true
+auto_sync = true
+
+# Directory to store queued operations
+# Supports ~ for home directory expansion
+# Environment variable: OXENVCS_QUEUE_DIR=~/.oxenvcs/queue
+queue_dir = "~/.oxenvcs/queue"
+
+# Maximum number of queue entries to keep
+# Oldest completed entries are removed when limit is reached
+max_entries = 1000
+
+# Automatically clean up completed entries after N days
+# Set to 0 to disable automatic cleanup
+cleanup_after_days = 7
+
+# ============================================================================
+# User Interface
+# ============================================================================
+[ui]
+# Show progress bars and spinners for long operations
+# Disable if progress bars interfere with logging
+progress = true
+
+# Use emoji in CLI output (✓, ✗, ⚠️, etc.)
+# Disable if your terminal doesn't support emoji
+emoji = true
+
+# Terminal width for wrapping output (0 = auto-detect)
+# Useful for consistent output in CI or non-standard terminals
+terminal_width = 0
+
+# ============================================================================
+# Environment Variables Reference
+# ============================================================================
+# You can also set these environment variables to override config:
+#
+#   OXENVCS_VERBOSE=true             Enable verbose output
+#   OXENVCS_COLOR=always|never|auto  Color mode
+#   OXENVCS_LOCK_TIMEOUT=4           Lock timeout in hours
+#   OXENVCS_MAX_RETRIES=5            Network retry count
+#   OXENVCS_QUEUE_DIR=~/custom/path  Queue storage directory
+#
+# Environment variables have highest priority and override all config files.
+
+# ============================================================================
+# Multiple Config Files
+# ============================================================================
+# You can have multiple config files for different contexts:
+#
+#   1. User config: ~/.oxenvcs/config.toml
+#      - Your personal defaults for all projects
+#
+#   2. Project config: .oxenvcs/config.toml (in project directory)
+#      - Project-specific settings (e.g., longer lock timeout)
+#      - Overrides user config
+#      - Can be committed to version control
+#
+#   3. Environment variables
+#      - Highest priority
+#      - Useful for CI/CD or temporary overrides
+
+# ============================================================================
+# Example Use Cases
+# ============================================================================
+
+# === Use Case 1: CI/CD Environment ===
+# Disable colors and progress bars for clean logs:
+#   [defaults]
+#   color = "never"
+#   [ui]
+#   progress = false
+
+# === Use Case 2: Slow/Unreliable Network ===
+# Increase retries and backoff for better reliability:
+#   [network]
+#   max_retries = 10
+#   max_backoff_ms = 30000
+
+# === Use Case 3: Long Editing Sessions ===
+# Use longer lock timeout for day-long work:
+#   [lock]
+#   timeout_hours = 8
+
+# === Use Case 4: Team Project ===
+# Project-specific settings in .oxenvcs/config.toml:
+#   [lock]
+#   timeout_hours = 2  # Shorter locks for faster turnover
+#   [queue]
+#   auto_sync = true   # Always sync for team collaboration

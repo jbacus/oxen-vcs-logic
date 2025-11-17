@@ -1,7 +1,7 @@
 use anyhow::Context;
 use clap::{Parser, Subcommand};
 use colored::Colorize;
-use oxenvcs_cli::{lock_integration, logger, progress, success, vlog, CommitMetadata, OxenRepository};
+use oxenvcs_cli::{lock_integration, logger, progress, success, vlog, warn, CommitMetadata, OxenRepository};
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -935,9 +935,56 @@ EXAMPLES:
     oxenvcs-cli team")]
     Team,
 
+    /// Manage offline operation queue
+    #[command(subcommand)]
+    Queue(QueueCommands),
+
     /// Manage comments on commits
     #[command(subcommand)]
     Comment(CommentCommands),
+
+    /// Generate shell completion scripts
+    #[command(long_about = "Generate shell completion scripts
+
+USAGE:
+    oxenvcs-cli completions <SHELL>
+
+DESCRIPTION:
+    Generates shell completion scripts for the specified shell.
+    This enables tab completion for commands, subcommands, and flags.
+
+SUPPORTED SHELLS:
+    • bash
+    • zsh
+    • fish
+    • powershell
+
+INSTALLATION:
+    # Bash (Linux)
+    oxenvcs-cli completions bash > /etc/bash_completion.d/oxenvcs-cli
+
+    # Bash (macOS with Homebrew)
+    oxenvcs-cli completions bash > /usr/local/etc/bash_completion.d/oxenvcs-cli
+
+    # Zsh
+    oxenvcs-cli completions zsh > /usr/local/share/zsh/site-functions/_oxenvcs-cli
+
+    # Fish
+    oxenvcs-cli completions fish > ~/.config/fish/completions/oxenvcs-cli.fish
+
+    # PowerShell
+    oxenvcs-cli completions powershell > oxenvcs-cli.ps1
+
+EXAMPLES:
+    # Generate bash completions
+    oxenvcs-cli completions bash
+
+    # Install for current user (bash)
+    oxenvcs-cli completions bash > ~/.local/share/bash-completion/completions/oxenvcs-cli")]
+    Completions {
+        #[arg(value_name = "SHELL", help = "Shell to generate completions for (bash, zsh, fish, powershell)")]
+        shell: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -991,6 +1038,81 @@ EXAMPLES:
     List {
         #[arg(value_name = "COMMIT_ID", help = "Commit ID or HEAD (optional)")]
         commit_id: Option<String>,
+    },
+}
+
+#[derive(Subcommand)]
+enum QueueCommands {
+    /// Show pending operations in the queue
+    #[command(long_about = "Show pending operations in the queue
+
+USAGE:
+    oxenvcs-cli queue status
+
+DESCRIPTION:
+    Displays all pending operations that are queued due to network unavailability.
+    Shows operation type, priority, queued time, and number of retry attempts.
+
+EXAMPLES:
+    # Show all pending operations
+    oxenvcs-cli queue status")]
+    Status,
+
+    /// Manually sync all pending operations
+    #[command(long_about = "Manually sync all pending operations
+
+USAGE:
+    oxenvcs-cli queue sync
+
+DESCRIPTION:
+    Attempts to execute all pending operations in the queue. Operations are
+    executed in priority order (highest first), then by age (oldest first).
+
+    Only executes if network connectivity is available. Failed operations
+    remain in the queue for retry.
+
+EXAMPLES:
+    # Sync all pending operations
+    oxenvcs-cli queue sync")]
+    Sync,
+
+    /// Clear completed operations from the queue
+    #[command(long_about = "Clear completed operations from the queue
+
+USAGE:
+    oxenvcs-cli queue clear [--all]
+
+DESCRIPTION:
+    Removes completed operations from the queue to free up disk space.
+    Use --all to remove ALL operations (including pending).
+
+EXAMPLES:
+    # Clear only completed operations
+    oxenvcs-cli queue clear
+
+    # Clear all operations (pending and completed)
+    oxenvcs-cli queue clear --all")]
+    Clear {
+        #[arg(long, help = "Clear all operations including pending")]
+        all: bool,
+    },
+
+    /// Remove a specific operation from the queue
+    #[command(long_about = "Remove a specific operation from the queue
+
+USAGE:
+    oxenvcs-cli queue remove <ENTRY_ID>
+
+DESCRIPTION:
+    Removes a specific operation from the queue by its entry ID.
+    Use 'queue status' to see entry IDs.
+
+EXAMPLES:
+    # Remove a specific operation
+    oxenvcs-cli queue remove 01234567-89ab-cdef-0123-456789abcdef")]
+    Remove {
+        #[arg(value_name = "ENTRY_ID", help = "Queue entry ID to remove")]
+        entry_id: String,
     },
 }
 
@@ -1656,24 +1778,98 @@ async fn main() -> anyhow::Result<()> {
 
         Commands::Lock(lock_cmd) => {
             use oxenvcs_cli::lock_integration;
+            use oxenvcs_cli::network_resilience::{check_connectivity, ConnectivityState};
+            use oxenvcs_cli::{OfflineQueue, QueuedOperation};
             use std::env;
 
             let current_dir = env::current_dir()?;
 
+            // Auto-sync pending queue if online (for all lock commands)
+            match check_connectivity() {
+                ConnectivityState::Online => {
+                    let mut queue = OfflineQueue::new()?;
+                    let pending_count = queue.pending().len();
+
+                    if pending_count > 0 {
+                        vlog!("Auto-syncing {} pending operation(s) before lock operation...", pending_count);
+                        let report = queue.sync_all()?;
+
+                        if !report.failed.is_empty() {
+                            warn!("{} queued operation(s) failed to sync", report.failed.len());
+                        }
+                    }
+                }
+                _ => {}
+            }
+
             match lock_cmd {
                 LockCommands::Acquire { timeout } => {
-                    lock_integration::handle_lock_acquire(&current_dir, timeout)?;
+                    // Check connectivity
+                    match check_connectivity() {
+                        ConnectivityState::Offline => {
+                            // Queue the operation
+                            let mut queue = OfflineQueue::new()?;
+                            let user_id = lock_integration::get_user_identifier();
+
+                            let entry_id = queue.enqueue_with_priority(QueuedOperation::AcquireLock {
+                                project_path: current_dir.to_string_lossy().to_string(),
+                                user_id: user_id.clone(),
+                                timeout_hours: timeout as u32,
+                            }, 100)?; // High priority
+
+                            warn!("Network is offline - operation queued");
+                            println!();
+                            println!("  {} {}", "Queued:".bold(), "Acquire lock".yellow());
+                            println!("  {} {}", "User:".dimmed(), user_id.dimmed());
+                            println!("  {} {} hours", "Timeout:".dimmed(), timeout);
+                            println!("  {} {}", "Entry ID:".dimmed(), &entry_id[..8].dimmed());
+                            println!();
+                            progress::info("Lock will be acquired when network is available");
+                            progress::info("Use 'oxenvcs-cli queue sync' to retry manually");
+                        }
+                        _ => {
+                            // Execute normally (online or unknown)
+                            lock_integration::handle_lock_acquire(&current_dir, timeout)?;
+                        }
+                    }
                 }
 
                 LockCommands::Release => {
-                    lock_integration::handle_lock_release(&current_dir)?;
+                    // Check connectivity
+                    match check_connectivity() {
+                        ConnectivityState::Offline => {
+                            // Queue the operation
+                            let mut queue = OfflineQueue::new()?;
+
+                            // We don't know the lock_id when offline, so use a placeholder
+                            // The execute_entry will look up the actual lock
+                            let entry_id = queue.enqueue_with_priority(QueuedOperation::ReleaseLock {
+                                project_path: current_dir.to_string_lossy().to_string(),
+                                lock_id: "pending".to_string(), // Will be looked up during execution
+                            }, 100)?; // High priority
+
+                            warn!("Network is offline - operation queued");
+                            println!();
+                            println!("  {} {}", "Queued:".bold(), "Release lock".yellow());
+                            println!("  {} {}", "Entry ID:".dimmed(), &entry_id[..8].dimmed());
+                            println!();
+                            progress::info("Lock will be released when network is available");
+                            progress::info("Use 'oxenvcs-cli queue sync' to retry manually");
+                        }
+                        _ => {
+                            // Execute normally (online or unknown)
+                            lock_integration::handle_lock_release(&current_dir)?;
+                        }
+                    }
                 }
 
                 LockCommands::Status => {
+                    // Status check always executes (even when offline, shows local state)
                     lock_integration::handle_lock_status(&current_dir)?;
                 }
 
                 LockCommands::Break { force } => {
+                    // Break force always executes (administrative override)
                     lock_integration::handle_lock_break(&current_dir, force)?;
                 }
             }
@@ -2303,6 +2499,179 @@ async fn main() -> anyhow::Result<()> {
 
             println!();
             progress::success(&format!("Found {} team members", members.len()));
+
+            Ok(())
+        }
+
+        Commands::Queue(queue_cmd) => {
+            use oxenvcs_cli::OfflineQueue;
+            use colored::Colorize;
+
+            let mut queue = OfflineQueue::new()?;
+
+            match queue_cmd {
+                QueueCommands::Status => {
+                    let pending = queue.pending();
+                    let stats = queue.stats();
+
+                    println!("\n{}", "Offline Operation Queue".bold());
+                    println!("{}", "=".repeat(50));
+                    println!();
+
+                    if pending.is_empty() {
+                        progress::success("No pending operations");
+                        println!("\n  All operations have been synced!");
+                    } else {
+                        println!("  {} {}", "Pending:".bold(), pending.len().to_string().yellow());
+                        println!("  {} {}", "Completed:".bold(), stats.completed.to_string().green());
+                        println!("  {} {}", "Failed:".bold(), stats.failed.to_string().red());
+                        println!();
+
+                        for (i, entry) in pending.iter().enumerate() {
+                            let age = chrono::Utc::now().signed_duration_since(entry.queued_at);
+                            let age_str = if age.num_hours() > 0 {
+                                format!("{}h ago", age.num_hours())
+                            } else if age.num_minutes() > 0 {
+                                format!("{}m ago", age.num_minutes())
+                            } else {
+                                format!("{}s ago", age.num_seconds())
+                            };
+
+                            println!("  {}. {} {}",
+                                (i + 1).to_string().cyan(),
+                                entry.operation.description(),
+                                format!("({})", age_str).dimmed()
+                            );
+                            println!("     {} {} | {} {} | {} {}",
+                                "ID:".dimmed(),
+                                &entry.id[..8].dimmed(),
+                                "Priority:".dimmed(),
+                                entry.priority.to_string().dimmed(),
+                                "Attempts:".dimmed(),
+                                entry.attempts.to_string().dimmed()
+                            );
+                            println!();
+                        }
+
+                        println!("  {}", "Use 'oxenvcs-cli queue sync' to sync pending operations".dimmed());
+                    }
+
+                    Ok(())
+                }
+
+                QueueCommands::Sync => {
+                    use oxenvcs_cli::network_resilience::{check_connectivity, ConnectivityState};
+
+                    println!("\n{}", "Syncing Offline Queue".bold());
+                    println!("{}", "=".repeat(50));
+                    println!();
+
+                    // Check connectivity
+                    match check_connectivity() {
+                        ConnectivityState::Offline => {
+                            progress::error("Network is offline - cannot sync");
+                            println!("\n  Operations will remain queued until network is available");
+                            return Ok(());
+                        }
+                        ConnectivityState::Unknown => {
+                            warn!("Network state unknown, attempting sync anyway");
+                        }
+                        ConnectivityState::Online => {
+                            progress::success("Network is online");
+                        }
+                    }
+
+                    let pending_count = queue.pending().len();
+                    if pending_count == 0 {
+                        progress::success("No pending operations to sync");
+                        return Ok(());
+                    }
+
+                    println!("  Syncing {} pending operation(s)...\n", pending_count);
+
+                    let report = queue.sync_all()?;
+
+                    println!();
+                    println!("{}", "Sync Results".bold());
+                    println!("{}", "=".repeat(50));
+                    println!("  {} {}", "Succeeded:".bold(), report.succeeded.len().to_string().green());
+                    println!("  {} {}", "Failed:".bold(), report.failed.len().to_string().red());
+
+                    if !report.failed.is_empty() {
+                        println!();
+                        println!("{}", "Failed Operations:".bold());
+                        for (id, error) in &report.failed {
+                            println!("  {} {} - {}", "✗".red(), &id[..8], error.dimmed());
+                        }
+                    }
+
+                    println!();
+
+                    if report.failed.is_empty() {
+                        progress::success("All operations synced successfully!");
+                    } else {
+                        warn!("Some operations failed - they remain queued for retry");
+                    }
+
+                    Ok(())
+                }
+
+                QueueCommands::Clear { all } => {
+                    if all {
+                        // Clear everything
+                        let total = queue.pending().len() + queue.stats().completed;
+
+                        // Remove all entries
+                        let entry_ids: Vec<String> = queue.pending().iter()
+                            .map(|e| e.id.clone())
+                            .collect();
+
+                        for id in entry_ids {
+                            queue.remove(&id)?;
+                        }
+
+                        queue.clear_completed()?;
+
+                        progress::success(&format!("Cleared {} total operation(s)", total));
+                    } else {
+                        // Clear only completed
+                        let completed_count = queue.stats().completed;
+                        queue.clear_completed()?;
+                        progress::success(&format!("Cleared {} completed operation(s)", completed_count));
+                    }
+
+                    Ok(())
+                }
+
+                QueueCommands::Remove { entry_id } => {
+                    queue.remove(&entry_id)?;
+                    progress::success(&format!("Removed operation {}", &entry_id[..8]));
+                    Ok(())
+                }
+            }
+        }
+
+        Commands::Completions { shell } => {
+            use clap::CommandFactory;
+            use clap_complete::{generate, Shell};
+            use std::io;
+
+            let shell_type = match shell.to_lowercase().as_str() {
+                "bash" => Shell::Bash,
+                "zsh" => Shell::Zsh,
+                "fish" => Shell::Fish,
+                "powershell" => Shell::PowerShell,
+                _ => {
+                    progress::error(&format!("Unsupported shell: {}", shell));
+                    println!("\nSupported shells: bash, zsh, fish, powershell");
+                    std::process::exit(1);
+                }
+            };
+
+            let mut cmd = Cli::command();
+            let bin_name = "oxenvcs-cli";
+
+            generate(shell_type, &mut cmd, bin_name, &mut io::stdout());
 
             Ok(())
         }

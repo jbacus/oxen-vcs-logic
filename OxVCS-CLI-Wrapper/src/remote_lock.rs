@@ -72,6 +72,7 @@ use std::time::Duration as StdDuration;
 use uuid::Uuid;
 
 use crate::oxen_subprocess::OxenSubprocess;
+use crate::network_resilience::RetryPolicy;
 
 /// A distributed lock for a Logic Pro project
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -397,16 +398,34 @@ impl RemoteLockManager {
         Ok(())
     }
 
-    /// Fetch latest locks branch from remote
+    /// Fetch latest locks branch from remote (with retry)
     fn fetch_locks_branch(&self, repo_path: &Path) -> Result<()> {
+        crate::vlog!("Fetching locks branch from remote");
+
         // Save current branch
         let current_branch = self.oxen.current_branch(repo_path)?;
 
         // Checkout locks branch
         self.oxen.checkout(repo_path, &self.locks_branch)?;
 
-        // Pull latest (ignore errors if remote doesn't have locks branch yet)
-        let _ = self.oxen.pull(repo_path);
+        // Pull latest with retry (ignore errors if remote doesn't have locks branch yet)
+        let repo_path_owned = repo_path.to_path_buf();
+        let policy = RetryPolicy::new(3, 1000, 10000).set_verbose(true);
+
+        let _ = policy.execute(|| {
+            match self.oxen.pull(&repo_path_owned) {
+                Ok(_) => Ok(()),
+                Err(e) => {
+                    // If remote doesn't have locks branch yet, that's okay
+                    let err_str = e.to_string();
+                    if err_str.contains("not found") || err_str.contains("doesn't exist") {
+                        Ok(())
+                    } else {
+                        Err(e)
+                    }
+                }
+            }
+        });
 
         // Return to original branch
         self.oxen.checkout(repo_path, &current_branch)?;
@@ -414,34 +433,49 @@ impl RemoteLockManager {
         Ok(())
     }
 
-    /// Push locks branch to remote
+    /// Push locks branch to remote (with retry)
     fn push_locks_branch(&self, repo_path: &Path, force: bool) -> Result<()> {
+        crate::vlog!("Pushing locks branch to remote (force: {})", force);
+
         let current_branch = self.oxen.current_branch(repo_path)?;
 
         // Checkout locks branch
         self.oxen.checkout(repo_path, &self.locks_branch)?;
 
-        // Push (with force if requested)
-        if force {
-            // For force push, we need to use oxen CLI directly
-            use std::process::Command;
-            let output = Command::new("oxen")
-                .args(["push", "--force", "origin", &self.locks_branch])
-                .current_dir(repo_path)
-                .output()?;
+        // Push with retry
+        let repo_path_owned = repo_path.to_path_buf();
+        let locks_branch = self.locks_branch.clone();
+        let policy = RetryPolicy::new(5, 1000, 15000).set_verbose(true);
 
-            if !output.status.success() {
-                return Err(anyhow!(
-                    "Force push failed: {}",
-                    String::from_utf8_lossy(&output.stderr)
-                ));
+        let push_result = policy.execute(|| {
+            if force {
+                // For force push, we need to use oxen CLI directly
+                use std::process::Command;
+                let output = Command::new("oxen")
+                    .args(["push", "--force", "origin", &locks_branch])
+                    .current_dir(&repo_path_owned)
+                    .output()
+                    .context("Failed to execute oxen push command")?;
+
+                if !output.status.success() {
+                    let stderr = String::from_utf8_lossy(&output.stderr);
+                    return Err(anyhow!("Force push failed: {}", stderr));
+                }
+                Ok(())
+            } else {
+                self.oxen.push(&repo_path_owned, Some("origin"), Some(&locks_branch))
+                    .context("Failed to push locks branch")
             }
-        } else {
-            self.oxen.push(repo_path, Some("origin"), Some(&self.locks_branch))?;
-        }
+        });
 
-        // Return to original branch
-        self.oxen.checkout(repo_path, &current_branch)?;
+        // Return to original branch (even if push failed)
+        let checkout_result = self.oxen.checkout(repo_path, &current_branch);
+
+        // Propagate push error if it failed
+        push_result?;
+
+        // Then check checkout result
+        checkout_result?;
 
         Ok(())
     }
