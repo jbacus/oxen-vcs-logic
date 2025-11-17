@@ -911,7 +911,7 @@ cask "auxin" do
   version "0.1.0"
   sha256 "..."
 
-  url "https://github.com/jbacus/auxin/releases/download/v#{version}/oxvcs-#{version}-macos.tar.gz"
+  url "https://github.com/jbacus/auxin/releases/download/v#{version}/auxin-#{version}-macos.tar.gz"
   name "Auxin"
   desc "Version control for Logic Pro projects"
   homepage "https://github.com/jbacus/auxin"
