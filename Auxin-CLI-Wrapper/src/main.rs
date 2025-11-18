@@ -1,7 +1,7 @@
 use anyhow::Context;
 use clap::{Parser, Subcommand};
 use colored::Colorize;
-use auxin::{lock_integration, logger, progress, success, vlog, warn, BlenderProject, CommitMetadata, Config, OxenRepository, ProjectType, SketchUpMetadata, SketchUpProject, AuxinServerClient, ServerConfig, server_client};
+use auxin::{lock_integration, logger, progress, success, vlog, warn, BlenderProject, CommitMetadata, Config, OxenRepository, ProjectType, SketchUpMetadata, SketchUpProject, AuxinServerClient, ServerConfig, server_client, BounceManager};
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -392,6 +392,127 @@ EXAMPLES:
 }
 
 #[derive(Subcommand)]
+enum BounceCommands {
+    /// Add a bounce file for a commit
+    #[command(long_about = "Add a bounce file for a commit
+
+USAGE:
+    auxin bounce add <FILE> [--commit <ID>] [--description <TEXT>]
+
+DESCRIPTION:
+    Attaches an audio bounce file to a commit as an audio 'screenshot' of the
+    project state. Bounces are used for:
+      • Quick A/B comparison between versions
+      • Audio fingerprinting and semantic analysis
+      • Historical record of project evolution
+
+    Supported formats: WAV, AIFF, MP3, FLAC, M4A
+
+    If no commit ID is specified, the bounce is attached to the most recent commit.
+
+EXAMPLES:
+    # Add bounce to latest commit
+    auxin bounce add Bounces/MyMix.wav
+
+    # Add bounce to specific commit
+    auxin bounce add Bounces/MyMix.wav --commit abc123
+
+    # Add bounce with description
+    auxin bounce add Bounces/MyMix.wav --description 'Final mix before mastering'")]
+    Add {
+        #[arg(value_name = "FILE", help = "Path to the audio bounce file")]
+        file: PathBuf,
+
+        #[arg(long, value_name = "ID", help = "Commit ID to attach bounce to (default: latest)")]
+        commit: Option<String>,
+
+        #[arg(long, short, value_name = "TEXT", help = "Description of the bounce")]
+        description: Option<String>,
+    },
+
+    /// List all bounces in the repository
+    #[command(long_about = "List all bounces in the repository
+
+USAGE:
+    auxin bounce list
+
+DESCRIPTION:
+    Shows all audio bounces stored in the repository, including:
+      • Commit ID
+      • Original filename
+      • Format and duration
+      • File size
+      • When it was added
+      • Description (if provided)
+
+EXAMPLES:
+    # List all bounces
+    auxin bounce list")]
+    List,
+
+    /// Play a bounce audio file
+    #[command(long_about = "Play a bounce audio file
+
+USAGE:
+    auxin bounce play <COMMIT_ID>
+
+DESCRIPTION:
+    Plays the bounce audio file associated with a commit using the system
+    audio player (afplay on macOS). This allows quick preview of how the
+    project sounded at any point in history.
+
+EXAMPLES:
+    # Play bounce for a commit
+    auxin bounce play abc123")]
+    Play {
+        #[arg(value_name = "COMMIT_ID", help = "Commit ID of the bounce to play")]
+        commit_id: String,
+    },
+
+    /// Show bounce metadata
+    #[command(long_about = "Show bounce metadata
+
+USAGE:
+    auxin bounce info <COMMIT_ID>
+
+DESCRIPTION:
+    Displays detailed metadata about a bounce file:
+      • Original filename
+      • Audio format
+      • Duration
+      • Sample rate, bit depth, channels
+      • File size
+      • When added and by whom
+      • Description
+
+EXAMPLES:
+    # Show bounce info
+    auxin bounce info abc123")]
+    Info {
+        #[arg(value_name = "COMMIT_ID", help = "Commit ID of the bounce")]
+        commit_id: String,
+    },
+
+    /// Delete a bounce
+    #[command(long_about = "Delete a bounce
+
+USAGE:
+    auxin bounce delete <COMMIT_ID>
+
+DESCRIPTION:
+    Removes the bounce audio file and metadata for a commit.
+    This action cannot be undone.
+
+EXAMPLES:
+    # Delete bounce
+    auxin bounce delete abc123")]
+    Delete {
+        #[arg(value_name = "COMMIT_ID", help = "Commit ID of the bounce to delete")]
+        commit_id: String,
+    },
+}
+
+#[derive(Subcommand)]
 enum HooksCommands {
     /// Initialize hooks directory
     Init,
@@ -602,6 +723,14 @@ EXAMPLES (SketchUp):
             help = "Tags for categorization (comma-separated, e.g., 'mixing,draft' or 'presentation,milestone')"
         )]
         tags: Option<String>,
+
+        // Audio bounce
+        #[arg(
+            long,
+            value_name = "FILE",
+            help = "Audio bounce file to attach (WAV, AIFF, MP3, FLAC, M4A)"
+        )]
+        bounce: Option<PathBuf>,
     },
 
     /// Show commit history
@@ -880,6 +1009,10 @@ EXAMPLES:
     /// Manage auxin-server connection and configuration
     #[command(subcommand)]
     Server(ServerCommands),
+
+    /// Manage audio bounce files for commits
+    #[command(subcommand)]
+    Bounce(BounceCommands),
 
     /// Compare metadata between two Logic Pro project versions
     #[command(name = "metadata-diff")]
@@ -1771,6 +1904,7 @@ async fn main() -> anyhow::Result<()> {
             groups,
             file_size,
             tags,
+            bounce,
         } => {
             let pb = progress::spinner("Preparing commit...");
             let repo = OxenRepository::new(".");
@@ -1928,6 +2062,27 @@ async fn main() -> anyhow::Result<()> {
             // Show common metadata
             if let Some(ref tags_val) = tags {
                 println!("  Tags: {}", tags_val);
+            }
+
+            // Process bounce file if provided
+            if let Some(bounce_path) = bounce {
+                let current_dir = std::env::current_dir()?;
+                let bounce_manager = BounceManager::new(&current_dir);
+
+                let pb = progress::spinner("Adding bounce file...");
+                match bounce_manager.add_bounce(&commit_id, &bounce_path, None) {
+                    Ok(metadata) => {
+                        progress::finish_success(&pb, "Bounce added");
+                        println!("  Bounce: {} ({}, {})",
+                            metadata.original_filename,
+                            metadata.format_duration(),
+                            metadata.format_size());
+                    }
+                    Err(e) => {
+                        progress::finish_error(&pb, "Failed to add bounce");
+                        warn!("Bounce error: {}", e);
+                    }
+                }
             }
 
             Ok(())
@@ -3041,6 +3196,184 @@ async fn main() -> anyhow::Result<()> {
                             Err(e) => {
                                 progress::error(&format!("Failed to save config: {}", e));
                             }
+                        }
+                    }
+                }
+            }
+
+            Ok(())
+        }
+
+        Commands::Bounce(bounce_cmd) => {
+            // Find repository root
+            let current_dir = std::env::current_dir()
+                .context("Failed to get current directory")?;
+
+            let manager = BounceManager::new(&current_dir);
+
+            match bounce_cmd {
+                BounceCommands::Add { file, commit, description } => {
+                    // Get commit ID - use latest if not specified
+                    let commit_id = match commit {
+                        Some(id) => id,
+                        None => {
+                            // Get latest commit from oxen log
+                            let subprocess = auxin::OxenSubprocess::new();
+                            let commits = subprocess.log(&current_dir, Some(1))
+                                .context("Failed to get latest commit")?;
+                            if commits.is_empty() {
+                                anyhow::bail!("No commits found. Create a commit first.");
+                            }
+                            commits[0].id.clone()
+                        }
+                    };
+
+                    let pb = progress::spinner(&format!("Adding bounce for commit {}...", &commit_id[..8.min(commit_id.len())]));
+
+                    match manager.add_bounce(&commit_id, &file, description.as_deref()) {
+                        Ok(metadata) => {
+                            progress::finish_success(&pb, "Bounce added");
+                            println!();
+                            println!("  Commit:    {}", &metadata.commit_id[..8.min(metadata.commit_id.len())]);
+                            println!("  File:      {}", metadata.original_filename);
+                            println!("  Format:    {:?}", metadata.format);
+                            println!("  Size:      {}", metadata.format_size());
+                            println!("  Duration:  {}", metadata.format_duration());
+                            if let Some(desc) = &metadata.description {
+                                println!("  Note:      {}", desc);
+                            }
+                        }
+                        Err(e) => {
+                            progress::finish_error(&pb, "Failed to add bounce");
+                            anyhow::bail!("{}", e);
+                        }
+                    }
+                }
+
+                BounceCommands::List => {
+                    let bounces = manager.list_bounces()
+                        .context("Failed to list bounces")?;
+
+                    if bounces.is_empty() {
+                        println!("No bounces found.");
+                        println!();
+                        println!("Add a bounce with: auxin bounce add <file>");
+                    } else {
+                        println!();
+                        println!("┌─ Audio Bounces ─────────────────────────────────────────┐");
+                        println!("│                                                          │");
+
+                        for bounce in &bounces {
+                            let commit_short = &bounce.commit_id[..8.min(bounce.commit_id.len())];
+                            let duration = bounce.format_duration();
+                            let size = bounce.format_size();
+
+                            println!("│  {} {} │",
+                                commit_short.yellow(),
+                                " ".repeat(48 - commit_short.len()));
+                            println!("│    File:     {:<41} │",
+                                if bounce.original_filename.len() > 41 {
+                                    format!("{}...", &bounce.original_filename[..38])
+                                } else {
+                                    bounce.original_filename.clone()
+                                });
+                            println!("│    Format:   {:<41} │", format!("{:?}", bounce.format));
+                            println!("│    Duration: {:<41} │", duration);
+                            println!("│    Size:     {:<41} │", size);
+
+                            if let Some(desc) = &bounce.description {
+                                let desc_display = if desc.len() > 41 {
+                                    format!("{}...", &desc[..38])
+                                } else {
+                                    desc.clone()
+                                };
+                                println!("│    Note:     {:<41} │", desc_display);
+                            }
+                            println!("│                                                          │");
+                        }
+
+                        println!("└──────────────────────────────────────────────────────────┘");
+                        println!();
+                        println!("{} bounce(s) total", bounces.len());
+                    }
+                }
+
+                BounceCommands::Play { commit_id } => {
+                    let pb = progress::spinner(&format!("Playing bounce for {}...", &commit_id[..8.min(commit_id.len())]));
+
+                    match manager.play_bounce(&commit_id) {
+                        Ok(()) => {
+                            progress::finish_success(&pb, "Playback complete");
+                        }
+                        Err(e) => {
+                            progress::finish_error(&pb, "Playback failed");
+                            anyhow::bail!("{}", e);
+                        }
+                    }
+                }
+
+                BounceCommands::Info { commit_id } => {
+                    match manager.get_bounce(&commit_id)? {
+                        Some(metadata) => {
+                            println!();
+                            println!("┌─ Bounce Info ───────────────────────────────────────────┐");
+                            println!("│                                                          │");
+                            println!("│  Commit:      {:<42} │", &metadata.commit_id[..8.min(metadata.commit_id.len())]);
+                            println!("│  File:        {:<42} │",
+                                if metadata.original_filename.len() > 42 {
+                                    format!("{}...", &metadata.original_filename[..39])
+                                } else {
+                                    metadata.original_filename.clone()
+                                });
+                            println!("│  Format:      {:<42} │", format!("{:?}", metadata.format));
+                            println!("│  Size:        {:<42} │", metadata.format_size());
+                            println!("│  Duration:    {:<42} │", metadata.format_duration());
+
+                            if let Some(sr) = metadata.sample_rate {
+                                println!("│  Sample Rate: {:<42} │", format!("{} Hz", sr));
+                            }
+                            if let Some(bd) = metadata.bit_depth {
+                                println!("│  Bit Depth:   {:<42} │", format!("{}-bit", bd));
+                            }
+                            if let Some(ch) = metadata.channels {
+                                let ch_str = if ch == 1 { "Mono".to_string() } else if ch == 2 { "Stereo".to_string() } else { format!("{} channels", ch) };
+                                println!("│  Channels:    {:<42} │", ch_str);
+                            }
+
+                            println!("│  Added:       {:<42} │",
+                                metadata.added_at.format("%Y-%m-%d %H:%M").to_string());
+                            println!("│  By:          {:<42} │", metadata.added_by);
+
+                            if let Some(desc) = &metadata.description {
+                                println!("│                                                          │");
+                                println!("│  Description:                                            │");
+                                // Word wrap description
+                                for chunk in desc.as_bytes().chunks(54) {
+                                    let line = String::from_utf8_lossy(chunk);
+                                    println!("│    {:<54} │", line);
+                                }
+                            }
+
+                            println!("│                                                          │");
+                            println!("└──────────────────────────────────────────────────────────┘");
+                            println!();
+                        }
+                        None => {
+                            anyhow::bail!("No bounce found for commit {}", commit_id);
+                        }
+                    }
+                }
+
+                BounceCommands::Delete { commit_id } => {
+                    let pb = progress::spinner(&format!("Deleting bounce for {}...", &commit_id[..8.min(commit_id.len())]));
+
+                    match manager.delete_bounce(&commit_id) {
+                        Ok(()) => {
+                            progress::finish_success(&pb, "Bounce deleted");
+                        }
+                        Err(e) => {
+                            progress::finish_error(&pb, "Delete failed");
+                            anyhow::bail!("{}", e);
                         }
                     }
                 }

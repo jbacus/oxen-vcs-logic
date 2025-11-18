@@ -1,13 +1,17 @@
 import { formatDistanceToNow } from 'date-fns';
 import { GitCommit, Clock, User } from 'lucide-react';
+import { BouncePreview } from '../bounces';
 import type { Commit } from '@/types';
 
 interface CommitListProps {
   commits: Commit[];
+  namespace?: string;
+  repoName?: string;
+  showBounces?: boolean;
   onCommitClick?: (commit: Commit) => void;
 }
 
-export function CommitList({ commits, onCommitClick }: CommitListProps) {
+export function CommitList({ commits, namespace, repoName, showBounces = true, onCommitClick }: CommitListProps) {
   if (commits.length === 0) {
     return (
       <div className="text-center py-8 text-gray-500">
@@ -45,6 +49,14 @@ export function CommitList({ commits, onCommitClick }: CommitListProps) {
                   <span>{formatDistanceToNow(new Date(commit.timestamp), { addSuffix: true })}</span>
                 </span>
               </div>
+              {showBounces && namespace && repoName && (
+                <BouncePreview
+                  namespace={namespace}
+                  repoName={repoName}
+                  commitId={commit.id}
+                  compact
+                />
+              )}
             </div>
           </div>
         </div>

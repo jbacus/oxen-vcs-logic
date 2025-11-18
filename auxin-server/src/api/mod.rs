@@ -1,3 +1,4 @@
+mod bounce_ops;
 mod repo_ops;
 
 use actix_web::{web, HttpResponse, Result};
@@ -15,6 +16,10 @@ pub use repo_ops::{
     acquire_lock, create_branch, get_commits, get_metadata, heartbeat_lock,
     list_branches, lock_status, pull_repository, push_repository,
     release_lock, store_metadata,
+};
+
+pub use bounce_ops::{
+    delete_bounce, get_bounce, get_bounce_audio, list_bounces, upload_bounce,
 };
 
 #[derive(Debug, Serialize, Deserialize)]
