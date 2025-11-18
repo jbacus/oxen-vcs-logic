@@ -1,16 +1,9 @@
 use actix_web::{middleware, web, App, HttpResponse, HttpServer, Result};
-use std::env;
 use tracing::info;
 
-mod api;
-mod auth;
-mod config;
-mod error;
-mod extensions;
-mod repo;
-
-use auth::AuthService;
-use config::Config;
+use auxin_server::api;
+use auxin_server::auth::AuthService;
+use auxin_server::config::Config;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {

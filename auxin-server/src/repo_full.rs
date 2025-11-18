@@ -1,7 +1,9 @@
 use anyhow::{Context, Result};
-use liboxen::api;
 use std::path::{Path, PathBuf};
 use tracing::{debug, info, warn};
+
+#[cfg(feature = "full-oxen")]
+use liboxen::api;
 
 use crate::error::{AppError, AppResult};
 use crate::extensions::{FileLock, LogicProMetadata};
@@ -35,10 +37,34 @@ impl RepositoryOps {
             AppError::Internal(format!("Failed to create repository directory: {}", e))
         })?;
 
-        // Initialize using liboxen
-        api::local::repositories::init(&repo_path).map_err(|e| {
-            AppError::Internal(format!("Failed to initialize repository: {}", e))
-        })?;
+        #[cfg(feature = "full-oxen")]
+        {
+            // Initialize using liboxen
+            api::local::repositories::init(&repo_path).map_err(|e| {
+                AppError::Internal(format!("Failed to initialize repository: {}", e))
+            })?;
+        }
+
+        #[cfg(feature = "mock-oxen")]
+        {
+            // Mock implementation: create minimal .oxen structure
+            let oxen_dir = repo_path.join(".oxen");
+            std::fs::create_dir_all(&oxen_dir).map_err(|e| {
+                AppError::Internal(format!("Failed to create .oxen directory: {}", e))
+            })?;
+
+            // Create HEAD file
+            std::fs::write(oxen_dir.join("HEAD"), "refs/heads/main\n").map_err(|e| {
+                AppError::Internal(format!("Failed to create HEAD: {}", e))
+            })?;
+
+            // Create refs structure
+            std::fs::create_dir_all(oxen_dir.join("refs/heads")).map_err(|e| {
+                AppError::Internal(format!("Failed to create refs: {}", e))
+            })?;
+
+            warn!("Using mock Oxen implementation - full VCS operations not available");
+        }
 
         // Create Auxin extension directories
         let oxen_dir = repo_path.join(".oxen");

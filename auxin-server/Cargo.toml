@@ -13,8 +13,8 @@ actix-rt = "2"
 actix-cors = "0.7"
 actix-web-httpauth = "0.8"
 
-# Core Oxen library
-liboxen = "0.10"
+# Core Oxen library (optional, updated to latest version for macOS 26.x compatibility)
+liboxen = { version = "0.38", optional = true }
 
 # Async runtime
 tokio = { version = "1", features = ["full"] }
@@ -47,7 +47,9 @@ sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "postgres", "uuid"
 tempfile = "3"
 
 [features]
-default = []
+default = ["mock-oxen"]  # Use mock by default until liboxen 0.38 API is updated
+full-oxen = ["liboxen"]  # Full Oxen functionality (TODO: update for liboxen 0.38 API changes)
+mock-oxen = []           # Mock implementation for development/testing
 redis-locks = ["redis"]
 web-ui = ["sqlx"]
 

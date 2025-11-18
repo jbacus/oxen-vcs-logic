@@ -7,6 +7,7 @@ pub enum AppError {
     BadRequest(String),
     Unauthorized(String),
     Internal(String),
+    NotImplemented(String),
 }
 
 impl fmt::Display for AppError {
@@ -16,6 +17,7 @@ impl fmt::Display for AppError {
             AppError::BadRequest(msg) => write!(f, "Bad request: {}", msg),
             AppError::Unauthorized(msg) => write!(f, "Unauthorized: {}", msg),
             AppError::Internal(msg) => write!(f, "Internal error: {}", msg),
+            AppError::NotImplemented(msg) => write!(f, "Not implemented: {}", msg),
         }
     }
 }
@@ -27,6 +29,7 @@ impl ResponseError for AppError {
             AppError::BadRequest(_) => StatusCode::BAD_REQUEST,
             AppError::Unauthorized(_) => StatusCode::UNAUTHORIZED,
             AppError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            AppError::NotImplemented(_) => StatusCode::NOT_IMPLEMENTED,
         }
     }
 

@@ -95,18 +95,16 @@ impl AuthService {
 
 /// Middleware validator function for actix-web-httpauth
 pub async fn validator(
-    req: ServiceRequest,
+    mut req: ServiceRequest,
     credentials: BearerAuth,
 ) -> Result<ServiceRequest, (Error, ServiceRequest)> {
     // Get AuthService from app data
-    let auth_service = req
-        .app_data::<actix_web::web::Data<AuthService>>()
-        .ok_or_else(|| {
-            (
-                ErrorUnauthorized("Auth service not configured"),
-                req,
-            )
-        })?;
+    let auth_service = match req.app_data::<actix_web::web::Data<AuthService>>() {
+        Some(service) => service,
+        None => {
+            return Err((ErrorUnauthorized("Auth service not configured"), req));
+        }
+    };
 
     // Validate token
     match auth_service.validate_token(credentials.token()) {
