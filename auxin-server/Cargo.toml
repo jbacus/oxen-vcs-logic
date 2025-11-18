@@ -1,0 +1,65 @@
+[package]
+name = "auxin-server"
+version = "0.2.0"
+edition = "2021"
+authors = ["Auxin Team"]
+description = "Self-hosted repository server for Auxin using liboxen (Oxen-aligned architecture)"
+license = "MIT"
+
+[dependencies]
+# Web framework (matching Oxen)
+actix-web = "4"
+actix-rt = "2"
+actix-cors = "0.7"
+actix-web-httpauth = "0.8"
+
+# Core Oxen library
+liboxen = "0.10"
+
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Utilities
+uuid = { version = "1.6", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+anyhow = "1"
+thiserror = "1"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tracing-actix-web = "0.7"
+
+# Configuration
+dotenvy = "0.15"
+
+# Optional: Redis for distributed locks
+redis = { version = "0.24", features = ["tokio-comp"], optional = true }
+
+# Optional: PostgreSQL for web UI metadata cache
+sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono", "json"], optional = true }
+
+[dev-dependencies]
+tempfile = "3"
+
+[features]
+default = []
+redis-locks = ["redis"]
+web-ui = ["sqlx"]
+
+[lib]
+name = "auxin_server"
+path = "src/lib.rs"
+
+[[bin]]
+name = "auxin-server"
+path = "src/main.rs"
+
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = 3
