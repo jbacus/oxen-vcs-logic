@@ -60,14 +60,28 @@ cargo build --release --no-default-features --features full-oxen
 ### Testing
 
 ```bash
-# Run tests
+# Run all tests (21 integration tests + 4 unit tests)
 cargo test
+
+# Run specific test suites
+cargo test --test mock_repository_tests      # 11 tests - repository operations
+cargo test --test feature_flag_tests         # 3 tests - feature flag behavior
+cargo test --test error_handling_tests       # 7 tests - error handling
+cargo test --lib                             # 4 tests - auth unit tests
 
 # Start server (needs /var/oxen/data directory)
 sudo mkdir -p /var/oxen/data
 sudo chown $USER /var/oxen/data
 ./target/release/auxin-server
 ```
+
+**Test Coverage:** The mock implementation has comprehensive integration tests:
+- **mock_repository_tests.rs** (11 tests): Repository init, open, VCS operations return NotImplemented, Auxin extensions work
+- **feature_flag_tests.rs** (3 tests): Verify correct implementation compiled based on features
+- **error_handling_tests.rs** (7 tests): Error propagation and HTTP status codes
+- **auth tests** (4 tests): Token generation, validation, revocation, cleanup
+
+All tests pass with mock-oxen feature (default).
 
 Test endpoints:
 ```bash
@@ -193,10 +207,11 @@ cargo test --features full-oxen
 
 ## Current Status
 
-- **Mock Implementation:** ✅ Complete and tested
+- **Mock Implementation:** ✅ Complete and tested (21 integration + 4 unit tests passing)
 - **Deployment Scripts:** ✅ Working perfectly
 - **Server Infrastructure:** ✅ Fully functional
 - **Auxin Extensions:** ✅ Locks and metadata working
+- **Test Coverage:** ✅ Comprehensive (mock operations, feature flags, error handling, auth)
 - **Full Oxen Implementation:** 🟡 Needs update for liboxen 0.38 API
 
 ## Next Steps

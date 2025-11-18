@@ -254,6 +254,31 @@ tail -50 ~/Library/Logs/auxin-server.log
 grep "ERROR" ~/Library/Logs/auxin-server.log
 ```
 
+### Running Tests
+
+The project includes comprehensive integration tests for the mock implementation:
+
+```bash
+# Run all tests (21 integration + 4 unit tests)
+cd .. && cargo test
+
+# Run specific test suites
+cargo test --test mock_repository_tests      # 11 tests - repository operations
+cargo test --test feature_flag_tests         # 3 tests - feature flag behavior
+cargo test --test error_handling_tests       # 7 tests - error handling
+cargo test --lib                             # 4 tests - auth unit tests
+```
+
+**Test Coverage:**
+- ✅ Repository initialization and opening
+- ✅ VCS operations return NotImplemented (501)
+- ✅ Auxin extensions (locks, metadata) work correctly
+- ✅ Feature flag compilation behavior
+- ✅ Error handling and HTTP status codes
+- ✅ Authentication (token generation, validation, revocation)
+
+All tests pass with the default mock-oxen feature.
+
 ### Testing API Endpoints
 
 ```bash

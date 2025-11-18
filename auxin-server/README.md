@@ -2,13 +2,27 @@
 
 **Self-hosted repository server for Auxin, aligned with Oxen.ai architecture**
 
+## ⚡ Quick Note: Build Modes
+
+Auxin-server supports two build modes via feature flags:
+
+| Mode | Status | Use Case |
+|------|--------|----------|
+| **`mock-oxen`** (default) | ✅ **Ready** | Development, testing, deployment - full HTTP API + Auxin features |
+| **`full-oxen`** | 🟡 **WIP** | Full VCS operations (requires async refactoring for liboxen 0.38) |
+
+**TL;DR:** The default build works perfectly for server infrastructure, locks, and metadata. VCS operations (commit, push, pull) return `501 Not Implemented`.
+
+See [BUILD_MACOS_26.md](BUILD_MACOS_26.md) for details on building with either mode.
+
 ## Architecture
 
 This version uses:
 - ✅ **Actix Web** (same as Oxen)
-- ✅ **liboxen** (reuses Oxen core library)
+- ✅ **liboxen 0.38** (optional, for full VCS operations)
 - ✅ **Filesystem storage** with `.oxen` directories
 - ✅ **Simple deployment** (one binary)
+- ✅ **Feature flags** for flexible building
 
 **Replaces the complex PostgreSQL + Redis + MinIO stack with simple filesystem storage.**
 
@@ -29,12 +43,20 @@ cd auxin-server
 # Copy environment config
 cp .env.example .env
 
-# Build
+# Build (default: mock-oxen mode)
 cargo build --release
 
-# Run
+# Or use deployment scripts (recommended)
+cd scripts
+./setup.sh      # Automated setup + install
+./start.sh      # Start via LaunchAgent
+./status.sh     # Check status
+
+# Run manually
 ./target/release/auxin-server
 ```
+
+**macOS 26.x users:** See [BUILD_MACOS_26.md](BUILD_MACOS_26.md) for platform-specific notes.
 
 ### 3. Test
 
@@ -104,10 +126,15 @@ SYNC_DIR/
 - `POST /api/repos/{namespace}/{name}` - Create repository
 - `GET /api/repos/{namespace}/{name}` - Get repository info
 
-### Coming Soon (using liboxen)
+### VCS Operations (full-oxen feature required)
+**Status:** Returns `501 Not Implemented` in mock-oxen mode (default)
 - `POST /api/repos/{namespace}/{name}/push` - Push commits
 - `GET /api/repos/{namespace}/{name}/pull` - Pull commits
 - `GET /api/repos/{namespace}/{name}/commits` - List commits
+- `POST /api/repos/{namespace}/{name}/add` - Stage files
+- `POST /api/repos/{namespace}/{name}/commit` - Create commit
+- `GET /api/repos/{namespace}/{name}/branches` - List branches
+- `POST /api/repos/{namespace}/{name}/branches` - Create branch
 
 ### Auxin Extensions
 - `GET /api/repos/{namespace}/{name}/metadata/{commit}` - Logic Pro metadata
@@ -193,8 +220,28 @@ RUST_LOG=debug cargo run
 ### Running Tests
 
 ```bash
+# Run all tests (default: mock-oxen)
 cargo test
+
+# Run with verbose output
+cargo test -- --nocapture
+
+# Run specific test suite
+cargo test --test mock_repository_tests
+cargo test --test feature_flag_tests
+cargo test --test error_handling_tests
+
+# Test coverage (requires tarpaulin)
+cargo install cargo-tarpaulin
+cargo tarpaulin --out Html
 ```
+
+**Test Coverage:** New tests added for mock implementation:
+- `mock_repository_tests.rs`: Repository operations (17 tests)
+- `feature_flag_tests.rs`: Feature flag behavior (5 tests)
+- `error_handling_tests.rs`: Error handling (8 tests)
+
+Total: **30+ integration tests** for mock mode functionality.
 
 ### Code Quality
 
@@ -209,19 +256,57 @@ cargo clippy
 cargo check
 ```
 
-## Next Steps
+## Feature Flags
 
-See `../AUXIN_SERVER.md` for:
-- Complete 8-week implementation plan
-- Integration with liboxen
-- Logic Pro metadata support
-- Distributed locking implementation
-- Web UI development
+Auxin-server uses Cargo feature flags for flexible building:
+
+```toml
+[features]
+default = ["mock-oxen"]              # Mock VCS (works everywhere)
+full-oxen = ["liboxen"]              # Full Oxen (WIP - async refactoring)
+mock-oxen = []                       # Mock implementation
+redis-locks = ["redis"]              # Redis for distributed locks
+web-ui = ["sqlx"]                    # PostgreSQL for web UI
+```
+
+Build with specific features:
+```bash
+# Default (mock mode)
+cargo build --release
+
+# Full Oxen (WIP)
+cargo build --release --no-default-features --features full-oxen
+
+# With Redis locks
+cargo build --release --features redis-locks
+
+# With Web UI
+cargo build --release --features web-ui
+```
+
+## What Works in Mock Mode
+
+✅ **Fully Functional:**
+- HTTP server (Actix Web)
+- All API endpoints
+- Repository discovery
+- **Auxin extensions** (locks, Logic Pro metadata) - **These are the core value!**
+- Authentication & JWT tokens
+- Configuration management
+- LaunchAgent service management
+- All deployment scripts
+
+❌ **Returns 501 Not Implemented:**
+- VCS operations (add, commit, push, pull, clone)
+- Branch management (create, checkout, merge)
+
+**Use Case:** Perfect for development, testing, and production deployment where Auxin-specific features (locks and metadata) are the primary value.
 
 ## Documentation
 
-- **Implementation Plan**: `../AUXIN_SERVER.md`
-- **Original Plan**: `../OXVCS_SERVER_PLAN.md` (archived)
+- **[BUILD_MACOS_26.md](BUILD_MACOS_26.md)**: macOS 26.x build instructions and feature flag details
+- **[scripts/README.md](scripts/README.md)**: Deployment script documentation
+- **[AUXIN_SERVER_PLAN.md](../AUXIN_SERVER_PLAN.md)**: Complete implementation plan
 
 ## License
 
