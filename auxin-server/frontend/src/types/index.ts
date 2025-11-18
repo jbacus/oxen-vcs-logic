@@ -47,10 +47,34 @@ export interface LockRequest {
 }
 
 export interface FileEntry {
+  name: string;
   path: string;
-  size: number;
-  is_dir: boolean;
+  type: 'file' | 'dir';
+  size?: number;
   hash?: string;
+  children?: FileEntry[];
+}
+
+// Auth types
+export interface User {
+  id: string;
+  username: string;
+  email: string;
+}
+
+export interface AuthResponse {
+  token: string;
+  user: User;
+}
+
+// Activity types
+export interface Activity {
+  id: string;
+  type: 'commit' | 'lock_acquired' | 'lock_released' | 'branch_created' | 'user_joined';
+  user: string;
+  description: string;
+  timestamp: string;
+  metadata?: Record<string, unknown>;
 }
 
 export interface PushRequest {
