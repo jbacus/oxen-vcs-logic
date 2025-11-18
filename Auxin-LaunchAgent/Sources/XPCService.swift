@@ -226,13 +226,25 @@ public class OxenDaemonXPCService: NSObject, OxenDaemonXPCProtocol {
             return
         }
 
-        guard projectPath.hasSuffix(".logicx") else {
-            reply(false, "Invalid Logic Pro project (must be .logicx)")
+        // Detect project type
+        guard let projectType = ProjectType.detect(from: projectPath) else {
+            let supportedExtensions = ProjectType.supportedExtensions.map { ".\($0)" }.joined(separator: ", ")
+            reply(false, "Unsupported project type. Supported types: \(supportedExtensions)")
             return
         }
 
+        print("  Detected project type: \(projectType.displayName)")
+
         // Check if already initialized
-        let oxenDir = (projectPath as NSString).appendingPathComponent(".oxen")
+        let oxenDir: String
+        if projectType.isFolderBased {
+            oxenDir = (projectPath as NSString).appendingPathComponent(".oxen")
+        } else {
+            // For file-based projects, .oxen is in the same directory
+            oxenDir = (URL(fileURLWithPath: projectPath).deletingLastPathComponent()
+                .appendingPathComponent(".oxen")).path
+        }
+
         if FileManager.default.fileExists(atPath: oxenDir) {
             print("✓ Project already initialized, registering for monitoring")
 
@@ -252,7 +264,7 @@ public class OxenDaemonXPCService: NSObject, OxenDaemonXPCProtocol {
         // Call CLI to initialize the Oxen repository
         let task = Process()
         task.executableURL = URL(fileURLWithPath: "/usr/local/bin/auxin")
-        task.arguments = ["init", "--logic", projectPath]
+        task.arguments = ["init", projectType.cliArgument, projectPath]
 
         let outputPipe = Pipe()
         let errorPipe = Pipe()
@@ -299,10 +311,14 @@ public class OxenDaemonXPCService: NSObject, OxenDaemonXPCProtocol {
             return
         }
 
-        guard projectPath.hasSuffix(".logicx") else {
-            reply(false, "Invalid Logic Pro project (must be .logicx)")
+        // Detect project type
+        guard let projectType = ProjectType.detect(from: projectPath) else {
+            let supportedExtensions = ProjectType.supportedExtensions.map { ".\($0)" }.joined(separator: ", ")
+            reply(false, "Unsupported project type. Supported types: \(supportedExtensions)")
             return
         }
+
+        print("  Detected project type: \(projectType.displayName)")
 
         orchestrator.registerProject(projectPath)
         reply(true, nil)

@@ -11,6 +11,7 @@ public class OxenDaemon {
     private let powerManager: PowerManagement
     private var xpcService: OxenDaemonXPCService?
     private var monitors: [String: FSEventsMonitor] = [:]
+    private var projectTypes: [String: ProjectType] = [:]  // Track project types
     private var isRunning = false
 
     // MARK: - Configuration
@@ -56,8 +57,8 @@ public class OxenDaemon {
         xpc.start()
         self.xpcService = xpc
 
-        // 3. Scan for existing Logic Pro projects
-        print("[3/4] Scanning for Logic Pro projects...")
+        // 3. Scan for existing projects (Logic Pro, SketchUp, Blender)
+        print("[3/4] Scanning for creative projects...")
         await scanForProjects()
 
         // 4. Start monitoring registered projects
@@ -120,7 +121,7 @@ public class OxenDaemon {
     // MARK: - Project Management
 
     /// Register a project for monitoring
-    public func registerProject(_ projectPath: String) async {
+    public func registerProject(_ projectPath: String, type: ProjectType? = nil) async {
         let normalizedPath = (projectPath as NSString).standardizingPath
 
         guard monitors[normalizedPath] == nil else {
@@ -128,15 +129,19 @@ public class OxenDaemon {
             return
         }
 
+        // Detect project type if not provided
+        let projectType = type ?? ProjectType.detect(from: projectPath) ?? .logicPro
+
         print("\n📁 Registering project: \(projectPath)")
+        print("  Type: \(projectType.displayName)")
 
         // Ensure on draft branch
         if await orchestrator.ensureOnDraftBranch(at: normalizedPath) {
             print("  ✓ On draft branch")
         }
 
-        // Create and configure monitor
-        let monitor = FSEventsMonitor(debounceThreshold: debounceThreshold)
+        // Create and configure monitor with project type awareness
+        let monitor = FSEventsMonitor(debounceThreshold: debounceThreshold, projectType: projectType)
 
         // Set commit callback
         monitor.setCommitCallback { [weak self] path in
@@ -153,6 +158,7 @@ public class OxenDaemon {
         }
 
         monitors[normalizedPath] = monitor
+        projectTypes[normalizedPath] = projectType
         orchestrator.registerProject(normalizedPath)
 
         print("  ✓ Monitoring started")
@@ -167,6 +173,7 @@ public class OxenDaemon {
             monitors.removeValue(forKey: normalizedPath)
         }
 
+        projectTypes.removeValue(forKey: normalizedPath)
         orchestrator.unregisterProject(normalizedPath)
         print("Unregistered project: \(projectPath)")
     }
@@ -198,7 +205,7 @@ public class OxenDaemon {
 
     // MARK: - Project Discovery
 
-    /// Scan common locations for Logic Pro projects
+    /// Scan common locations for creative projects (Logic Pro, SketchUp, Blender)
     private func scanForProjects() async {
         let fileManager = FileManager.default
         let homeDir = fileManager.homeDirectoryForCurrentUser
@@ -209,7 +216,8 @@ public class OxenDaemon {
             homeDir.appendingPathComponent("Desktop").path,
         ]
 
-        var foundProjects: [String] = []
+        var foundProjects: [(path: String, type: ProjectType)] = []
+        let supportedExtensions = ProjectType.supportedExtensions
 
         for searchPath in searchPaths {
             guard fileManager.fileExists(atPath: searchPath) else { continue }
@@ -220,11 +228,23 @@ public class OxenDaemon {
                 options: [.skipsHiddenFiles]
             ) {
                 for case let fileURL as URL in enumerator {
-                    if fileURL.pathExtension == "logicx" {
+                    let ext = fileURL.pathExtension.lowercased()
+
+                    // Check if it's a supported project type
+                    if supportedExtensions.contains(ext),
+                       let projectType = ProjectType.detect(from: fileURL.path) {
                         // Check if it's already tracked by Oxen
-                        let oxenPath = fileURL.appendingPathComponent(".oxen").path
+                        let oxenPath: String
+                        if projectType.isFolderBased {
+                            oxenPath = fileURL.appendingPathComponent(".oxen").path
+                        } else {
+                            // For file-based projects, .oxen is in the same directory
+                            oxenPath = fileURL.deletingLastPathComponent()
+                                .appendingPathComponent(".oxen").path
+                        }
+
                         if fileManager.fileExists(atPath: oxenPath) {
-                            foundProjects.append(fileURL.path)
+                            foundProjects.append((fileURL.path, projectType))
                         }
                     }
                 }
@@ -232,17 +252,17 @@ public class OxenDaemon {
         }
 
         if foundProjects.isEmpty {
-            print("  No Oxen-tracked Logic Pro projects found")
+            print("  No Oxen-tracked projects found")
         } else {
             print("  Found \(foundProjects.count) Oxen-tracked project(s):")
             for project in foundProjects {
-                print("    - \(project)")
+                print("    - [\(project.type.displayName)] \(project.path)")
             }
         }
 
         // Auto-register found projects
         for project in foundProjects {
-            await registerProject(project)
+            await registerProject(project.path, type: project.type)
         }
     }
 
@@ -253,7 +273,8 @@ public class OxenDaemon {
         if projects.isEmpty {
             print("  No projects to monitor")
             print("\n💡 To start monitoring, run:")
-            print("   auxin-cli init <path-to-logic-project>")
+            print("   auxin init <path-to-project>")
+            print("   Supports: Logic Pro (.logicx), SketchUp (.skp), Blender (.blend)")
             return
         }
 
@@ -266,9 +287,10 @@ public class OxenDaemon {
         print("""
         ╔═══════════════════════════════════════════════════════════╗
         ║                                                           ║
-        ║              Oxen VCS for Logic Pro                       ║
+        ║              Auxin Version Control                        ║
         ║              Production Daemon v2.0.0                     ║
         ║                                                           ║
+        ║     Logic Pro • SketchUp • Blender                        ║
         ╚═══════════════════════════════════════════════════════════╝
         """)
     }
@@ -287,7 +309,7 @@ public class OxenDaemon {
         ║ Debounce Interval:  \(Int(debounceThreshold))s                                 ║
         ╚═══════════════════════════════════════════════════════════╝
 
-        The daemon is now monitoring your Logic Pro projects.
+        The daemon is now monitoring your creative projects.
         Auto-commits will be created after \(Int(debounceThreshold)) seconds of inactivity.
 
         Press Ctrl+C to stop (emergency commits will be performed first)
@@ -349,7 +371,7 @@ extension OxenDaemon {
 
     private static func printUsage() {
         print("""
-        Oxen VCS Daemon - Background service for Logic Pro version control
+        Auxin Daemon - Background service for creative application version control
 
         USAGE:
             auxin-daemon <command>
@@ -362,6 +384,11 @@ extension OxenDaemon {
             --daemon        Run as background daemon (internal use)
             --help          Show this help message
             --version       Show version information
+
+        SUPPORTED APPLICATIONS:
+            • Logic Pro (.logicx)
+            • SketchUp (.skp)
+            • Blender (.blend)
 
         FEATURES:
             • Automatic file system monitoring with FSEvents
@@ -379,7 +406,7 @@ extension OxenDaemon {
 
         The daemon runs automatically on login after installation.
 
-        For more information, see: https://github.com/Oxen-AI/oxen-vcs-logic
+        For more information, see: https://github.com/jbacus/auxin
         """)
     }
 }

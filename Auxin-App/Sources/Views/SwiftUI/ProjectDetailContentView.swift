@@ -37,9 +37,9 @@ struct ProjectDetailContentView: View {
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
                 Button {
-                    openInLogic()
+                    openInApplication()
                 } label: {
-                    Label("Open in Logic Pro", systemImage: "music.note")
+                    Label("Open in \(project.projectType.displayName)", systemImage: project.iconName)
                 }
                 .buttonStyle(.bordered)
 
@@ -81,7 +81,19 @@ struct ProjectDetailContentView: View {
                             sampleRate: metadataDict["sample_rate"] as? Int,
                             keySignature: metadataDict["key_signature"] as? String,
                             timeSignature: metadataDict["time_signature"] as? String,
-                            tags: metadataDict["tags"] as? [String]
+                            units: metadataDict["units"] as? String,
+                            layerCount: metadataDict["layer_count"] as? Int,
+                            componentCount: metadataDict["component_count"] as? Int,
+                            groupCount: metadataDict["group_count"] as? Int,
+                            sceneCount: metadataDict["scene_count"] as? Int,
+                            objectCount: metadataDict["object_count"] as? Int,
+                            materialCount: metadataDict["material_count"] as? Int,
+                            renderEngine: metadataDict["render_engine"] as? String,
+                            resolution: metadataDict["resolution"] as? String,
+                            fps: metadataDict["fps"] as? Int,
+                            frameRange: metadataDict["frame_range"] as? String,
+                            tags: metadataDict["tags"] as? [String],
+                            fileSizeBytes: metadataDict["file_size_bytes"] as? Int
                         )
                     }
 
@@ -100,7 +112,7 @@ struct ProjectDetailContentView: View {
         }
     }
 
-    private func openInLogic() {
+    private func openInApplication() {
         let projectURL = URL(fileURLWithPath: project.path)
         NSWorkspace.shared.open(projectURL)
     }
@@ -113,9 +125,13 @@ struct ProjectHeaderView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(project.displayName)
-                        .font(.title2)
-                        .fontWeight(.semibold)
+                    HStack(spacing: 8) {
+                        Image(systemName: project.iconName)
+                            .foregroundColor(.accentColor)
+                        Text(project.displayName)
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                    }
 
                     Text(project.path)
                         .font(.caption)
@@ -145,6 +161,7 @@ struct ProjectHeaderView: View {
             }
 
             HStack(spacing: 20) {
+                StatView(label: "Type", value: project.projectType.displayName)
                 StatView(label: "Commits", value: "\(project.commitCount)")
                 if let lastCommit = project.lastCommit {
                     StatView(
@@ -198,24 +215,69 @@ struct CommitRowView: View {
                 .foregroundColor(.secondary)
 
             if let metadata = commit.metadata {
-                HStack(spacing: 12) {
-                    if let bpm = metadata.bpm {
-                        Label("\(Int(bpm)) BPM", systemImage: "metronome")
-                            .font(.caption)
-                    }
-                    if let sampleRate = metadata.sampleRate {
-                        Label("\(sampleRate/1000)kHz", systemImage: "waveform")
-                            .font(.caption)
-                    }
-                    if let key = metadata.keySignature {
-                        Label(key, systemImage: "music.note")
-                            .font(.caption)
-                    }
-                }
-                .foregroundColor(.secondary)
+                MetadataView(metadata: metadata, projectType: project.projectType)
             }
         }
         .padding(.vertical, 4)
+    }
+}
+
+/// Display metadata based on project type
+struct MetadataView: View {
+    let metadata: CommitMetadata
+    let projectType: ProjectType
+
+    var body: some View {
+        HStack(spacing: 12) {
+            switch projectType {
+            case .logicPro:
+                if let bpm = metadata.bpm {
+                    Label("\(Int(bpm)) BPM", systemImage: "metronome")
+                        .font(.caption)
+                }
+                if let sampleRate = metadata.sampleRate {
+                    Label("\(sampleRate/1000)kHz", systemImage: "waveform")
+                        .font(.caption)
+                }
+                if let key = metadata.keySignature {
+                    Label(key, systemImage: "music.note")
+                        .font(.caption)
+                }
+
+            case .sketchup:
+                if let units = metadata.units {
+                    Label(units, systemImage: "ruler")
+                        .font(.caption)
+                }
+                if let layers = metadata.layerCount {
+                    Label("\(layers) layers", systemImage: "square.3.layers.3d")
+                        .font(.caption)
+                }
+                if let components = metadata.componentCount {
+                    Label("\(components) components", systemImage: "cube")
+                        .font(.caption)
+                }
+
+            case .blender:
+                if let scenes = metadata.sceneCount {
+                    Label("\(scenes) scenes", systemImage: "film")
+                        .font(.caption)
+                }
+                if let objects = metadata.objectCount {
+                    Label("\(objects) objects", systemImage: "cube.transparent")
+                        .font(.caption)
+                }
+                if let materials = metadata.materialCount {
+                    Label("\(materials) materials", systemImage: "paintpalette")
+                        .font(.caption)
+                }
+                if let engine = metadata.renderEngine {
+                    Label(engine, systemImage: "camera")
+                        .font(.caption)
+                }
+            }
+        }
+        .foregroundColor(.secondary)
     }
 }
 

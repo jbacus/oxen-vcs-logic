@@ -20,7 +20,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc func showAbout() {
         let alert = NSAlert()
         alert.messageText = "Auxin"
-        alert.informativeText = "Logic Pro Version Control\nPowered by Oxen\n\nVersion 1.0.0"
+        alert.informativeText = "Version Control for Creative Applications\nPowered by Oxen\n\nSupports:\n• Logic Pro (.logicx)\n• SketchUp (.skp)\n• Blender (.blend)\n\nVersion 1.0.0"
         alert.alertStyle = .informational
         alert.addButton(withTitle: "OK")
         alert.runModal()
@@ -41,9 +41,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func showHelp() {
         let alert = NSAlert()
-        alert.messageText = "Auxin for Logic Pro"
+        alert.messageText = "Auxin"
         alert.informativeText = """
-        Version Control for Logic Pro Projects
+        Version Control for Creative Applications
+
+        Supported Applications:
+        • Logic Pro (.logicx) - Audio production
+        • SketchUp (.skp) - 3D modeling
+        • Blender (.blend) - 3D animation
 
         Features:
         • Automatic background tracking
@@ -56,7 +61,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         See README.md and docs/ folder in the repository
 
         Support:
-        https://github.com/oxen-ai/oxen-vcs-logic
+        https://github.com/jbacus/auxin
         """
         alert.alertStyle = .informational
         alert.addButton(withTitle: "OK")
