@@ -1,32 +1,36 @@
 use anyhow::Context;
 use clap::{Parser, Subcommand};
 use colored::Colorize;
-use auxin::{lock_integration, logger, progress, success, vlog, warn, CommitMetadata, OxenRepository};
+use auxin::{lock_integration, logger, progress, success, vlog, warn, CommitMetadata, OxenRepository, ProjectType, SketchUpMetadata, SketchUpProject};
 use std::path::PathBuf;
 
 #[derive(Parser)]
 #[command(name = "auxin")]
 #[command(version)]
-#[command(about = "Auxin - Version control for Logic Pro for Logic Pro version control")]
-#[command(long_about = "Auxin - Version control for Logic Pro for Logic Pro version control
+#[command(about = "Auxin - Version control for creative applications")]
+#[command(long_about = "Auxin - Version control for creative applications
 
-This tool provides Git-like version control specifically designed for Logic Pro
-projects (.logicx). It integrates with Oxen.ai to efficiently track and manage
-your music production projects with support for audio-specific metadata.
+This tool provides Git-like version control specifically designed for binary
+project files from Logic Pro and SketchUp. It integrates with Oxen.ai to
+efficiently track and manage your creative projects with support for
+application-specific metadata.
 
 FEATURES:
-  • Automatic detection and setup for Logic Pro projects
-  • Audio metadata tracking (BPM, sample rate, key signature)
+  • Automatic detection and setup for Logic Pro and SketchUp projects
+  • Application-specific metadata tracking
   • Draft branch workflow for auto-commits
-  • Efficient handling of large audio files
-  • Ignore patterns for cache and temporary files
+  • Efficient handling of large binary files with block-level deduplication
+  • Smart ignore patterns for cache and temporary files
 
-BASIC WORKFLOW:
-  1. Initialize: auxin init --logic .
+BASIC WORKFLOW (Logic Pro):
+  1. Initialize: auxin init --type logicpro MyProject.logicx
   2. Make changes in Logic Pro
-  3. Stage: auxin add --all
-  4. Commit: auxin commit -m \"Added drum track\" --bpm 120
-  5. View history: auxin log
+  3. Commit: auxin commit -m \"Added drum track\" --bpm 120
+
+BASIC WORKFLOW (SketchUp):
+  1. Initialize: auxin init --type sketchup MyModel.skp
+  2. Make changes in SketchUp
+  3. Commit: auxin commit -m \"Added materials\" --units Inches --layers 10
 
 For more information, visit: https://github.com/your-repo")]
 struct Cli {
@@ -345,44 +349,63 @@ enum HooksCommands {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Initialize a new Oxen repository for a Logic Pro project
-    #[command(long_about = "Initialize a new Oxen repository for a Logic Pro project
+    /// Initialize a new Oxen repository for a project
+    #[command(long_about = "Initialize a new Oxen repository for a project
 
 USAGE:
-    auxin init --logic <PATH>
-    auxin init <PATH>
+    auxin init [--type <TYPE>] <PATH>
 
 DESCRIPTION:
-    Creates a new Oxen repository at the specified path. When used with --logic,
-    it will:
-      • Detect and validate the Logic Pro project structure
-      • Create an .oxenignore file with Logic-specific patterns
-      • Set up a draft branch workflow for auto-commits
-      • Initialize tracking for projectData, Alternatives, and Resources
+    Creates a new Oxen repository at the specified path with project-specific
+    configuration. The project type can be auto-detected or explicitly specified.
+
+    Supported project types:
+      • auto       - Auto-detect based on file extension (default)
+      • logicpro   - Logic Pro projects (.logicx)
+      • sketchup   - SketchUp models (.skp)
+
+    For Logic Pro projects:
+      • Detects and validates .logicx structure
+      • Creates .oxenignore with Logic-specific patterns
+      • Tracks projectData, Alternatives, Resources
+      • Sets up draft branch workflow
+
+    For SketchUp projects:
+      • Detects and validates .skp file
+      • Creates .oxenignore with SketchUp-specific patterns
+      • Tracks .skp file and asset directories (textures/, components/)
+      • Sets up draft branch workflow
 
     The PATH can be:
       • Current directory: .
-      • Relative path: Demo_Project.logicx
-      • Absolute path: /Users/you/Music/Logic/MyProject.logicx
+      • Relative path: MyProject.logicx or MyModel.skp
+      • Absolute path: /Users/you/Projects/MyModel.skp
 
 EXAMPLES:
-    # Initialize from inside a Logic project directory
-    cd Demo_Project.logicx
-    auxin init --logic .
+    # Auto-detect project type
+    auxin init MyProject.logicx
 
-    # Initialize from parent directory
-    auxin init --logic Demo_Project.logicx
+    # Explicitly specify Logic Pro
+    auxin init --type logicpro MyProject.logicx
 
-    # Initialize a generic Oxen repository (not Logic-specific)
-    auxin init /path/to/folder")]
+    # Initialize SketchUp project
+    auxin init --type sketchup MyModel.skp
+
+    # Auto-detect in current directory
+    auxin init .")]
     Init {
-        #[arg(value_name = "PATH", help = "Path to the project directory")]
+        #[arg(value_name = "PATH", help = "Path to the project file or directory")]
         path: PathBuf,
 
         #[arg(
             long,
-            help = "Initialize for Logic Pro project (auto-detect and configure)"
+            value_name = "TYPE",
+            help = "Project type: auto, logicpro, sketchup (default: auto)"
         )]
+        r#type: Option<String>,
+
+        /// Legacy flag for backward compatibility
+        #[arg(long, hide = true)]
         logic: bool,
     },
 
@@ -414,54 +437,95 @@ EXAMPLES:
         all: bool,
     },
 
-    /// Create a commit with optional audio metadata
-    #[command(long_about = "Create a commit with optional audio metadata
+    /// Create a commit with optional project metadata
+    #[command(long_about = "Create a commit with optional project metadata
 
 USAGE:
     auxin commit -m <MESSAGE> [OPTIONS]
 
 DESCRIPTION:
     Creates a new commit with the currently staged changes. You can attach
-    audio production metadata to help track the evolution of your project.
+    project-specific metadata to help track the evolution of your project.
 
-    Metadata includes:
+    Logic Pro metadata:
       • BPM (tempo)
       • Sample rate (Hz)
       • Key signature
       • Tags for categorization
 
-EXAMPLES:
+    SketchUp metadata:
+      • Units (Inches, Feet, Meters, etc.)
+      • Layer count
+      • Component count
+      • Group count
+      • File size (bytes)
+      • Tags for categorization
+
+EXAMPLES (Logic Pro):
     # Simple commit
     auxin commit -m \"Initial project setup\"
 
     # Commit with audio metadata
     auxin commit -m \"Added bass line\" --bpm 120 --key \"A Minor\"
 
-    # Commit with multiple tags
-    auxin commit -m \"Final mix\" --sample-rate 44100 --tags \"mixing,mastered\"
-
     # Full metadata commit
     auxin commit -m \"Verse 2 complete\" \\
         --bpm 128 \\
         --sample-rate 48000 \\
         --key \"C Major\" \\
-        --tags \"verse,arrangement\"")]
+        --tags \"verse,arrangement\"
+
+EXAMPLES (SketchUp):
+    # Simple commit
+    auxin commit -m \"Initial model geometry\"
+
+    # Commit with SketchUp metadata
+    auxin commit -m \"Added materials and textures\" \\
+        --units Inches \\
+        --layers 10 \\
+        --components 150
+
+    # Full metadata commit
+    auxin commit -m \"Presentation ready\" \\
+        --units Feet \\
+        --layers 15 \\
+        --components 234 \\
+        --groups 12 \\
+        --tags \"presentation,milestone\"")]
     Commit {
         #[arg(short, long, help = "Commit message describing the changes")]
         message: String,
 
-        #[arg(long, help = "Beats per minute (tempo) of the project")]
+        // Logic Pro metadata
+        #[arg(long, help = "[Logic Pro] Beats per minute (tempo) of the project")]
         bpm: Option<f32>,
 
-        #[arg(long, help = "Sample rate in Hz (e.g., 44100, 48000, 96000)")]
+        #[arg(long, help = "[Logic Pro] Sample rate in Hz (e.g., 44100, 48000, 96000)")]
         sample_rate: Option<u32>,
 
-        #[arg(long, help = "Key signature (e.g., 'C Major', 'A Minor', 'F# Minor')")]
+        #[arg(long, help = "[Logic Pro] Key signature (e.g., 'C Major', 'A Minor', 'F# Minor')")]
         key: Option<String>,
 
+        // SketchUp metadata
+        #[arg(long, help = "[SketchUp] Model units (e.g., Inches, Feet, Meters, Millimeters)")]
+        units: Option<String>,
+
+        #[arg(long, help = "[SketchUp] Number of layers/tags in the model")]
+        layers: Option<u32>,
+
+        #[arg(long, help = "[SketchUp] Number of component instances")]
+        components: Option<u32>,
+
+        #[arg(long, help = "[SketchUp] Number of groups")]
+        groups: Option<u32>,
+
+        #[arg(long, help = "[SketchUp] Model file size in bytes")]
+        file_size: Option<u64>,
+
+        // Common metadata
         #[arg(
             long,
-            help = "Tags for categorization (comma-separated, e.g., 'mixing,draft')"
+            help = "Tags for categorization (comma-separated, e.g., 'mixing,draft' or 'presentation,milestone')"
         )]
         tags: Option<String>,
     },
@@ -1487,38 +1551,89 @@ async fn main() -> anyhow::Result<()> {
     logger::set_verbose(cli.verbose);
 
     match cli.command {
-        Commands::Init { path, logic } => {
+        Commands::Init { path, r#type, logic } => {
             vlog!("Starting initialization for path: {}", path.display());
-            vlog!("Logic Pro mode: {}", logic);
 
-            if logic {
-                // Multi-step initialization with progress feedback
-                let pb = progress::spinner("Validating Logic Pro project structure...");
-
-                vlog!("Initializing Logic Pro project repository...");
-                let _repo = OxenRepository::init_for_logic_project(&path).await?;
-
-                progress::finish_success(&pb, "Logic Pro project repository initialized");
-                println!();
-                progress::success(&format!("Repository created at: {}", path.display()));
-                progress::success("Initial commit created on main branch");
-                progress::success("Draft branch created and checked out");
-                println!();
-                progress::info("You're all set! Start working in Logic Pro:");
-                println!("  • Changes will be automatically tracked on the draft branch");
-                println!("  • Create milestone commits: auxin commit -m \"Your message\" --bpm 120");
-                println!("  • View history: auxin log");
-                println!("  • Restore to any commit: auxin restore <commit-id>");
+            // Determine project type (handle backward compatibility with --logic flag)
+            let project_type = if logic {
+                vlog!("Using legacy --logic flag, treating as LogicPro");
+                ProjectType::LogicPro
+            } else if let Some(type_str) = r#type {
+                ProjectType::from_str(&type_str).unwrap_or_else(|| {
+                    progress::error(&format!("Unknown project type: {}. Supported types: auto, logicpro, sketchup", type_str));
+                    std::process::exit(1);
+                })
             } else {
-                let pb = progress::spinner(&format!("Initializing Oxen repository at {}...", path.display()));
+                // Auto-detect based on file extension
+                let extension = path.extension().and_then(|e| e.to_str()).unwrap_or("");
+                match extension {
+                    "logicx" => {
+                        vlog!("Auto-detected Logic Pro project (.logicx)");
+                        ProjectType::LogicPro
+                    }
+                    "skp" => {
+                        vlog!("Auto-detected SketchUp project (.skp)");
+                        ProjectType::SketchUp
+                    }
+                    _ => {
+                        vlog!("No specific project type detected, using generic init");
+                        ProjectType::Auto
+                    }
+                }
+            };
 
-                vlog!("Initializing generic Oxen repository...");
-                let _repo = OxenRepository::init(&path).await?;
+            vlog!("Project type: {:?}", project_type);
 
-                progress::finish_success(
-                    &pb,
-                    &format!("Oxen repository initialized at: {}", path.display())
-                );
+            match project_type {
+                ProjectType::LogicPro => {
+                    let pb = progress::spinner("Validating Logic Pro project structure...");
+                    vlog!("Initializing Logic Pro project repository...");
+                    let _repo = OxenRepository::init_for_logic_project(&path).await?;
+
+                    progress::finish_success(&pb, "Logic Pro project repository initialized");
+                    println!();
+                    progress::success(&format!("Repository created at: {}", path.display()));
+                    progress::success("Initial commit created on main branch");
+                    progress::success("Draft branch created and checked out");
+                    println!();
+                    progress::info("You're all set! Start working in Logic Pro:");
+                    println!("  • Changes will be automatically tracked on the draft branch");
+                    println!("  • Create milestone commits: auxin commit -m \"Your message\" --bpm 120");
+                    println!("  • View history: auxin log");
+                    println!("  • Restore to any commit: auxin restore <commit-id>");
+                }
+                ProjectType::SketchUp => {
+                    let pb = progress::spinner("Validating SketchUp project structure...");
+                    vlog!("Detecting SketchUp project...");
+
+                    // Validate SketchUp project
+                    let _skp_project = SketchUpProject::detect(&path)?;
+
+                    vlog!("Initializing SketchUp project repository...");
+                    let _repo = OxenRepository::init_for_sketchup_project(&path).await?;
+
+                    progress::finish_success(&pb, "SketchUp project repository initialized");
+                    println!();
+                    progress::success(&format!("Repository created at: {}", path.display()));
+                    progress::success("Initial commit created on main branch");
+                    progress::success("Draft branch created and checked out");
+                    println!();
+                    progress::info("You're all set! Start working in SketchUp:");
+                    println!("  • Changes will be automatically tracked on the draft branch");
+                    println!("  • Create milestone commits: auxin commit -m \"Your message\" --units Inches --layers 10");
+                    println!("  • View history: auxin log");
+                    println!("  • Restore to any commit: auxin restore <commit-id>");
+                }
+                ProjectType::Auto => {
+                    let pb = progress::spinner(&format!("Initializing Oxen repository at {}...", path.display()));
+                    vlog!("Initializing generic Oxen repository...");
+                    let _repo = OxenRepository::init(&path).await?;
+
+                    progress::finish_success(
+                        &pb,
+                        &format!("Oxen repository initialized at: {}", path.display())
+                    );
+                }
             }
             Ok(())
         }
@@ -1550,33 +1665,91 @@ async fn main() -> anyhow::Result<()> {
             bpm,
             sample_rate,
             key,
+            units,
+            layers,
+            components,
+            groups,
+            file_size,
             tags,
         } => {
             let pb = progress::spinner("Preparing commit...");
             let repo = OxenRepository::new(".");
 
-            let mut metadata = CommitMetadata::new(message.clone());
+            // Detect if we're using Logic Pro or SketchUp metadata
+            let has_logic_metadata = bpm.is_some() || sample_rate.is_some() || key.is_some();
+            let has_sketchup_metadata = units.is_some() || layers.is_some() || components.is_some()
+                || groups.is_some() || file_size.is_some();
 
-            if let Some(bpm) = bpm {
-                metadata = metadata.with_bpm(bpm);
-            }
+            let formatted_message = if has_sketchup_metadata {
+                // SketchUp project - use SketchUpMetadata
+                vlog!("Using SketchUp metadata");
+                let mut skp_metadata = SketchUpMetadata::new(message.clone());
 
-            if let Some(sr) = sample_rate {
-                metadata = metadata.with_sample_rate(sr);
-            }
-
-            if let Some(ref key_val) = key {
-                metadata = metadata.with_key_signature(key_val.clone());
-            }
-
-            if let Some(ref tags_str) = tags {
-                for tag in tags_str.split(',') {
-                    metadata = metadata.with_tag(tag.trim());
+                if let Some(ref units_val) = units {
+                    skp_metadata = skp_metadata.with_units(units_val.clone());
                 }
-            }
+
+                if let Some(layer_count) = layers {
+                    skp_metadata = skp_metadata.with_layer_count(layer_count);
+                }
+
+                if let Some(component_count) = components {
+                    skp_metadata = skp_metadata.with_component_count(component_count);
+                }
+
+                if let Some(group_count) = groups {
+                    skp_metadata = skp_metadata.with_group_count(group_count);
+                }
+
+                if let Some(size) = file_size {
+                    skp_metadata = skp_metadata.with_file_size(size);
+                }
+
+                if let Some(ref tags_str) = tags {
+                    for tag in tags_str.split(',') {
+                        skp_metadata = skp_metadata.with_tag(tag.trim());
+                    }
+                }
+
+                skp_metadata.format_commit_message()
+            } else if has_logic_metadata {
+                // Logic Pro project - use CommitMetadata
+                vlog!("Using Logic Pro metadata");
+                let mut metadata = CommitMetadata::new(message.clone());
+
+                if let Some(bpm) = bpm {
+                    metadata = metadata.with_bpm(bpm);
+                }
+
+                if let Some(sr) = sample_rate {
+                    metadata = metadata.with_sample_rate(sr);
+                }
+
+                if let Some(ref key_val) = key {
+                    metadata = metadata.with_key_signature(key_val.clone());
+                }
+
+                if let Some(ref tags_str) = tags {
+                    for tag in tags_str.split(',') {
+                        metadata = metadata.with_tag(tag.trim());
+                    }
+                }
+
+                metadata.format_commit_message()
+            } else {
+                // No metadata, just use message
+                vlog!("No metadata provided, using plain message");
+                if let Some(ref tags_str) = tags {
+                    let mut msg = message.clone();
+                    msg.push_str(&format!("\n\nTags: {}", tags_str));
+                    msg
+                } else {
+                    message.clone()
+                }
+            };
 
             pb.set_message("Creating commit...");
-            let commit_id = repo.create_commit(metadata).await?;
+            let commit_id = repo.create_commit_with_message(&formatted_message).await?;
 
             progress::finish_success(&pb, &format!("Commit created: {}", commit_id));
 
@@ -1584,6 +1757,8 @@ async fn main() -> anyhow::Result<()> {
             println!();
             progress::info("Commit Details:");
             println!("  Message: {}", message);
+
+            // Show Logic Pro metadata
             if let Some(ref bpm_val) = bpm {
                 println!("  BPM: {}", bpm_val);
             }
@@ -1593,6 +1768,26 @@ async fn main() -> anyhow::Result<()> {
             if let Some(ref key_val) = key {
                 println!("  Key: {}", key_val);
             }
+
+            // Show SketchUp metadata
+            if let Some(ref units_val) = units {
+                println!("  Units: {}", units_val);
+            }
+            if let Some(layer_count) = layers {
+                println!("  Layers: {}", layer_count);
+            }
+            if let Some(component_count) = components {
+                println!("  Components: {}", component_count);
+            }
+            if let Some(group_count) = groups {
+                println!("  Groups: {}", group_count);
+            }
+            if let Some(size) = file_size {
+                let size_mb = size as f64 / (1024.0 * 1024.0);
+                println!("  File Size: {:.2} MB", size_mb);
+            }
+
+            // Show common metadata
             if let Some(ref tags_val) = tags {
                 println!("  Tags: {}", tags_val);
             }
