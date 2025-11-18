@@ -15,47 +15,76 @@ This version uses:
 
 ## Quick Start
 
-### 1. Install Rust
+**Fastest way to get started (< 5 minutes):**
 
 ```bash
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+# 1. One-command deployment
+./deploy-local.sh
+
+# 2. Start server
+./run-local.sh
+
+# 3. Test it
+curl http://localhost:3000/health
+open http://localhost:3000  # Web UI
 ```
 
-### 2. Build and Run
+**See [QUICKSTART.md](QUICKSTART.md) for detailed quick start guide.**
+
+## Deployment Options
+
+Auxin-server supports multiple deployment methods:
+
+### 1. Local Development (Recommended for Testing)
 
 ```bash
-# Clone and navigate
-cd auxin-server
-
-# Copy environment config
-cp .env.example .env
-
-# Build
-cargo build --release
-
-# Run
-./target/release/auxin-server
+./deploy-local.sh  # Builds everything automatically
+./run-local.sh     # Starts server
 ```
 
-### 3. Build Web Frontend (Optional)
+- ✅ No system installation required
+- ✅ Runs from project directory
+- ✅ Includes sample test data
+- ✅ Perfect for development
+
+### 2. Docker
 
 ```bash
-# Navigate to frontend directory
-cd frontend
-
-# Install dependencies
-npm install
-
-# Build production bundle
-npm run build
-
-# Return to server directory
-cd ..
+cd frontend && npm install && npm run build && cd ..
+docker-compose up -d
 ```
 
-The web UI will be automatically served at `http://localhost:3000` when you start the server.
+- ✅ Portable across platforms
+- ✅ Isolated environment
+- ✅ Easy scaling
 
-### 4. Test
+### 3. Production (macOS)
+
+```bash
+cd scripts
+./setup.sh   # Installs to /usr/local/bin
+./start.sh   # Auto-starts with LaunchAgent
+```
+
+- ✅ System-wide installation
+- ✅ Auto-start on boot
+- ✅ Service management
+
+**See [DEPLOYMENT.md](DEPLOYMENT.md) for comprehensive deployment guide.**
+
+## Testing
+
+Run the automated test suite:
+
+```bash
+# Make sure server is running
+./run-local.sh &
+
+# Run tests
+./test-deployment.sh
+```
+
+### Manual API Tests
 
 ```bash
 # Health check
