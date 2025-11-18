@@ -1,4 +1,6 @@
 use actix_web::{middleware, web, App, HttpResponse, HttpServer, Result};
+use actix_files::{Files, NamedFile};
+use std::path::PathBuf;
 use tracing::info;
 
 use auxin_server::api;
@@ -34,10 +36,21 @@ async fn main() -> std::io::Result<()> {
     let auth_service = AuthService::new(config.clone());
     info!("Auth service initialized");
 
+    // Detect frontend static files directory
+    let frontend_dir = PathBuf::from("frontend/dist");
+    let serve_frontend = frontend_dir.exists();
+
+    if serve_frontend {
+        info!("Frontend static files found at: frontend/dist");
+        info!("Web UI will be available at http://{}:{}/", host, port);
+    } else {
+        info!("Frontend not built. Run 'cd frontend && npm install && npm run build' to enable web UI");
+    }
+
     // Start HTTP server
     info!("Starting Actix Web server...");
     HttpServer::new(move || {
-        App::new()
+        let mut app = App::new()
             .app_data(web::Data::new(config.clone()))
             .app_data(web::Data::new(auth_service.clone()))
             .wrap(middleware::Logger::default())
@@ -64,7 +77,16 @@ async fn main() -> std::io::Result<()> {
             .route("/api/repos/{namespace}/{name}/locks/acquire", web::post().to(api::acquire_lock))
             .route("/api/repos/{namespace}/{name}/locks/release", web::post().to(api::release_lock))
             .route("/api/repos/{namespace}/{name}/locks/heartbeat", web::post().to(api::heartbeat_lock))
-            .route("/api/repos/{namespace}/{name}/locks/status", web::get().to(api::lock_status))
+            .route("/api/repos/{namespace}/{name}/locks/status", web::get().to(api::lock_status));
+
+        // Serve frontend static files if available
+        if serve_frontend {
+            app = app
+                .service(Files::new("/assets", "frontend/dist/assets"))
+                .default_service(web::get().to(serve_spa));
+        }
+
+        app
     })
     .bind((host.as_str(), port))?
     .run()
@@ -73,4 +95,10 @@ async fn main() -> std::io::Result<()> {
 
 async fn health_check() -> Result<HttpResponse> {
     Ok(HttpResponse::Ok().body("OK"))
+}
+
+// Serve SPA for all non-API routes
+async fn serve_spa() -> Result<NamedFile> {
+    let path = PathBuf::from("frontend/dist/index.html");
+    Ok(NamedFile::open(path)?)
 }

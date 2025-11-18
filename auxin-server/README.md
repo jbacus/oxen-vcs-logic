@@ -23,42 +23,84 @@ This version uses:
 - ✅ **Filesystem storage** with `.oxen` directories
 - ✅ **Simple deployment** (one binary)
 - ✅ **Feature flags** for flexible building
+- ✅ **Modern Web UI** (React + TypeScript + Tailwind CSS)
 
 **Replaces the complex PostgreSQL + Redis + MinIO stack with simple filesystem storage.**
 
 ## Quick Start
 
-### 1. Install Rust
+**Fastest way to get started (< 5 minutes):**
 
 ```bash
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+# 1. One-command deployment
+./deploy-local.sh
+
+# 2. Start server
+./run-local.sh
+
+# 3. Test it
+curl http://localhost:3000/health
+open http://localhost:3000  # Web UI
 ```
 
-### 2. Build and Run
+**See [QUICKSTART.md](QUICKSTART.md) for detailed quick start guide.**
+
+## Deployment Options
+
+Auxin-server supports multiple deployment methods:
+
+### 1. Local Development (Recommended for Testing)
 
 ```bash
-# Clone and navigate
-cd auxin-server
+./deploy-local.sh  # Builds everything automatically
+./run-local.sh     # Starts server
+```
 
-# Copy environment config
-cp .env.example .env
+- ✅ No system installation required
+- ✅ Runs from project directory
+- ✅ Includes sample test data
+- ✅ Perfect for development
 
-# Build (default: mock-oxen mode)
-cargo build --release
+### 2. Docker
 
-# Or use deployment scripts (recommended)
+```bash
+cd frontend && npm install && npm run build && cd ..
+docker-compose up -d
+```
+
+- ✅ Portable across platforms
+- ✅ Isolated environment
+- ✅ Easy scaling
+
+### 3. Production (macOS)
+
+```bash
 cd scripts
-./setup.sh      # Automated setup + install
-./start.sh      # Start via LaunchAgent
-./status.sh     # Check status
-
-# Run manually
-./target/release/auxin-server
+./setup.sh   # Installs to /usr/local/bin
+./start.sh   # Auto-starts with LaunchAgent
 ```
+
+- ✅ System-wide installation
+- ✅ Auto-start on boot
+- ✅ Service management
 
 **macOS 26.x users:** See [BUILD_MACOS_26.md](BUILD_MACOS_26.md) for platform-specific notes.
 
-### 3. Test
+**See [DEPLOYMENT.md](DEPLOYMENT.md) for comprehensive deployment guide.**
+
+## Testing
+
+Run the automated test suite:
+
+```bash
+# Make sure server is running
+./run-local.sh &
+
+# Run tests
+./test-deployment.sh
+```
+
+### Manual API Tests
 
 ```bash
 # Health check
@@ -80,7 +122,41 @@ curl http://localhost:3000/api/repos/myuser/myrepo
 # List repositories again
 curl http://localhost:3000/api/repos
 # Expected: [{"namespace":"myuser","name":"myrepo",...}]
+
+# Or use the Web UI
+# Open http://localhost:3000 in your browser
 ```
+
+## Web Frontend
+
+The auxin-server includes a modern web frontend built with React, TypeScript, and Tailwind CSS.
+
+### Features
+
+- 📦 **Repository Management** - Browse and create repositories
+- 📝 **Commit History** - View detailed commit timeline
+- 🎵 **Logic Pro Metadata** - Display BPM, sample rate, key signature
+- 🔒 **Lock Management** - Acquire/release distributed locks with visual status
+- 🎨 **Modern UI** - Responsive design with dark mode support
+
+### Development
+
+```bash
+cd frontend
+
+# Install dependencies
+npm install
+
+# Start dev server (with hot reload)
+npm run dev
+# Opens at http://localhost:5173 with API proxy to :3000
+
+# Build for production
+npm run build
+# Output: frontend/dist/
+```
+
+See [frontend/README.md](frontend/README.md) for detailed frontend documentation.
 
 ## Configuration
 
@@ -95,7 +171,6 @@ OXEN_SERVER_HOST=0.0.0.0          # Bind address
 # Optional
 RUST_LOG=info                     # Logging level
 ENABLE_REDIS_LOCKS=false          # Use Redis for distributed locks
-ENABLE_WEB_UI=false               # Enable web UI (requires PostgreSQL)
 ```
 
 ## Repository Structure
