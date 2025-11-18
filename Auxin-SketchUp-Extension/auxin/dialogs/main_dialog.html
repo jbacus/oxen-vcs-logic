@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auxin Version Control</title>
+    <style>
+        /* Reset and base styles */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-size: 13px;
+            line-height: 1.4;
+            color: #333;
+            background: #f5f5f5;
+            padding: 12px;
+        }
+
+        /* Layout */
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        /* Cards */
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .card-header {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 12px;
+            color: #1a1a1a;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Status indicator */
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .status-initialized {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .status-initialized .status-dot {
+            background: #4caf50;
+        }
+
+        .status-not-initialized {
+            background: #fff3e0;
+            color: #e65100;
+        }
+
+        .status-not-initialized .status-dot {
+            background: #ff9800;
+        }
+
+        .status-no-model {
+            background: #fce4ec;
+            color: #c62828;
+        }
+
+        .status-no-model .status-dot {
+            background: #f44336;
+        }
+
+        /* Metadata display */
+        .metadata-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .metadata-item {
+            background: #f8f9fa;
+            padding: 8px;
+            border-radius: 4px;
+        }
+
+        .metadata-label {
+            font-size: 10px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .metadata-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+
+        /* Form elements */
+        input[type="text"],
+        textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 13px;
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+
+        input[type="text"]:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #2196f3;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 4px;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .form-group {
+            margin-bottom: 12px;
+        }
+
+        /* Buttons */
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+
+        .btn-primary {
+            background: #2196f3;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #1976d2;
+        }
+
+        .btn-primary:disabled {
+            background: #bdbdbd;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #d0d0d0;
+        }
+
+        .btn-danger {
+            background: #f44336;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #d32f2f;
+        }
+
+        .btn-small {
+            padding: 4px 8px;
+            font-size: 11px;
+        }
+
+        .btn-full {
+            width: 100%;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        /* History list */
+        .history-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .commit-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .commit-item:hover {
+            background: #f5f5f5;
+        }
+
+        .commit-item:last-child {
+            border-bottom: none;
+        }
+
+        .commit-id {
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+            font-size: 11px;
+            color: #2196f3;
+            background: #e3f2fd;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+
+        .commit-message {
+            font-weight: 500;
+            margin: 4px 0;
+            color: #1a1a1a;
+        }
+
+        .commit-meta {
+            font-size: 11px;
+            color: #888;
+        }
+
+        .commit-tags {
+            margin-top: 4px;
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 2px 6px;
+            background: #e8f5e9;
+            color: #2e7d32;
+            border-radius: 3px;
+            font-size: 10px;
+            margin-right: 4px;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 12px;
+        }
+
+        .tab {
+            padding: 8px 16px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-size: 13px;
+            color: #666;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .tab:hover {
+            color: #333;
+        }
+
+        .tab.active {
+            color: #2196f3;
+            border-bottom-color: #2196f3;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Messages */
+        .message {
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 12px;
+            font-size: 12px;
+        }
+
+        .message-error {
+            background: #ffebee;
+            color: #c62828;
+            border: 1px solid #ffcdd2;
+        }
+
+        .message-success {
+            background: #e8f5e9;
+            color: #2e7d32;
+            border: 1px solid #c8e6c9;
+        }
+
+        .message-info {
+            background: #e3f2fd;
+            color: #1565c0;
+            border: 1px solid #bbdefb;
+        }
+
+        /* Loading state */
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #2196f3;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #888;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding-top: 12px;
+            font-size: 11px;
+            color: #888;
+        }
+
+        .footer a {
+            color: #2196f3;
+            text-decoration: none;
+        }
+
+        /* Utility */
+        .hidden {
+            display: none !important;
+        }
+
+        .text-muted {
+            color: #888;
+        }
+
+        .text-small {
+            font-size: 11px;
+        }
+
+        .mb-8 {
+            margin-bottom: 8px;
+        }
+
+        .mt-12 {
+            margin-top: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Status Card -->
+        <div class="card">
+            <div class="card-header">
+                <span>Repository Status</span>
+                <span id="statusIndicator" class="status-indicator status-no-model">
+                    <span class="status-dot"></span>
+                    <span id="statusText">No Model</span>
+                </span>
+            </div>
+            <div id="modelPath" class="text-small text-muted mb-8">No model loaded</div>
+            <div id="initSection" class="hidden">
+                <button onclick="initRepo()" class="btn-primary btn-full">Initialize Repository</button>
+            </div>
+        </div>
+
+        <!-- Message area -->
+        <div id="messageArea" class="hidden"></div>
+
+        <!-- Tabs -->
+        <div class="card">
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('commit')">Commit</button>
+                <button class="tab" onclick="switchTab('history')">History</button>
+                <button class="tab" onclick="switchTab('info')">Info</button>
+            </div>
+
+            <!-- Commit Tab -->
+            <div id="tab-commit" class="tab-content active">
+                <div class="form-group">
+                    <label for="commitMessage">Commit Message</label>
+                    <textarea id="commitMessage" placeholder="Describe your changes..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="commitTags">Tags (comma-separated)</label>
+                    <input type="text" id="commitTags" placeholder="e.g., WIP, review, final">
+                </div>
+                <button onclick="createCommit()" class="btn-primary btn-full" id="commitBtn">
+                    Create Commit
+                </button>
+            </div>
+
+            <!-- History Tab -->
+            <div id="tab-history" class="tab-content">
+                <div id="historyLoading" class="loading hidden">
+                    <div class="spinner"></div>
+                    <div>Loading history...</div>
+                </div>
+                <div id="historyList" class="history-list">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📋</div>
+                        <div>No commits yet</div>
+                    </div>
+                </div>
+                <button onclick="loadHistory()" class="btn-secondary btn-full mt-12">
+                    Refresh History
+                </button>
+            </div>
+
+            <!-- Info Tab -->
+            <div id="tab-info" class="tab-content">
+                <div id="metadataGrid" class="metadata-grid">
+                    <div class="metadata-item">
+                        <div class="metadata-label">Units</div>
+                        <div class="metadata-value" id="infoUnits">-</div>
+                    </div>
+                    <div class="metadata-item">
+                        <div class="metadata-label">Layers</div>
+                        <div class="metadata-value" id="infoLayers">-</div>
+                    </div>
+                    <div class="metadata-item">
+                        <div class="metadata-label">Components</div>
+                        <div class="metadata-value" id="infoComponents">-</div>
+                    </div>
+                    <div class="metadata-item">
+                        <div class="metadata-label">Groups</div>
+                        <div class="metadata-value" id="infoGroups">-</div>
+                    </div>
+                    <div class="metadata-item">
+                        <div class="metadata-label">Faces</div>
+                        <div class="metadata-value" id="infoFaces">-</div>
+                    </div>
+                    <div class="metadata-item">
+                        <div class="metadata-label">Edges</div>
+                        <div class="metadata-value" id="infoEdges">-</div>
+                    </div>
+                    <div class="metadata-item">
+                        <div class="metadata-label">Materials</div>
+                        <div class="metadata-value" id="infoMaterials">-</div>
+                    </div>
+                    <div class="metadata-item">
+                        <div class="metadata-label">File Size</div>
+                        <div class="metadata-value" id="infoFileSize">-</div>
+                    </div>
+                </div>
+                <div class="button-group mt-12">
+                    <button onclick="refreshMetadata()" class="btn-secondary">Refresh</button>
+                    <button onclick="openRepoFolder()" class="btn-secondary">Open Folder</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            Auxin Version Control v1.0.0 | Powered by Oxen.ai
+        </div>
+    </div>
+
+    <script>
+        // State
+        let currentTab = 'commit';
+        let isInitialized = false;
+        let modelPath = '';
+
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', function() {
+            checkCLI();
+            refreshAll();
+        });
+
+        // Tab switching
+        function switchTab(tabName) {
+            currentTab = tabName;
+
+            // Update tab buttons
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.toggle('active', tab.textContent.toLowerCase() === tabName);
+            });
+
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.toggle('active', content.id === 'tab-' + tabName);
+            });
+
+            // Load data for specific tabs
+            if (tabName === 'history') {
+                loadHistory();
+            } else if (tabName === 'info') {
+                refreshMetadata();
+            }
+        }
+
+        // Refresh all data
+        function refreshAll() {
+            sketchup.getModelPath();
+            sketchup.getStatus();
+            sketchup.getMetadata();
+        }
+
+        // Check CLI availability
+        function checkCLI() {
+            sketchup.checkCLI();
+        }
+
+        // Initialize repository
+        function initRepo() {
+            sketchup.initRepo();
+        }
+
+        // Create commit
+        function createCommit() {
+            const message = document.getElementById('commitMessage').value.trim();
+            const tags = document.getElementById('commitTags').value.trim();
+
+            if (!message) {
+                showMessage('Please enter a commit message', 'error');
+                return;
+            }
+
+            document.getElementById('commitBtn').disabled = true;
+            document.getElementById('commitBtn').textContent = 'Committing...';
+
+            sketchup.commit(message, tags);
+        }
+
+        // Load commit history
+        function loadHistory() {
+            document.getElementById('historyLoading').classList.remove('hidden');
+            document.getElementById('historyList').innerHTML = '';
+            sketchup.getHistory(50);
+        }
+
+        // Restore to commit
+        function restoreToCommit(commitId) {
+            sketchup.restore(commitId);
+        }
+
+        // Refresh metadata
+        function refreshMetadata() {
+            sketchup.getMetadata();
+        }
+
+        // Open repository folder
+        function openRepoFolder() {
+            sketchup.openRepoFolder();
+        }
+
+        // Show message
+        function showMessage(text, type) {
+            const messageArea = document.getElementById('messageArea');
+            messageArea.className = 'message message-' + type;
+            messageArea.textContent = text;
+            messageArea.classList.remove('hidden');
+
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                messageArea.classList.add('hidden');
+            }, 5000);
+        }
+
+        // Format file size
+        function formatFileSize(bytes) {
+            if (!bytes) return '-';
+            const units = ['B', 'KB', 'MB', 'GB'];
+            let exp = Math.floor(Math.log(bytes) / Math.log(1024));
+            exp = Math.min(exp, units.length - 1);
+            return (bytes / Math.pow(1024, exp)).toFixed(1) + ' ' + units[exp];
+        }
+
+        // Format date
+        function formatDate(dateStr) {
+            if (!dateStr) return '';
+            try {
+                const date = new Date(dateStr);
+                return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            } catch {
+                return dateStr;
+            }
+        }
+
+        // ========== Callbacks from Ruby ==========
+
+        function onModelPath(path) {
+            modelPath = path;
+            const pathEl = document.getElementById('modelPath');
+
+            if (path) {
+                pathEl.textContent = path;
+            } else {
+                pathEl.textContent = 'No model loaded';
+                updateStatus('no-model', 'No Model');
+            }
+        }
+
+        function onStatus(status) {
+            if (!modelPath) {
+                updateStatus('no-model', 'No Model');
+                document.getElementById('initSection').classList.add('hidden');
+                return;
+            }
+
+            if (status.initialized) {
+                updateStatus('initialized', 'Initialized');
+                document.getElementById('initSection').classList.add('hidden');
+                isInitialized = true;
+            } else {
+                updateStatus('not-initialized', 'Not Initialized');
+                document.getElementById('initSection').classList.remove('hidden');
+                isInitialized = false;
+            }
+        }
+
+        function updateStatus(type, text) {
+            const indicator = document.getElementById('statusIndicator');
+            indicator.className = 'status-indicator status-' + type;
+            document.getElementById('statusText').textContent = text;
+        }
+
+        function onMetadata(metadata) {
+            document.getElementById('infoUnits').textContent = metadata.units || '-';
+            document.getElementById('infoLayers').textContent = metadata.layers || '-';
+            document.getElementById('infoComponents').textContent = metadata.components || '-';
+            document.getElementById('infoGroups').textContent = metadata.groups || '-';
+            document.getElementById('infoFaces').textContent = metadata.faces || '-';
+            document.getElementById('infoEdges').textContent = metadata.edges || '-';
+            document.getElementById('infoMaterials').textContent = metadata.materials || '-';
+            document.getElementById('infoFileSize').textContent = formatFileSize(metadata.file_size);
+        }
+
+        function onInitSuccess() {
+            showMessage('Repository initialized successfully!', 'success');
+            isInitialized = true;
+            updateStatus('initialized', 'Initialized');
+            document.getElementById('initSection').classList.add('hidden');
+        }
+
+        function onCommitSuccess(output) {
+            showMessage('Commit created successfully!', 'success');
+            document.getElementById('commitMessage').value = '';
+            document.getElementById('commitTags').value = '';
+            document.getElementById('commitBtn').disabled = false;
+            document.getElementById('commitBtn').textContent = 'Create Commit';
+
+            // Refresh history if on that tab
+            if (currentTab === 'history') {
+                loadHistory();
+            }
+        }
+
+        function onHistory(commits) {
+            document.getElementById('historyLoading').classList.add('hidden');
+            const listEl = document.getElementById('historyList');
+
+            if (!commits || commits.length === 0) {
+                listEl.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📋</div>
+                        <div>No commits yet</div>
+                    </div>
+                `;
+                return;
+            }
+
+            listEl.innerHTML = commits.map(commit => {
+                const id = commit.id || commit.commit_id || '';
+                const shortId = id.substring(0, 8);
+                const message = commit.message || 'No message';
+                const date = formatDate(commit.date);
+                const metadata = commit.metadata || {};
+
+                let tagsHtml = '';
+                if (metadata.tags) {
+                    const tags = metadata.tags.split(',').map(t => t.trim());
+                    tagsHtml = `
+                        <div class="commit-tags">
+                            ${tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+                        </div>
+                    `;
+                }
+
+                return `
+                    <div class="commit-item" onclick="restoreToCommit('${id}')">
+                        <span class="commit-id">${shortId}</span>
+                        <div class="commit-message">${escapeHtml(message.split('\n')[0])}</div>
+                        <div class="commit-meta">${date}</div>
+                        ${tagsHtml}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function onRestoreSuccess() {
+            showMessage('Model restored successfully!', 'success');
+            refreshAll();
+        }
+
+        function onError(message) {
+            showMessage(message, 'error');
+            document.getElementById('commitBtn').disabled = false;
+            document.getElementById('commitBtn').textContent = 'Create Commit';
+        }
+
+        function onCLIAvailable(version) {
+            console.log('Auxin CLI available:', version);
+        }
+
+        function onCLIUnavailable() {
+            showMessage('Auxin CLI not found. Please install auxin first.', 'error');
+        }
+
+        // Utility function to escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>
