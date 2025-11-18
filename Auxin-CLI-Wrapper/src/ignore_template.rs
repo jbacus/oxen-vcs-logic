@@ -290,6 +290,166 @@ pub fn generate_sketchup_oxenignore() -> String {
     content
 }
 
+/// Generates a complete `.oxenignore` file template for Blender projects.
+///
+/// Creates a well-organized ignore file with comprehensive patterns for files
+/// that should NOT be version controlled. The template includes sections for
+/// backup files, cache directories, render output, and custom patterns.
+///
+/// # Purpose
+///
+/// The `.oxenignore` file prevents version control bloat and conflicts by excluding:
+/// - **Backup files** (*.blend1, *.blend2) - Blender auto-backup files
+/// - **Cache directories** (blendcache_*/) - Simulation caches (can be multi-GB!)
+/// - **Render output** (renders/, tmp/) - Large, regenerable files
+/// - **Python cache** (__pycache__/) - Bytecode compilation artifacts
+/// - **System metadata** (.DS_Store, etc.) - User/machine-specific, no value in VCS
+///
+/// # Template Structure
+///
+/// ```text
+/// # Oxen VCS - Blender Ignore Rules
+///
+/// # Backup Files
+/// *.blend1
+/// *.blend2
+/// *.blend@
+///
+/// # Cache Directories
+/// blendcache_*/
+/// __pycache__/
+///
+/// # Render Output
+/// renders/
+/// render_output/
+/// tmp/
+///
+/// # System Files
+/// .DS_Store
+/// Thumbs.db
+///
+/// # Custom Ignore Patterns
+/// (empty for user to fill)
+/// ```
+///
+/// # Returns
+///
+/// Complete `.oxenignore` file content as a String, ready to write to disk.
+///
+/// # Pattern Sources
+///
+/// All patterns are consistent with `BlenderProject::ignored_patterns()` and include:
+/// - Backup patterns: `*.blend1`, `*.blend2`, `*.blend@`
+/// - Cache patterns: `blendcache_*/`, `__pycache__/`
+/// - Directory patterns (trailing slash): `renders/`, `tmp/`
+/// - Exact filenames: `.DS_Store`, `Thumbs.db`
+///
+/// # Examples
+///
+/// ```no_run
+/// use auxin_cli::generate_blender_oxenignore;
+/// use std::fs;
+///
+/// // Generate and write to disk
+/// let content = generate_blender_oxenignore();
+/// fs::write("/path/to/project/.oxenignore", content).unwrap();
+/// ```
+///
+/// # Integration
+///
+/// This function is called automatically during repository initialization:
+/// 1. User runs `auxin init /path/to/scene.blend --type blender`
+/// 2. `.oxenignore` file is created in project directory
+/// 3. Oxen uses patterns to exclude files from tracking
+///
+/// Users can customize by editing the "Custom Ignore Patterns" section.
+///
+/// # Design Rationale
+///
+/// **Why exclude *.blend1/2 files?**
+/// - Blender automatically creates backup files with incremental numbers
+/// - These are copies of previous saves, redundant with version control
+/// - Can accumulate quickly and bloat directories
+///
+/// **Why exclude blendcache_*/?**
+/// - Simulation caches (fluid, smoke, cloth) can be massive (multi-GB)
+/// - Easily regenerable by running the simulation again
+/// - Machine and Blender-version specific
+///
+/// **Why exclude renders/?**
+/// - Rendered images and animations are output, not source
+/// - Can be very large (especially animation sequences)
+/// - Regenerable from the .blend file
+///
+/// **Why exclude __pycache__/?**
+/// - Python bytecode cache for Blender scripts
+/// - Platform-specific, regenerable
+/// - Changes frequently, creates noise
+///
+/// # See Also
+///
+/// - `BlenderProject::ignored_patterns()` - Source of truth for patterns
+/// - `.oxenignore` documentation: https://docs.oxen.ai/concepts/oxenignore
+pub fn generate_blender_oxenignore() -> String {
+    let mut content = String::new();
+    content.push_str("# Oxen VCS - Blender Ignore Rules\n");
+    content.push_str("# Auto-generated ignore file for Blender projects\n\n");
+
+    content.push_str("# ===================================\n");
+    content.push_str("# Backup Files\n");
+    content.push_str("# ===================================\n");
+    content.push_str("# Blender automatically creates numbered backup files\n\n");
+    content.push_str("*.blend1\n");
+    content.push_str("*.blend2\n");
+    content.push_str("*.blend@\n\n");
+
+    content.push_str("# ===================================\n");
+    content.push_str("# Cache Directories\n");
+    content.push_str("# ===================================\n");
+    content.push_str("# Simulation caches can be multi-GB and are regenerable\n\n");
+    content.push_str("blendcache_*/\n");
+    content.push_str("__pycache__/\n");
+    content.push_str("*.pyc\n\n");
+
+    content.push_str("# ===================================\n");
+    content.push_str("# Render Output\n");
+    content.push_str("# ===================================\n");
+    content.push_str("# Rendered images and animations\n\n");
+    content.push_str("renders/\n");
+    content.push_str("render_output/\n");
+    content.push_str("tmp/\n\n");
+
+    content.push_str("# ===================================\n");
+    content.push_str("# Build Artifacts\n");
+    content.push_str("# ===================================\n");
+    content.push_str("# If using Blender as game engine or building add-ons\n\n");
+    content.push_str("build/\n");
+    content.push_str("dist/\n\n");
+
+    content.push_str("# ===================================\n");
+    content.push_str("# System Files\n");
+    content.push_str("# ===================================\n");
+    content.push_str("# OS-specific metadata\n\n");
+    content.push_str(".DS_Store\n");
+    content.push_str("Thumbs.db\n");
+    content.push_str("desktop.ini\n");
+    content.push_str("*.smbdelete*\n\n");
+
+    content.push_str("# ===================================\n");
+    content.push_str("# Blender Temporary Files\n");
+    content.push_str("# ===================================\n");
+    content.push_str("# Crash logs and autosaves\n\n");
+    content.push_str("*.crash.txt\n");
+    content.push_str("*.autosave\n\n");
+
+    content.push_str("# ===================================\n");
+    content.push_str("# Custom Ignore Patterns\n");
+    content.push_str("# ===================================\n");
+    content.push_str("# Add your custom patterns below\n\n");
+
+    content
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -600,6 +760,120 @@ mod tests {
     #[test]
     fn test_generate_sketchup_oxenignore_no_duplicate_patterns() {
         let content = generate_sketchup_oxenignore();
+
+        // Extract all pattern lines (non-comment, non-empty)
+        let patterns: Vec<&str> = content
+            .lines()
+            .map(|l| l.trim())
+            .filter(|l| !l.is_empty() && !l.starts_with('#') && !l.contains("==="))
+            .collect();
+
+        // Check for duplicates
+        let unique_patterns: std::collections::HashSet<_> = patterns.iter().collect();
+
+        assert_eq!(
+            patterns.len(),
+            unique_patterns.len(),
+            "Should not have duplicate patterns"
+        );
+    }
+
+    // ==================== Blender Tests ====================
+
+    #[test]
+    fn test_generate_blender_oxenignore_contains_essential_patterns() {
+        let content = generate_blender_oxenignore();
+
+        // All essential Blender patterns
+        assert!(content.contains("*.blend1"));
+        assert!(content.contains("*.blend2"));
+        assert!(content.contains("blendcache_*/"));
+        assert!(content.contains("renders/"));
+        assert!(content.contains("__pycache__/"));
+        assert!(content.contains(".DS_Store"));
+    }
+
+    #[test]
+    fn test_generate_blender_oxenignore_has_sections() {
+        let content = generate_blender_oxenignore();
+
+        assert!(content.contains("Backup Files"));
+        assert!(content.contains("Cache Directories"));
+        assert!(content.contains("Render Output"));
+        assert!(content.contains("System Files"));
+        assert!(content.contains("Custom Ignore Patterns"));
+    }
+
+    #[test]
+    fn test_generate_blender_oxenignore_has_header() {
+        let content = generate_blender_oxenignore();
+
+        assert!(content.contains("Oxen VCS - Blender Ignore Rules"));
+        assert!(content.contains("Auto-generated"));
+    }
+
+    #[test]
+    fn test_generate_blender_oxenignore_has_cache_patterns() {
+        let content = generate_blender_oxenignore();
+
+        assert!(content.contains("blendcache_*/"));
+        assert!(content.contains("__pycache__/"));
+        assert!(content.contains("*.pyc"));
+    }
+
+    #[test]
+    fn test_generate_blender_oxenignore_has_backup_patterns() {
+        let content = generate_blender_oxenignore();
+
+        assert!(content.contains("*.blend1"));
+        assert!(content.contains("*.blend2"));
+        assert!(content.contains("*.blend@"));
+    }
+
+    #[test]
+    fn test_generate_blender_oxenignore_is_not_empty() {
+        let content = generate_blender_oxenignore();
+        assert!(!content.is_empty());
+        assert!(content.len() > 100); // Should be substantial
+    }
+
+    #[test]
+    fn test_generate_blender_oxenignore_has_comments() {
+        let content = generate_blender_oxenignore();
+
+        // Should have explanatory comments
+        let comment_count = content.matches('#').count();
+        assert!(comment_count > 10, "Should have multiple comment lines");
+    }
+
+    #[test]
+    fn test_generate_blender_oxenignore_has_directory_patterns() {
+        let content = generate_blender_oxenignore();
+
+        // Should have patterns ending with /
+        let lines: Vec<&str> = content.lines().collect();
+        let dir_patterns: Vec<&str> = lines
+            .iter()
+            .filter(|l| !l.starts_with('#') && l.ends_with('/'))
+            .copied()
+            .collect();
+
+        assert!(!dir_patterns.is_empty(), "Should have directory patterns");
+        assert!(dir_patterns.len() >= 5); // At least blendcache_*/, renders/, etc.
+    }
+
+    #[test]
+    fn test_generate_blender_oxenignore_idempotent() {
+        // Calling multiple times should produce identical results
+        let first = generate_blender_oxenignore();
+        let second = generate_blender_oxenignore();
+
+        assert_eq!(first, second, "generate_blender_oxenignore should be deterministic");
+    }
+
+    #[test]
+    fn test_generate_blender_oxenignore_no_duplicate_patterns() {
+        let content = generate_blender_oxenignore();
 
         // Extract all pattern lines (non-comment, non-empty)
         let patterns: Vec<&str> = content

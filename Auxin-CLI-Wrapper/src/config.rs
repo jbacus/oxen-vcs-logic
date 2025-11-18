@@ -33,7 +33,7 @@
 //! emoji = true
 //!
 //! [project]
-//! project_type = "auto"  # auto, logicpro, sketchup
+//! project_type = "auto"  # auto, logicpro, sketchup, blender
 //! ```
 
 use anyhow::{Context, Result};
@@ -226,6 +226,8 @@ pub enum ProjectType {
     LogicPro,
     /// SketchUp projects (.skp)
     SketchUp,
+    /// Blender projects (.blend)
+    Blender,
 }
 
 impl Default for ProjectType {
@@ -241,6 +243,7 @@ impl ProjectType {
             "auto" => Some(ProjectType::Auto),
             "logicpro" | "logic-pro" | "logic" => Some(ProjectType::LogicPro),
             "sketchup" | "sketch-up" | "skp" => Some(ProjectType::SketchUp),
+            "blender" | "blend" => Some(ProjectType::Blender),
             _ => None,
         }
     }
@@ -251,6 +254,7 @@ impl ProjectType {
             ProjectType::Auto => "Auto-detect",
             ProjectType::LogicPro => "Logic Pro",
             ProjectType::SketchUp => "SketchUp",
+            ProjectType::Blender => "Blender",
         }
     }
 }
