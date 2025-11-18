@@ -22,6 +22,8 @@ pub mod logic_project;
 pub mod metadata_diff;
 pub mod sketchup_project;
 pub mod sketchup_metadata;
+pub mod blender_project;
+pub mod blender_metadata;
 pub mod network_resilience;
 pub mod offline_queue;
 pub mod operation_history;
@@ -43,12 +45,14 @@ pub use commit_metadata::CommitMetadata;
 pub use config::{Config, ProjectType};
 pub use conflict_detection::{ConflictCheckResult, ConflictDetector, ConflictRecommendation};
 pub use draft_manager::{DraftManager, DraftStats};
-pub use ignore_template::{generate_oxenignore, generate_sketchup_oxenignore};
+pub use ignore_template::{generate_blender_oxenignore, generate_oxenignore, generate_sketchup_oxenignore};
 pub use logic_parser::{LogicParser, LogicProjectData};
 pub use logic_project::LogicProject;
 pub use metadata_diff::{MetadataDiff, MetadataDiffer, ReportGenerator};
 pub use sketchup_metadata::SketchUpMetadata;
 pub use sketchup_project::SketchUpProject;
+pub use blender_metadata::BlenderMetadata;
+pub use blender_project::BlenderProject;
 pub use network_resilience::{
     check_network_availability, is_transient_error,
     NetworkResilienceManager, OperationData, OperationType, QueuedOperation,
