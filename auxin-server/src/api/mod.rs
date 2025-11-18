@@ -83,7 +83,14 @@ pub async fn create_repository(
     let (namespace, repo_name) = path.into_inner();
     info!("Creating repository: {}/{}", namespace, repo_name);
 
-    // Validate repository name
+    // Validate namespace (prevent path traversal)
+    if namespace.is_empty() || namespace.contains("..") || namespace.contains('/') {
+        return Err(AppError::BadRequest(
+            "Invalid namespace".to_string(),
+        ));
+    }
+
+    // Validate repository name (prevent path traversal)
     if repo_name.is_empty() || repo_name.contains("..") || repo_name.contains('/') {
         return Err(AppError::BadRequest(
             "Invalid repository name".to_string(),

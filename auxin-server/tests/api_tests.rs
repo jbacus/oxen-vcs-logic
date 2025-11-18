@@ -218,12 +218,21 @@ async fn test_invalid_repository_name() {
         "description": "Test repository"
     });
 
-    // Test with path traversal
+    // Test with path traversal in namespace
     let req = test::TestRequest::post()
-        .uri("/api/repos/testuser/../../etc/passwd")
+        .uri("/api/repos/..%2F..%2Fetc/passwd")  // URL-encoded ../../etc
         .set_json(&payload)
         .to_request();
 
     let resp = test::call_service(&app, req).await;
-    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.status(), 400, "Should reject path traversal in namespace");
+
+    // Test with path traversal in repo name
+    let req2 = test::TestRequest::post()
+        .uri("/api/repos/testuser/..%2F..%2Fetc")  // URL-encoded ../../etc
+        .set_json(&payload)
+        .to_request();
+
+    let resp2 = test::call_service(&app, req2).await;
+    assert_eq!(resp2.status(), 400, "Should reject path traversal in repo name");
 }
