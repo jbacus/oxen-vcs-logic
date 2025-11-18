@@ -80,14 +80,24 @@ auxin init --type blender Scene.blend                 # Explicit Blender
 
 ### Key Documentation Files
 
-- **[README.md](README.md)** - Project overview and status
+**Project Overview:**
+- **[README.md](README.md)** - Project overview and quick start
+- **[ROADMAP.md](ROADMAP.md)** - Project vision, phases, and progress
+- **[FEATURE_STATUS.md](FEATURE_STATUS.md)** - Component completeness and test coverage
+- **[CHANGELOG.md](CHANGELOG.md)** - Version history
+
+**User Guides:**
 - **[INSTALL.md](INSTALL.md)** - Installation instructions
-- **[CONTRIBUTING.md](CONTRIBUTING.md)** - Code style, testing requirements
-- **[docs/USER_GUIDE.md](docs/USER_GUIDE.md)** - Complete user guide with quick start section
+- **[docs/FOR_MUSICIANS.md](docs/FOR_MUSICIANS.md)** - User guide for audio producers
+- **[docs/CLI_EXAMPLES.md](docs/CLI_EXAMPLES.md)** - CLI command examples
 - **[docs/SKETCHUP_EXAMPLES.md](docs/SKETCHUP_EXAMPLES.md)** - SketchUp workflow examples
+- **[docs/CLOUD_SHARING_GUIDE.md](docs/CLOUD_SHARING_GUIDE.md)** - Team collaboration guide
+
+**Developer Reference:**
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** - Code style, testing requirements
+- **[docs/FOR_DEVELOPERS.md](docs/FOR_DEVELOPERS.md)** - Developer guide
 - **[docs/EXTENSIBILITY.md](docs/EXTENSIBILITY.md)** - Adding support for new applications
 - **[docs/TESTING_STRATEGY.md](docs/TESTING_STRATEGY.md)** - Testing approach
-- **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** - Full technical specification
 - **[docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)** - Common issues and solutions
 
 ### Critical Source Files
@@ -958,7 +968,13 @@ Architectural patterns extensible to:
 
 **Development environment constraint**: This project requires macOS 14.0+ for building/testing Swift components. Current Linux environment can only handle Rust development.
 
-**Documentation status**: All markdown documentation consolidated and streamlined (42 files → 23 essential files) on 2025-10-29. Auxin-App migrated from AppKit to SwiftUI on 2025-10-29 for improved window management and code simplicity. 3D modeling support (SketchUp, Blender) added 2025-11-18.
+**Documentation status**: Documentation restructured on 2025-11-18 (63 files → 46 files). Key changes:
+- Created ROADMAP.md (project vision and progress)
+- Created FEATURE_STATUS.md (consolidated all assessment documents)
+- Removed 17 outdated session logs, progress reports, and completed phase documents
+- Organized docs into user-facing, developer-facing, and system prompt categories
+
+3D modeling support (SketchUp, Blender) added 2025-11-18. Auxin-App migrated from AppKit to SwiftUI on 2025-10-29.
 
 ---
 

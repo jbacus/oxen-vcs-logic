@@ -4,17 +4,12 @@ import { getBranches, createBranch } from '@/services/api';
 import { GitBranch, Plus, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { handleApiError } from '@/utils/errors';
+import type { Branch } from '@/types';
 
 interface BranchManagerProps {
   namespace: string;
   name: string;
   currentBranch: string;
-}
-
-interface Branch {
-  name: string;
-  commit_id: string;
-  is_head: boolean;
 }
 
 export function BranchManager({ namespace, name, currentBranch }: BranchManagerProps) {

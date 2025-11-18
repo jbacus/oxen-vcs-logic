@@ -115,7 +115,7 @@ export function HomePage() {
                 ))}
               </div>
               <p className="mt-6 text-sm text-gray-500 text-center">
-                Showing {filteredRepos.length} of {repos.length} repositories
+                Showing {filteredRepos.length} of {repos?.length ?? 0} repositories
               </p>
             </>
           )}

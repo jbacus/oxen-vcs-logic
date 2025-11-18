@@ -22,6 +22,7 @@ export interface Commit {
 export interface Branch {
   name: string;
   commit_id: string;
+  is_head?: boolean;
 }
 
 export interface LogicProMetadata {

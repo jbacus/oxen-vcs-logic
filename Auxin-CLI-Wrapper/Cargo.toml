@@ -26,6 +26,11 @@ hostname = "0.3"
 dirs = "5.0"
 whoami = "1.4"
 
+# HTTP client for server integration
+# Using ureq for simplicity with blocking HTTP
+ureq = { version = "2.9", features = ["json"] }
+url = "2.5"
+
 # Visual feedback and interactivity
 indicatif = "0.17"     # Progress bars and spinners
 console = "0.15"       # Terminal utilities

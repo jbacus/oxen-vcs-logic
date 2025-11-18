@@ -29,7 +29,9 @@ fi
 
 # Load .env if exists
 if [ -f "$SCRIPT_DIR/.env" ]; then
-    export $(grep -v '^#' "$SCRIPT_DIR/.env" | xargs)
+    set -a
+    source "$SCRIPT_DIR/.env"
+    set +a
 fi
 
 echo ""

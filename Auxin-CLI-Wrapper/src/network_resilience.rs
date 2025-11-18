@@ -17,6 +17,84 @@ const INITIAL_BACKOFF_MS: u64 = 2000;
 /// Maximum backoff duration in milliseconds (16 seconds)
 const MAX_BACKOFF_MS: u64 = 16000;
 
+/// Connectivity state for network checks
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ConnectivityState {
+    Online,
+    Offline,
+    Unknown,
+}
+
+/// Check current connectivity state
+pub fn check_connectivity() -> ConnectivityState {
+    if check_network_availability() {
+        ConnectivityState::Online
+    } else {
+        ConnectivityState::Offline
+    }
+}
+
+/// Retry policy for network operations
+#[derive(Debug, Clone)]
+pub struct RetryPolicy {
+    max_retries: u32,
+    initial_backoff_ms: u64,
+    max_backoff_ms: u64,
+    verbose: bool,
+}
+
+impl RetryPolicy {
+    /// Create a new retry policy
+    pub fn new(max_retries: u32, initial_backoff_ms: u64, max_backoff_ms: u64) -> Self {
+        Self {
+            max_retries,
+            initial_backoff_ms,
+            max_backoff_ms,
+            verbose: false,
+        }
+    }
+
+    /// Enable verbose logging
+    pub fn set_verbose(mut self, verbose: bool) -> Self {
+        self.verbose = verbose;
+        self
+    }
+
+    /// Execute an operation with retry logic
+    pub fn execute<F, T>(&self, mut operation: F) -> Result<T>
+    where
+        F: FnMut() -> Result<T>,
+    {
+        let mut attempt = 0;
+        let mut backoff_ms = self.initial_backoff_ms;
+
+        loop {
+            match operation() {
+                Ok(result) => return Ok(result),
+                Err(e) => {
+                    attempt += 1;
+                    if attempt > self.max_retries {
+                        return Err(e);
+                    }
+
+                    if self.verbose {
+                        crate::vlog!("Retry attempt {}/{}: {}", attempt, self.max_retries, e);
+                    }
+
+                    thread::sleep(StdDuration::from_millis(backoff_ms));
+                    backoff_ms = (backoff_ms * 2).min(self.max_backoff_ms);
+                }
+            }
+        }
+    }
+}
+
+impl Default for RetryPolicy {
+    fn default() -> Self {
+        Self::new(MAX_RETRIES, INITIAL_BACKOFF_MS, MAX_BACKOFF_MS)
+    }
+}
+
 /// Represents a queued operation that failed due to network issues
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct QueuedOperation {

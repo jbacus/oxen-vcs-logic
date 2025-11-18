@@ -175,13 +175,11 @@ export function RepoPage() {
 
         {activeTab === 'locks' && (
           <LockManager
-            namespace={namespace}
-            name={name}
             lockInfo={lockInfo || null}
             isLoading={lockLoading}
-            onAcquire={(hours) => acquireLockMutation.mutateAsync(hours)}
-            onRelease={() => releaseLockMutation.mutateAsync()}
-            onHeartbeat={() => heartbeatMutation.mutateAsync()}
+            onAcquire={async (hours) => { await acquireLockMutation.mutateAsync(hours); }}
+            onRelease={async () => { await releaseLockMutation.mutateAsync(); }}
+            onHeartbeat={async () => { await heartbeatMutation.mutateAsync(); }}
           />
         )}
 

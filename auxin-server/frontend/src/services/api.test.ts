@@ -18,8 +18,8 @@ import {
 
 // Mock axios
 vi.mock('axios', () => {
-  const mockAxios = {
-    create: vi.fn(() => mockAxios),
+  const mockAxios: Record<string, any> = {
+    create: vi.fn(function(this: Record<string, any>) { return this; }),
     get: vi.fn(),
     post: vi.fn(),
     delete: vi.fn(),
@@ -28,6 +28,7 @@ vi.mock('axios', () => {
       response: { use: vi.fn() },
     },
   };
+  mockAxios.create = vi.fn(() => mockAxios);
   return { default: mockAxios };
 });
 

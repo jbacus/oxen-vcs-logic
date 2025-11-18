@@ -4,8 +4,6 @@ import { formatDistanceToNow } from 'date-fns';
 import type { LockInfo } from '@/types';
 
 interface LockManagerProps {
-  namespace: string;
-  name: string;
   lockInfo: LockInfo | null;
   isLoading: boolean;
   onAcquire: (timeoutHours: number) => Promise<void>;
@@ -14,8 +12,6 @@ interface LockManagerProps {
 }
 
 export function LockManager({
-  namespace,
-  name,
   lockInfo,
   isLoading,
   onAcquire,

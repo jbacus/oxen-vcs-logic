@@ -61,6 +61,44 @@ pub struct Config {
 
     #[serde(default)]
     pub project: ProjectConfig,
+
+    #[serde(default)]
+    pub server: ServerConnectionConfig,
+}
+
+/// Server connection configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ServerConnectionConfig {
+    /// Server URL (e.g., "http://localhost:3000")
+    pub url: String,
+
+    /// Authentication token
+    pub token: Option<String>,
+
+    /// Request timeout in seconds
+    pub timeout_secs: u64,
+
+    /// Whether to use server for locks (vs local Oxen branch)
+    pub use_server_locks: bool,
+
+    /// Whether to use server for metadata storage
+    pub use_server_metadata: bool,
+
+    /// Default namespace for repositories
+    pub default_namespace: Option<String>,
+}
+
+impl Default for ServerConnectionConfig {
+    fn default() -> Self {
+        Self {
+            url: "http://localhost:3000".to_string(),
+            token: None,
+            timeout_secs: 30,
+            use_server_locks: true,
+            use_server_metadata: true,
+            default_namespace: None,
+        }
+    }
 }
 
 /// Default settings for common options
@@ -340,6 +378,7 @@ impl Config {
         base.queue = overlay.queue;
         base.ui = overlay.ui;
         base.project = overlay.project;
+        base.server = overlay.server;
         base
     }
 

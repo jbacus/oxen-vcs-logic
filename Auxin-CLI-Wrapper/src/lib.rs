@@ -32,6 +32,7 @@ pub mod oxen_subprocess;
 pub mod progress;
 pub mod remote_lock;
 pub mod search;
+pub mod server_client;
 pub mod workflow_automation;
 
 pub use auth::{AuthManager, Credentials};
@@ -69,4 +70,6 @@ pub use oxen_subprocess::{
     BranchInfo, CommitInfo as SubprocessCommitInfo, OxenSubprocess, StatusInfo,
 };
 pub use remote_lock::{RemoteLock, RemoteLockManager};
+pub use server_client::{AuxinServerClient, ServerConfig, LockInfo, LockHolder, LogicProMetadata as ServerMetadata};
 pub use workflow_automation::{WorkflowAutomation, WorkflowConfig};
+pub use config::ServerConnectionConfig;

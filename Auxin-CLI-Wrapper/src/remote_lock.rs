@@ -131,9 +131,14 @@ impl RemoteLock {
         self.last_heartbeat < stale_threshold
     }
 
-    /// Get remaining time until expiration
+    /// Get remaining time until expiration (returns zero if expired)
     pub fn remaining_time(&self) -> Duration {
-        self.expires_at - Utc::now()
+        let remaining = self.expires_at - Utc::now();
+        if remaining < Duration::zero() {
+            Duration::zero()
+        } else {
+            remaining
+        }
     }
 
     /// Check if lock belongs to current user/machine

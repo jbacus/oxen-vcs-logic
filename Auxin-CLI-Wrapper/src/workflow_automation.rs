@@ -374,7 +374,8 @@ mod tests {
 
     #[test]
     fn test_workflow_automation_creation() {
-        let automation = WorkflowAutomation::new();
+        // Use with_config to test default values (new() loads from file which may differ)
+        let automation = WorkflowAutomation::with_config(WorkflowConfig::default());
         assert!(automation.config().auto_renew_locks);
     }
 

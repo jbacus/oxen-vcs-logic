@@ -1,7 +1,7 @@
 use anyhow::Context;
 use clap::{Parser, Subcommand};
 use colored::Colorize;
-use auxin::{lock_integration, logger, progress, success, vlog, warn, CommitMetadata, OxenRepository, ProjectType, SketchUpMetadata, SketchUpProject};
+use auxin::{lock_integration, logger, progress, success, vlog, warn, BlenderProject, CommitMetadata, Config, OxenRepository, ProjectType, SketchUpMetadata, SketchUpProject, AuxinServerClient, ServerConfig, server_client};
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -315,6 +315,80 @@ EXAMPLES:
     # Test authentication
     auxin auth test")]
     Test,
+}
+
+#[derive(Subcommand)]
+enum ServerCommands {
+    /// Show server configuration and connection status
+    #[command(long_about = "Show server configuration and connection status
+
+USAGE:
+    auxin server status
+
+DESCRIPTION:
+    Displays the current server configuration including:
+      • Server URL
+      • Connection status (healthy/unreachable)
+      • Whether server locks are enabled
+      • Whether server metadata storage is enabled
+      • Default namespace
+
+EXAMPLES:
+    # Check server status
+    auxin server status")]
+    Status,
+
+    /// Test connection to auxin-server
+    #[command(long_about = "Test connection to auxin-server
+
+USAGE:
+    auxin server health
+
+DESCRIPTION:
+    Performs a health check on the configured auxin-server to verify:
+      • Network connectivity
+      • Server is responding
+      • API is functional
+
+EXAMPLES:
+    # Test server connection
+    auxin server health")]
+    Health,
+
+    /// Set server configuration value
+    #[command(long_about = "Set server configuration value
+
+USAGE:
+    auxin server set <KEY> <VALUE>
+
+DESCRIPTION:
+    Updates the server configuration in .auxin/config.toml.
+    Available keys:
+      • url          - Server URL (e.g., http://localhost:3000)
+      • namespace    - Default namespace for repositories
+      • timeout      - Request timeout in seconds
+      • locks        - Enable/disable server locks (true/false)
+      • metadata     - Enable/disable server metadata (true/false)
+
+EXAMPLES:
+    # Set server URL
+    auxin server set url http://192.168.1.100:3000
+
+    # Set default namespace
+    auxin server set namespace myteam
+
+    # Enable server locks
+    auxin server set locks true
+
+    # Disable server metadata
+    auxin server set metadata false")]
+    Set {
+        #[arg(value_name = "KEY", help = "Configuration key to set")]
+        key: String,
+
+        #[arg(value_name = "VALUE", help = "Value to set")]
+        value: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -802,6 +876,10 @@ EXAMPLES:
     /// Authenticate with Oxen Hub for remote collaboration
     #[command(subcommand)]
     Auth(AuthCommands),
+
+    /// Manage auxin-server connection and configuration
+    #[command(subcommand)]
+    Server(ServerCommands),
 
     /// Compare metadata between two Logic Pro project versions
     #[command(name = "metadata-diff")]
@@ -1610,7 +1688,7 @@ async fn main() -> anyhow::Result<()> {
                     let _skp_project = SketchUpProject::detect(&path)?;
 
                     vlog!("Initializing SketchUp project repository...");
-                    let _repo = OxenRepository::init_for_sketchup_project(&path).await?;
+                    let _repo = OxenRepository::init(&path).await?;
 
                     progress::finish_success(&pb, "SketchUp project repository initialized");
                     println!();
@@ -1621,6 +1699,28 @@ async fn main() -> anyhow::Result<()> {
                     progress::info("You're all set! Start working in SketchUp:");
                     println!("  • Changes will be automatically tracked on the draft branch");
                     println!("  • Create milestone commits: auxin commit -m \"Your message\" --units Inches --layers 10");
+                    println!("  • View history: auxin log");
+                    println!("  • Restore to any commit: auxin restore <commit-id>");
+                }
+                ProjectType::Blender => {
+                    let pb = progress::spinner("Validating Blender project structure...");
+                    vlog!("Detecting Blender project...");
+
+                    // Validate Blender project
+                    let _blend_project = BlenderProject::detect(&path)?;
+
+                    vlog!("Initializing Blender project repository...");
+                    let _repo = OxenRepository::init(&path).await?;
+
+                    progress::finish_success(&pb, "Blender project repository initialized");
+                    println!();
+                    progress::success(&format!("Repository created at: {}", path.display()));
+                    progress::success("Initial commit created on main branch");
+                    progress::success("Draft branch created and checked out");
+                    println!();
+                    progress::info("You're all set! Start working in Blender:");
+                    println!("  • Changes will be automatically tracked on the draft branch");
+                    println!("  • Create milestone commits: auxin commit -m \"Your message\"");
                     println!("  • View history: auxin log");
                     println!("  • Restore to any commit: auxin restore <commit-id>");
                 }
@@ -1749,9 +1849,47 @@ async fn main() -> anyhow::Result<()> {
             };
 
             pb.set_message("Creating commit...");
-            let commit_id = repo.create_commit_with_message(&formatted_message).await?;
+            let commit_metadata = CommitMetadata::new(formatted_message);
+            let commit_id = repo.create_commit(commit_metadata).await?;
 
             progress::finish_success(&pb, &format!("Commit created: {}", commit_id));
+
+            // Store metadata on server if configured
+            let config = Config::load().unwrap_or_default();
+            if config.server.use_server_metadata {
+                let server_config = ServerConfig {
+                    url: config.server.url.clone(),
+                    token: config.server.token.clone(),
+                    timeout_secs: config.server.timeout_secs,
+                };
+
+                if let Ok(client) = AuxinServerClient::new(server_config) {
+                    let namespace = config.server.default_namespace.clone()
+                        .unwrap_or_else(|| "default".to_string());
+                    let current_dir = std::env::current_dir()?;
+                    let repo_name = current_dir.file_name()
+                        .map(|s| s.to_string_lossy().to_string())
+                        .unwrap_or_else(|| "unknown".to_string());
+
+                    // Build server metadata
+                    let server_metadata = auxin::server_client::LogicProMetadata {
+                        bpm: bpm.map(|b| b as f64),
+                        sample_rate: sample_rate,
+                        key_signature: key.clone(),
+                        tags: tags.as_ref().map(|t| t.split(',').map(|s| s.trim().to_string()).collect()),
+                        custom: None,
+                    };
+
+                    match client.store_metadata(&namespace, &repo_name, &commit_id, &server_metadata) {
+                        Ok(()) => {
+                            vlog!("Metadata stored on server for commit {}", commit_id);
+                        }
+                        Err(e) => {
+                            vlog!("Failed to store metadata on server: {}", e);
+                        }
+                    }
+                }
+            }
 
             // Show commit details
             println!();
@@ -2337,7 +2475,7 @@ async fn main() -> anyhow::Result<()> {
         Commands::Lock(lock_cmd) => {
             use auxin::lock_integration;
             use auxin::network_resilience::{check_connectivity, ConnectivityState};
-            use auxin::{OfflineQueue, QueuedOperation};
+            use auxin::{OfflineQueue, OfflineQueuedOperation};
             use std::env;
 
             let current_dir = env::current_dir()?;
@@ -2362,68 +2500,231 @@ async fn main() -> anyhow::Result<()> {
 
             match lock_cmd {
                 LockCommands::Acquire { timeout } => {
-                    // Check connectivity
-                    match check_connectivity() {
-                        ConnectivityState::Offline => {
-                            // Queue the operation
-                            let mut queue = OfflineQueue::new()?;
-                            let user_id = lock_integration::get_user_identifier();
+                    // Load config to check if server locks are enabled
+                    let config = Config::load().unwrap_or_default();
 
-                            let entry_id = queue.enqueue_with_priority(QueuedOperation::AcquireLock {
-                                project_path: current_dir.to_string_lossy().to_string(),
-                                user_id: user_id.clone(),
-                                timeout_hours: timeout as u32,
-                            }, 100)?; // High priority
+                    if config.server.use_server_locks {
+                        // Use server-based locking
+                        let server_config = ServerConfig {
+                            url: config.server.url.clone(),
+                            token: config.server.token.clone(),
+                            timeout_secs: config.server.timeout_secs,
+                        };
 
-                            warn!("Network is offline - operation queued");
-                            println!();
-                            println!("  {} {}", "Queued:".bold(), "Acquire lock".yellow());
-                            println!("  {} {}", "User:".dimmed(), user_id.dimmed());
-                            println!("  {} {} hours", "Timeout:".dimmed(), timeout);
-                            println!("  {} {}", "Entry ID:".dimmed(), &entry_id[..8].dimmed());
-                            println!();
-                            progress::info("Lock will be acquired when network is available");
-                            progress::info("Use 'auxin queue sync' to retry manually");
+                        match AuxinServerClient::new(server_config) {
+                            Ok(client) => {
+                                let user = server_client::get_user_identifier();
+                                let machine_id = server_client::get_machine_id();
+
+                                // Get namespace/name from config or current directory
+                                let namespace = config.server.default_namespace.clone()
+                                    .unwrap_or_else(|| "default".to_string());
+                                let repo_name = current_dir.file_name()
+                                    .map(|s| s.to_string_lossy().to_string())
+                                    .unwrap_or_else(|| "unknown".to_string());
+
+                                let pb = progress::spinner("Acquiring server lock...");
+                                match client.acquire_lock(&namespace, &repo_name, &user, &machine_id, timeout as u32) {
+                                    Ok(lock) => {
+                                        progress::finish_success(&pb, "Lock acquired via server");
+                                        println!();
+                                        success!("Lock acquired successfully");
+                                        println!("  {} {}", "Lock ID:".dimmed(), lock.lock_id.cyan());
+                                        println!("  {} {}", "User:".dimmed(), lock.user.dimmed());
+                                        println!("  {} {}", "Expires:".dimmed(), lock.expires_at.dimmed());
+                                    }
+                                    Err(e) => {
+                                        progress::finish_error(&pb, "Failed to acquire lock");
+                                        anyhow::bail!("Server lock error: {}", e);
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                warn!("Failed to connect to server, falling back to local lock");
+                                vlog!("Server error: {}", e);
+                                lock_integration::handle_lock_acquire(&current_dir, timeout)?;
+                            }
                         }
-                        _ => {
-                            // Execute normally (online or unknown)
-                            lock_integration::handle_lock_acquire(&current_dir, timeout)?;
+                    } else {
+                        // Use local locking (original behavior)
+                        // Check connectivity
+                        match check_connectivity() {
+                            ConnectivityState::Offline => {
+                                // Queue the operation
+                                let mut queue = OfflineQueue::new()?;
+                                let user_id = lock_integration::get_user_identifier();
+
+                                let entry_id = queue.enqueue_with_priority(OfflineQueuedOperation::AcquireLock {
+                                    project_path: current_dir.to_string_lossy().to_string(),
+                                    user_id: user_id.clone(),
+                                    timeout_hours: timeout as u32,
+                                }, 100)?; // High priority
+
+                                warn!("Network is offline - operation queued");
+                                println!();
+                                println!("  {} {}", "Queued:".bold(), "Acquire lock".yellow());
+                                println!("  {} {}", "User:".dimmed(), user_id.dimmed());
+                                println!("  {} {} hours", "Timeout:".dimmed(), timeout);
+                                println!("  {} {}", "Entry ID:".dimmed(), &entry_id[..8].dimmed());
+                                println!();
+                                progress::info("Lock will be acquired when network is available");
+                                progress::info("Use 'auxin queue sync' to retry manually");
+                            }
+                            _ => {
+                                // Execute normally (online or unknown)
+                                lock_integration::handle_lock_acquire(&current_dir, timeout)?;
+                            }
                         }
                     }
                 }
 
                 LockCommands::Release => {
-                    // Check connectivity
-                    match check_connectivity() {
-                        ConnectivityState::Offline => {
-                            // Queue the operation
-                            let mut queue = OfflineQueue::new()?;
+                    // Load config to check if server locks are enabled
+                    let config = Config::load().unwrap_or_default();
 
-                            // We don't know the lock_id when offline, so use a placeholder
-                            // The execute_entry will look up the actual lock
-                            let entry_id = queue.enqueue_with_priority(QueuedOperation::ReleaseLock {
-                                project_path: current_dir.to_string_lossy().to_string(),
-                                lock_id: "pending".to_string(), // Will be looked up during execution
-                            }, 100)?; // High priority
+                    if config.server.use_server_locks {
+                        // Use server-based locking
+                        let server_config = ServerConfig {
+                            url: config.server.url.clone(),
+                            token: config.server.token.clone(),
+                            timeout_secs: config.server.timeout_secs,
+                        };
 
-                            warn!("Network is offline - operation queued");
-                            println!();
-                            println!("  {} {}", "Queued:".bold(), "Release lock".yellow());
-                            println!("  {} {}", "Entry ID:".dimmed(), &entry_id[..8].dimmed());
-                            println!();
-                            progress::info("Lock will be released when network is available");
-                            progress::info("Use 'auxin queue sync' to retry manually");
+                        match AuxinServerClient::new(server_config) {
+                            Ok(client) => {
+                                let user = server_client::get_user_identifier();
+                                let machine_id = server_client::get_machine_id();
+
+                                // Get namespace/name from config or current directory
+                                let namespace = config.server.default_namespace.clone()
+                                    .unwrap_or_else(|| "default".to_string());
+                                let repo_name = current_dir.file_name()
+                                    .map(|s| s.to_string_lossy().to_string())
+                                    .unwrap_or_else(|| "unknown".to_string());
+
+                                // First get the current lock status to get lock_id
+                                let pb = progress::spinner("Releasing server lock...");
+                                match client.get_lock_status(&namespace, &repo_name) {
+                                    Ok(status) => {
+                                        if let Some(lock) = status.lock {
+                                            match client.release_lock(&namespace, &repo_name, &lock.lock_id, &user, &machine_id) {
+                                                Ok(()) => {
+                                                    progress::finish_success(&pb, "Lock released via server");
+                                                    success!("Lock released successfully");
+                                                }
+                                                Err(e) => {
+                                                    progress::finish_error(&pb, "Failed to release lock");
+                                                    anyhow::bail!("Server release error: {}", e);
+                                                }
+                                            }
+                                        } else {
+                                            progress::finish_error(&pb, "No lock to release");
+                                            warn!("No active lock found for this repository");
+                                        }
+                                    }
+                                    Err(e) => {
+                                        progress::finish_error(&pb, "Failed to get lock status");
+                                        anyhow::bail!("Server error: {}", e);
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                warn!("Failed to connect to server, falling back to local lock");
+                                vlog!("Server error: {}", e);
+                                lock_integration::handle_lock_release(&current_dir)?;
+                            }
                         }
-                        _ => {
-                            // Execute normally (online or unknown)
-                            lock_integration::handle_lock_release(&current_dir)?;
+                    } else {
+                        // Use local locking (original behavior)
+                        // Check connectivity
+                        match check_connectivity() {
+                            ConnectivityState::Offline => {
+                                // Queue the operation
+                                let mut queue = OfflineQueue::new()?;
+
+                                // We don't know the lock_id when offline, so use a placeholder
+                                // The execute_entry will look up the actual lock
+                                let entry_id = queue.enqueue_with_priority(OfflineQueuedOperation::ReleaseLock {
+                                    project_path: current_dir.to_string_lossy().to_string(),
+                                    lock_id: "pending".to_string(), // Will be looked up during execution
+                                }, 100)?; // High priority
+
+                                warn!("Network is offline - operation queued");
+                                println!();
+                                println!("  {} {}", "Queued:".bold(), "Release lock".yellow());
+                                println!("  {} {}", "Entry ID:".dimmed(), &entry_id[..8].dimmed());
+                                println!();
+                                progress::info("Lock will be released when network is available");
+                                progress::info("Use 'auxin queue sync' to retry manually");
+                            }
+                            _ => {
+                                // Execute normally (online or unknown)
+                                lock_integration::handle_lock_release(&current_dir)?;
+                            }
                         }
                     }
                 }
 
                 LockCommands::Status => {
-                    // Status check always executes (even when offline, shows local state)
-                    lock_integration::handle_lock_status(&current_dir)?;
+                    // Load config to check if server locks are enabled
+                    let config = Config::load().unwrap_or_default();
+
+                    if config.server.use_server_locks {
+                        // Use server-based locking
+                        let server_config = ServerConfig {
+                            url: config.server.url.clone(),
+                            token: config.server.token.clone(),
+                            timeout_secs: config.server.timeout_secs,
+                        };
+
+                        match AuxinServerClient::new(server_config) {
+                            Ok(client) => {
+                                // Get namespace/name from config or current directory
+                                let namespace = config.server.default_namespace.clone()
+                                    .unwrap_or_else(|| "default".to_string());
+                                let repo_name = current_dir.file_name()
+                                    .map(|s| s.to_string_lossy().to_string())
+                                    .unwrap_or_else(|| "unknown".to_string());
+
+                                let pb = progress::spinner("Checking server lock status...");
+
+                                // ureq is a blocking client, safe to call directly
+                                match client.get_lock_status(&namespace, &repo_name) {
+                                    Ok(status) => {
+                                        progress::finish_success(&pb, "Lock status retrieved");
+                                        println!();
+                                        if status.locked {
+                                            if let Some(lock) = status.lock {
+                                                println!("{}", "🔒 Repository is LOCKED".red().bold());
+                                                println!();
+                                                println!("  {} {}", "Lock ID:".dimmed(), lock.lock_id.cyan());
+                                                println!("  {} {}", "Held by:".dimmed(), lock.user.yellow());
+                                                println!("  {} {}", "Machine:".dimmed(), lock.machine_id.dimmed());
+                                                println!("  {} {}", "Acquired:".dimmed(), lock.acquired_at.dimmed());
+                                                println!("  {} {}", "Expires:".dimmed(), lock.expires_at.yellow());
+                                            }
+                                        } else {
+                                            println!("{}", "🔓 Repository is UNLOCKED".green().bold());
+                                            println!();
+                                            progress::info("You can acquire a lock with: auxin lock acquire");
+                                        }
+                                    }
+                                    Err(e) => {
+                                        progress::finish_error(&pb, "Failed to get lock status");
+                                        anyhow::bail!("Server error: {}", e);
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                warn!("Failed to connect to server, falling back to local lock status");
+                                vlog!("Server error: {}", e);
+                                lock_integration::handle_lock_status(&current_dir)?;
+                            }
+                        }
+                    } else {
+                        // Status check always executes (even when offline, shows local state)
+                        lock_integration::handle_lock_status(&current_dir)?;
+                    }
                 }
 
                 LockCommands::Break { force } => {
@@ -2572,6 +2873,174 @@ async fn main() -> anyhow::Result<()> {
                             println!();
                             progress::info("Try logging in again: auxin auth login");
                             std::process::exit(1);
+                        }
+                    }
+                }
+            }
+
+            Ok(())
+        }
+
+        Commands::Server(server_cmd) => {
+            let config = Config::load().unwrap_or_default();
+
+            match server_cmd {
+                ServerCommands::Status => {
+                    // Truncate URL if too long
+                    let url_display = if config.server.url.len() > 43 {
+                        format!("{}...", &config.server.url[..40])
+                    } else {
+                        config.server.url.clone()
+                    };
+
+                    println!();
+                    println!("┌─ Server Configuration ──────────────────────────────────┐");
+                    println!("│                                                          │");
+                    println!("│  URL:        {:<43} │", url_display);
+                    println!("│  Namespace:  {:<43} │",
+                        config.server.default_namespace.as_deref().unwrap_or("(none)"));
+                    println!("│  Timeout:    {} seconds{:<34} │",
+                        config.server.timeout_secs, "");
+                    println!("│  Locks:      {:<43} │",
+                        if config.server.use_server_locks { "enabled" } else { "disabled" });
+                    println!("│  Metadata:   {:<43} │",
+                        if config.server.use_server_metadata { "enabled" } else { "disabled" });
+                    println!("│                                                          │");
+
+                    // Check connection
+                    let server_config = ServerConfig {
+                        url: config.server.url.clone(),
+                        token: config.server.token.clone(),
+                        timeout_secs: config.server.timeout_secs,
+                    };
+
+                    if let Ok(client) = AuxinServerClient::new(server_config) {
+                        match client.health_check() {
+                            Ok(true) => {
+                                println!("│  Status:     {} Connected{:<33} │", "●".green(), "");
+                            }
+                            Ok(false) | Err(_) => {
+                                println!("│  Status:     {} Unreachable{:<31} │", "●".red(), "");
+                            }
+                        }
+                    } else {
+                        println!("│  Status:     {} Unknown{:<35} │", "●".yellow(), "");
+                    }
+
+                    println!("│                                                          │");
+                    println!("└──────────────────────────────────────────────────────────┘");
+                    println!();
+                }
+
+                ServerCommands::Health => {
+                    let pb = progress::spinner("Testing server connection...");
+
+                    let server_config = ServerConfig {
+                        url: config.server.url.clone(),
+                        token: config.server.token.clone(),
+                        timeout_secs: config.server.timeout_secs,
+                    };
+
+                    match AuxinServerClient::new(server_config) {
+                        Ok(client) => {
+                            match client.health_check() {
+                                Ok(true) => {
+                                    progress::finish_success(&pb, "Server is healthy");
+                                    println!();
+                                    progress::success(&format!("Connected to {}", config.server.url));
+                                }
+                                Ok(false) => {
+                                    progress::finish_error(&pb, "Server health check failed");
+                                    println!();
+                                    progress::error(&format!("Server at {} is not responding", config.server.url));
+                                }
+                                Err(e) => {
+                                    progress::finish_error(&pb, "Connection failed");
+                                    println!();
+                                    progress::error(&format!("Failed to connect: {}", e));
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            progress::finish_error(&pb, "Client error");
+                            println!();
+                            progress::error(&format!("Failed to create client: {}", e));
+                        }
+                    }
+                }
+
+                ServerCommands::Set { key, value } => {
+                    let mut config = Config::load().unwrap_or_default();
+
+                    match key.as_str() {
+                        "url" => {
+                            config.server.url = value.clone();
+                            progress::success(&format!("Set server URL to: {}", value));
+                        }
+                        "namespace" => {
+                            config.server.default_namespace = Some(value.clone());
+                            progress::success(&format!("Set default namespace to: {}", value));
+                        }
+                        "timeout" => {
+                            match value.parse::<u64>() {
+                                Ok(timeout) => {
+                                    config.server.timeout_secs = timeout;
+                                    progress::success(&format!("Set timeout to: {} seconds", timeout));
+                                }
+                                Err(_) => {
+                                    progress::error("Invalid timeout value (must be a number)");
+                                    std::process::exit(1);
+                                }
+                            }
+                        }
+                        "locks" => {
+                            match value.to_lowercase().as_str() {
+                                "true" | "on" | "yes" | "1" => {
+                                    config.server.use_server_locks = true;
+                                    progress::success("Server locks enabled");
+                                }
+                                "false" | "off" | "no" | "0" => {
+                                    config.server.use_server_locks = false;
+                                    progress::success("Server locks disabled");
+                                }
+                                _ => {
+                                    progress::error("Invalid value for locks (use true/false)");
+                                    std::process::exit(1);
+                                }
+                            }
+                        }
+                        "metadata" => {
+                            match value.to_lowercase().as_str() {
+                                "true" | "on" | "yes" | "1" => {
+                                    config.server.use_server_metadata = true;
+                                    progress::success("Server metadata storage enabled");
+                                }
+                                "false" | "off" | "no" | "0" => {
+                                    config.server.use_server_metadata = false;
+                                    progress::success("Server metadata storage disabled");
+                                }
+                                _ => {
+                                    progress::error("Invalid value for metadata (use true/false)");
+                                    std::process::exit(1);
+                                }
+                            }
+                        }
+                        _ => {
+                            progress::error(&format!("Unknown configuration key: {}", key));
+                            progress::info("Available keys: url, namespace, timeout, locks, metadata");
+                            std::process::exit(1);
+                        }
+                    }
+
+                    // Save to project config
+                    if let Some(project_config_path) = Config::project_config_path() {
+                        match config.save_to_file(&project_config_path) {
+                            Ok(()) => {
+                                progress::info(&format!("Saved to {}", project_config_path.display()));
+                            }
+                            Err(e) => {
+                                progress::error(&format!("Failed to save config: {}", e));
+                            }
                         }
                     }
                 }
@@ -3318,6 +3787,11 @@ async fn main() -> anyhow::Result<()> {
                     Ok(())
                 }
             }
+        }
+
+        // TODO: Implement these command handlers
+        Commands::History(_) | Commands::Workflow(_) | Commands::Snapshot(_) | Commands::Recovery(_) => {
+            anyhow::bail!("This command is not yet implemented")
         }
     }
 }
