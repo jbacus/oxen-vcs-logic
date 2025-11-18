@@ -47,9 +47,9 @@ sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "postgres", "uuid"
 tempfile = "3"
 
 [features]
-default = ["mock-oxen"]  # Use mock by default until liboxen 0.38 API is updated
-full-oxen = ["liboxen"]  # Full Oxen functionality (TODO: update for liboxen 0.38 API changes)
-mock-oxen = []           # Mock implementation for development/testing
+default = ["mock-oxen"]  # Use mock by default - full-oxen requires async refactoring
+full-oxen = ["liboxen"]  # Full Oxen (WIP: needs async/await refactoring for 0.38 API)
+mock-oxen = []           # Mock implementation (fully functional except VCS ops)
 redis-locks = ["redis"]
 web-ui = ["sqlx"]
 
