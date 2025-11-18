@@ -9,6 +9,9 @@ public class FSEventsMonitor {
     /// Debounce threshold in seconds (default: 30 seconds)
     private let debounceThreshold: TimeInterval
 
+    /// Project type for filtering events
+    private let projectType: ProjectType
+
     /// Callback triggered when debounce expires
     private var commitCallback: ((String) async -> Void)?
 
@@ -25,8 +28,9 @@ public class FSEventsMonitor {
 
     // MARK: - Lifecycle
 
-    public init(debounceThreshold: TimeInterval = 30.0) {
+    public init(debounceThreshold: TimeInterval = 30.0, projectType: ProjectType = .logicPro) {
         self.debounceThreshold = debounceThreshold
+        self.projectType = projectType
     }
 
     deinit {
@@ -168,26 +172,34 @@ public class FSEventsMonitor {
         }
     }
 
-    /// Determines if an event should be processed
+    /// Determines if an event should be processed based on project type
     private func shouldProcessEvent(path: String, flags: FSEventStreamEventFlags) -> Bool {
-        // Check if it's the projectData file
-        if path.contains("projectData") {
-            return true
+        // Check for ignored patterns first (project-type specific)
+        for pattern in projectType.ignoredPatterns {
+            if path.contains(pattern) || path.contains("/\(pattern)/") {
+                return false
+            }
+        }
+
+        // Check for key file patterns (triggers auto-commit)
+        for pattern in projectType.keyFilePatterns {
+            if path.contains(pattern) {
+                return true
+            }
         }
 
         // Check if it's in tracked directories
-        let trackedDirs = ["Alternatives", "Resources"]
-        for dir in trackedDirs {
+        for dir in projectType.trackedDirectories {
             if path.contains("/\(dir)/") {
                 return true
             }
         }
 
-        // Ignore volatile directories
-        let ignoredDirs = ["Bounces", "Freeze Files", "Autosave", ".DS_Store"]
-        for dir in ignoredDirs {
-            if path.contains("/\(dir)/") {
-                return false
+        // For file-based projects (SketchUp, Blender), monitor any change in the directory
+        if !projectType.isFolderBased {
+            // If it's the main project file itself
+            if path.hasSuffix(".\(projectType.fileExtension)") {
+                return true
             }
         }
 

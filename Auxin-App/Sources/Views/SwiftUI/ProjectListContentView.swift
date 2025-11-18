@@ -20,9 +20,9 @@ struct ProjectListContentView: View {
                 }
                 .contextMenu {
                     Button {
-                        openInLogic(project)
+                        openInApplication(project)
                     } label: {
-                        Label("Open in Logic Pro", systemImage: "music.note")
+                        Label("Open in \(project.projectType.displayName)", systemImage: project.iconName)
                     }
 
                     Divider()
@@ -70,7 +70,7 @@ struct ProjectListContentView: View {
         }
     }
 
-    private func openInLogic(_ project: Project) {
+    private func openInApplication(_ project: Project) {
         let projectURL = URL(fileURLWithPath: project.path)
         NSWorkspace.shared.open(projectURL)
     }
@@ -82,6 +82,10 @@ struct ProjectRowView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
+                Image(systemName: project.iconName)
+                    .foregroundColor(.accentColor)
+                    .font(.system(size: 12))
+
                 Text(project.displayName)
                     .font(.system(size: 14, weight: .medium))
 
