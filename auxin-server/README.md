@@ -9,6 +9,7 @@ This version uses:
 - ✅ **liboxen** (reuses Oxen core library)
 - ✅ **Filesystem storage** with `.oxen` directories
 - ✅ **Simple deployment** (one binary)
+- ✅ **Modern Web UI** (React + TypeScript + Tailwind CSS)
 
 **Replaces the complex PostgreSQL + Redis + MinIO stack with simple filesystem storage.**
 
@@ -36,7 +37,25 @@ cargo build --release
 ./target/release/auxin-server
 ```
 
-### 3. Test
+### 3. Build Web Frontend (Optional)
+
+```bash
+# Navigate to frontend directory
+cd frontend
+
+# Install dependencies
+npm install
+
+# Build production bundle
+npm run build
+
+# Return to server directory
+cd ..
+```
+
+The web UI will be automatically served at `http://localhost:3000` when you start the server.
+
+### 4. Test
 
 ```bash
 # Health check
@@ -58,7 +77,41 @@ curl http://localhost:3000/api/repos/myuser/myrepo
 # List repositories again
 curl http://localhost:3000/api/repos
 # Expected: [{"namespace":"myuser","name":"myrepo",...}]
+
+# Or use the Web UI
+# Open http://localhost:3000 in your browser
 ```
+
+## Web Frontend
+
+The auxin-server includes a modern web frontend built with React, TypeScript, and Tailwind CSS.
+
+### Features
+
+- 📦 **Repository Management** - Browse and create repositories
+- 📝 **Commit History** - View detailed commit timeline
+- 🎵 **Logic Pro Metadata** - Display BPM, sample rate, key signature
+- 🔒 **Lock Management** - Acquire/release distributed locks with visual status
+- 🎨 **Modern UI** - Responsive design with dark mode support
+
+### Development
+
+```bash
+cd frontend
+
+# Install dependencies
+npm install
+
+# Start dev server (with hot reload)
+npm run dev
+# Opens at http://localhost:5173 with API proxy to :3000
+
+# Build for production
+npm run build
+# Output: frontend/dist/
+```
+
+See [frontend/README.md](frontend/README.md) for detailed frontend documentation.
 
 ## Configuration
 
@@ -73,7 +126,6 @@ OXEN_SERVER_HOST=0.0.0.0          # Bind address
 # Optional
 RUST_LOG=info                     # Logging level
 ENABLE_REDIS_LOCKS=false          # Use Redis for distributed locks
-ENABLE_WEB_UI=false               # Enable web UI (requires PostgreSQL)
 ```
 
 ## Repository Structure

@@ -1,0 +1,214 @@
+import { useState } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { ArrowLeft, GitBranch, Terminal } from 'lucide-react';
+import { CommitList } from '@/components/commits/CommitList';
+import { MetadataViewer } from '@/components/metadata/MetadataViewer';
+import { LockManager } from '@/components/locks/LockManager';
+import { Loading } from '@/components/common/Loading';
+import { ErrorMessage } from '@/components/common/ErrorMessage';
+import { CopyButton } from '@/components/common/CopyButton';
+import {
+  getRepository,
+  getCommits,
+  getLockStatus,
+  acquireLock,
+  releaseLock,
+  heartbeatLock,
+  getMetadata,
+} from '@/services/api';
+
+type TabType = 'commits' | 'locks' | 'metadata';
+
+export function RepoPage() {
+  const { namespace, name } = useParams<{ namespace: string; name: string }>();
+  const [activeTab, setActiveTab] = useState<TabType>('commits');
+  const [selectedCommit, setSelectedCommit] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+
+  if (!namespace || !name) {
+    return <div>Invalid repository</div>;
+  }
+
+  const { data: repo, isLoading: repoLoading, error: repoError } = useQuery({
+    queryKey: ['repository', namespace, name],
+    queryFn: async () => {
+      const response = await getRepository(namespace, name);
+      return response.data;
+    },
+  });
+
+  const { data: commits, isLoading: commitsLoading } = useQuery({
+    queryKey: ['commits', namespace, name],
+    queryFn: async () => {
+      const response = await getCommits(namespace, name);
+      return response.data;
+    },
+    enabled: activeTab === 'commits',
+  });
+
+  const { data: lockInfo, isLoading: lockLoading } = useQuery({
+    queryKey: ['lock', namespace, name],
+    queryFn: async () => {
+      const response = await getLockStatus(namespace, name);
+      return response.data;
+    },
+    enabled: activeTab === 'locks',
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
+
+  const { data: metadata, isLoading: metadataLoading } = useQuery({
+    queryKey: ['metadata', namespace, name, selectedCommit],
+    queryFn: async () => {
+      if (!selectedCommit) return null;
+      try {
+        const response = await getMetadata(namespace, name, selectedCommit);
+        return response.data;
+      } catch (err) {
+        return null;
+      }
+    },
+    enabled: activeTab === 'metadata' && !!selectedCommit,
+  });
+
+  const acquireLockMutation = useMutation({
+    mutationFn: (timeoutHours: number) => acquireLock(namespace, name, { timeout_hours: timeoutHours }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lock', namespace, name] });
+    },
+  });
+
+  const releaseLockMutation = useMutation({
+    mutationFn: () => releaseLock(namespace, name),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lock', namespace, name] });
+    },
+  });
+
+  const heartbeatMutation = useMutation({
+    mutationFn: () => heartbeatLock(namespace, name),
+  });
+
+  const cloneCommand = `oxen clone http://localhost:3000/${namespace}/${name}`;
+
+  if (repoLoading) {
+    return <Loading message="Loading repository..." />;
+  }
+
+  if (repoError) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <ErrorMessage message="Repository not found" />
+      </div>
+    );
+  }
+
+  const tabs: { id: TabType; label: string; icon: any }[] = [
+    { id: 'commits', label: 'Commits', icon: GitBranch },
+    { id: 'locks', label: 'Locks', icon: Terminal },
+    { id: 'metadata', label: 'Metadata', icon: Terminal },
+  ];
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <Link
+        to="/"
+        className="inline-flex items-center space-x-2 text-sm text-gray-600 hover:text-primary-600 mb-6"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        <span>Back to repositories</span>
+      </Link>
+
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900">
+          {namespace}/{name}
+        </h1>
+        {repo?.description && (
+          <p className="mt-2 text-gray-600">{repo.description}</p>
+        )}
+        <div className="mt-4 flex items-center space-x-2 bg-gray-50 border border-gray-200 rounded-lg p-3">
+          <Terminal className="w-4 h-4 text-gray-600 flex-shrink-0" />
+          <code className="text-sm font-mono text-gray-700 flex-1">
+            {cloneCommand}
+          </code>
+          <CopyButton text={cloneCommand} />
+        </div>
+      </div>
+
+      <div className="border-b border-gray-200 mb-6">
+        <nav className="flex space-x-8">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === tab.id
+                    ? 'border-primary-600 text-primary-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </nav>
+      </div>
+
+      <div>
+        {activeTab === 'commits' && (
+          <div>
+            {commitsLoading && <Loading message="Loading commits..." />}
+            {commits && (
+              <CommitList
+                commits={commits}
+                onCommitClick={(commit) => {
+                  setSelectedCommit(commit.id);
+                  setActiveTab('metadata');
+                }}
+              />
+            )}
+          </div>
+        )}
+
+        {activeTab === 'locks' && (
+          <LockManager
+            namespace={namespace}
+            name={name}
+            lockInfo={lockInfo || null}
+            isLoading={lockLoading}
+            onAcquire={(hours) => acquireLockMutation.mutateAsync(hours)}
+            onRelease={() => releaseLockMutation.mutateAsync()}
+            onHeartbeat={() => heartbeatMutation.mutateAsync()}
+          />
+        )}
+
+        {activeTab === 'metadata' && (
+          <div>
+            {!selectedCommit ? (
+              <div className="card">
+                <p className="text-sm text-gray-500">
+                  Select a commit from the Commits tab to view its metadata
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="mb-4">
+                  <p className="text-sm text-gray-600">
+                    Viewing metadata for commit:{' '}
+                    <code className="font-mono bg-gray-100 px-2 py-1 rounded">
+                      {selectedCommit.substring(0, 8)}
+                    </code>
+                  </p>
+                </div>
+                <MetadataViewer metadata={metadata || null} isLoading={metadataLoading} />
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
