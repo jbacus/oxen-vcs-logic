@@ -1,4 +1,4 @@
-# Oxen-VCS for Logic Pro
+# Auxin - Version Control for Creative Applications
 
 [![Test Suite](https://github.com/jbacus/auxin/actions/workflows/test.yml/badge.svg)](https://github.com/jbacus/auxin/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -6,11 +6,17 @@
 [![Rust](https://img.shields.io/badge/rust-stable-orange.svg)](https://www.rust-lang.org)
 [![Swift](https://img.shields.io/badge/swift-5.9+-orange.svg)](https://swift.org)
 
-A native macOS version control system for Apple Logic Pro projects, leveraging Oxen.ai for efficient large binary file management.
+A native macOS version control system for creative applications, leveraging Oxen.ai for efficient large binary file management.
+
+## Supported Applications
+
+- **Logic Pro** (.logicx) - Audio production with BPM, sample rate, key signature metadata
+- **SketchUp** (.skp) - 3D modeling with units, layers, components, groups metadata
+- **Blender** (.blend) - 3D modeling and animation support
 
 ## Overview
 
-Professional DAW projects contain massive binary assets that overwhelm traditional version control systems like Git. Auxin provides:
+Professional creative projects contain massive binary assets that overwhelm traditional version control systems like Git. Auxin provides:
 
 - **Block-level deduplication** for efficient storage of large audio files
 - **Automatic background tracking** via FSEvents monitoring
@@ -19,6 +25,14 @@ Professional DAW projects contain massive binary assets that overwhelm tradition
 - **Non-destructive rollback** to any previous project state
 
 ## Recent Updates
+
+### 🎨 3D Modeling Support (November 18, 2025)
+
+Expanded support for 3D modeling applications:
+- **SketchUp** (.skp) - Full support with metadata tracking (units, layers, components, groups)
+- **Blender** (.blend) - Project detection and ignore patterns
+- **Auto-detection** - Project type automatically detected from file extension
+- **Unified CLI** - Same commands work across all supported applications
 
 ### ✨ SwiftUI Migration (October 29, 2025)
 
@@ -81,10 +95,10 @@ See [CHANGELOG.md](CHANGELOG.md) for complete project history.
 ## Requirements
 
 - macOS 14.0+
-- Logic Pro 11.x
 - Oxen.ai CLI
 - Xcode 15+
 - Rust toolchain (for CLI wrapper)
+- Application software as needed (Logic Pro, SketchUp, Blender)
 
 ## Installation
 
@@ -124,24 +138,32 @@ After installation, launch the double-clickable app:
 **Enhanced with beautiful visual feedback and progress indicators:**
 
 ```bash
-# Initialize a Logic Pro project
-cd ~/Music/YourProject.logicx
-auxin init --logic .
-# ⠹ Validating Logic Pro project structure...
-# ✓ Logic Pro project repository initialized
+# Initialize projects (auto-detects type from extension)
+auxin init ~/Music/YourProject.logicx        # Logic Pro
+auxin init ~/Models/Building.skp              # SketchUp
+auxin init ~/Projects/Scene.blend             # Blender
+
+# Or explicitly specify type
+auxin init --type logicpro ~/Music/Project.logicx
+auxin init --type sketchup ~/Models/Model.skp
+auxin init --type blender ~/Projects/Scene.blend
 
 # Check what changed
 auxin status
 # Shows: staged, modified, and untracked files with color coding
 
-# Stage and commit with metadata
+# Stage and commit with application-specific metadata
 auxin add --all
+
+# Logic Pro commit
 auxin commit -m "Vocal tracking done" --bpm 120 --tags "vocals"
-# ✓ Commit created: abc123f
+
+# SketchUp commit
+auxin commit -m "Added roof structure" --units Feet --layers 15 --components 200
 
 # View history with filtering
-auxin log --bpm 120 --tag vocals --limit 10
-# Shows: filtered commits with metadata
+auxin log --limit 10
+# Shows: commits with metadata
 
 # Restore to previous version
 auxin restore abc123f
@@ -307,15 +329,16 @@ auxin/
 ### User Guides
 - [For Musicians](docs/FOR_MUSICIANS.md) - Complete guide for music producers (non-technical, covers both GUI and CLI)
 - [CLI Examples](docs/CLI_EXAMPLES.md) - Real-world command line examples with visual output
+- [SketchUp Examples](docs/SKETCHUP_EXAMPLES.md) - SketchUp workflow examples and best practices
 - [Installation Guide](INSTALL.md) - Complete installation instructions
 - [App Bundle Guide](Auxin-App/APP_BUNDLE.md) - Double-clickable app creation
 - [CLI Usage Guide](Auxin-CLI-Wrapper/USAGE.md) - Complete CLI reference
 
 ### Technical Documentation
 - [For Developers](docs/FOR_DEVELOPERS.md) - Full technical specification, architecture, and API reference
+- [Extensibility Guide](docs/EXTENSIBILITY.md) - Adding support for new applications
 - [Testing Strategy](docs/TESTING_STRATEGY.md) - Comprehensive testing approach
 - [Contributing Guidelines](CONTRIBUTING.md) - Code style, testing, and PR process
-- [Week 1 Progress](WEEK1_PROGRESS.md) - CLI enhancement progress report
 
 ## License
 

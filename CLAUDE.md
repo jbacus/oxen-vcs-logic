@@ -6,33 +6,39 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Oxen-VCS** is a macOS-native version control system for Apple Logic Pro projects that solves the fundamental incompatibility between traditional VCS (like Git) and professional DAW workflows.
+**Auxin** is a macOS-native version control system for creative applications that solves the fundamental incompatibility between traditional VCS (like Git) and professional creative workflows.
+
+### Supported Applications
+- **Logic Pro** (.logicx) - Audio production with BPM, sample rate, key signature metadata
+- **SketchUp** (.skp) - 3D modeling with units, layers, components, groups metadata
+- **Blender** (.blend) - 3D modeling and animation support
 
 ### The Problem
-Logic Pro projects consist of:
-- Large binary audio files (WAV, AIFF, CAF) - often multi-GB
-- Proprietary, opaque `.logicx` project files (non-mergeable binary)
-- Generated assets (bounces, freeze files) that cause repository bloat
-- Non-destructive editing patterns where metadata changes but audio doesn't
+Creative projects consist of:
+- Large binary files (audio, textures, 3D models) - often multi-GB
+- Proprietary, opaque project files (non-mergeable binary)
+- Generated assets (bounces, renders, exports) that cause repository bloat
+- Non-destructive editing patterns where metadata changes but content doesn't
 
 Traditional VCS fails because:
 - Git/Git-LFS stores entire files on modification → massive bloat
 - Binary project files cannot be algorithmically merged
 - Merge conflicts are unresolvable without data loss
-- No understanding of DAW-specific workflows
+- No understanding of application-specific workflows
 
 ### The Solution
-Oxen-VCS leverages Oxen.ai's block-level deduplication and implements:
+Auxin leverages Oxen.ai's block-level deduplication and implements:
 - **Pessimistic locking** to prevent binary merge conflicts
 - **Intelligent asset classification** with `.oxenignore` strategies
 - **Automatic draft tracking** via FSEvents monitoring
 - **Power-safe commits** triggered before system sleep
-- **FCP XML-based manual merge** for track-level reconciliation
+- **Application-specific metadata** for tracking project evolution
 
 ### Target Users
 - Professional audio engineers and music producers
+- 3D modelers and architects
 - Collaborative production teams
-- Anyone managing multi-GB Logic Pro projects requiring reliable version history
+- Anyone managing multi-GB creative projects requiring reliable version history
 
 ---
 
@@ -65,6 +71,11 @@ cd Auxin-App && swift test                            # App tests
 # Lint and format
 cd Auxin-CLI-Wrapper && cargo fmt && cargo clippy     # Rust
 swiftlint lint && swiftlint autocorrect               # Swift (if configured)
+
+# Initialize projects (auto-detect or explicit type)
+auxin init MyProject.logicx                           # Auto-detect Logic Pro
+auxin init --type sketchup MyModel.skp                # Explicit SketchUp
+auxin init --type blender Scene.blend                 # Explicit Blender
 ```
 
 ### Key Documentation Files
@@ -73,6 +84,8 @@ swiftlint lint && swiftlint autocorrect               # Swift (if configured)
 - **[INSTALL.md](INSTALL.md)** - Installation instructions
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** - Code style, testing requirements
 - **[docs/USER_GUIDE.md](docs/USER_GUIDE.md)** - Complete user guide with quick start section
+- **[docs/SKETCHUP_EXAMPLES.md](docs/SKETCHUP_EXAMPLES.md)** - SketchUp workflow examples
+- **[docs/EXTENSIBILITY.md](docs/EXTENSIBILITY.md)** - Adding support for new applications
 - **[docs/TESTING_STRATEGY.md](docs/TESTING_STRATEGY.md)** - Testing approach
 - **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** - Full technical specification
 - **[docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)** - Common issues and solutions
@@ -83,9 +96,14 @@ swiftlint lint && swiftlint autocorrect               # Swift (if configured)
 - `main.rs:1` - CLI entry point and command handling
 - `oxen_subprocess.rs:1` - **CRITICAL**: Oxen CLI subprocess integration (primary Oxen interface)
 - `oxen_ops.rs:1` - High-level Oxen operation wrappers
+- `config.rs:1` - Configuration and ProjectType enum (Auto, LogicPro, SketchUp, Blender)
 - `logic_project.rs:1` - Logic Pro project detection and validation
-- `commit_metadata.rs:1` - Structured commit metadata (BPM, sample rate, key)
-- `ignore_template.rs:1` - .oxenignore generation
+- `sketchup_project.rs:1` - SketchUp project detection and validation
+- `sketchup_metadata.rs:1` - SketchUp commit metadata (units, layers, components)
+- `blender_project.rs:1` - Blender project detection
+- `blender_metadata.rs:1` - Blender commit metadata
+- `commit_metadata.rs:1` - Logic Pro commit metadata (BPM, sample rate, key)
+- `ignore_template.rs:1` - .oxenignore generation for all project types
 - `draft_manager.rs:1` - Draft branch management logic
 - `liboxen_stub/` - Stub implementation (not connected to real Oxen)
 
@@ -257,7 +275,7 @@ cd Auxin-App && swift build -c release && ./create-app-bundle.sh
 ### Development Requirements
 - Xcode 15+ (for Swift compilation)
 - Rust toolchain (rustc, cargo)
-- Logic Pro 11.x (for real-world testing)
+- Target application for testing (Logic Pro, SketchUp, or Blender)
 
 ---
 
@@ -933,14 +951,15 @@ Architectural patterns extensible to:
 **When starting work on this codebase:**
 1. **Review** the [Quick Reference](#quick-reference) section first
 2. **Understand** the [Project Status](#project-status--reality-check) - code is complete but needs testing on macOS
-3. **Key blocker**: Oxen integration via subprocess wrapper needs macOS testing
-4. **Testing**: Use `./run_all_tests.sh` before committing
-5. **Critical files**: `oxen_subprocess.rs` (Oxen CLI integration), `Daemon.swift` (LaunchAgent), `AppDelegate.swift` (UI)
+3. **Multi-app support**: Now supports Logic Pro, SketchUp, and Blender projects
+4. **Key blocker**: Oxen integration via subprocess wrapper needs macOS testing
+5. **Testing**: Use `./run_all_tests.sh` before committing
+6. **Critical files**: `oxen_subprocess.rs` (Oxen CLI integration), `config.rs` (ProjectType), `Daemon.swift` (LaunchAgent)
 
 **Development environment constraint**: This project requires macOS 14.0+ for building/testing Swift components. Current Linux environment can only handle Rust development.
 
-**Documentation status**: All markdown documentation consolidated and streamlined (42 files → 23 essential files) on 2025-10-29. Auxin-App migrated from AppKit to SwiftUI on 2025-10-29 for improved window management and code simplicity.
+**Documentation status**: All markdown documentation consolidated and streamlined (42 files → 23 essential files) on 2025-10-29. Auxin-App migrated from AppKit to SwiftUI on 2025-10-29 for improved window management and code simplicity. 3D modeling support (SketchUp, Blender) added 2025-11-18.
 
 ---
 
-*Last Updated: 2025-10-29*
+*Last Updated: 2025-11-18*
