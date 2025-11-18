@@ -1,6 +1,6 @@
-# OxVCS Server: Complete Development Plan
+# Auxin Server: Complete Development Plan
 
-**Project**: Self-hosted repository server for OxVCS (Logic Pro version control)
+**Project**: Self-hosted repository server for Auxin (Logic Pro version control)
 **Goal**: Build an Oxen.ai-compatible server for secure, collaborative Logic Pro project hosting
 **Timeline**: 24 weeks (6 months)
 **Status**: Planning Phase
@@ -26,10 +26,10 @@
 
 ### What We're Building
 
-**OxVCS Server** is a self-hosted Git-like repository server optimized for Logic Pro projects. It provides:
+**Auxin Server** is a self-hosted Git-like repository server optimized for Logic Pro projects. It provides:
 
 - **Repository hosting** with block-level deduplication (10-100x more efficient than Git-LFS)
-- **Push/Pull protocol** compatible with existing OxVCS CLI
+- **Push/Pull protocol** compatible with existing Auxin CLI
 - **Distributed locking** for collision-free collaboration
 - **Web UI** for browsing commits, managing teams, and viewing activity
 - **REST API** for programmatic access
@@ -37,14 +37,14 @@
 
 ### Why Build This?
 
-**Current State**: OxVCS relies on Oxen Hub (external SaaS)
+**Current State**: Auxin relies on Oxen Hub (external SaaS)
 - ✅ Works well for individuals
 - ❌ External dependency (no control over data)
 - ❌ Can't customize for Logic Pro workflows
 - ❌ Monthly costs per user
 - ❌ Can't run on-premise
 
-**Future State**: OxVCS Server (self-hosted)
+**Future State**: Auxin Server (self-hosted)
 - ✅ Full data control
 - ✅ Custom Logic Pro features
 - ✅ One-time infrastructure cost
@@ -376,7 +376,7 @@ struct Lock {
 3. **Deduplication**: Identical blocks stored once
 4. **Storage Layout**:
    ```
-   s3://oxvcs-storage/
+   s3://auxin-storage/
    ├── blocks/
    │   ├── ab/cd/abcd1234...  # Content-addressed blocks
    │   └── ef/gh/efgh5678...
@@ -477,11 +477,11 @@ WS     /api/v1/repositories/{namespace}/{name}/events
 **Week 1: Project Setup**
 ```bash
 # Create workspace
-mkdir -p oxvcs-server
-cd oxvcs-server
+mkdir -p auxin-server
+cd auxin-server
 
 # Initialize Rust project
-cargo init --name oxvcs-server
+cargo init --name auxin-server
 
 # Add core dependencies
 cargo add axum tokio sqlx tower tower-http
@@ -538,7 +538,7 @@ touch docker-compose.yml Dockerfile
 - ✅ Push endpoint (receive commits + blocks)
 - ✅ Pull endpoint (send commits + blocks)
 - ✅ Presigned URL generation
-- ✅ Client integration in OxVCS CLI
+- ✅ Client integration in Auxin CLI
 
 **Tasks:**
 
@@ -578,7 +578,7 @@ touch docker-compose.yml Dockerfile
 - Write sync integration tests
 
 **Week 10: CLI Integration**
-- Update `OxVCS-CLI-Wrapper/src/cloud_client.rs`
+- Update `Auxin-CLI-Wrapper/src/cloud_client.rs`
   - Push implementation
   - Pull implementation
   - Error handling
@@ -637,8 +637,8 @@ touch docker-compose.yml Dockerfile
 
 **Week 13: Frontend Setup**
 ```bash
-npx create-next-app@latest oxvcs-web
-cd oxvcs-web
+npx create-next-app@latest auxin-web
+cd auxin-web
 npm install @tanstack/react-query axios
 npm install tailwindcss @shadcn/ui
 npm install socket.io-client zustand
@@ -747,7 +747,7 @@ npm install socket.io-client zustand
 ## Project Structure
 
 ```
-oxvcs-server/
+auxin-server/
 ├── Cargo.toml
 ├── Cargo.lock
 ├── Dockerfile
@@ -862,7 +862,7 @@ oxvcs-server/
 **Web Frontend Structure:**
 
 ```
-oxvcs-web/
+auxin-web/
 ├── package.json
 ├── tsconfig.json
 ├── tailwind.config.js
@@ -1059,7 +1059,7 @@ impl DeduplicationEngine {
                                   hash);
 
                 self.s3.put_object()
-                    .bucket("oxvcs-storage")
+                    .bucket("auxin-storage")
                     .key(&key)
                     .body(chunk.into())
                     .send()
@@ -1209,9 +1209,9 @@ services:
   postgres:
     image: postgres:16
     environment:
-      POSTGRES_USER: oxvcs
+      POSTGRES_USER: auxin
       POSTGRES_PASSWORD: dev_password
-      POSTGRES_DB: oxvcs_server
+      POSTGRES_DB: auxin_server
     ports:
       - "5432:5432"
     volumes:
@@ -1242,19 +1242,19 @@ services:
       - redis
       - minio
     environment:
-      DATABASE_URL: postgres://oxvcs:dev_password@postgres:5432/oxvcs_server
+      DATABASE_URL: postgres://auxin:dev_password@postgres:5432/auxin_server
       REDIS_URL: redis://redis:6379
       S3_ENDPOINT: http://minio:9000
       S3_ACCESS_KEY: minioadmin
       S3_SECRET_KEY: minioadmin
-      S3_BUCKET: oxvcs-storage
+      S3_BUCKET: auxin-storage
       JWT_SECRET: dev_jwt_secret
     ports:
       - "8080:8080"
       - "8081:8081"
 
   web:
-    build: ./oxvcs-web
+    build: ./auxin-web
     depends_on:
       - server
     environment:
@@ -1274,7 +1274,7 @@ See earlier architecture section for full K8s manifests.
 **Quick deploy:**
 ```bash
 # Create namespace
-kubectl create namespace oxvcs
+kubectl create namespace auxin
 
 # Apply secrets
 kubectl apply -f k8s/secrets.yaml
@@ -1304,17 +1304,17 @@ use prometheus::{
 
 lazy_static! {
     pub static ref HTTP_REQUESTS: Counter = register_counter!(
-        "oxvcs_http_requests_total",
+        "auxin_http_requests_total",
         "Total HTTP requests"
     ).unwrap();
 
     pub static ref PUSH_DURATION: Histogram = register_histogram!(
-        "oxvcs_push_duration_seconds",
+        "auxin_push_duration_seconds",
         "Push operation duration"
     ).unwrap();
 
     pub static ref ACTIVE_LOCKS: Gauge = register_gauge!(
-        "oxvcs_active_locks",
+        "auxin_active_locks",
         "Number of active locks"
     ).unwrap();
 }
@@ -1328,11 +1328,11 @@ lazy_static! {
 # scripts/backup.sh
 
 # Backup PostgreSQL
-pg_dump -h localhost -U oxvcs oxvcs_server | \
+pg_dump -h localhost -U auxin auxin_server | \
   gzip > backups/postgres-$(date +%Y%m%d).sql.gz
 
 # Backup S3 (if using MinIO)
-mc mirror minio/oxvcs-storage backups/s3-$(date +%Y%m%d)/
+mc mirror minio/auxin-storage backups/s3-$(date +%Y%m%d)/
 
 # Retention: Keep last 30 days
 find backups/ -type f -mtime +30 -delete
@@ -1355,7 +1355,7 @@ find backups/ -type f -mtime +30 -delete
 
 ## Summary
 
-This development plan provides a complete roadmap for building OxVCS Server over 24 weeks. Key milestones:
+This development plan provides a complete roadmap for building Auxin Server over 24 weeks. Key milestones:
 
 - **Week 4**: MVP with auth and repository management
 - **Week 10**: Push/pull working with deduplication
