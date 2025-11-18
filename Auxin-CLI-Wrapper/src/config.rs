@@ -31,6 +31,9 @@
 //! [ui]
 //! progress = true
 //! emoji = true
+//!
+//! [project]
+//! project_type = "auto"  # auto, logicpro, sketchup
 //! ```
 
 use anyhow::{Context, Result};
@@ -55,6 +58,9 @@ pub struct Config {
 
     #[serde(default)]
     pub ui: UiConfig,
+
+    #[serde(default)]
+    pub project: ProjectConfig,
 }
 
 /// Default settings for common options
@@ -195,6 +201,60 @@ impl Default for ColorMode {
     }
 }
 
+/// Project type configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProjectConfig {
+    /// Project type (auto-detected if not specified)
+    pub project_type: ProjectType,
+}
+
+impl Default for ProjectConfig {
+    fn default() -> Self {
+        Self {
+            project_type: ProjectType::Auto,
+        }
+    }
+}
+
+/// Supported project types
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum ProjectType {
+    /// Auto-detect based on file extensions
+    Auto,
+    /// Logic Pro projects (.logicx)
+    LogicPro,
+    /// SketchUp projects (.skp)
+    SketchUp,
+}
+
+impl Default for ProjectType {
+    fn default() -> Self {
+        ProjectType::Auto
+    }
+}
+
+impl ProjectType {
+    /// Convert string to ProjectType
+    pub fn from_str(s: &str) -> Option<Self> {
+        match s.to_lowercase().as_str() {
+            "auto" => Some(ProjectType::Auto),
+            "logicpro" | "logic-pro" | "logic" => Some(ProjectType::LogicPro),
+            "sketchup" | "sketch-up" | "skp" => Some(ProjectType::SketchUp),
+            _ => None,
+        }
+    }
+
+    /// Get human-readable name
+    pub fn name(&self) -> &'static str {
+        match self {
+            ProjectType::Auto => "Auto-detect",
+            ProjectType::LogicPro => "Logic Pro",
+            ProjectType::SketchUp => "SketchUp",
+        }
+    }
+}
+
 impl Config {
     /// Load configuration from all sources with proper precedence
     ///
@@ -275,6 +335,7 @@ impl Config {
         base.network = overlay.network;
         base.queue = overlay.queue;
         base.ui = overlay.ui;
+        base.project = overlay.project;
         base
     }
 
@@ -313,6 +374,13 @@ impl Config {
         // AUXIN_QUEUE_DIR
         if let Ok(val) = std::env::var("AUXIN_QUEUE_DIR") {
             config.queue.queue_dir = val;
+        }
+
+        // AUXIN_PROJECT_TYPE
+        if let Ok(val) = std::env::var("AUXIN_PROJECT_TYPE") {
+            if let Some(project_type) = ProjectType::from_str(&val) {
+                config.project.project_type = project_type;
+            }
         }
 
         config
