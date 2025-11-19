@@ -9,6 +9,7 @@ public class OxenDaemon {
 
     private let orchestrator: CommitOrchestrator
     private let powerManager: PowerManagement
+    private let networkMonitor: NetworkMonitor
     private var xpcService: OxenDaemonXPCService?
     private var monitors: [String: FSEventsMonitor] = [:]
     private var projectTypes: [String: ProjectType] = [:]  // Track project types
@@ -29,6 +30,7 @@ public class OxenDaemon {
         self.debounceThreshold = debounceThreshold
         self.orchestrator = CommitOrchestrator(cliPath: cliPath)
         self.powerManager = PowerManagement()
+        self.networkMonitor = NetworkMonitor(cliPath: cliPath)
 
         printBanner()
     }
@@ -46,23 +48,27 @@ public class OxenDaemon {
         isRunning = true
 
         // 1. Start power management monitoring
-        print("\n[1/4] Initializing power management...")
+        print("\n[1/5] Initializing power management...")
         powerManager.startMonitoring { [weak self] in
             await self?.handleEmergencyCommit()
         }
 
-        // 2. Start XPC service
-        print("[2/4] Starting XPC service...")
+        // 2. Start network monitoring for auto-sync
+        print("[2/5] Starting network monitoring...")
+        networkMonitor.startMonitoring()
+
+        // 3. Start XPC service
+        print("[3/5] Starting XPC service...")
         let xpc = OxenDaemonXPCService(orchestrator: orchestrator)
         xpc.start()
         self.xpcService = xpc
 
-        // 3. Scan for existing projects (Logic Pro, SketchUp, Blender)
-        print("[3/4] Scanning for creative projects...")
+        // 4. Scan for existing projects (Logic Pro, SketchUp, Blender)
+        print("[4/5] Scanning for creative projects...")
         await scanForProjects()
 
-        // 4. Start monitoring registered projects
-        print("[4/4] Starting file system monitors...")
+        // 5. Start monitoring registered projects
+        print("[5/5] Starting file system monitors...")
         await startMonitoring()
 
         print("\n✓ Daemon started successfully")
@@ -110,6 +116,9 @@ public class OxenDaemon {
 
         // Stop XPC service
         xpcService?.stop()
+
+        // Stop network monitoring
+        networkMonitor.stopMonitoring()
 
         // Stop power management
         powerManager.stopMonitoring()
@@ -297,6 +306,7 @@ public class OxenDaemon {
 
     private func printStatus() {
         let projects = orchestrator.getRegisteredProjects()
+        let networkStatus = networkMonitor.isNetworkAvailable ? "✓ Connected" : "✗ Offline"
 
         print("""
 
@@ -304,6 +314,7 @@ public class OxenDaemon {
         ║ DAEMON STATUS                                             ║
         ╠═══════════════════════════════════════════════════════════╣
         ║ Power Management:  ✓ Active                              ║
+        ║ Network Monitor:   \(networkStatus.padding(toLength: 14, withPad: " ", startingAt: 0))                          ║
         ║ XPC Service:       ✓ Listening                           ║
         ║ Monitored Projects: \(String(format: "%2d", projects.count))                                   ║
         ║ Debounce Interval:  \(Int(debounceThreshold))s                                 ║
@@ -311,6 +322,7 @@ public class OxenDaemon {
 
         The daemon is now monitoring your creative projects.
         Auto-commits will be created after \(Int(debounceThreshold)) seconds of inactivity.
+        Offline operations will sync automatically when network returns.
 
         Press Ctrl+C to stop (emergency commits will be performed first)
 
@@ -325,7 +337,8 @@ public class OxenDaemon {
             "monitorCount": monitors.count,
             "debounceThreshold": debounceThreshold,
             "cliPath": cliPath,
-            "uptime": ProcessInfo.processInfo.systemUptime
+            "uptime": ProcessInfo.processInfo.systemUptime,
+            "network": networkMonitor.getStatistics()
         ]
     }
 }
@@ -395,6 +408,7 @@ extension OxenDaemon {
             • Auto-commits after 30 seconds of inactivity
             • Emergency commits before sleep/shutdown
             • Power management integration
+            • Network monitoring with auto-sync on reconnect
             • XPC communication for UI integration
             • Draft branch workflow
 

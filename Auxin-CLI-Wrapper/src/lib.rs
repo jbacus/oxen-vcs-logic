@@ -24,6 +24,7 @@ pub mod sketchup_metadata;
 pub mod blender_project;
 pub mod blender_metadata;
 pub mod bounce;
+pub mod chunked_upload;
 pub mod network_resilience;
 pub mod offline_queue;
 pub mod operation_history;
@@ -55,6 +56,10 @@ pub use sketchup_project::SketchUpProject;
 pub use blender_metadata::BlenderMetadata;
 pub use blender_project::BlenderProject;
 pub use bounce::{AudioFormat, BounceComparison, BounceFilter, BounceManager, BounceMetadata};
+pub use chunked_upload::{
+    ChunkedUploadManager, UploadConfig, UploadProgress, UploadResult, UploadSession,
+    UploadSessionInfo, UploadStatus,
+};
 pub use network_resilience::{
     check_network_availability, is_transient_error,
     NetworkResilienceManager, OperationData, OperationType, QueuedOperation,

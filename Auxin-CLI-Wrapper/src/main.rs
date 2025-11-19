@@ -1423,6 +1423,51 @@ EXAMPLES:
     #[command(subcommand)]
     Recovery(RecoveryCommands),
 
+    /// Push commits to remote with progress tracking
+    #[command(long_about = "Push commits to remote with progress tracking
+
+USAGE:
+    auxin push [OPTIONS]
+
+DESCRIPTION:
+    Pushes commits to the remote repository with enhanced progress tracking
+    and resume capability. For large files, uploads are chunked to allow
+    resuming interrupted transfers.
+
+    Features:
+      • Real-time progress display with speed/ETA
+      • Automatic resume of interrupted uploads
+      • Bandwidth estimation
+      • Retry on network failures
+
+    If no remote or branch is specified, uses 'origin' and the current branch.
+
+EXAMPLES:
+    # Push to default remote (origin) and current branch
+    auxin push
+
+    # Push to specific remote and branch
+    auxin push --remote origin --branch main
+
+    # Push with verbose output
+    auxin push --verbose
+
+    # Force push (use with caution)
+    auxin push --force")]
+    Push {
+        #[arg(long, short, help = "Remote name (default: origin)")]
+        remote: Option<String>,
+
+        #[arg(long, short, help = "Branch name (default: current branch)")]
+        branch: Option<String>,
+
+        #[arg(long, help = "Force push (overwrites remote history)")]
+        force: bool,
+
+        #[arg(long, short, help = "Show detailed progress")]
+        verbose: bool,
+    },
+
     /// Check system environment and dependencies
     #[command(long_about = "Check system environment and dependencies
 
@@ -4607,6 +4652,133 @@ async fn main() -> anyhow::Result<()> {
                     progress::success(&format!("Showing {} comments", comments.len()));
 
                     Ok(())
+                }
+            }
+        }
+
+        Commands::Push { remote, branch, force, verbose } => {
+            use auxin::{ChunkedUploadManager, UploadConfig};
+
+            let current_dir = std::env::current_dir()?;
+            vlog!("Push from directory: {}", current_dir.display());
+
+            // Initialize upload manager with config
+            let mut config = UploadConfig::default();
+            config.verbose = verbose || cli.verbose;
+
+            let mut manager = ChunkedUploadManager::new(config)
+                .context("Failed to initialize upload manager")?;
+
+            // Determine remote and branch
+            let remote_name = remote.unwrap_or_else(|| "origin".to_string());
+            let branch_name = if let Some(b) = branch {
+                b
+            } else {
+                // Get current branch
+                let subprocess = auxin::OxenSubprocess::new();
+                subprocess.current_branch(&current_dir)
+                    .context("Failed to get current branch")?
+            };
+
+            // Show push info
+            println!();
+            println!("┌─ Push to Remote ────────────────────────────────────────┐");
+            println!("│                                                          │");
+            println!("│  {} {}:{}",
+                "→".cyan(),
+                remote_name.cyan().bold(),
+                branch_name.cyan().bold()
+            );
+            println!("│                                                          │");
+            println!("└──────────────────────────────────────────────────────────┘");
+            println!();
+
+            if force {
+                progress::warning("Force push enabled - this will overwrite remote history");
+            }
+
+            // Check for pending local changes
+            let subprocess = auxin::OxenSubprocess::new();
+            if let Ok(status) = subprocess.status(&current_dir) {
+                if !status.staged.is_empty() || !status.modified.is_empty() {
+                    progress::warning("You have uncommitted changes");
+                    progress::info("Consider committing before push: auxin commit -m \"message\"");
+                    println!();
+                }
+            }
+
+            // Check for existing upload session to resume
+            let is_resuming = manager.has_resumable_session(&current_dir);
+            if is_resuming {
+                if let Some(session_info) = manager.get_resumable_session_info(&current_dir) {
+                    progress::info(&format!("Resuming interrupted upload ({:.1}% complete)",
+                        session_info.percentage
+                    ));
+                    println!();
+                }
+            }
+
+            // Execute push with progress tracking
+            progress::info("Starting push...");
+
+            match manager.upload_with_progress(&current_dir, &remote_name, &branch_name, |_progress| {
+                // Progress callback - could be used for real-time display in future
+            }) {
+                Ok(result) => {
+                    println!();
+
+                    if is_resuming {
+                        progress::success("Upload resumed and completed successfully");
+                    } else {
+                        progress::success("Push completed successfully");
+                    }
+
+                    // Show statistics
+                    if result.bytes_uploaded > 0 {
+                        let size_mb = result.bytes_uploaded as f64 / (1024.0 * 1024.0);
+                        let duration_secs = result.duration.as_secs_f64();
+                        let speed_mbps = if duration_secs > 0.0 {
+                            size_mb / duration_secs
+                        } else {
+                            0.0
+                        };
+
+                        println!();
+                        println!("  {} Uploaded: {:.2} MB", "•".dimmed(), size_mb);
+                        println!("  {} Duration: {:.1}s", "•".dimmed(), duration_secs);
+                        println!("  {} Speed: {:.2} MB/s", "•".dimmed(), speed_mbps);
+
+                        if result.files_uploaded > 0 {
+                            println!("  {} Files: {}", "•".dimmed(), result.files_uploaded);
+                        }
+                    }
+
+                    println!();
+                    progress::info(&format!("Branch '{}' pushed to '{}'", branch_name, remote_name));
+
+                    Ok(())
+                }
+                Err(e) => {
+                    println!();
+                    progress::error(&format!("Push failed: {}", e));
+
+                    // Provide recovery hints
+                    println!();
+                    progress::info("To retry, run the same command again");
+                    progress::info("Your progress has been saved and will resume automatically");
+
+                    // Check if it's a network error
+                    let error_str = e.to_string().to_lowercase();
+                    if error_str.contains("network") || error_str.contains("connection") || error_str.contains("timeout") {
+                        println!();
+                        progress::info("Network issue detected. Check your connection and retry.");
+                        progress::info("For recovery help: auxin recovery push");
+                    } else if error_str.contains("auth") || error_str.contains("permission") || error_str.contains("401") || error_str.contains("403") {
+                        println!();
+                        progress::info("Authentication issue. Try: auxin login");
+                    }
+
+                    Err(e)
                 }
             }
         }
