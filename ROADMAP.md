@@ -238,12 +238,13 @@ To get a working end-to-end solution for distributed teams:
 - [x] Status command shows pending sync count
 - [x] Manual sync trigger option (auxin queue sync)
 
-#### 6.3 Large File Handling (Week 2-3) ⏳ NOT STARTED
-- [ ] Chunked uploads with resume capability
-- [ ] Track upload progress per-file
-- [ ] Resume from last successful chunk on retry
-- [ ] Bandwidth estimation and ETA display
-- [ ] Abort and resume later option
+#### 6.3 Large File Handling (Week 2-3) 🚧 CORE COMPLETE
+- [x] Chunked uploads with resume capability (ChunkedUploadManager)
+- [x] Track upload progress per-file (FileUploadState)
+- [x] Resume from last successful chunk on retry (session persistence)
+- [x] Bandwidth estimation and ETA display (moving average)
+- [x] Abort and resume later option (abort/clear_session methods)
+- [ ] CLI integration with push command (needs workflow integration)
 
 #### 6.4 Lock Resilience (Week 3) ✅ COMPLETE
 - [x] Heartbeat system (configurable interval, default 10 min)
@@ -264,6 +265,7 @@ To get a working end-to-end solution for distributed teams:
 - `oxen_subprocess.rs` - Enhanced error classification (RateLimited, ServerError, DnsError, SslError, Conflict)
 - `network_resilience.rs` - Circuit breaker, adaptive retry, network health monitor
 - `remote_lock.rs` - Heartbeat system, lock health status
+- `chunked_upload.rs` - Chunked upload manager with progress tracking and resume
 
 **Remaining Effort**: 1-2 weeks (offline queue CLI integration, large file chunking)
 
