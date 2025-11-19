@@ -8,10 +8,34 @@
 
 use anyhow::{anyhow, Context, Result};
 use chrono::{DateTime, Utc};
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+
+/// Filter criteria for searching bounces
+#[derive(Debug, Default, Clone)]
+pub struct BounceFilter {
+    /// Filter by audio format
+    pub format: Option<AudioFormat>,
+    /// Filter by filename pattern (regex)
+    pub filename_pattern: Option<String>,
+    /// Filter by minimum duration (seconds)
+    pub min_duration: Option<f64>,
+    /// Filter by maximum duration (seconds)
+    pub max_duration: Option<f64>,
+    /// Filter by date range (after)
+    pub after: Option<DateTime<Utc>>,
+    /// Filter by date range (before)
+    pub before: Option<DateTime<Utc>>,
+    /// Filter by user who added
+    pub added_by: Option<String>,
+    /// Filter by minimum file size (bytes)
+    pub min_size: Option<u64>,
+    /// Filter by maximum file size (bytes)
+    pub max_size: Option<u64>,
+}
 
 /// Supported audio formats for bounces
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -322,6 +346,101 @@ impl BounceManager {
         Ok(bounces)
     }
 
+    /// Search bounces with filters
+    pub fn search_bounces(&self, filter: &BounceFilter) -> Result<Vec<BounceMetadata>> {
+        let all_bounces = self.list_bounces()?;
+
+        let filtered: Vec<BounceMetadata> = all_bounces
+            .into_iter()
+            .filter(|bounce| {
+                // Format filter
+                if let Some(format) = &filter.format {
+                    if bounce.format != *format {
+                        return false;
+                    }
+                }
+
+                // Filename pattern filter
+                if let Some(pattern) = &filter.filename_pattern {
+                    if let Ok(regex) = Regex::new(pattern) {
+                        if !regex.is_match(&bounce.original_filename) {
+                            return false;
+                        }
+                    }
+                }
+
+                // Duration filters
+                if let Some(min_dur) = filter.min_duration {
+                    if let Some(dur) = bounce.duration_secs {
+                        if dur < min_dur {
+                            return false;
+                        }
+                    } else {
+                        return false; // No duration means doesn't match min
+                    }
+                }
+
+                if let Some(max_dur) = filter.max_duration {
+                    if let Some(dur) = bounce.duration_secs {
+                        if dur > max_dur {
+                            return false;
+                        }
+                    }
+                }
+
+                // Date range filters
+                if let Some(after) = &filter.after {
+                    if bounce.added_at < *after {
+                        return false;
+                    }
+                }
+
+                if let Some(before) = &filter.before {
+                    if bounce.added_at > *before {
+                        return false;
+                    }
+                }
+
+                // User filter
+                if let Some(user) = &filter.added_by {
+                    if !bounce.added_by.to_lowercase().contains(&user.to_lowercase()) {
+                        return false;
+                    }
+                }
+
+                // Size filters
+                if let Some(min_size) = filter.min_size {
+                    if bounce.size_bytes < min_size {
+                        return false;
+                    }
+                }
+
+                if let Some(max_size) = filter.max_size {
+                    if bounce.size_bytes > max_size {
+                        return false;
+                    }
+                }
+
+                true
+            })
+            .collect();
+
+        Ok(filtered)
+    }
+
+    /// Compare two bounces by commit ID
+    pub fn compare_bounces(&self, commit_a: &str, commit_b: &str) -> Result<BounceComparison> {
+        let bounce_a = self.get_bounce(commit_a)?
+            .ok_or_else(|| anyhow!("No bounce found for commit {}", commit_a))?;
+        let bounce_b = self.get_bounce(commit_b)?
+            .ok_or_else(|| anyhow!("No bounce found for commit {}", commit_b))?;
+
+        Ok(BounceComparison {
+            bounce_a,
+            bounce_b,
+        })
+    }
+
     /// Play a bounce using the system audio player
     pub fn play_bounce(&self, commit_id: &str) -> Result<()> {
         let path = self.get_bounce_path(commit_id)?
@@ -414,6 +533,79 @@ struct AudioInfo {
     sample_rate: Option<u32>,
     bit_depth: Option<u16>,
     channels: Option<u8>,
+}
+
+/// Comparison between two bounces
+#[derive(Debug, Clone)]
+pub struct BounceComparison {
+    pub bounce_a: BounceMetadata,
+    pub bounce_b: BounceMetadata,
+}
+
+impl BounceComparison {
+    /// Get duration difference in seconds
+    pub fn duration_diff(&self) -> Option<f64> {
+        match (self.bounce_a.duration_secs, self.bounce_b.duration_secs) {
+            (Some(a), Some(b)) => Some(b - a),
+            _ => None,
+        }
+    }
+
+    /// Get size difference in bytes
+    pub fn size_diff(&self) -> i64 {
+        self.bounce_b.size_bytes as i64 - self.bounce_a.size_bytes as i64
+    }
+
+    /// Format comparison as a report
+    pub fn format_report(&self) -> String {
+        let mut report = String::new();
+
+        report.push_str(&format!("Bounce A: {} (commit {})\n",
+            self.bounce_a.original_filename,
+            &self.bounce_a.commit_id[..8.min(self.bounce_a.commit_id.len())]));
+        report.push_str(&format!("Bounce B: {} (commit {})\n\n",
+            self.bounce_b.original_filename,
+            &self.bounce_b.commit_id[..8.min(self.bounce_b.commit_id.len())]));
+
+        // Duration comparison
+        report.push_str("Duration:\n");
+        report.push_str(&format!("  A: {}\n", self.bounce_a.format_duration()));
+        report.push_str(&format!("  B: {}\n", self.bounce_b.format_duration()));
+        if let Some(diff) = self.duration_diff() {
+            let sign = if diff >= 0.0 { "+" } else { "" };
+            report.push_str(&format!("  Diff: {}{:.2}s\n", sign, diff));
+        }
+
+        // Size comparison
+        report.push_str("\nFile Size:\n");
+        report.push_str(&format!("  A: {}\n", self.bounce_a.format_size()));
+        report.push_str(&format!("  B: {}\n", self.bounce_b.format_size()));
+        let size_diff = self.size_diff();
+        let sign = if size_diff >= 0 { "+" } else { "" };
+        if size_diff.abs() >= 1_000_000 {
+            report.push_str(&format!("  Diff: {}{:.2} MB\n", sign, size_diff as f64 / 1_000_000.0));
+        } else if size_diff.abs() >= 1_000 {
+            report.push_str(&format!("  Diff: {}{:.1} KB\n", sign, size_diff as f64 / 1_000.0));
+        } else {
+            report.push_str(&format!("  Diff: {} bytes\n", size_diff));
+        }
+
+        // Format comparison
+        report.push_str("\nFormat:\n");
+        report.push_str(&format!("  A: {:?}\n", self.bounce_a.format));
+        report.push_str(&format!("  B: {:?}\n", self.bounce_b.format));
+
+        // Sample rate comparison
+        if self.bounce_a.sample_rate.is_some() || self.bounce_b.sample_rate.is_some() {
+            report.push_str("\nSample Rate:\n");
+            report.push_str(&format!("  A: {} Hz\n",
+                self.bounce_a.sample_rate.map(|s| s.to_string()).unwrap_or_else(|| "unknown".to_string())));
+            report.push_str(&format!("  B: {} Hz\n",
+                self.bounce_b.sample_rate.map(|s| s.to_string()).unwrap_or_else(|| "unknown".to_string())));
+        }
+
+        report
+    }
 }
 
 /// Get current user identifier

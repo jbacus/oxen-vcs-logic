@@ -510,6 +510,152 @@ EXAMPLES:
         #[arg(value_name = "COMMIT_ID", help = "Commit ID of the bounce to delete")]
         commit_id: String,
     },
+
+    /// Search and filter bounces
+    #[command(long_about = "Search and filter bounces
+
+USAGE:
+    auxin bounce search [OPTIONS]
+
+DESCRIPTION:
+    Search through bounces with various filters:
+      • Format (wav, mp3, flac, etc.)
+      • Filename pattern (regex)
+      • Duration range
+      • File size range
+      • Date range
+      • User who added
+
+EXAMPLES:
+    # Find all WAV bounces
+    auxin bounce search --format wav
+
+    # Find bounces longer than 3 minutes
+    auxin bounce search --min-duration 180
+
+    # Find bounces with 'mix' in the filename
+    auxin bounce search --pattern 'mix'
+
+    # Find bounces from last week
+    auxin bounce search --after 2024-01-01")]
+    Search {
+        #[arg(long, value_name = "FORMAT", help = "Filter by audio format (wav, mp3, flac, aiff, m4a)")]
+        format: Option<String>,
+
+        #[arg(long, value_name = "PATTERN", help = "Filter by filename pattern (regex)")]
+        pattern: Option<String>,
+
+        #[arg(long, value_name = "SECONDS", help = "Minimum duration in seconds")]
+        min_duration: Option<f64>,
+
+        #[arg(long, value_name = "SECONDS", help = "Maximum duration in seconds")]
+        max_duration: Option<f64>,
+
+        #[arg(long, value_name = "BYTES", help = "Minimum file size in bytes")]
+        min_size: Option<u64>,
+
+        #[arg(long, value_name = "BYTES", help = "Maximum file size in bytes")]
+        max_size: Option<u64>,
+
+        #[arg(long, value_name = "DATE", help = "Filter bounces added after this date (YYYY-MM-DD)")]
+        after: Option<String>,
+
+        #[arg(long, value_name = "DATE", help = "Filter bounces added before this date (YYYY-MM-DD)")]
+        before: Option<String>,
+
+        #[arg(long, value_name = "USER", help = "Filter by user who added the bounce")]
+        user: Option<String>,
+    },
+
+    /// Compare two bounces
+    #[command(long_about = "Compare two bounces
+
+USAGE:
+    auxin bounce compare <COMMIT_A> <COMMIT_B>
+
+DESCRIPTION:
+    Compares two bounces side-by-side, showing differences in:
+      • Duration
+      • File size
+      • Format
+      • Sample rate and bit depth
+
+    Useful for A/B testing different mixes or comparing project evolution.
+
+EXAMPLES:
+    # Compare two commits
+    auxin bounce compare abc123 def456")]
+    Compare {
+        #[arg(value_name = "COMMIT_A", help = "First commit ID")]
+        commit_a: String,
+
+        #[arg(value_name = "COMMIT_B", help = "Second commit ID")]
+        commit_b: String,
+    },
+
+    /// Add multiple bounce files at once
+    #[command(long_about = "Add multiple bounce files at once
+
+USAGE:
+    auxin bounce batch-add <FILES>... [--commit <ID>]
+
+DESCRIPTION:
+    Add multiple audio bounce files to commits. Each file can have its commit
+    ID inferred from the filename or specified explicitly.
+
+    If filenames match pattern 'commit_<id>_<name>.wav', the commit ID is
+    extracted automatically. Otherwise, files are added to the latest commit
+    or the specified commit.
+
+EXAMPLES:
+    # Add all bounces in a directory
+    auxin bounce batch-add Bounces/*.wav
+
+    # Add specific files
+    auxin bounce batch-add mix1.wav mix2.wav mix3.wav --commit abc123")]
+    BatchAdd {
+        #[arg(value_name = "FILES", required = true, num_args = 1..)]
+        files: Vec<PathBuf>,
+
+        #[arg(long, value_name = "ID", help = "Default commit ID for files without embedded ID")]
+        commit: Option<String>,
+    },
+
+    /// Delete multiple bounces at once
+    #[command(long_about = "Delete multiple bounces at once
+
+USAGE:
+    auxin bounce bulk-delete [OPTIONS]
+
+DESCRIPTION:
+    Delete bounces matching filter criteria. Use with caution as this
+    action cannot be undone.
+
+    At least one filter must be specified to prevent accidental deletion
+    of all bounces.
+
+EXAMPLES:
+    # Delete all MP3 bounces
+    auxin bounce bulk-delete --format mp3
+
+    # Delete bounces older than a date
+    auxin bounce bulk-delete --before 2024-01-01
+
+    # Delete bounces by user
+    auxin bounce bulk-delete --user olduser")]
+    BulkDelete {
+        #[arg(long, value_name = "FORMAT", help = "Delete bounces with this format")]
+        format: Option<String>,
+
+        #[arg(long, value_name = "DATE", help = "Delete bounces added before this date (YYYY-MM-DD)")]
+        before: Option<String>,
+
+        #[arg(long, value_name = "USER", help = "Delete bounces added by this user")]
+        user: Option<String>,
+
+        #[arg(long, help = "Force deletion without confirmation")]
+        force: bool,
+    },
 }
 
 #[derive(Subcommand)]
@@ -3373,6 +3519,242 @@ async fn main() -> anyhow::Result<()> {
                             anyhow::bail!("{}", e);
                         }
                     }
+                }
+
+                BounceCommands::Search {
+                    format,
+                    pattern,
+                    min_duration,
+                    max_duration,
+                    min_size,
+                    max_size,
+                    after,
+                    before,
+                    user,
+                } => {
+                    use auxin::BounceFilter;
+                    use chrono::NaiveDate;
+
+                    let pb = progress::spinner("Searching bounces...");
+
+                    // Build filter
+                    let mut filter = BounceFilter::default();
+
+                    if let Some(fmt) = format {
+                        filter.format = auxin::AudioFormat::from_extension(&fmt);
+                        if filter.format.is_none() {
+                            progress::finish_error(&pb, "Invalid format");
+                            anyhow::bail!("Unknown audio format: {}", fmt);
+                        }
+                    }
+
+                    filter.filename_pattern = pattern;
+                    filter.min_duration = min_duration;
+                    filter.max_duration = max_duration;
+                    filter.min_size = min_size;
+                    filter.max_size = max_size;
+                    filter.added_by = user;
+
+                    // Parse date filters
+                    if let Some(after_str) = after {
+                        match NaiveDate::parse_from_str(&after_str, "%Y-%m-%d") {
+                            Ok(date) => {
+                                filter.after = Some(date.and_hms_opt(0, 0, 0).unwrap().and_utc());
+                            }
+                            Err(_) => {
+                                progress::finish_error(&pb, "Invalid date");
+                                anyhow::bail!("Invalid date format: {}. Use YYYY-MM-DD", after_str);
+                            }
+                        }
+                    }
+
+                    if let Some(before_str) = before {
+                        match NaiveDate::parse_from_str(&before_str, "%Y-%m-%d") {
+                            Ok(date) => {
+                                filter.before = Some(date.and_hms_opt(23, 59, 59).unwrap().and_utc());
+                            }
+                            Err(_) => {
+                                progress::finish_error(&pb, "Invalid date");
+                                anyhow::bail!("Invalid date format: {}. Use YYYY-MM-DD", before_str);
+                            }
+                        }
+                    }
+
+                    match manager.search_bounces(&filter) {
+                        Ok(bounces) => {
+                            progress::finish_success(&pb, &format!("Found {} bounces", bounces.len()));
+
+                            if bounces.is_empty() {
+                                println!("No bounces match the filter criteria");
+                            } else {
+                                for bounce in bounces {
+                                    println!("\n{}", "─".repeat(50).dimmed());
+                                    println!("{}: {}", "Commit".cyan(), &bounce.commit_id[..8.min(bounce.commit_id.len())]);
+                                    println!("{}: {}", "File".cyan(), bounce.original_filename);
+                                    println!("{}: {:?} | {} | {}",
+                                        "Info".cyan(),
+                                        bounce.format,
+                                        bounce.format_duration(),
+                                        bounce.format_size());
+                                    println!("{}: {}", "Added".cyan(), bounce.added_at.format("%Y-%m-%d %H:%M"));
+                                    if let Some(desc) = &bounce.description {
+                                        println!("{}: {}", "Description".cyan(), desc);
+                                    }
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            progress::finish_error(&pb, "Search failed");
+                            anyhow::bail!("{}", e);
+                        }
+                    }
+                }
+
+                BounceCommands::Compare { commit_a, commit_b } => {
+                    let pb = progress::spinner(&format!(
+                        "Comparing {} and {}...",
+                        &commit_a[..8.min(commit_a.len())],
+                        &commit_b[..8.min(commit_b.len())]
+                    ));
+
+                    match manager.compare_bounces(&commit_a, &commit_b) {
+                        Ok(comparison) => {
+                            progress::finish_success(&pb, "Comparison complete");
+                            println!("\n{}", comparison.format_report());
+                        }
+                        Err(e) => {
+                            progress::finish_error(&pb, "Comparison failed");
+                            anyhow::bail!("{}", e);
+                        }
+                    }
+                }
+
+                BounceCommands::BatchAdd { files, commit } => {
+                    let pb = progress::spinner(&format!("Adding {} bounce files...", files.len()));
+
+                    // Get latest commit if no default commit specified
+                    let default_commit = if let Some(c) = commit {
+                        c
+                    } else {
+                        let subprocess = auxin::OxenSubprocess::new();
+                        match subprocess.log(&current_dir, Some(1)) {
+                            Ok(commits) if !commits.is_empty() => commits[0].id.clone(),
+                            _ => {
+                                progress::finish_error(&pb, "No commits found");
+                                anyhow::bail!("No commits found. Please specify --commit or create a commit first.");
+                            }
+                        }
+                    };
+
+                    let mut success_count = 0;
+                    let mut error_count = 0;
+
+                    for file in &files {
+                        // Try to extract commit ID from filename (pattern: commit_<id>_name.ext)
+                        let commit_id = if let Some(filename) = file.file_name().and_then(|n| n.to_str()) {
+                            if filename.starts_with("commit_") {
+                                let parts: Vec<&str> = filename.splitn(3, '_').collect();
+                                if parts.len() >= 2 {
+                                    parts[1].to_string()
+                                } else {
+                                    default_commit.clone()
+                                }
+                            } else {
+                                default_commit.clone()
+                            }
+                        } else {
+                            default_commit.clone()
+                        };
+
+                        match manager.add_bounce(&commit_id, file, None) {
+                            Ok(_) => {
+                                success_count += 1;
+                            }
+                            Err(e) => {
+                                error_count += 1;
+                                eprintln!("{}: {}", file.display(), e);
+                            }
+                        }
+                    }
+
+                    if error_count == 0 {
+                        progress::finish_success(&pb, &format!("Added {} bounces", success_count));
+                    } else {
+                        progress::finish_error(&pb, &format!("{} added, {} failed", success_count, error_count));
+                    }
+                }
+
+                BounceCommands::BulkDelete { format, before, user, force } => {
+                    use auxin::BounceFilter;
+                    use chrono::NaiveDate;
+
+                    // Require at least one filter
+                    if format.is_none() && before.is_none() && user.is_none() {
+                        anyhow::bail!("At least one filter (--format, --before, or --user) must be specified");
+                    }
+
+                    let pb = progress::spinner("Finding bounces to delete...");
+
+                    // Build filter
+                    let mut filter = BounceFilter::default();
+
+                    if let Some(fmt) = &format {
+                        filter.format = auxin::AudioFormat::from_extension(fmt);
+                    }
+
+                    if let Some(before_str) = &before {
+                        match NaiveDate::parse_from_str(before_str, "%Y-%m-%d") {
+                            Ok(date) => {
+                                filter.before = Some(date.and_hms_opt(23, 59, 59).unwrap().and_utc());
+                            }
+                            Err(_) => {
+                                progress::finish_error(&pb, "Invalid date");
+                                anyhow::bail!("Invalid date format: {}. Use YYYY-MM-DD", before_str);
+                            }
+                        }
+                    }
+
+                    filter.added_by = user.clone();
+
+                    // Find matching bounces
+                    let bounces = match manager.search_bounces(&filter) {
+                        Ok(b) => b,
+                        Err(e) => {
+                            progress::finish_error(&pb, "Search failed");
+                            anyhow::bail!("{}", e);
+                        }
+                    };
+
+                    if bounces.is_empty() {
+                        progress::finish_success(&pb, "No matching bounces found");
+                        return Ok(());
+                    }
+
+                    progress::finish_success(&pb, &format!("Found {} bounces", bounces.len()));
+
+                    // Confirm deletion
+                    if !force {
+                        println!("\n{} bounces will be deleted:", bounces.len());
+                        for bounce in &bounces {
+                            println!("  • {} ({})", bounce.original_filename, &bounce.commit_id[..8.min(bounce.commit_id.len())]);
+                        }
+                        println!("\nUse --force to delete without confirmation.");
+                        return Ok(());
+                    }
+
+                    // Delete bounces
+                    let pb = progress::spinner(&format!("Deleting {} bounces...", bounces.len()));
+                    let mut deleted = 0;
+
+                    for bounce in &bounces {
+                        if let Err(e) = manager.delete_bounce(&bounce.commit_id) {
+                            eprintln!("Failed to delete {}: {}", bounce.commit_id, e);
+                        } else {
+                            deleted += 1;
+                        }
+                    }
+
+                    progress::finish_success(&pb, &format!("Deleted {} bounces", deleted));
                 }
             }
 

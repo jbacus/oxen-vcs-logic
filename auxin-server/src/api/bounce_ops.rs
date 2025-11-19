@@ -81,6 +81,25 @@ pub struct BounceUploadRequest {
     pub description: Option<String>,
 }
 
+/// Bounce query parameters for filtering
+#[derive(Debug, Deserialize)]
+pub struct BounceQuery {
+    /// Filter by audio format
+    pub format: Option<String>,
+    /// Filter by filename pattern
+    pub pattern: Option<String>,
+    /// Minimum duration in seconds
+    pub min_duration: Option<f64>,
+    /// Maximum duration in seconds
+    pub max_duration: Option<f64>,
+    /// Minimum size in bytes
+    pub min_size: Option<u64>,
+    /// Maximum size in bytes
+    pub max_size: Option<u64>,
+    /// Filter by user
+    pub user: Option<String>,
+}
+
 /// Get bounces directory for a repository
 fn get_bounces_dir(config: &Config, namespace: &str, repo_name: &str) -> PathBuf {
     PathBuf::from(&config.sync_dir)
@@ -90,10 +109,11 @@ fn get_bounces_dir(config: &Config, namespace: &str, repo_name: &str) -> PathBuf
         .join("bounces")
 }
 
-/// List all bounces for a repository
+/// List all bounces for a repository with optional filtering
 pub async fn list_bounces(
     config: web::Data<Config>,
     path: web::Path<(String, String)>,
+    query: web::Query<BounceQuery>,
 ) -> AppResult<HttpResponse> {
     let (namespace, repo_name) = path.into_inner();
     info!("Listing bounces for {}/{}", namespace, repo_name);
@@ -119,11 +139,81 @@ pub async fn list_bounces(
         }
     }
 
-    // Sort by added date (newest first)
-    bounces.sort_by(|a, b| b.added_at.cmp(&a.added_at));
+    // Apply filters
+    let filtered: Vec<BounceMetadata> = bounces
+        .into_iter()
+        .filter(|bounce| {
+            // Format filter
+            if let Some(fmt) = &query.format {
+                let format_matches = match fmt.to_lowercase().as_str() {
+                    "wav" => matches!(bounce.format, AudioFormat::Wav),
+                    "aiff" | "aif" => matches!(bounce.format, AudioFormat::Aiff),
+                    "mp3" => matches!(bounce.format, AudioFormat::Mp3),
+                    "flac" => matches!(bounce.format, AudioFormat::Flac),
+                    "m4a" => matches!(bounce.format, AudioFormat::M4a),
+                    _ => true,
+                };
+                if !format_matches {
+                    return false;
+                }
+            }
 
-    info!("Found {} bounces", bounces.len());
-    Ok(HttpResponse::Ok().json(bounces))
+            // Filename pattern filter
+            if let Some(pattern) = &query.pattern {
+                if !bounce.original_filename.to_lowercase().contains(&pattern.to_lowercase()) {
+                    return false;
+                }
+            }
+
+            // Duration filters
+            if let Some(min_dur) = query.min_duration {
+                if let Some(dur) = bounce.duration_secs {
+                    if dur < min_dur {
+                        return false;
+                    }
+                } else {
+                    return false;
+                }
+            }
+
+            if let Some(max_dur) = query.max_duration {
+                if let Some(dur) = bounce.duration_secs {
+                    if dur > max_dur {
+                        return false;
+                    }
+                }
+            }
+
+            // Size filters
+            if let Some(min_size) = query.min_size {
+                if bounce.size_bytes < min_size {
+                    return false;
+                }
+            }
+
+            if let Some(max_size) = query.max_size {
+                if bounce.size_bytes > max_size {
+                    return false;
+                }
+            }
+
+            // User filter
+            if let Some(user) = &query.user {
+                if !bounce.added_by.to_lowercase().contains(&user.to_lowercase()) {
+                    return false;
+                }
+            }
+
+            true
+        })
+        .collect();
+
+    // Sort by added date (newest first)
+    let mut result = filtered;
+    result.sort_by(|a, b| b.added_at.cmp(&a.added_at));
+
+    info!("Found {} bounces (filtered from query)", result.len());
+    Ok(HttpResponse::Ok().json(result))
 }
 
 /// Get bounce metadata for a specific commit

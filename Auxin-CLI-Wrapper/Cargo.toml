@@ -27,6 +27,7 @@ wait-timeout = "0.2"    # Timeout handling for subprocess commands
 hostname = "0.3"
 dirs = "5.0"
 whoami = "1.4"
+regex = "1.10"
 
 # HTTP client for server integration
 # Using ureq for simplicity with blocking HTTP

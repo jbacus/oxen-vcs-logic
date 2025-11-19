@@ -54,7 +54,7 @@ pub use sketchup_metadata::SketchUpMetadata;
 pub use sketchup_project::SketchUpProject;
 pub use blender_metadata::BlenderMetadata;
 pub use blender_project::BlenderProject;
-pub use bounce::{AudioFormat, BounceManager, BounceMetadata};
+pub use bounce::{AudioFormat, BounceComparison, BounceFilter, BounceManager, BounceMetadata};
 pub use network_resilience::{
     check_network_availability, is_transient_error,
     NetworkResilienceManager, OperationData, OperationType, QueuedOperation,
