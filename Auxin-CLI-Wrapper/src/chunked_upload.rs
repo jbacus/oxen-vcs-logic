@@ -43,7 +43,7 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 use uuid::Uuid;
 
-use crate::oxen_subprocess::OxenSubprocess;
+use crate::oxen_backend::{BackendType, OxenBackend, create_backend};
 
 // Suppress unused import warning for Colorize (used by macros)
 #[allow(unused_imports)]
@@ -71,6 +71,8 @@ pub struct UploadConfig {
     pub max_retries: u32,
     /// Enable verbose logging
     pub verbose: bool,
+    /// Backend type (Subprocess or FFI)
+    pub backend_type: BackendType,
 }
 
 impl Default for UploadConfig {
@@ -82,6 +84,17 @@ impl Default for UploadConfig {
             state_dir: home.join(DEFAULT_STATE_DIR),
             max_retries: 3,
             verbose: false,
+            backend_type: BackendType::default(),
+        }
+    }
+}
+
+impl UploadConfig {
+    /// Create config with FFI backend (faster, requires ffi feature)
+    pub fn with_ffi_backend() -> Self {
+        Self {
+            backend_type: BackendType::FFI,
+            ..Default::default()
         }
     }
 }
@@ -276,8 +289,8 @@ pub struct ChunkedUploadManager {
     config: UploadConfig,
     /// Current session (if any)
     current_session: Option<UploadSession>,
-    /// Oxen subprocess wrapper
-    oxen: OxenSubprocess,
+    /// Oxen backend (Subprocess or FFI)
+    backend: Box<dyn OxenBackend>,
 }
 
 impl ChunkedUploadManager {
@@ -289,16 +302,26 @@ impl ChunkedUploadManager {
                 .context("Failed to create upload state directory")?;
         }
 
+        // Create the appropriate backend
+        let backend = create_backend(config.backend_type)
+            .context("Failed to create Oxen backend")?;
+
         Ok(Self {
             config,
             current_session: None,
-            oxen: OxenSubprocess::new(),
+            backend,
         })
     }
 
-    /// Create with default configuration
+    /// Create with default configuration (Subprocess backend)
     pub fn with_defaults() -> Result<Self> {
         Self::new(UploadConfig::default())
+    }
+
+    /// Create with FFI backend for better performance
+    #[cfg(feature = "ffi")]
+    pub fn with_ffi() -> Result<Self> {
+        Self::new(UploadConfig::with_ffi_backend())
     }
 
     /// Get or create an upload session for a repository
@@ -429,9 +452,10 @@ impl ChunkedUploadManager {
         let start_bytes = self.current_session.as_ref().map(|s| s.bytes_uploaded).unwrap_or(0);
 
         // Execute the actual push
-        crate::info!("Starting upload to {}/{}", remote, branch);
+        crate::info!("Starting upload to {}/{} using {} backend",
+            remote, branch, self.backend.name());
 
-        let push_result = self.oxen.push(repo_path, Some(remote), Some(branch));
+        let push_result = self.backend.push(repo_path, Some(remote), Some(branch));
 
         // Calculate bandwidth
         let elapsed = start_time.elapsed();
