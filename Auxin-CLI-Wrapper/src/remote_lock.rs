@@ -786,6 +786,276 @@ fn sanitize_filename(name: &str) -> String {
         .collect()
 }
 
+// ========== Heartbeat Manager ==========
+
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+
+/// Configuration for the heartbeat system
+#[derive(Debug, Clone)]
+pub struct HeartbeatConfig {
+    /// Interval between heartbeats in seconds (default: 600 = 10 minutes)
+    pub interval_secs: u64,
+    /// Additional hours to extend lock on each heartbeat (default: 4)
+    pub renewal_hours: u32,
+    /// Warning threshold before expiry in minutes (default: 30)
+    pub warning_threshold_minutes: i64,
+    /// Enable verbose logging
+    pub verbose: bool,
+}
+
+impl Default for HeartbeatConfig {
+    fn default() -> Self {
+        Self {
+            interval_secs: std::env::var("AUXIN_HEARTBEAT_INTERVAL")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(600), // 10 minutes
+            renewal_hours: std::env::var("AUXIN_HEARTBEAT_RENEWAL_HOURS")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(4),
+            warning_threshold_minutes: std::env::var("AUXIN_HEARTBEAT_WARNING_MINUTES")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(30),
+            verbose: false,
+        }
+    }
+}
+
+/// Manager for automatic lock heartbeats
+///
+/// Spawns a background thread that periodically renews locks to keep them alive.
+/// This prevents locks from expiring during long work sessions.
+pub struct HeartbeatManager {
+    /// Active heartbeat handles
+    active: Arc<AtomicBool>,
+    /// Configuration
+    config: HeartbeatConfig,
+}
+
+impl HeartbeatManager {
+    /// Create a new heartbeat manager
+    pub fn new() -> Self {
+        Self {
+            active: Arc::new(AtomicBool::new(false)),
+            config: HeartbeatConfig::default(),
+        }
+    }
+
+    /// Create with custom configuration
+    pub fn with_config(config: HeartbeatConfig) -> Self {
+        Self {
+            active: Arc::new(AtomicBool::new(false)),
+            config,
+        }
+    }
+
+    /// Start heartbeat for a lock
+    ///
+    /// Returns a handle that stops the heartbeat when dropped.
+    pub fn start(
+        &self,
+        repo_path: PathBuf,
+        lock_id: String,
+    ) -> HeartbeatHandle {
+        let active = Arc::clone(&self.active);
+        active.store(true, Ordering::SeqCst);
+
+        let config = self.config.clone();
+        let stop_flag = Arc::new(AtomicBool::new(false));
+        let stop_flag_clone = Arc::clone(&stop_flag);
+        let lock_id_clone = lock_id.clone();
+
+        let handle = std::thread::spawn(move || {
+            let manager = RemoteLockManager::new();
+            let interval = StdDuration::from_secs(config.interval_secs);
+
+            crate::vlog!(
+                "Heartbeat started for lock {} (interval: {}s)",
+                lock_id_clone,
+                config.interval_secs
+            );
+
+            loop {
+                // Check if we should stop
+                if stop_flag_clone.load(Ordering::SeqCst) {
+                    crate::vlog!("Heartbeat stopped for lock {}", lock_id_clone);
+                    break;
+                }
+
+                // Sleep for the interval (check stop flag periodically)
+                let check_interval = StdDuration::from_secs(5);
+                let mut elapsed = StdDuration::ZERO;
+                while elapsed < interval {
+                    if stop_flag_clone.load(Ordering::SeqCst) {
+                        crate::vlog!("Heartbeat stopped for lock {}", lock_id_clone);
+                        return;
+                    }
+                    thread::sleep(check_interval);
+                    elapsed += check_interval;
+                }
+
+                // Renew the lock
+                match manager.renew_lock(&repo_path, &lock_id_clone, config.renewal_hours) {
+                    Ok(lock) => {
+                        if config.verbose {
+                            crate::info!(
+                                "Heartbeat: Lock {} renewed (expires: {})",
+                                lock_id_clone,
+                                lock.expires_at.format("%H:%M:%S UTC")
+                            );
+                        }
+
+                        // Check for expiring soon warning
+                        if lock.is_expiring_soon(config.warning_threshold_minutes) {
+                            crate::info!(
+                                "{}",
+                                format!(
+                                    "Warning: Lock {} expiring in {} minutes",
+                                    lock_id_clone,
+                                    lock.minutes_until_expiry()
+                                ).yellow()
+                            );
+                        }
+                    }
+                    Err(e) => {
+                        crate::error!("Heartbeat failed for lock {}: {}", lock_id_clone, e);
+                        // Don't stop on error - keep trying
+                    }
+                }
+            }
+        });
+
+        HeartbeatHandle {
+            stop_flag,
+            handle: Some(handle),
+            lock_id,
+        }
+    }
+
+    /// Check if any heartbeat is currently active
+    pub fn is_active(&self) -> bool {
+        self.active.load(Ordering::SeqCst)
+    }
+}
+
+impl Default for HeartbeatManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Handle to a running heartbeat
+///
+/// When dropped, the heartbeat is stopped automatically.
+pub struct HeartbeatHandle {
+    stop_flag: Arc<AtomicBool>,
+    handle: Option<std::thread::JoinHandle<()>>,
+    lock_id: String,
+}
+
+impl HeartbeatHandle {
+    /// Stop the heartbeat
+    pub fn stop(&mut self) {
+        self.stop_flag.store(true, Ordering::SeqCst);
+        if let Some(handle) = self.handle.take() {
+            let _ = handle.join();
+        }
+        crate::vlog!("Heartbeat handle stopped for lock {}", self.lock_id);
+    }
+
+    /// Check if heartbeat is running
+    pub fn is_running(&self) -> bool {
+        !self.stop_flag.load(Ordering::SeqCst)
+    }
+
+    /// Get the lock ID this heartbeat is for
+    pub fn lock_id(&self) -> &str {
+        &self.lock_id
+    }
+}
+
+impl Drop for HeartbeatHandle {
+    fn drop(&mut self) {
+        self.stop();
+    }
+}
+
+/// Summary of lock health status
+#[derive(Debug, Clone)]
+pub struct LockHealthStatus {
+    /// Lock ID
+    pub lock_id: String,
+    /// Whether the lock is healthy (not expired/stale)
+    pub healthy: bool,
+    /// Minutes until expiration
+    pub minutes_until_expiry: i64,
+    /// Last heartbeat timestamp
+    pub last_heartbeat: DateTime<Utc>,
+    /// Whether the lock is being maintained by heartbeat
+    pub heartbeat_active: bool,
+    /// Status message
+    pub message: String,
+}
+
+impl RemoteLockManager {
+    /// Get health status of a lock
+    pub fn get_lock_health(&self, repo_path: &Path) -> Result<Option<LockHealthStatus>> {
+        match self.get_lock(repo_path)? {
+            Some(lock) => {
+                let minutes = lock.minutes_until_expiry();
+                let healthy = !lock.is_expired() && !lock.is_stale();
+
+                let message = if lock.is_expired() {
+                    "Lock has expired".to_string()
+                } else if lock.is_stale() {
+                    format!("Lock is stale (no heartbeat since {})",
+                        lock.last_heartbeat.format("%Y-%m-%d %H:%M UTC"))
+                } else if minutes < 30 {
+                    format!("Lock expiring soon ({} minutes remaining)", minutes)
+                } else {
+                    format!("Lock healthy ({} minutes remaining)", minutes)
+                };
+
+                Ok(Some(LockHealthStatus {
+                    lock_id: lock.lock_id,
+                    healthy,
+                    minutes_until_expiry: minutes,
+                    last_heartbeat: lock.last_heartbeat,
+                    heartbeat_active: false, // Would need to track this separately
+                    message,
+                }))
+            }
+            None => Ok(None),
+        }
+    }
+
+    /// Send a single heartbeat (update lock without full renewal)
+    pub fn send_heartbeat(&self, repo_path: &Path, lock_id: &str) -> Result<RemoteLock> {
+        crate::vlog!("Sending heartbeat for lock: {}", lock_id);
+
+        // Use the existing renew_lock method with a small extension
+        self.renew_lock(repo_path, lock_id, 4)
+    }
+
+    /// Check if a lock needs heartbeat attention
+    pub fn needs_heartbeat(&self, repo_path: &Path, threshold_minutes: i64) -> Result<bool> {
+        match self.get_lock(repo_path)? {
+            Some(lock) => {
+                // Check if owned by current user and expiring soon
+                if lock.is_owned_by_current_user() && lock.is_expiring_soon(threshold_minutes) {
+                    Ok(true)
+                } else {
+                    Ok(false)
+                }
+            }
+            None => Ok(false),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

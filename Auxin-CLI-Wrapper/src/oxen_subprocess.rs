@@ -48,8 +48,31 @@ pub enum OxenError {
     NotInstalled,
     /// Authentication error
     AuthenticationError(String),
+    /// Rate limited (HTTP 429) - retry with longer backoff
+    RateLimited(String),
+    /// Server error (5xx) - retry-able
+    ServerError(String),
+    /// DNS resolution failure - retry-able
+    DnsError(String),
+    /// SSL/TLS certificate error - not retry-able
+    SslError(String),
+    /// Conflict error (e.g., merge conflicts, lock conflicts)
+    Conflict(String),
     /// Other unclassified error
     Other(String),
+}
+
+/// Retry strategy hint for different error types
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RetryStrategy {
+    /// Retry immediately (transient network blip)
+    Immediate,
+    /// Exponential backoff (typical network/server issues)
+    Exponential,
+    /// Linear backoff with longer delays (rate limiting)
+    Linear,
+    /// Do not retry (permanent failure)
+    NoRetry,
 }
 
 impl std::fmt::Display for OxenError {
@@ -62,6 +85,11 @@ impl std::fmt::Display for OxenError {
             OxenError::Timeout(msg) => write!(f, "Timeout: {}", msg),
             OxenError::NotInstalled => write!(f, "Oxen CLI not installed"),
             OxenError::AuthenticationError(msg) => write!(f, "Authentication error: {}", msg),
+            OxenError::RateLimited(msg) => write!(f, "Rate limited: {}", msg),
+            OxenError::ServerError(msg) => write!(f, "Server error: {}", msg),
+            OxenError::DnsError(msg) => write!(f, "DNS resolution error: {}", msg),
+            OxenError::SslError(msg) => write!(f, "SSL/TLS error: {}", msg),
+            OxenError::Conflict(msg) => write!(f, "Conflict: {}", msg),
             OxenError::Other(msg) => write!(f, "{}", msg),
         }
     }
@@ -72,61 +100,178 @@ impl std::error::Error for OxenError {}
 impl OxenError {
     /// Check if this error is retry-able
     pub fn is_retryable(&self) -> bool {
-        matches!(self, OxenError::NetworkError(_) | OxenError::Timeout(_))
+        matches!(
+            self,
+            OxenError::NetworkError(_)
+                | OxenError::Timeout(_)
+                | OxenError::RateLimited(_)
+                | OxenError::ServerError(_)
+                | OxenError::DnsError(_)
+        )
+    }
+
+    /// Get the recommended retry strategy for this error type
+    pub fn retry_strategy(&self) -> RetryStrategy {
+        match self {
+            OxenError::NetworkError(_) => RetryStrategy::Exponential,
+            OxenError::Timeout(_) => RetryStrategy::Exponential,
+            OxenError::RateLimited(_) => RetryStrategy::Linear, // Longer, predictable delays
+            OxenError::ServerError(_) => RetryStrategy::Exponential,
+            OxenError::DnsError(_) => RetryStrategy::Exponential,
+            // Non-retryable errors
+            OxenError::NotFound(_)
+            | OxenError::PermissionDenied(_)
+            | OxenError::InvalidRepository(_)
+            | OxenError::NotInstalled
+            | OxenError::AuthenticationError(_)
+            | OxenError::SslError(_)
+            | OxenError::Conflict(_)
+            | OxenError::Other(_) => RetryStrategy::NoRetry,
+        }
+    }
+
+    /// Get a user-friendly suggestion for how to resolve this error
+    pub fn suggestion(&self) -> &'static str {
+        match self {
+            OxenError::NotFound(_) => "Check that the resource exists and the name is correct.",
+            OxenError::NetworkError(_) => "Check your internet connection and try again.",
+            OxenError::PermissionDenied(_) => "Verify you have the required permissions.",
+            OxenError::InvalidRepository(_) => "Run 'auxin init' to initialize a repository.",
+            OxenError::Timeout(_) => "The operation timed out. Try again or increase timeout.",
+            OxenError::NotInstalled => "Install Oxen CLI: pip install oxen-ai",
+            OxenError::AuthenticationError(_) => "Run 'auxin auth login' to authenticate.",
+            OxenError::RateLimited(_) => "Too many requests. Wait a moment and try again.",
+            OxenError::ServerError(_) => "Server error. Try again in a few minutes.",
+            OxenError::DnsError(_) => "Cannot resolve server address. Check your DNS settings.",
+            OxenError::SslError(_) => "SSL certificate error. Check your system certificates.",
+            OxenError::Conflict(_) => "Resource conflict. Check lock status or merge state.",
+            OxenError::Other(_) => "An unexpected error occurred.",
+        }
     }
 
     /// Classify error from output text
     fn classify(stdout: &str, stderr: &str) -> Option<Self> {
         let stdout_lower = stdout.to_lowercase();
         let stderr_lower = stderr.to_lowercase();
+        let combined_lower = format!("{} {}", stdout_lower, stderr_lower);
 
-        // Check for specific error patterns
+        // Helper to get error message
+        let get_msg = || -> String {
+            let msg = if !stderr.trim().is_empty() {
+                stderr.trim()
+            } else {
+                stdout.trim()
+            };
+            msg.chars().take(200).collect()
+        };
+
+        // Rate limiting (HTTP 429) - check first as it's specific
+        if combined_lower.contains("429")
+            || combined_lower.contains("rate limit")
+            || combined_lower.contains("too many requests")
+            || combined_lower.contains("throttled")
+        {
+            return Some(OxenError::RateLimited(get_msg()));
+        }
+
+        // Server errors (5xx)
+        if combined_lower.contains("500")
+            || combined_lower.contains("502")
+            || combined_lower.contains("503")
+            || combined_lower.contains("504")
+            || combined_lower.contains("internal server error")
+            || combined_lower.contains("bad gateway")
+            || combined_lower.contains("service unavailable")
+            || combined_lower.contains("gateway timeout")
+        {
+            return Some(OxenError::ServerError(get_msg()));
+        }
+
+        // DNS resolution errors
+        if combined_lower.contains("could not resolve host")
+            || combined_lower.contains("name resolution")
+            || combined_lower.contains("dns")
+            || combined_lower.contains("getaddrinfo")
+            || combined_lower.contains("no such host")
+            || combined_lower.contains("nodename nor servname")
+        {
+            return Some(OxenError::DnsError(get_msg()));
+        }
+
+        // SSL/TLS errors
+        if combined_lower.contains("ssl")
+            || combined_lower.contains("tls")
+            || combined_lower.contains("certificate")
+            || combined_lower.contains("handshake")
+            || combined_lower.contains("secure connection")
+        {
+            return Some(OxenError::SslError(get_msg()));
+        }
+
+        // Conflict errors
+        if combined_lower.contains("conflict")
+            || combined_lower.contains("already locked")
+            || combined_lower.contains("merge conflict")
+            || combined_lower.contains("cannot merge")
+        {
+            return Some(OxenError::Conflict(get_msg()));
+        }
+
+        // Check for specific error patterns - Not Found
         if stdout_lower.contains("revision not found")
             || stdout_lower.contains("branch not found")
             || stdout_lower.contains("file not found")
             || stderr_lower.contains("not found")
+            || combined_lower.contains("404")
+            || combined_lower.contains("does not exist")
         {
-            return Some(OxenError::NotFound(
-                stderr.trim().to_string().chars().take(200).collect(),
-            ));
+            return Some(OxenError::NotFound(get_msg()));
         }
 
+        // Network errors (general)
         if stderr_lower.contains("connection refused")
-            || stderr_lower.contains("network")
+            || stderr_lower.contains("connection reset")
+            || stderr_lower.contains("broken pipe")
+            || stderr_lower.contains("network unreachable")
+            || stderr_lower.contains("host unreachable")
+            || stderr_lower.contains("no route to host")
             || stderr_lower.contains("timeout")
-            || stderr_lower.contains("could not resolve")
+            || stderr_lower.contains("timed out")
             || stderr_lower.contains("failed to connect")
+            || stderr_lower.contains("connection closed")
+            || stderr_lower.contains("eof")
+            || combined_lower.contains("network")
         {
-            return Some(OxenError::NetworkError(
-                stderr.trim().to_string().chars().take(200).collect(),
-            ));
+            return Some(OxenError::NetworkError(get_msg()));
         }
 
+        // Permission denied
         if stderr_lower.contains("permission denied")
             || stderr_lower.contains("access denied")
-            || stderr_lower.contains("forbidden")
+            || combined_lower.contains("403")
+            || combined_lower.contains("forbidden")
         {
-            return Some(OxenError::PermissionDenied(
-                stderr.trim().to_string().chars().take(200).collect(),
-            ));
+            return Some(OxenError::PermissionDenied(get_msg()));
         }
 
+        // Invalid repository
         if stderr_lower.contains("not a valid oxen repository")
             || stderr_lower.contains("not an oxen repository")
             || stdout_lower.contains("not a valid oxen repository")
+            || combined_lower.contains("not initialized")
         {
-            return Some(OxenError::InvalidRepository(
-                stderr.trim().to_string().chars().take(200).collect(),
-            ));
+            return Some(OxenError::InvalidRepository(get_msg()));
         }
 
+        // Authentication errors
         if stderr_lower.contains("authentication")
             || stderr_lower.contains("unauthorized")
             || stderr_lower.contains("invalid credentials")
+            || stderr_lower.contains("auth failed")
+            || combined_lower.contains("401")
+            || combined_lower.contains("login required")
         {
-            return Some(OxenError::AuthenticationError(
-                stderr.trim().to_string().chars().take(200).collect(),
-            ));
+            return Some(OxenError::AuthenticationError(get_msg()));
         }
 
         // Check for general error indicators
@@ -137,12 +282,7 @@ impl OxenError {
             || stderr_lower.contains("fatal:")
             || stderr_lower.contains("failed to")
         {
-            let msg = if !stderr.trim().is_empty() {
-                stderr.trim()
-            } else {
-                stdout.trim()
-            };
-            return Some(OxenError::Other(msg.chars().take(200).collect()));
+            return Some(OxenError::Other(get_msg()));
         }
 
         None
@@ -1379,6 +1519,93 @@ mod tests {
     fn test_error_classification_none() {
         let err = OxenError::classify("all good", "");
         assert!(err.is_none());
+    }
+
+    // ========== Phase 6 New Error Type Tests ==========
+
+    #[test]
+    fn test_error_classification_rate_limited() {
+        let err = OxenError::classify("", "429 Too Many Requests");
+        assert!(matches!(err, Some(OxenError::RateLimited(_))));
+
+        let err = OxenError::classify("rate limit exceeded", "");
+        assert!(matches!(err, Some(OxenError::RateLimited(_))));
+    }
+
+    #[test]
+    fn test_error_classification_server_error() {
+        let err = OxenError::classify("", "500 Internal Server Error");
+        assert!(matches!(err, Some(OxenError::ServerError(_))));
+
+        let err = OxenError::classify("", "502 Bad Gateway");
+        assert!(matches!(err, Some(OxenError::ServerError(_))));
+
+        let err = OxenError::classify("", "503 Service Unavailable");
+        assert!(matches!(err, Some(OxenError::ServerError(_))));
+
+        let err = OxenError::classify("", "504 Gateway Timeout");
+        assert!(matches!(err, Some(OxenError::ServerError(_))));
+    }
+
+    #[test]
+    fn test_error_classification_dns_error() {
+        let err = OxenError::classify("", "could not resolve host");
+        assert!(matches!(err, Some(OxenError::DnsError(_))));
+
+        let err = OxenError::classify("", "getaddrinfo failed");
+        assert!(matches!(err, Some(OxenError::DnsError(_))));
+    }
+
+    #[test]
+    fn test_error_classification_ssl_error() {
+        let err = OxenError::classify("", "SSL certificate problem");
+        assert!(matches!(err, Some(OxenError::SslError(_))));
+
+        let err = OxenError::classify("", "TLS handshake failed");
+        assert!(matches!(err, Some(OxenError::SslError(_))));
+    }
+
+    #[test]
+    fn test_error_classification_conflict() {
+        let err = OxenError::classify("", "merge conflict detected");
+        assert!(matches!(err, Some(OxenError::Conflict(_))));
+
+        let err = OxenError::classify("", "resource already locked");
+        assert!(matches!(err, Some(OxenError::Conflict(_))));
+    }
+
+    #[test]
+    fn test_oxen_error_retry_strategy() {
+        assert_eq!(
+            OxenError::NetworkError("test".to_string()).retry_strategy(),
+            RetryStrategy::Exponential
+        );
+        assert_eq!(
+            OxenError::RateLimited("test".to_string()).retry_strategy(),
+            RetryStrategy::Linear
+        );
+        assert_eq!(
+            OxenError::NotFound("test".to_string()).retry_strategy(),
+            RetryStrategy::NoRetry
+        );
+    }
+
+    #[test]
+    fn test_oxen_error_suggestion() {
+        let err = OxenError::RateLimited("test".to_string());
+        assert!(err.suggestion().contains("Too many"));
+
+        let err = OxenError::DnsError("test".to_string());
+        assert!(err.suggestion().contains("DNS"));
+    }
+
+    #[test]
+    fn test_new_oxen_error_retryable() {
+        assert!(OxenError::RateLimited("test".to_string()).is_retryable());
+        assert!(OxenError::ServerError("test".to_string()).is_retryable());
+        assert!(OxenError::DnsError("test".to_string()).is_retryable());
+        assert!(!OxenError::SslError("test".to_string()).is_retryable());
+        assert!(!OxenError::Conflict("test".to_string()).is_retryable());
     }
 
     #[test]

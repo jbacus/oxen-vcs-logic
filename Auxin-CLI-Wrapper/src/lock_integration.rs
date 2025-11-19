@@ -148,6 +148,11 @@ pub fn handle_lock_status(repo_path: &Path) -> Result<()> {
                 lock.expires_at.format("%Y-%m-%d %H:%M UTC"),
                 ""
             );
+            println!(
+                "│  Last seen: {}{:<27} │",
+                lock.last_heartbeat.format("%Y-%m-%d %H:%M UTC"),
+                ""
+            );
 
             let remaining = lock.remaining_time();
             if remaining.num_seconds() > 0 {

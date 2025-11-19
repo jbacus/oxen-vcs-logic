@@ -363,6 +363,477 @@ pub fn check_network_availability() -> bool {
     }
 }
 
+// ========== Circuit Breaker ==========
+
+/// Circuit breaker states
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CircuitState {
+    /// Normal operation - requests allowed
+    Closed,
+    /// Failing - requests rejected
+    Open,
+    /// Testing recovery - limited requests allowed
+    HalfOpen,
+}
+
+/// Circuit breaker for preventing cascading failures
+#[derive(Debug, Clone)]
+pub struct CircuitBreaker {
+    state: CircuitState,
+    failure_count: u32,
+    success_count: u32,
+    failure_threshold: u32,
+    success_threshold: u32,
+    last_failure_time: Option<Instant>,
+    timeout: StdDuration,
+}
+
+impl CircuitBreaker {
+    /// Create a new circuit breaker with default settings
+    pub fn new() -> Self {
+        Self {
+            state: CircuitState::Closed,
+            failure_count: 0,
+            success_count: 0,
+            failure_threshold: std::env::var("AUXIN_CIRCUIT_BREAKER_THRESHOLD")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(5),
+            success_threshold: 3,
+            last_failure_time: None,
+            timeout: StdDuration::from_secs(
+                std::env::var("AUXIN_CIRCUIT_BREAKER_TIMEOUT")
+                    .ok()
+                    .and_then(|s| s.parse().ok())
+                    .unwrap_or(60),
+            ),
+        }
+    }
+
+    /// Create with custom thresholds
+    pub fn with_thresholds(failure_threshold: u32, success_threshold: u32, timeout_secs: u64) -> Self {
+        Self {
+            state: CircuitState::Closed,
+            failure_count: 0,
+            success_count: 0,
+            failure_threshold,
+            success_threshold,
+            last_failure_time: None,
+            timeout: StdDuration::from_secs(timeout_secs),
+        }
+    }
+
+    /// Get current circuit state
+    pub fn state(&self) -> CircuitState {
+        self.state
+    }
+
+    /// Check if the circuit allows requests
+    pub fn allow_request(&mut self) -> bool {
+        match self.state {
+            CircuitState::Closed => true,
+            CircuitState::Open => {
+                // Check if timeout has elapsed
+                if let Some(last_failure) = self.last_failure_time {
+                    if last_failure.elapsed() >= self.timeout {
+                        // Transition to half-open
+                        self.state = CircuitState::HalfOpen;
+                        self.success_count = 0;
+                        crate::vlog!("Circuit breaker: Open -> HalfOpen (timeout elapsed)");
+                        true
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                }
+            }
+            CircuitState::HalfOpen => true,
+        }
+    }
+
+    /// Record a successful operation
+    pub fn record_success(&mut self) {
+        match self.state {
+            CircuitState::HalfOpen => {
+                self.success_count += 1;
+                if self.success_count >= self.success_threshold {
+                    // Recovery successful - close circuit
+                    self.state = CircuitState::Closed;
+                    self.failure_count = 0;
+                    self.success_count = 0;
+                    crate::vlog!("Circuit breaker: HalfOpen -> Closed (recovery successful)");
+                }
+            }
+            CircuitState::Closed => {
+                // Reset failure count on success
+                if self.failure_count > 0 {
+                    self.failure_count = self.failure_count.saturating_sub(1);
+                }
+            }
+            CircuitState::Open => {
+                // Shouldn't happen, but handle gracefully
+            }
+        }
+    }
+
+    /// Record a failed operation
+    pub fn record_failure(&mut self) {
+        match self.state {
+            CircuitState::Closed => {
+                self.failure_count += 1;
+                if self.failure_count >= self.failure_threshold {
+                    // Too many failures - open circuit
+                    self.state = CircuitState::Open;
+                    self.last_failure_time = Some(Instant::now());
+                    crate::vlog!(
+                        "Circuit breaker: Closed -> Open (failures: {})",
+                        self.failure_count
+                    );
+                }
+            }
+            CircuitState::HalfOpen => {
+                // Recovery failed - back to open
+                self.state = CircuitState::Open;
+                self.last_failure_time = Some(Instant::now());
+                self.success_count = 0;
+                crate::vlog!("Circuit breaker: HalfOpen -> Open (recovery failed)");
+            }
+            CircuitState::Open => {
+                // Already open, update last failure time
+                self.last_failure_time = Some(Instant::now());
+            }
+        }
+    }
+
+    /// Reset the circuit breaker to closed state
+    pub fn reset(&mut self) {
+        self.state = CircuitState::Closed;
+        self.failure_count = 0;
+        self.success_count = 0;
+        self.last_failure_time = None;
+    }
+
+    /// Get statistics about circuit breaker state
+    pub fn stats(&self) -> CircuitBreakerStats {
+        CircuitBreakerStats {
+            state: self.state,
+            failure_count: self.failure_count,
+            success_count: self.success_count,
+            failure_threshold: self.failure_threshold,
+            success_threshold: self.success_threshold,
+            time_until_retry: self.time_until_retry(),
+        }
+    }
+
+    fn time_until_retry(&self) -> Option<StdDuration> {
+        if self.state == CircuitState::Open {
+            self.last_failure_time.map(|t| {
+                let elapsed = t.elapsed();
+                if elapsed < self.timeout {
+                    self.timeout - elapsed
+                } else {
+                    StdDuration::ZERO
+                }
+            })
+        } else {
+            None
+        }
+    }
+}
+
+impl Default for CircuitBreaker {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Statistics about circuit breaker state
+#[derive(Debug, Clone)]
+pub struct CircuitBreakerStats {
+    pub state: CircuitState,
+    pub failure_count: u32,
+    pub success_count: u32,
+    pub failure_threshold: u32,
+    pub success_threshold: u32,
+    pub time_until_retry: Option<StdDuration>,
+}
+
+// ========== Adaptive Retry Policy ==========
+
+use std::time::Instant;
+
+/// Adaptive retry policy that adjusts behavior based on error types
+#[derive(Debug, Clone)]
+pub struct AdaptiveRetryPolicy {
+    base_policy: RetryPolicy,
+    circuit_breaker: CircuitBreaker,
+    verbose: bool,
+}
+
+impl AdaptiveRetryPolicy {
+    /// Create a new adaptive retry policy
+    pub fn new() -> Self {
+        Self {
+            base_policy: RetryPolicy::default(),
+            circuit_breaker: CircuitBreaker::new(),
+            verbose: false,
+        }
+    }
+
+    /// Create with custom base policy
+    pub fn with_policy(policy: RetryPolicy) -> Self {
+        Self {
+            base_policy: policy,
+            circuit_breaker: CircuitBreaker::new(),
+            verbose: false,
+        }
+    }
+
+    /// Enable verbose logging
+    pub fn set_verbose(mut self, verbose: bool) -> Self {
+        self.verbose = verbose;
+        self.base_policy = self.base_policy.set_verbose(verbose);
+        self
+    }
+
+    /// Get circuit breaker stats
+    pub fn circuit_stats(&self) -> CircuitBreakerStats {
+        self.circuit_breaker.stats()
+    }
+
+    /// Reset circuit breaker
+    pub fn reset_circuit(&mut self) {
+        self.circuit_breaker.reset();
+    }
+
+    /// Execute an operation with adaptive retry logic
+    pub fn execute<F, T>(&mut self, mut operation: F) -> Result<T>
+    where
+        F: FnMut() -> Result<T>,
+    {
+        // Check circuit breaker first
+        if !self.circuit_breaker.allow_request() {
+            let stats = self.circuit_breaker.stats();
+            let wait_time = stats.time_until_retry.unwrap_or(StdDuration::ZERO);
+            return Err(anyhow!(
+                "Circuit breaker is open. Too many recent failures. Retry in {:.0}s",
+                wait_time.as_secs_f64()
+            ));
+        }
+
+        let mut attempt = 0;
+        let max_retries = self.base_policy.max_retries;
+        let mut backoff_ms = self.base_policy.initial_backoff_ms;
+
+        loop {
+            match operation() {
+                Ok(result) => {
+                    self.circuit_breaker.record_success();
+                    return Ok(result);
+                }
+                Err(e) => {
+                    attempt += 1;
+
+                    // Check if this error is retryable
+                    let should_retry = is_transient_error(&e);
+
+                    if !should_retry || attempt > max_retries {
+                        self.circuit_breaker.record_failure();
+                        return Err(e);
+                    }
+
+                    // Determine backoff strategy based on error type
+                    let error_str = e.to_string().to_lowercase();
+                    let adjusted_backoff = if error_str.contains("rate limit") || error_str.contains("429") {
+                        // Linear backoff for rate limiting - use longer delays
+                        backoff_ms * 3
+                    } else if error_str.contains("timeout") {
+                        // Slightly longer backoff for timeouts
+                        backoff_ms * 2
+                    } else {
+                        // Standard exponential backoff
+                        backoff_ms
+                    };
+
+                    // Add jitter to prevent thundering herd (±10%)
+                    let jitter = (adjusted_backoff as f64 * 0.1) as u64;
+                    let jittered_backoff = adjusted_backoff + (attempt as u64 % (2 * jitter + 1)).saturating_sub(jitter);
+                    let final_backoff = jittered_backoff.min(self.base_policy.max_backoff_ms);
+
+                    if self.verbose {
+                        crate::vlog!(
+                            "Retry attempt {}/{}: {} (waiting {}ms)",
+                            attempt,
+                            max_retries,
+                            e,
+                            final_backoff
+                        );
+                    }
+
+                    thread::sleep(StdDuration::from_millis(final_backoff));
+
+                    // Update backoff for next iteration
+                    backoff_ms = (backoff_ms * 2).min(self.base_policy.max_backoff_ms);
+                }
+            }
+        }
+    }
+}
+
+impl Default for AdaptiveRetryPolicy {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+// ========== Network Health Monitor ==========
+
+/// Network health status
+#[derive(Debug, Clone)]
+pub struct NetworkHealth {
+    /// Whether the network is currently available
+    pub available: bool,
+    /// Latency to hub.oxen.ai in milliseconds
+    pub latency_ms: Option<u64>,
+    /// Estimated bandwidth (if available)
+    pub bandwidth_estimate: Option<String>,
+    /// Last check timestamp
+    pub last_checked: DateTime<Utc>,
+    /// Connection quality rating
+    pub quality: NetworkQuality,
+}
+
+/// Network quality rating
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NetworkQuality {
+    /// Excellent connection (< 50ms latency)
+    Excellent,
+    /// Good connection (50-150ms latency)
+    Good,
+    /// Fair connection (150-300ms latency)
+    Fair,
+    /// Poor connection (> 300ms latency)
+    Poor,
+    /// No connection
+    Offline,
+}
+
+impl std::fmt::Display for NetworkQuality {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            NetworkQuality::Excellent => write!(f, "Excellent"),
+            NetworkQuality::Good => write!(f, "Good"),
+            NetworkQuality::Fair => write!(f, "Fair"),
+            NetworkQuality::Poor => write!(f, "Poor"),
+            NetworkQuality::Offline => write!(f, "Offline"),
+        }
+    }
+}
+
+/// Check network health with detailed diagnostics
+pub fn check_network_health() -> NetworkHealth {
+    use std::process::Command;
+
+    let _start = Instant::now();
+
+    // Try to ping Oxen Hub with timing
+    let output = Command::new("ping")
+        .args(["-c", "3", "-W", "5", "hub.oxen.ai"])
+        .output();
+
+    let (available, latency_ms) = match output {
+        Ok(out) => {
+            if out.status.success() {
+                // Parse latency from ping output
+                let stdout = String::from_utf8_lossy(&out.stdout);
+                let latency = parse_ping_latency(&stdout);
+                (true, latency)
+            } else {
+                (false, None)
+            }
+        }
+        Err(_) => (false, None),
+    };
+
+    let quality = match latency_ms {
+        Some(ms) if ms < 50 => NetworkQuality::Excellent,
+        Some(ms) if ms < 150 => NetworkQuality::Good,
+        Some(ms) if ms < 300 => NetworkQuality::Fair,
+        Some(_) => NetworkQuality::Poor,
+        None => NetworkQuality::Offline,
+    };
+
+    NetworkHealth {
+        available,
+        latency_ms,
+        bandwidth_estimate: None, // Could be enhanced with speed test
+        last_checked: Utc::now(),
+        quality,
+    }
+}
+
+/// Parse average latency from ping output
+fn parse_ping_latency(output: &str) -> Option<u64> {
+    // Look for patterns like "min/avg/max/mdev = 10.123/15.456/20.789/3.456 ms"
+    // or "round-trip min/avg/max/stddev = 10.123/15.456/20.789/3.456 ms"
+    for line in output.lines() {
+        if line.contains("avg") || line.contains("average") {
+            // Try to extract the average value after the = sign
+            if let Some(eq_idx) = line.find('=') {
+                let after_eq = &line[eq_idx + 1..].trim();
+                // Format: 10.123/15.456/20.789/3.456 ms
+                // We want the second value (avg)
+                if let Some(start) = after_eq.find('/') {
+                    let after_first_slash = &after_eq[start + 1..];
+                    if let Some(end) = after_first_slash.find('/') {
+                        let avg_str = &after_first_slash[..end];
+                        if let Ok(avg) = avg_str.parse::<f64>() {
+                            return Some(avg as u64);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Fallback: look for "time=X ms" pattern
+    for line in output.lines() {
+        if let Some(time_idx) = line.find("time=") {
+            let after_time = &line[time_idx + 5..];
+            let value: String = after_time.chars().take_while(|c| c.is_numeric() || *c == '.').collect();
+            if let Ok(ms) = value.parse::<f64>() {
+                return Some(ms as u64);
+            }
+        }
+    }
+
+    None
+}
+
+/// Estimate transfer time for a file of given size
+pub fn estimate_transfer_time(file_size_bytes: u64, latency_ms: Option<u64>) -> String {
+    // Rough bandwidth estimates based on latency
+    let bandwidth_mbps = match latency_ms {
+        Some(ms) if ms < 50 => 100.0,  // Excellent: ~100 Mbps
+        Some(ms) if ms < 150 => 50.0,  // Good: ~50 Mbps
+        Some(ms) if ms < 300 => 20.0,  // Fair: ~20 Mbps
+        Some(_) => 5.0,                 // Poor: ~5 Mbps
+        None => 1.0,                    // Unknown: assume slow
+    };
+
+    let bytes_per_second = bandwidth_mbps * 1_000_000.0 / 8.0;
+    let seconds = file_size_bytes as f64 / bytes_per_second;
+
+    if seconds < 60.0 {
+        format!("{:.0}s", seconds)
+    } else if seconds < 3600.0 {
+        format!("{:.1}m", seconds / 60.0)
+    } else {
+        format!("{:.1}h", seconds / 3600.0)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -505,5 +976,270 @@ mod tests {
 
         manager.clear_queue().unwrap();
         assert_eq!(manager.queue_size(), 0);
+    }
+
+    // ========== Circuit Breaker Tests ==========
+
+    #[test]
+    fn test_circuit_breaker_initial_state() {
+        let cb = CircuitBreaker::new();
+        assert_eq!(cb.state(), CircuitState::Closed);
+    }
+
+    #[test]
+    fn test_circuit_breaker_opens_after_failures() {
+        let mut cb = CircuitBreaker::with_thresholds(3, 2, 60);
+
+        // Should be closed initially
+        assert!(cb.allow_request());
+
+        // Record failures
+        cb.record_failure();
+        cb.record_failure();
+        assert_eq!(cb.state(), CircuitState::Closed);
+
+        cb.record_failure();
+        assert_eq!(cb.state(), CircuitState::Open);
+
+        // Should not allow requests when open
+        assert!(!cb.allow_request());
+    }
+
+    #[test]
+    fn test_circuit_breaker_success_reduces_failures() {
+        let mut cb = CircuitBreaker::with_thresholds(5, 2, 60);
+
+        cb.record_failure();
+        cb.record_failure();
+        assert_eq!(cb.failure_count, 2);
+
+        cb.record_success();
+        assert_eq!(cb.failure_count, 1);
+    }
+
+    #[test]
+    fn test_circuit_breaker_recovery() {
+        let mut cb = CircuitBreaker::with_thresholds(2, 2, 0); // 0 timeout for instant recovery
+
+        // Open the circuit
+        cb.record_failure();
+        cb.record_failure();
+        assert_eq!(cb.state(), CircuitState::Open);
+
+        // Should transition to half-open after timeout
+        assert!(cb.allow_request());
+        assert_eq!(cb.state(), CircuitState::HalfOpen);
+
+        // Successful operations should close it
+        cb.record_success();
+        assert_eq!(cb.state(), CircuitState::HalfOpen);
+        cb.record_success();
+        assert_eq!(cb.state(), CircuitState::Closed);
+    }
+
+    #[test]
+    fn test_circuit_breaker_half_open_failure() {
+        let mut cb = CircuitBreaker::with_thresholds(2, 2, 0);
+
+        // Open and transition to half-open
+        cb.record_failure();
+        cb.record_failure();
+        cb.allow_request();
+        assert_eq!(cb.state(), CircuitState::HalfOpen);
+
+        // Failure in half-open should go back to open
+        cb.record_failure();
+        assert_eq!(cb.state(), CircuitState::Open);
+    }
+
+    #[test]
+    fn test_circuit_breaker_reset() {
+        let mut cb = CircuitBreaker::with_thresholds(2, 2, 60);
+
+        cb.record_failure();
+        cb.record_failure();
+        assert_eq!(cb.state(), CircuitState::Open);
+
+        cb.reset();
+        assert_eq!(cb.state(), CircuitState::Closed);
+        assert_eq!(cb.failure_count, 0);
+    }
+
+    #[test]
+    fn test_circuit_breaker_stats() {
+        let mut cb = CircuitBreaker::with_thresholds(5, 3, 60);
+
+        cb.record_failure();
+        cb.record_failure();
+
+        let stats = cb.stats();
+        assert_eq!(stats.state, CircuitState::Closed);
+        assert_eq!(stats.failure_count, 2);
+        assert_eq!(stats.failure_threshold, 5);
+        assert_eq!(stats.success_threshold, 3);
+    }
+
+    // ========== Adaptive Retry Policy Tests ==========
+
+    #[test]
+    fn test_adaptive_retry_policy_success() {
+        let mut policy = AdaptiveRetryPolicy::new();
+
+        let result = policy.execute(|| Ok(42));
+        assert_eq!(result.unwrap(), 42);
+    }
+
+    #[test]
+    fn test_adaptive_retry_policy_eventual_success() {
+        let mut policy = AdaptiveRetryPolicy::with_policy(
+            RetryPolicy::new(3, 10, 100)
+        );
+
+        let mut attempt = 0;
+        let result = policy.execute(|| {
+            attempt += 1;
+            if attempt < 3 {
+                Err(anyhow!("Connection timeout"))
+            } else {
+                Ok(42)
+            }
+        });
+
+        assert_eq!(result.unwrap(), 42);
+        assert_eq!(attempt, 3);
+    }
+
+    #[test]
+    fn test_adaptive_retry_policy_max_retries() {
+        let mut policy = AdaptiveRetryPolicy::with_policy(
+            RetryPolicy::new(2, 10, 100)
+        );
+
+        let mut attempt = 0;
+        let result: Result<i32> = policy.execute(|| {
+            attempt += 1;
+            Err(anyhow!("Connection refused"))
+        });
+
+        assert!(result.is_err());
+        assert_eq!(attempt, 3); // Initial + 2 retries
+    }
+
+    #[test]
+    fn test_adaptive_retry_policy_non_retryable_error() {
+        let mut policy = AdaptiveRetryPolicy::new();
+
+        let mut attempt = 0;
+        let result: Result<i32> = policy.execute(|| {
+            attempt += 1;
+            Err(anyhow!("Permission denied"))
+        });
+
+        assert!(result.is_err());
+        assert_eq!(attempt, 1); // No retries for non-transient errors
+    }
+
+    #[test]
+    fn test_adaptive_retry_policy_circuit_breaker_integration() {
+        let mut policy = AdaptiveRetryPolicy::with_policy(
+            RetryPolicy::new(1, 10, 100)
+        );
+
+        // Trigger multiple failures to open circuit
+        for _ in 0..5 {
+            let _result: Result<i32> = policy.execute(|| {
+                Err(anyhow!("Network error"))
+            });
+        }
+
+        // Circuit should be open now
+        let stats = policy.circuit_stats();
+        assert_eq!(stats.state, CircuitState::Open);
+
+        // Should fail immediately due to open circuit
+        let result: Result<i32> = policy.execute(|| Ok(42));
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("Circuit breaker"));
+    }
+
+    #[test]
+    fn test_adaptive_retry_policy_reset_circuit() {
+        let mut policy = AdaptiveRetryPolicy::new();
+
+        // Open circuit
+        for _ in 0..5 {
+            let _: Result<i32> = policy.execute(|| Err(anyhow!("timeout")));
+        }
+
+        assert_eq!(policy.circuit_stats().state, CircuitState::Open);
+
+        policy.reset_circuit();
+        assert_eq!(policy.circuit_stats().state, CircuitState::Closed);
+    }
+
+    // ========== Network Health Tests ==========
+
+    #[test]
+    fn test_parse_ping_latency_linux_format() {
+        let output = "rtt min/avg/max/mdev = 10.123/15.456/20.789/3.456 ms";
+        let latency = parse_ping_latency(output);
+        assert_eq!(latency, Some(15));
+    }
+
+    #[test]
+    fn test_parse_ping_latency_macos_format() {
+        let output = "round-trip min/avg/max/stddev = 10.123/15.456/20.789/3.456 ms";
+        let latency = parse_ping_latency(output);
+        assert_eq!(latency, Some(15));
+    }
+
+    #[test]
+    fn test_parse_ping_latency_time_format() {
+        let output = "64 bytes from 1.2.3.4: icmp_seq=1 ttl=54 time=25.6 ms";
+        let latency = parse_ping_latency(output);
+        assert_eq!(latency, Some(25));
+    }
+
+    #[test]
+    fn test_parse_ping_latency_no_match() {
+        let output = "no latency info here";
+        let latency = parse_ping_latency(output);
+        assert_eq!(latency, None);
+    }
+
+    #[test]
+    fn test_estimate_transfer_time_small_file() {
+        let estimate = estimate_transfer_time(1_000_000, Some(50)); // 1MB, good connection
+        assert!(estimate.contains("s")); // Should be seconds
+    }
+
+    #[test]
+    fn test_estimate_transfer_time_large_file() {
+        let estimate = estimate_transfer_time(1_000_000_000, Some(200)); // 1GB, fair connection
+        assert!(estimate.contains("m") || estimate.contains("h")); // Should be minutes or hours
+    }
+
+    #[test]
+    fn test_network_quality_display() {
+        assert_eq!(format!("{}", NetworkQuality::Excellent), "Excellent");
+        assert_eq!(format!("{}", NetworkQuality::Good), "Good");
+        assert_eq!(format!("{}", NetworkQuality::Fair), "Fair");
+        assert_eq!(format!("{}", NetworkQuality::Poor), "Poor");
+        assert_eq!(format!("{}", NetworkQuality::Offline), "Offline");
+    }
+
+    #[test]
+    fn test_connectivity_state() {
+        // Just test that the function doesn't panic
+        let _ = check_connectivity();
+    }
+
+    #[test]
+    fn test_retry_policy_builder() {
+        let policy = RetryPolicy::new(5, 1000, 10000).set_verbose(true);
+        assert_eq!(policy.max_retries, 5);
+        assert_eq!(policy.initial_backoff_ms, 1000);
+        assert_eq!(policy.max_backoff_ms, 10000);
+        assert!(policy.verbose);
     }
 }
