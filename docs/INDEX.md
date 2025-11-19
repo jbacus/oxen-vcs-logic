@@ -133,21 +133,23 @@ Start here if you're an AI assistant working with this codebase.
 
 ---
 
-## Legacy Documentation
+## Archived Documentation
 
-The following files in `docs/` are retained for reference but have been superseded by the new structure:
+Legacy documentation has been moved to `docs/BONEYARD/` for reference. Use the new locations instead:
 
-- `FOR_DEVELOPERS.md` → Use `developer/architecture.md` and `developer/development-setup.md`
-- `FOR_MUSICIANS.md` → Use `user/for-musicians.md`
-- `TESTING_STRATEGY.md` → Use `developer/testing.md`
-- `TROUBLESHOOTING.md` → Use `user/troubleshooting.md`
-- `CLI_EXAMPLES.md` → Use `user/cli-reference.md`
-- `CLOUD_SHARING_GUIDE.md` → Use `user/cloud-sharing.md`
-- `SKETCHUP_EXAMPLES.md` → Use `user/for-modelers.md`
-- `EXTENSIBILITY.md` → Use `developer/extensibility.md`
-- `SEMANTIC_*.md`, `FCP_*.md` → Use `system/future-features.md`
+| Old File | New Location |
+|----------|--------------|
+| `FOR_DEVELOPERS.md` | `developer/architecture.md`, `developer/development-setup.md` |
+| `FOR_MUSICIANS.md` | `user/for-musicians.md` |
+| `TESTING_STRATEGY.md` | `developer/testing.md` |
+| `TROUBLESHOOTING.md` | `user/troubleshooting.md` |
+| `CLI_EXAMPLES.md` | `user/cli-reference.md` |
+| `CLOUD_SHARING_GUIDE.md` | `user/cloud-sharing.md` |
+| `SKETCHUP_EXAMPLES.md` | `user/for-modelers.md` |
+| `EXTENSIBILITY.md` | `developer/extensibility.md` |
+| `SEMANTIC_*.md`, `FCP_*.md` | `system/future-features.md` |
 
-These legacy files may be removed in a future cleanup.
+The BONEYARD contains 16 archived files that may be deleted in the future.
 
 ---
 
