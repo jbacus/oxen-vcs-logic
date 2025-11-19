@@ -74,6 +74,63 @@ use uuid::Uuid;
 use crate::oxen_subprocess::OxenSubprocess;
 use crate::network_resilience::RetryPolicy;
 
+// ========== Audit Logging ==========
+
+/// Audit log entry for sensitive operations
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AuditLogEntry {
+    /// Timestamp of the operation
+    pub timestamp: DateTime<Utc>,
+    /// Type of operation performed
+    pub operation: String,
+    /// User who performed the operation
+    pub user: String,
+    /// Project path
+    pub project: String,
+    /// Whether the operation succeeded
+    pub success: bool,
+    /// Additional details or error message
+    pub details: String,
+}
+
+impl AuditLogEntry {
+    /// Create a new audit log entry
+    fn new(
+        operation: impl Into<String>,
+        user: impl Into<String>,
+        project: impl Into<String>,
+        success: bool,
+        details: impl Into<String>,
+    ) -> Self {
+        Self {
+            timestamp: Utc::now(),
+            operation: operation.into(),
+            user: user.into(),
+            project: project.into(),
+            success,
+            details: details.into(),
+        }
+    }
+
+    /// Log this entry (prints to stderr and could write to file)
+    fn log(&self) {
+        let status = if self.success { "SUCCESS" } else { "FAILED" };
+        let msg = format!(
+            "[AUDIT] {} {} by {} on {} - {}",
+            self.operation, status, self.user, self.project, self.details
+        );
+
+        if self.success {
+            crate::info!("{}", msg);
+        } else {
+            crate::error!("{}", msg);
+        }
+
+        // In production, you would also write to an audit log file:
+        // append_to_audit_log(self);
+    }
+}
+
 /// A distributed lock for a Logic Pro project
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct RemoteLock {
@@ -258,10 +315,34 @@ impl RemoteLockManager {
 
         // 8. Verify lock (detect race conditions)
         thread::sleep(StdDuration::from_secs(2)); // Give remote time to settle
-        self.verify_lock_ownership(repo_path, &lock)?;
 
-        crate::info!("Lock acquired: {}", lock.lock_id);
-        Ok(lock)
+        match self.verify_lock_ownership(repo_path, &lock) {
+            Ok(_) => {
+                // Audit log: successful lock acquisition
+                AuditLogEntry::new(
+                    "LOCK_ACQUIRE",
+                    user_id,
+                    repo_path.to_string_lossy(),
+                    true,
+                    format!("Lock ID: {}", lock.lock_id),
+                ).log();
+
+                crate::info!("Lock acquired: {}", lock.lock_id);
+                Ok(lock)
+            }
+            Err(e) => {
+                // Audit log: failed lock acquisition
+                AuditLogEntry::new(
+                    "LOCK_ACQUIRE",
+                    user_id,
+                    repo_path.to_string_lossy(),
+                    false,
+                    e.to_string(),
+                ).log();
+
+                Err(e)
+            }
+        }
     }
 
     /// Release a lock
@@ -298,6 +379,16 @@ impl RemoteLockManager {
 
         // 5. Push to remote
         self.push_locks_branch(repo_path, false)?;
+
+        // Audit log: successful lock release
+        let user_id = get_user_identifier();
+        AuditLogEntry::new(
+            "LOCK_RELEASE",
+            &user_id,
+            repo_path.to_string_lossy(),
+            true,
+            format!("Lock ID: {}", lock_id),
+        ).log();
 
         crate::info!("Lock released: {}", lock_id);
         Ok(())
@@ -362,8 +453,20 @@ impl RemoteLockManager {
     }
 
     /// Force break a lock (admin operation)
+    ///
+    /// # Security Warning
+    ///
+    /// This is a privileged operation that should only be used by administrators.
+    /// All force break operations are logged to the audit trail.
     pub fn force_break_lock(&self, repo_path: &Path) -> Result<()> {
         crate::vlog!("Force breaking lock");
+
+        let user_id = get_user_identifier();
+
+        // Get current lock info for audit trail
+        let lock_info = self.get_lock(repo_path)?
+            .map(|l| format!("Previous owner: {}, Lock ID: {}", l.locked_by, l.lock_id))
+            .unwrap_or_else(|| "No lock found".to_string());
 
         // Fetch latest
         self.fetch_locks_branch(repo_path)?;
@@ -374,6 +477,15 @@ impl RemoteLockManager {
         // Commit and push
         self.commit_lock_deletion(repo_path)?;
         self.push_locks_branch(repo_path, true)?;
+
+        // Audit log: force break operation (ALWAYS log this sensitive operation)
+        AuditLogEntry::new(
+            "LOCK_FORCE_BREAK",
+            &user_id,
+            repo_path.to_string_lossy(),
+            true,
+            lock_info,
+        ).log();
 
         crate::info!("Lock forcibly broken");
         Ok(())

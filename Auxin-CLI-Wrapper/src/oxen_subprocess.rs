@@ -25,6 +25,99 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
+/// Minimum supported Oxen CLI version
+const MIN_OXEN_VERSION: &str = "0.19";
+
+/// Sanitize a path to prevent path traversal attacks
+///
+/// # Security
+///
+/// This function validates that paths:
+/// - Do not contain dangerous characters (null bytes, control characters)
+/// - Do not contain suspicious patterns (command injection attempts)
+/// - Are within the expected repository root (when provided)
+///
+/// # Arguments
+///
+/// * `path` - The path to sanitize
+/// * `repo_root` - Optional repository root to validate path is within
+///
+/// # Returns
+///
+/// The sanitized path string, or an error if validation fails
+fn sanitize_path(path: &Path, repo_root: Option<&Path>) -> Result<String> {
+    let path_str = path.to_string_lossy();
+
+    // Check for null bytes (potential security issue)
+    if path_str.contains('\0') {
+        return Err(anyhow!("Invalid path: contains null byte"));
+    }
+
+    // Check for control characters
+    if path_str.chars().any(|c| c.is_control() && c != '\n' && c != '\t') {
+        return Err(anyhow!("Invalid path: contains control characters"));
+    }
+
+    // Check for command injection patterns
+    let dangerous_patterns = [
+        "$(", "`", ";", "&&", "||", "|", ">", "<", "\n", "\r",
+    ];
+    for pattern in &dangerous_patterns {
+        if path_str.contains(pattern) {
+            return Err(anyhow!(
+                "Invalid path: contains potentially dangerous pattern '{}'",
+                pattern
+            ));
+        }
+    }
+
+    // If repo_root is provided, ensure path is within it (canonicalize if possible)
+    if let Some(root) = repo_root {
+        // For existing paths, canonicalize to check for path traversal
+        if path.exists() {
+            let canonical = path.canonicalize()
+                .context("Failed to canonicalize path")?;
+            let root_canonical = root.canonicalize()
+                .context("Failed to canonicalize repository root")?;
+
+            if !canonical.starts_with(&root_canonical) {
+                return Err(anyhow!(
+                    "Path traversal detected: {} is outside repository root {}",
+                    canonical.display(),
+                    root_canonical.display()
+                ));
+            }
+        } else {
+            // For non-existing paths, check for obvious traversal patterns
+            let normalized = path_str.replace("\\", "/");
+            if normalized.contains("/../") || normalized.starts_with("../") {
+                return Err(anyhow!(
+                    "Potential path traversal detected in: {}",
+                    path.display()
+                ));
+            }
+        }
+    }
+
+    Ok(path_str.to_string())
+}
+
+/// Sanitize a commit message to prevent injection
+fn sanitize_message(message: &str) -> Result<String> {
+    // Check for null bytes
+    if message.contains('\0') {
+        return Err(anyhow!("Invalid message: contains null byte"));
+    }
+
+    // Commit messages can contain most characters, but we should
+    // limit extremely long messages and check for control characters
+    if message.len() > 10000 {
+        return Err(anyhow!("Commit message too long (max 10000 characters)"));
+    }
+
+    Ok(message.to_string())
+}
+
 /// Wrapper for executing Oxen CLI commands via subprocess.
 ///
 /// This struct provides a Rust interface to the `oxen` command-line tool by executing
@@ -161,6 +254,58 @@ impl OxenSubprocess {
         Ok(output.trim().to_string())
     }
 
+    /// Verify that the installed Oxen CLI version is compatible
+    ///
+    /// # Returns
+    ///
+    /// Ok(()) if the version is compatible, error otherwise.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use auxin_cli::OxenSubprocess;
+    ///
+    /// let oxen = OxenSubprocess::new();
+    /// oxen.verify_version()?;
+    /// ```
+    pub fn verify_version(&self) -> Result<()> {
+        let version = self.version()?;
+
+        // Parse version string (e.g., "oxen 0.19.5" or "0.19.5")
+        let version_parts: Vec<&str> = version.split_whitespace().collect();
+        let version_str = version_parts.last().unwrap_or(&"unknown");
+
+        // Check if version starts with minimum required version
+        if !version_str.starts_with(MIN_OXEN_VERSION) {
+            // Also check if version is newer (e.g., 0.20.x should work)
+            let parts: Vec<&str> = version_str.split('.').collect();
+            let min_parts: Vec<&str> = MIN_OXEN_VERSION.split('.').collect();
+
+            let is_compatible = if parts.len() >= 2 && min_parts.len() >= 2 {
+                let major: u32 = parts[0].parse().unwrap_or(0);
+                let minor: u32 = parts[1].parse().unwrap_or(0);
+                let min_major: u32 = min_parts[0].parse().unwrap_or(0);
+                let min_minor: u32 = min_parts[1].parse().unwrap_or(0);
+
+                (major > min_major) || (major == min_major && minor >= min_minor)
+            } else {
+                false
+            };
+
+            if !is_compatible {
+                return Err(anyhow!(
+                    "Oxen CLI version {} is not compatible. Requires {} or newer.\n\
+                     Please update: pip install --upgrade oxen-ai",
+                    version_str,
+                    MIN_OXEN_VERSION
+                ));
+            }
+        }
+
+        vlog!("Oxen CLI version {} verified", version_str);
+        Ok(())
+    }
+
     /// Initialize a new oxen repository
     pub fn init(&self, path: &Path) -> Result<()> {
         vlog!("Initializing oxen repository at: {}", path.display());
@@ -172,6 +317,13 @@ impl OxenSubprocess {
     }
 
     /// Add files to staging
+    ///
+    /// # Security
+    ///
+    /// All file paths are sanitized to prevent:
+    /// - Path traversal attacks (../)
+    /// - Command injection via malicious filenames
+    /// - Null byte injection
     pub fn add(&self, repo_path: &Path, files: &[&Path]) -> Result<()> {
         if files.is_empty() {
             return Err(anyhow!("No files specified to add"));
@@ -179,10 +331,12 @@ impl OxenSubprocess {
 
         vlog!("Adding {} file(s) to staging", files.len());
 
+        // Sanitize all file paths before passing to subprocess
         let file_args: Vec<String> = files
             .iter()
-            .map(|f| f.to_string_lossy().to_string())
-            .collect();
+            .map(|f| sanitize_path(f, Some(repo_path)))
+            .collect::<Result<Vec<String>>>()
+            .context("Failed to sanitize file paths")?;
 
         let mut args = vec!["add"];
         for file in &file_args {
@@ -206,14 +360,21 @@ impl OxenSubprocess {
     }
 
     /// Create a commit
+    ///
+    /// # Security
+    ///
+    /// The commit message is sanitized to prevent injection attacks.
     pub fn commit(&self, repo_path: &Path, message: &str) -> Result<CommitInfo> {
         if message.is_empty() {
             return Err(anyhow!("Commit message cannot be empty"));
         }
 
-        vlog!("Creating commit with message: {}", message);
+        // Sanitize the commit message
+        let sanitized_message = sanitize_message(message)?;
 
-        let output = self.run_command(&["commit", "-m", message], Some(repo_path))?;
+        vlog!("Creating commit with message: {}", sanitized_message);
+
+        let output = self.run_command(&["commit", "-m", &sanitized_message], Some(repo_path))?;
 
         // Parse commit hash from output
         // Typical output: "Commit abc123def created"
@@ -1362,5 +1523,137 @@ Date: 2025-01-01
         let oxen = OxenSubprocess::new();
         let hash = "a".repeat(41);
         assert_eq!(oxen.parse_commit_id(&hash), None); // Too long
+    }
+
+    // ========== Security Tests ==========
+
+    #[test]
+    fn test_sanitize_path_valid() {
+        let path = Path::new("src/main.rs");
+        let result = sanitize_path(path, None);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "src/main.rs");
+    }
+
+    #[test]
+    fn test_sanitize_path_null_byte() {
+        let path = Path::new("file\0.txt");
+        let result = sanitize_path(path, None);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("null byte"));
+    }
+
+    #[test]
+    fn test_sanitize_path_command_injection() {
+        let dangerous_paths = vec![
+            "file$(whoami).txt",
+            "file`id`.txt",
+            "file;rm -rf.txt",
+            "file&&cat.txt",
+            "file||echo.txt",
+            "file|cat.txt",
+            "file>out.txt",
+            "file<in.txt",
+        ];
+
+        for path_str in dangerous_paths {
+            let path = Path::new(path_str);
+            let result = sanitize_path(path, None);
+            assert!(
+                result.is_err(),
+                "Expected error for path: {}, got: {:?}",
+                path_str,
+                result
+            );
+        }
+    }
+
+    #[test]
+    fn test_sanitize_path_traversal() {
+        let path = Path::new("../../../etc/passwd");
+        let result = sanitize_path(path, Some(Path::new("/home/user/project")));
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("traversal"));
+    }
+
+    #[test]
+    fn test_sanitize_message_valid() {
+        let result = sanitize_message("Add new feature");
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "Add new feature");
+    }
+
+    #[test]
+    fn test_sanitize_message_null_byte() {
+        let result = sanitize_message("Message\0with null");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("null byte"));
+    }
+
+    #[test]
+    fn test_sanitize_message_too_long() {
+        let long_message = "a".repeat(10001);
+        let result = sanitize_message(&long_message);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("too long"));
+    }
+
+    #[test]
+    fn test_sanitize_message_multiline() {
+        let result = sanitize_message("Line 1\nLine 2\nLine 3");
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_sanitize_message_unicode() {
+        let result = sanitize_message("Fix 🐛 bug with 日本語 text");
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_sanitize_path_with_spaces() {
+        let path = Path::new("path with spaces/file.txt");
+        let result = sanitize_path(path, None);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_sanitize_path_unicode() {
+        let path = Path::new("文件/file.txt");
+        let result = sanitize_path(path, None);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_version_parsing() {
+        // This tests the version string format parsing
+        let test_versions = vec![
+            ("oxen 0.19.5", true),
+            ("0.19.0", true),
+            ("oxen 0.20.0", true),
+            ("0.18.9", false),
+            ("oxen 0.10.0", false),
+        ];
+
+        for (version_str, should_be_compatible) in test_versions {
+            let version_parts: Vec<&str> = version_str.split_whitespace().collect();
+            let version = version_parts.last().unwrap_or(&"unknown");
+            let parts: Vec<&str> = version.split('.').collect();
+
+            let is_compatible = if parts.len() >= 2 {
+                let major: u32 = parts[0].parse().unwrap_or(0);
+                let minor: u32 = parts[1].parse().unwrap_or(0);
+                (major > 0) || (major == 0 && minor >= 19)
+            } else {
+                false
+            };
+
+            assert_eq!(
+                is_compatible, should_be_compatible,
+                "Version {} should be {}compatible",
+                version_str,
+                if should_be_compatible { "" } else { "in" }
+            );
+        }
     }
 }

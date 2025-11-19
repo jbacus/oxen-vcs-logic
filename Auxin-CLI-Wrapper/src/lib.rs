@@ -1,8 +1,7 @@
-// STUB: Using local liboxen stub until official Rust bindings are published
-pub mod liboxen_stub;
-// Alias stub as liboxen for compatibility
-#[allow(unused_imports)] // Used by other modules via the alias
-use liboxen_stub as liboxen;
+// NOTE: liboxen_stub has been removed as it provided no real functionality.
+// When liboxen crate is officially published, add:
+// use liboxen;
+// and implement proper FFI bindings in oxen_ops.rs
 
 pub mod auth;
 pub mod backup_recovery;
