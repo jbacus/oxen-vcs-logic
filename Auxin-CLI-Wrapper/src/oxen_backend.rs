@@ -151,10 +151,12 @@ pub fn create_backend(backend_type: BackendType) -> Result<Box<dyn OxenBackend>>
             Ok(Box::new(SubprocessBackend::new(subprocess)))
         }
         BackendType::FFI => {
-            // When liboxen is available, this will create an FFI backend
+            // liboxen 0.38.4 is on crates.io but has a dependency conflict:
+            // arrow-arith 53.4.0 has ambiguous quarter() method between ChronoDateExt and Datelike
             Err(anyhow::anyhow!(
-                "FFI backend not yet available. Waiting for liboxen crate publication.\n\
-                 Track progress at: https://github.com/Oxen-AI/Oxen"
+                "FFI backend not yet available. liboxen v0.38.4 exists on crates.io \
+                 but has a dependency conflict (arrow-arith ambiguous method). \
+                 Monitor https://github.com/Oxen-AI/Oxen for fixes."
             ))
         }
     }

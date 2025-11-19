@@ -6,6 +6,24 @@ Auxin implements a **subprocess wrapper** approach for Oxen integration (`oxen_s
 
 **Current Status**: ✅ **Production-Ready** (as of 2025-11-19)
 
+### liboxen Crate Status (Updated 2025-11-19)
+
+**Good news**: The `liboxen` crate is now available on crates.io (v0.38.4, 200k+ downloads).
+
+**Bad news**: It currently has a dependency conflict that prevents compilation:
+```
+error[E0034]: multiple applicable items in scope
+  --> arrow-arith-53.4.0/src/temporal.rs:91
+    | DatePart::Quarter => |d| d.quarter() as i32
+    |                          ^^^^^^^ multiple `quarter` found
+    - ChronoDateExt::quarter()
+    - Datelike::quarter()
+```
+
+This affects all consumers of liboxen. Monitor https://github.com/Oxen-AI/Oxen for fixes. Once resolved, we can implement the `FFIBackend` in `oxen_backend.rs` for 10-100x performance improvement.
+
+**Current recommendation**: Continue using the subprocess wrapper which is production-ready.
+
 ### Implementation Status (Updated 2025-11-19)
 
 | Recommendation | Status | Notes |
