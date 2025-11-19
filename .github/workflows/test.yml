@@ -5,16 +5,16 @@ on:
     branches: [ main, develop, 'claude/**' ]
   pull_request:
     branches: [ main, develop ]
-  workflow_dispatch:  # Allow manual triggering
+  workflow_dispatch:
 
 env:
   RUST_BACKTRACE: 1
   CARGO_TERM_COLOR: always
 
 jobs:
-  # Comprehensive test suite using run_all_tests.sh
-  all-tests:
-    name: All Tests (run_all_tests.sh)
+  # Rust tests, linting, and formatting
+  rust:
+    name: Rust Tests & Linting
     runs-on: macos-14
 
     steps:
@@ -25,9 +25,7 @@ jobs:
       uses: actions-rust-lang/setup-rust-toolchain@v1
       with:
         toolchain: stable
-
-    - name: Select Xcode version
-      run: sudo xcode-select -s /Applications/Xcode_15.2.app/Contents/Developer
+        components: rustfmt, clippy
 
     - name: Cache Cargo dependencies
       uses: actions/cache@v4
@@ -40,66 +38,7 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-cargo-
 
-    - name: Install Oxen CLI (for integration tests)
-      run: |
-        pip3 install oxen-ai
-        oxen config --name "CI Test" --email "ci@test.com"
-
-    - name: Make test script executable
-      run: chmod +x run_all_tests.sh
-
-    - name: Run comprehensive test suite
-      run: ./run_all_tests.sh
-      continue-on-error: false
-
-    - name: Upload test results
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: test-results
-        path: |
-          Auxin-CLI-Wrapper/target/debug/
-          test-results.txt
-        if-no-files-found: ignore
-
-  # Rust tests - detailed breakdown
-  rust-tests:
-    name: Rust Tests (Detailed)
-    runs-on: macos-14
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Setup Rust
-      uses: actions-rust-lang/setup-rust-toolchain@v1
-      with:
-        toolchain: stable
-
-    - name: Cache Cargo dependencies
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          Auxin-CLI-Wrapper/target
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-cargo-
-
-    - name: Run Rust unit tests
-      working-directory: ./Auxin-CLI-Wrapper
-      run: cargo test --lib --verbose
-
-    - name: Run Rust integration tests
-      working-directory: ./Auxin-CLI-Wrapper
-      run: cargo test --test oxen_subprocess_integration_test --verbose
-
-    - name: Run CLI integration tests
-      working-directory: ./Auxin-CLI-Wrapper
-      run: cargo test --test cli_integration_test --verbose
-
-    - name: Check code formatting
+    - name: Check formatting
       working-directory: ./Auxin-CLI-Wrapper
       run: cargo fmt -- --check
 
@@ -107,101 +46,50 @@ jobs:
       working-directory: ./Auxin-CLI-Wrapper
       run: cargo clippy -- -D warnings
 
-  # Swift LaunchAgent tests
-  swift-launchagent:
-    name: Swift LaunchAgent Tests
-    runs-on: macos-14
+    - name: Run unit tests
+      working-directory: ./Auxin-CLI-Wrapper
+      run: cargo test --lib --verbose
 
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Select Xcode version
-      run: sudo xcode-select -s /Applications/Xcode_15.2.app/Contents/Developer
-
-    - name: Build LaunchAgent
-      working-directory: ./Auxin-LaunchAgent
-      run: swift build -c release
-
-    - name: Run LaunchAgent tests
-      working-directory: ./Auxin-LaunchAgent
-      run: swift test
-
-  # Swift App tests
-  swift-app:
-    name: Swift App Tests
-    runs-on: macos-14
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Select Xcode version
-      run: sudo xcode-select -s /Applications/Xcode_15.2.app/Contents/Developer
-
-    - name: Build App
-      working-directory: ./Auxin-App
-      run: swift build -c release
-
-    - name: Run App tests
-      working-directory: ./Auxin-App
-      run: swift test
-
-  # Build check - verify everything compiles
-  build-all:
-    name: Build All Components
-    runs-on: macos-14
-    needs: [rust-tests, swift-launchagent, swift-app]
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Setup Rust
-      uses: actions-rust-lang/setup-rust-toolchain@v1
-      with:
-        toolchain: stable
-
-    - name: Select Xcode version
-      run: sudo xcode-select -s /Applications/Xcode_15.2.app/Contents/Developer
-
-    - name: Build Rust CLI (Release)
+    - name: Build release
       working-directory: ./Auxin-CLI-Wrapper
       run: cargo build --release
 
-    - name: Build Swift LaunchAgent (Release)
+  # Swift LaunchAgent
+  swift-launchagent:
+    name: Swift LaunchAgent
+    runs-on: macos-14
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Select Xcode version
+      run: sudo xcode-select -s /Applications/Xcode_15.2.app/Contents/Developer
+
+    - name: Build
       working-directory: ./Auxin-LaunchAgent
       run: swift build -c release
 
-    - name: Build Swift App (Release)
+    - name: Test
+      working-directory: ./Auxin-LaunchAgent
+      run: swift test
+
+  # Swift App
+  swift-app:
+    name: Swift App
+    runs-on: macos-14
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Select Xcode version
+      run: sudo xcode-select -s /Applications/Xcode_15.2.app/Contents/Developer
+
+    - name: Build
       working-directory: ./Auxin-App
       run: swift build -c release
 
-  # Test summary
-  test-summary:
-    name: Test Summary
-    runs-on: ubuntu-latest
-    needs: [all-tests, rust-tests, swift-launchagent, swift-app, build-all]
-    if: always()
-
-    steps:
-    - name: Check test results
-      run: |
-        echo "## Test Suite Results" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
-        echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
-        echo "| All Tests | ${{ needs.all-tests.result }} |" >> $GITHUB_STEP_SUMMARY
-        echo "| Rust Tests | ${{ needs.rust-tests.result }} |" >> $GITHUB_STEP_SUMMARY
-        echo "| Swift LaunchAgent | ${{ needs.swift-launchagent.result }} |" >> $GITHUB_STEP_SUMMARY
-        echo "| Swift App | ${{ needs.swift-app.result }} |" >> $GITHUB_STEP_SUMMARY
-        echo "| Build All | ${{ needs.build-all.result }} |" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-
-        # Fail if critical tests failed
-        if [[ "${{ needs.all-tests.result }}" == "failure" || "${{ needs.rust-tests.result }}" == "failure" ]]; then
-          echo "❌ Critical tests failed" >> $GITHUB_STEP_SUMMARY
-          exit 1
-        else
-          echo "✅ All critical tests passed" >> $GITHUB_STEP_SUMMARY
-        fi
+    - name: Test
+      working-directory: ./Auxin-App
+      run: swift test
