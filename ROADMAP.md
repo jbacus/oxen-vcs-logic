@@ -35,6 +35,48 @@ Auxin solves the fundamental incompatibility between traditional VCS (like Git) 
 
 **Use Case**: Distributed teams (e.g., Colorado ↔ London) collaborating on the same project
 
+### Real-World Requirements: Pete & Louis
+
+**Who**: Two Berklee College of Music students starting a music production company
+- Pete: Based in Colorado
+- Louis: Based in London
+- Distance: ~4,500 miles / 7,200 km
+
+**What They Need**:
+- Manage Logic Pro sessions (1-5GB typical, up to 10GB for large projects)
+- Coordinate who's working on what (no simultaneous edits)
+- Track versions: "mix v1", "vocals done", "client revision 3"
+- Work across 7-hour time zone difference (MST ↔ GMT)
+- Handle unreliable transatlantic internet connections
+
+**Their Workflow**:
+```
+Pete (Colorado, morning):
+  → Acquires lock
+  → Records guitar tracks
+  → Commits: "Guitar tracking complete - 12 takes"
+  → Pushes to Oxen Hub
+  → Releases lock
+
+Louis (London, evening):
+  → Sees Pete released lock
+  → Pulls latest changes
+  → Acquires lock
+  → Adds synth layers
+  → Commits: "Synth pads and bass - A minor"
+  → Pushes to Oxen Hub
+  → Releases lock
+```
+
+**Critical Requirements**:
+1. **Reliable sync over long distance** - Can't lose work to failed uploads
+2. **Clear lock status** - Must know if partner is working before starting
+3. **Offline resilience** - Internet drops shouldn't block local work
+4. **Time zone awareness** - Lock timeouts must account for different schedules
+5. **Large file handling** - 2-5GB sessions need chunked upload with resume
+
+---
+
 ### What's Working Now
 - [x] Core VCS operations (init, add, commit, log, restore)
 - [x] Logic Pro project support with metadata
