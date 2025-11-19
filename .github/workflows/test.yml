@@ -35,7 +35,7 @@ jobs:
         path: |
           ~/.cargo/registry
           ~/.cargo/git
-          OxVCS-CLI-Wrapper/target
+          Auxin-CLI-Wrapper/target
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
         restore-keys: |
           ${{ runner.os }}-cargo-
@@ -58,7 +58,7 @@ jobs:
       with:
         name: test-results
         path: |
-          OxVCS-CLI-Wrapper/target/debug/
+          Auxin-CLI-Wrapper/target/debug/
           test-results.txt
         if-no-files-found: ignore
 
@@ -82,29 +82,29 @@ jobs:
         path: |
           ~/.cargo/registry
           ~/.cargo/git
-          OxVCS-CLI-Wrapper/target
+          Auxin-CLI-Wrapper/target
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
         restore-keys: |
           ${{ runner.os }}-cargo-
 
     - name: Run Rust unit tests
-      working-directory: ./OxVCS-CLI-Wrapper
+      working-directory: ./Auxin-CLI-Wrapper
       run: cargo test --lib --verbose
 
     - name: Run Rust integration tests
-      working-directory: ./OxVCS-CLI-Wrapper
+      working-directory: ./Auxin-CLI-Wrapper
       run: cargo test --test oxen_subprocess_integration_test --verbose
 
     - name: Run CLI integration tests
-      working-directory: ./OxVCS-CLI-Wrapper
+      working-directory: ./Auxin-CLI-Wrapper
       run: cargo test --test cli_integration_test --verbose
 
     - name: Check code formatting
-      working-directory: ./OxVCS-CLI-Wrapper
+      working-directory: ./Auxin-CLI-Wrapper
       run: cargo fmt -- --check
 
     - name: Run clippy
-      working-directory: ./OxVCS-CLI-Wrapper
+      working-directory: ./Auxin-CLI-Wrapper
       run: cargo clippy -- -D warnings
 
   # Swift LaunchAgent tests
@@ -120,11 +120,11 @@ jobs:
       run: sudo xcode-select -s /Applications/Xcode_15.2.app/Contents/Developer
 
     - name: Build LaunchAgent
-      working-directory: ./OxVCS-LaunchAgent
+      working-directory: ./Auxin-LaunchAgent
       run: swift build -c release
 
     - name: Run LaunchAgent tests
-      working-directory: ./OxVCS-LaunchAgent
+      working-directory: ./Auxin-LaunchAgent
       run: swift test
 
   # Swift App tests
@@ -140,11 +140,11 @@ jobs:
       run: sudo xcode-select -s /Applications/Xcode_15.2.app/Contents/Developer
 
     - name: Build App
-      working-directory: ./OxVCS-App
+      working-directory: ./Auxin-App
       run: swift build -c release
 
     - name: Run App tests
-      working-directory: ./OxVCS-App
+      working-directory: ./Auxin-App
       run: swift test
 
   # Build check - verify everything compiles
@@ -166,15 +166,15 @@ jobs:
       run: sudo xcode-select -s /Applications/Xcode_15.2.app/Contents/Developer
 
     - name: Build Rust CLI (Release)
-      working-directory: ./OxVCS-CLI-Wrapper
+      working-directory: ./Auxin-CLI-Wrapper
       run: cargo build --release
 
     - name: Build Swift LaunchAgent (Release)
-      working-directory: ./OxVCS-LaunchAgent
+      working-directory: ./Auxin-LaunchAgent
       run: swift build -c release
 
     - name: Build Swift App (Release)
-      working-directory: ./OxVCS-App
+      working-directory: ./Auxin-App
       run: swift build -c release
 
   # Test summary
