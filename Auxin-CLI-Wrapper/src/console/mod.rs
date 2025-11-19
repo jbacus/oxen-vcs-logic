@@ -256,7 +256,10 @@ impl Console {
     }
 
     /// Main event loop
-    async fn event_loop(&mut self, terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>) -> Result<()> {
+    async fn event_loop(
+        &mut self,
+        terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>,
+    ) -> Result<()> {
         loop {
             terminal.draw(|f| self.ui(f))?;
 
@@ -280,7 +283,9 @@ impl Console {
     /// Poll daemon for status updates
     fn poll_daemon_updates(&mut self) -> Result<()> {
         let now = SystemTime::now();
-        let elapsed = now.duration_since(self.last_poll).unwrap_or(Duration::from_secs(0));
+        let elapsed = now
+            .duration_since(self.last_poll)
+            .unwrap_or(Duration::from_secs(0));
 
         // Only poll every POLL_INTERVAL_MS milliseconds
         if elapsed.as_millis() >= POLL_INTERVAL_MS as u128 {
@@ -441,7 +446,11 @@ impl Console {
     }
 
     /// Handle keyboard in restore browser mode
-    fn handle_restore_browser_key(&mut self, code: KeyCode, _modifiers: KeyModifiers) -> Result<()> {
+    fn handle_restore_browser_key(
+        &mut self,
+        code: KeyCode,
+        _modifiers: KeyModifiers,
+    ) -> Result<()> {
         match code {
             // Cancel on Esc
             KeyCode::Esc => {
@@ -456,14 +465,19 @@ impl Console {
             }
             // Navigate down
             KeyCode::Down => {
-                if self.restore_browser.selected_index < self.restore_browser.commits.len().saturating_sub(1) {
+                if self.restore_browser.selected_index
+                    < self.restore_browser.commits.len().saturating_sub(1)
+                {
                     self.restore_browser.selected_index += 1;
                 }
             }
             // Restore on Enter
             KeyCode::Enter => {
                 if !self.restore_browser.commits.is_empty() {
-                    let commit_id = self.restore_browser.commits[self.restore_browser.selected_index].id.clone();
+                    let commit_id = self.restore_browser.commits
+                        [self.restore_browser.selected_index]
+                        .id
+                        .clone();
                     self.execute_restore(&commit_id);
                     self.mode = ConsoleMode::Normal;
                 }
@@ -496,16 +510,22 @@ impl Console {
             KeyCode::Up => {
                 if self.compare_state.active_selector == 0 && self.compare_state.selected_a > 0 {
                     self.compare_state.selected_a -= 1;
-                } else if self.compare_state.active_selector == 1 && self.compare_state.selected_b > 0 {
+                } else if self.compare_state.active_selector == 1
+                    && self.compare_state.selected_b > 0
+                {
                     self.compare_state.selected_b -= 1;
                 }
             }
             // Navigate down
             KeyCode::Down => {
                 let max_idx = self.compare_state.commits.len().saturating_sub(1);
-                if self.compare_state.active_selector == 0 && self.compare_state.selected_a < max_idx {
+                if self.compare_state.active_selector == 0
+                    && self.compare_state.selected_a < max_idx
+                {
                     self.compare_state.selected_a += 1;
-                } else if self.compare_state.active_selector == 1 && self.compare_state.selected_b < max_idx {
+                } else if self.compare_state.active_selector == 1
+                    && self.compare_state.selected_b < max_idx
+                {
                     self.compare_state.selected_b += 1;
                 }
             }
@@ -537,7 +557,9 @@ impl Console {
                 }
             }
             KeyCode::Down => {
-                if self.search_state.selected_index < self.search_state.results.len().saturating_sub(1) {
+                if self.search_state.selected_index
+                    < self.search_state.results.len().saturating_sub(1)
+                {
                     self.search_state.selected_index += 1;
                 }
             }
@@ -574,7 +596,8 @@ impl Console {
             }
             // Navigate down
             KeyCode::Down => {
-                if self.hooks_state.selected_index < self.hooks_state.hooks.len().saturating_sub(1) {
+                if self.hooks_state.selected_index < self.hooks_state.hooks.len().saturating_sub(1)
+                {
                     self.hooks_state.selected_index += 1;
                 }
             }
@@ -753,10 +776,7 @@ impl Console {
                 } else {
                     &commit_id
                 };
-                self.log(
-                    LogLevel::Success,
-                    format!("Commit created: {}", short_id),
-                );
+                self.log(LogLevel::Success, format!("Commit created: {}", short_id));
                 // Refresh status after commit
                 self.refresh_repo_status();
             }
@@ -775,7 +795,13 @@ impl Console {
             return;
         }
 
-        self.log(LogLevel::Info, format!("Restoring to commit {}...", &commit_id[..7.min(commit_id.len())]));
+        self.log(
+            LogLevel::Info,
+            format!(
+                "Restoring to commit {}...",
+                &commit_id[..7.min(commit_id.len())]
+            ),
+        );
 
         // Restore using async runtime
         let project_path = self.project_path.clone();
@@ -790,7 +816,10 @@ impl Console {
             Ok(_) => {
                 self.log(
                     LogLevel::Success,
-                    format!("Restored to commit: {}", &commit_id[..7.min(commit_id.len())]),
+                    format!(
+                        "Restored to commit: {}",
+                        &commit_id[..7.min(commit_id.len())]
+                    ),
                 );
                 // Refresh status after restore
                 self.refresh_repo_status();
@@ -846,7 +875,10 @@ impl Console {
 
                 self.log(
                     LogLevel::Success,
-                    format!("Loaded {} commits for comparison", self.compare_state.commits.len()),
+                    format!(
+                        "Loaded {} commits for comparison",
+                        self.compare_state.commits.len()
+                    ),
                 );
             }
             Err(e) => {
@@ -896,7 +928,10 @@ impl Console {
             return;
         }
 
-        self.log(LogLevel::Info, format!("Searching: {}", self.search_state.query));
+        self.log(
+            LogLevel::Info,
+            format!("Searching: {}", self.search_state.query),
+        );
 
         // Get all commits
         let project_path = self.project_path.clone();
@@ -1014,7 +1049,9 @@ impl Console {
                 // Reload hooks list
                 self.load_hooks();
                 // Adjust selection if needed
-                if self.hooks_state.selected_index >= self.hooks_state.hooks.len() && self.hooks_state.selected_index > 0 {
+                if self.hooks_state.selected_index >= self.hooks_state.hooks.len()
+                    && self.hooks_state.selected_index > 0
+                {
                     self.hooks_state.selected_index -= 1;
                 }
             }
@@ -1101,7 +1138,9 @@ impl Console {
                     .file_name()
                     .and_then(|n| n.to_str())
                     .unwrap_or("Unknown"),
-                Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD),
             ),
         ];
 
@@ -1126,10 +1165,7 @@ impl Console {
             DaemonStatus::Stopped => Span::styled("● Stopped", Style::default().fg(Color::Red)),
             DaemonStatus::Unknown => Span::styled("● Unknown", Style::default().fg(Color::Yellow)),
         };
-        status_lines.push(Line::from(vec![
-            Span::raw("Daemon: "),
-            daemon_indicator,
-        ]));
+        status_lines.push(Line::from(vec![Span::raw("Daemon: "), daemon_indicator]));
 
         status_lines.push(Line::from(""));
 
@@ -1141,10 +1177,7 @@ impl Console {
             )));
             status_lines.push(Line::from(vec![
                 Span::raw("  Staged: "),
-                Span::styled(
-                    repo.staged.to_string(),
-                    Style::default().fg(Color::Green),
-                ),
+                Span::styled(repo.staged.to_string(), Style::default().fg(Color::Green)),
             ]));
             status_lines.push(Line::from(vec![
                 Span::raw("  Modified: "),
@@ -1155,10 +1188,7 @@ impl Console {
             ]));
             status_lines.push(Line::from(vec![
                 Span::raw("  Untracked: "),
-                Span::styled(
-                    repo.untracked.to_string(),
-                    Style::default().fg(Color::Cyan),
-                ),
+                Span::styled(repo.untracked.to_string(), Style::default().fg(Color::Cyan)),
             ]));
         } else {
             status_lines.push(Line::from(Span::styled(
@@ -1398,7 +1428,9 @@ impl Console {
             .enumerate()
             .map(|(i, commit)| {
                 let style = if i == self.restore_browser.selected_index {
-                    Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD)
                 } else {
                     Style::default()
                 };
@@ -1434,7 +1466,9 @@ impl Console {
             Line::from(""),
             Line::from(Span::styled(
                 "Auxin Console - Keyboard Shortcuts",
-                Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD),
             )),
             Line::from(""),
             Line::from("Normal Mode:"),
@@ -1516,10 +1550,22 @@ impl Console {
             .split(chunks[0]);
 
         // Render commit A selector
-        self.render_commit_selector(f, selector_chunks[0], "Commit A", self.compare_state.selected_a, self.compare_state.active_selector == 0);
+        self.render_commit_selector(
+            f,
+            selector_chunks[0],
+            "Commit A",
+            self.compare_state.selected_a,
+            self.compare_state.active_selector == 0,
+        );
 
         // Render commit B selector
-        self.render_commit_selector(f, selector_chunks[1], "Commit B", self.compare_state.selected_b, self.compare_state.active_selector == 1);
+        self.render_commit_selector(
+            f,
+            selector_chunks[1],
+            "Commit B",
+            self.compare_state.selected_b,
+            self.compare_state.active_selector == 1,
+        );
 
         // Right side: Diff result
         let diff_text = if let Some(ref diff) = self.compare_state.diff_result {
@@ -1541,7 +1587,14 @@ impl Console {
     }
 
     /// Helper to render a commit selector
-    fn render_commit_selector(&self, f: &mut Frame, area: Rect, title: &str, selected_index: usize, is_active: bool) {
+    fn render_commit_selector(
+        &self,
+        f: &mut Frame,
+        area: Rect,
+        title: &str,
+        selected_index: usize,
+        is_active: bool,
+    ) {
         let items: Vec<ListItem> = self
             .compare_state
             .commits
@@ -1549,7 +1602,9 @@ impl Console {
             .enumerate()
             .map(|(i, commit)| {
                 let style = if i == selected_index {
-                    Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD)
                 } else {
                     Style::default()
                 };
@@ -1564,7 +1619,11 @@ impl Console {
             })
             .collect();
 
-        let border_color = if is_active { Color::Green } else { Color::White };
+        let border_color = if is_active {
+            Color::Green
+        } else {
+            Color::White
+        };
 
         let list = List::new(items)
             .block(
@@ -1584,20 +1643,19 @@ impl Console {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Length(3),  // Query input
-                Constraint::Min(0),     // Results
+                Constraint::Length(3), // Query input
+                Constraint::Min(0),    // Results
             ])
             .split(area);
 
         // Query input
         let query_text = format!("Query: {}", self.search_state.query);
-        let query_paragraph = Paragraph::new(query_text)
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .border_style(Style::default().fg(Color::Green))
-                    .title("Search (e.g., bpm:120-140 key:minor tag:mixing)"),
-            );
+        let query_paragraph = Paragraph::new(query_text).block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(Color::Green))
+                .title("Search (e.g., bpm:120-140 key:minor tag:mixing)"),
+        );
 
         f.render_widget(query_paragraph, chunks[0]);
 
@@ -1627,7 +1685,9 @@ impl Console {
                 .enumerate()
                 .map(|(i, commit)| {
                     let style = if i == self.search_state.selected_index {
-                        Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+                        Style::default()
+                            .fg(Color::Yellow)
+                            .add_modifier(Modifier::BOLD)
                     } else {
                         Style::default()
                     };
@@ -1647,7 +1707,10 @@ impl Console {
                     Block::default()
                         .borders(Borders::ALL)
                         .border_style(Style::default().fg(Color::White))
-                        .title(format!("Search Results ({} found)", self.search_state.results.len())),
+                        .title(format!(
+                            "Search Results ({} found)",
+                            self.search_state.results.len()
+                        )),
                 )
                 .highlight_symbol("► ");
 
@@ -1693,7 +1756,9 @@ impl Console {
                 .enumerate()
                 .map(|(i, (hook_type, name))| {
                     let style = if i == self.hooks_state.selected_index {
-                        Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+                        Style::default()
+                            .fg(Color::Yellow)
+                            .add_modifier(Modifier::BOLD)
                     } else {
                         Style::default()
                     };
@@ -1719,7 +1784,10 @@ impl Console {
                     Block::default()
                         .borders(Borders::ALL)
                         .border_style(Style::default().fg(Color::White))
-                        .title(format!("Hooks Manager ({} hooks, press 'd' to delete)", self.hooks_state.hooks.len())),
+                        .title(format!(
+                            "Hooks Manager ({} hooks, press 'd' to delete)",
+                            self.hooks_state.hooks.len()
+                        )),
                 )
                 .highlight_symbol("► ");
 
@@ -1823,11 +1891,15 @@ mod tests {
         assert_eq!(console.compare_state.active_selector, 0);
 
         // Simulate Tab key to switch
-        console.handle_compare_mode_key(KeyCode::Tab, KeyModifiers::empty()).unwrap();
+        console
+            .handle_compare_mode_key(KeyCode::Tab, KeyModifiers::empty())
+            .unwrap();
         assert_eq!(console.compare_state.active_selector, 1);
 
         // Tab again to switch back
-        console.handle_compare_mode_key(KeyCode::Tab, KeyModifiers::empty()).unwrap();
+        console
+            .handle_compare_mode_key(KeyCode::Tab, KeyModifiers::empty())
+            .unwrap();
         assert_eq!(console.compare_state.active_selector, 0);
     }
 
@@ -1861,17 +1933,23 @@ mod tests {
         // Navigate selector A down
         console.compare_state.active_selector = 0;
         console.compare_state.selected_a = 0;
-        console.handle_compare_mode_key(KeyCode::Down, KeyModifiers::empty()).unwrap();
+        console
+            .handle_compare_mode_key(KeyCode::Down, KeyModifiers::empty())
+            .unwrap();
         assert_eq!(console.compare_state.selected_a, 1);
 
         // Navigate selector A up
-        console.handle_compare_mode_key(KeyCode::Up, KeyModifiers::empty()).unwrap();
+        console
+            .handle_compare_mode_key(KeyCode::Up, KeyModifiers::empty())
+            .unwrap();
         assert_eq!(console.compare_state.selected_a, 0);
 
         // Switch to selector B
         console.compare_state.active_selector = 1;
         console.compare_state.selected_b = 0;
-        console.handle_compare_mode_key(KeyCode::Down, KeyModifiers::empty()).unwrap();
+        console
+            .handle_compare_mode_key(KeyCode::Down, KeyModifiers::empty())
+            .unwrap();
         assert_eq!(console.compare_state.selected_b, 1);
     }
 
@@ -1899,13 +1977,17 @@ mod tests {
         // Try to navigate up from 0 (should stay at 0)
         console.compare_state.active_selector = 0;
         console.compare_state.selected_a = 0;
-        console.handle_compare_mode_key(KeyCode::Up, KeyModifiers::empty()).unwrap();
+        console
+            .handle_compare_mode_key(KeyCode::Up, KeyModifiers::empty())
+            .unwrap();
         assert_eq!(console.compare_state.selected_a, 0);
 
         // Navigate to last item
         console.compare_state.selected_a = 1;
         // Try to navigate down from last (should stay at last)
-        console.handle_compare_mode_key(KeyCode::Down, KeyModifiers::empty()).unwrap();
+        console
+            .handle_compare_mode_key(KeyCode::Down, KeyModifiers::empty())
+            .unwrap();
         assert_eq!(console.compare_state.selected_a, 1);
     }
 
@@ -1914,7 +1996,9 @@ mod tests {
         let mut console = Console::new(PathBuf::from("/test/project.logicx"));
         console.mode = ConsoleMode::Compare;
 
-        console.handle_compare_mode_key(KeyCode::Esc, KeyModifiers::empty()).unwrap();
+        console
+            .handle_compare_mode_key(KeyCode::Esc, KeyModifiers::empty())
+            .unwrap();
         assert_eq!(console.mode, ConsoleMode::Normal);
     }
 
@@ -1941,9 +2025,15 @@ mod tests {
         console.mode = ConsoleMode::Search;
 
         // Type some characters
-        console.handle_search_mode_key(KeyCode::Char('b'), KeyModifiers::empty()).unwrap();
-        console.handle_search_mode_key(KeyCode::Char('p'), KeyModifiers::empty()).unwrap();
-        console.handle_search_mode_key(KeyCode::Char('m'), KeyModifiers::empty()).unwrap();
+        console
+            .handle_search_mode_key(KeyCode::Char('b'), KeyModifiers::empty())
+            .unwrap();
+        console
+            .handle_search_mode_key(KeyCode::Char('p'), KeyModifiers::empty())
+            .unwrap();
+        console
+            .handle_search_mode_key(KeyCode::Char('m'), KeyModifiers::empty())
+            .unwrap();
 
         assert_eq!(console.search_state.query, "bpm");
     }
@@ -1954,16 +2044,28 @@ mod tests {
         console.mode = ConsoleMode::Search;
 
         // Type and delete
-        console.handle_search_mode_key(KeyCode::Char('t'), KeyModifiers::empty()).unwrap();
-        console.handle_search_mode_key(KeyCode::Char('e'), KeyModifiers::empty()).unwrap();
-        console.handle_search_mode_key(KeyCode::Char('s'), KeyModifiers::empty()).unwrap();
-        console.handle_search_mode_key(KeyCode::Char('t'), KeyModifiers::empty()).unwrap();
+        console
+            .handle_search_mode_key(KeyCode::Char('t'), KeyModifiers::empty())
+            .unwrap();
+        console
+            .handle_search_mode_key(KeyCode::Char('e'), KeyModifiers::empty())
+            .unwrap();
+        console
+            .handle_search_mode_key(KeyCode::Char('s'), KeyModifiers::empty())
+            .unwrap();
+        console
+            .handle_search_mode_key(KeyCode::Char('t'), KeyModifiers::empty())
+            .unwrap();
         assert_eq!(console.search_state.query, "test");
 
-        console.handle_search_mode_key(KeyCode::Backspace, KeyModifiers::empty()).unwrap();
+        console
+            .handle_search_mode_key(KeyCode::Backspace, KeyModifiers::empty())
+            .unwrap();
         assert_eq!(console.search_state.query, "tes");
 
-        console.handle_search_mode_key(KeyCode::Backspace, KeyModifiers::empty()).unwrap();
+        console
+            .handle_search_mode_key(KeyCode::Backspace, KeyModifiers::empty())
+            .unwrap();
         assert_eq!(console.search_state.query, "te");
     }
 
@@ -1997,14 +2099,20 @@ mod tests {
         console.search_state.selected_index = 0;
 
         // Navigate down
-        console.handle_search_mode_key(KeyCode::Down, KeyModifiers::empty()).unwrap();
+        console
+            .handle_search_mode_key(KeyCode::Down, KeyModifiers::empty())
+            .unwrap();
         assert_eq!(console.search_state.selected_index, 1);
 
-        console.handle_search_mode_key(KeyCode::Down, KeyModifiers::empty()).unwrap();
+        console
+            .handle_search_mode_key(KeyCode::Down, KeyModifiers::empty())
+            .unwrap();
         assert_eq!(console.search_state.selected_index, 2);
 
         // Navigate up
-        console.handle_search_mode_key(KeyCode::Up, KeyModifiers::empty()).unwrap();
+        console
+            .handle_search_mode_key(KeyCode::Up, KeyModifiers::empty())
+            .unwrap();
         assert_eq!(console.search_state.selected_index, 1);
     }
 
@@ -2013,23 +2121,25 @@ mod tests {
         let mut console = Console::new(PathBuf::from("/test/project.logicx"));
         console.mode = ConsoleMode::Search;
 
-        console.search_state.results = vec![
-            CommitEntry {
-                id: "abc123".to_string(),
-                short_id: "abc123".to_string(),
-                message: "Result 1".to_string(),
-                timestamp: "now".to_string(),
-            },
-        ];
+        console.search_state.results = vec![CommitEntry {
+            id: "abc123".to_string(),
+            short_id: "abc123".to_string(),
+            message: "Result 1".to_string(),
+            timestamp: "now".to_string(),
+        }];
 
         console.search_state.selected_index = 0;
 
         // Try to go up from 0
-        console.handle_search_mode_key(KeyCode::Up, KeyModifiers::empty()).unwrap();
+        console
+            .handle_search_mode_key(KeyCode::Up, KeyModifiers::empty())
+            .unwrap();
         assert_eq!(console.search_state.selected_index, 0);
 
         // Try to go down from last
-        console.handle_search_mode_key(KeyCode::Down, KeyModifiers::empty()).unwrap();
+        console
+            .handle_search_mode_key(KeyCode::Down, KeyModifiers::empty())
+            .unwrap();
         assert_eq!(console.search_state.selected_index, 0);
     }
 
@@ -2038,7 +2148,9 @@ mod tests {
         let mut console = Console::new(PathBuf::from("/test/project.logicx"));
         console.mode = ConsoleMode::Search;
 
-        console.handle_search_mode_key(KeyCode::Esc, KeyModifiers::empty()).unwrap();
+        console
+            .handle_search_mode_key(KeyCode::Esc, KeyModifiers::empty())
+            .unwrap();
         assert_eq!(console.mode, ConsoleMode::Normal);
     }
 
@@ -2048,31 +2160,31 @@ mod tests {
         console.mode = ConsoleMode::Search;
 
         // Add some results
-        console.search_state.results = vec![
-            CommitEntry {
-                id: "abc123".to_string(),
-                short_id: "abc123".to_string(),
-                message: "Result 1".to_string(),
-                timestamp: "now".to_string(),
-            },
-        ];
+        console.search_state.results = vec![CommitEntry {
+            id: "abc123".to_string(),
+            short_id: "abc123".to_string(),
+            message: "Result 1".to_string(),
+            timestamp: "now".to_string(),
+        }];
 
         // Type a character - should clear results
-        console.handle_search_mode_key(KeyCode::Char('a'), KeyModifiers::empty()).unwrap();
+        console
+            .handle_search_mode_key(KeyCode::Char('a'), KeyModifiers::empty())
+            .unwrap();
         assert_eq!(console.search_state.results.len(), 0);
 
         // Add results again
-        console.search_state.results = vec![
-            CommitEntry {
-                id: "abc123".to_string(),
-                short_id: "abc123".to_string(),
-                message: "Result 1".to_string(),
-                timestamp: "now".to_string(),
-            },
-        ];
+        console.search_state.results = vec![CommitEntry {
+            id: "abc123".to_string(),
+            short_id: "abc123".to_string(),
+            message: "Result 1".to_string(),
+            timestamp: "now".to_string(),
+        }];
 
         // Backspace - should also clear results
-        console.handle_search_mode_key(KeyCode::Backspace, KeyModifiers::empty()).unwrap();
+        console
+            .handle_search_mode_key(KeyCode::Backspace, KeyModifiers::empty())
+            .unwrap();
         assert_eq!(console.search_state.results.len(), 0);
     }
 
@@ -2107,14 +2219,20 @@ mod tests {
         console.hooks_state.selected_index = 0;
 
         // Navigate down
-        console.handle_hooks_mode_key(KeyCode::Down, KeyModifiers::empty()).unwrap();
+        console
+            .handle_hooks_mode_key(KeyCode::Down, KeyModifiers::empty())
+            .unwrap();
         assert_eq!(console.hooks_state.selected_index, 1);
 
-        console.handle_hooks_mode_key(KeyCode::Down, KeyModifiers::empty()).unwrap();
+        console
+            .handle_hooks_mode_key(KeyCode::Down, KeyModifiers::empty())
+            .unwrap();
         assert_eq!(console.hooks_state.selected_index, 2);
 
         // Navigate up
-        console.handle_hooks_mode_key(KeyCode::Up, KeyModifiers::empty()).unwrap();
+        console
+            .handle_hooks_mode_key(KeyCode::Up, KeyModifiers::empty())
+            .unwrap();
         assert_eq!(console.hooks_state.selected_index, 1);
     }
 
@@ -2131,13 +2249,17 @@ mod tests {
         console.hooks_state.selected_index = 0;
 
         // Try to go up from 0
-        console.handle_hooks_mode_key(KeyCode::Up, KeyModifiers::empty()).unwrap();
+        console
+            .handle_hooks_mode_key(KeyCode::Up, KeyModifiers::empty())
+            .unwrap();
         assert_eq!(console.hooks_state.selected_index, 0);
 
         // Go to last
         console.hooks_state.selected_index = 1;
         // Try to go down from last
-        console.handle_hooks_mode_key(KeyCode::Down, KeyModifiers::empty()).unwrap();
+        console
+            .handle_hooks_mode_key(KeyCode::Down, KeyModifiers::empty())
+            .unwrap();
         assert_eq!(console.hooks_state.selected_index, 1);
     }
 
@@ -2146,7 +2268,9 @@ mod tests {
         let mut console = Console::new(PathBuf::from("/test/project.logicx"));
         console.mode = ConsoleMode::Hooks;
 
-        console.handle_hooks_mode_key(KeyCode::Esc, KeyModifiers::empty()).unwrap();
+        console
+            .handle_hooks_mode_key(KeyCode::Esc, KeyModifiers::empty())
+            .unwrap();
         assert_eq!(console.mode, ConsoleMode::Normal);
     }
 
@@ -2158,7 +2282,9 @@ mod tests {
         assert_eq!(console.mode, ConsoleMode::Normal);
 
         // Press 'd' to enter compare mode
-        console.handle_normal_mode_key(KeyCode::Char('d'), KeyModifiers::empty()).unwrap();
+        console
+            .handle_normal_mode_key(KeyCode::Char('d'), KeyModifiers::empty())
+            .unwrap();
         assert_eq!(console.mode, ConsoleMode::Compare);
     }
 
@@ -2168,7 +2294,9 @@ mod tests {
         assert_eq!(console.mode, ConsoleMode::Normal);
 
         // Press 's' to enter search mode
-        console.handle_normal_mode_key(KeyCode::Char('s'), KeyModifiers::empty()).unwrap();
+        console
+            .handle_normal_mode_key(KeyCode::Char('s'), KeyModifiers::empty())
+            .unwrap();
         assert_eq!(console.mode, ConsoleMode::Search);
     }
 
@@ -2178,7 +2306,9 @@ mod tests {
         assert_eq!(console.mode, ConsoleMode::Normal);
 
         // Press 'k' to enter hooks mode
-        console.handle_normal_mode_key(KeyCode::Char('k'), KeyModifiers::empty()).unwrap();
+        console
+            .handle_normal_mode_key(KeyCode::Char('k'), KeyModifiers::empty())
+            .unwrap();
         assert_eq!(console.mode, ConsoleMode::Hooks);
     }
 
@@ -2187,12 +2317,18 @@ mod tests {
         let mut console = Console::new(PathBuf::from("/test/project.logicx"));
 
         // Enter search mode and type a query
-        console.handle_normal_mode_key(KeyCode::Char('s'), KeyModifiers::empty()).unwrap();
+        console
+            .handle_normal_mode_key(KeyCode::Char('s'), KeyModifiers::empty())
+            .unwrap();
         console.search_state.query = "old query".to_string();
 
         // Exit and re-enter search mode
-        console.handle_search_mode_key(KeyCode::Esc, KeyModifiers::empty()).unwrap();
-        console.handle_normal_mode_key(KeyCode::Char('s'), KeyModifiers::empty()).unwrap();
+        console
+            .handle_search_mode_key(KeyCode::Esc, KeyModifiers::empty())
+            .unwrap();
+        console
+            .handle_normal_mode_key(KeyCode::Char('s'), KeyModifiers::empty())
+            .unwrap();
 
         // State should be reset
         assert_eq!(console.search_state.query, "");
@@ -2203,7 +2339,9 @@ mod tests {
         let mut console = Console::new(PathBuf::from("/test/project.logicx"));
         assert!(!console.should_quit);
 
-        console.handle_normal_mode_key(KeyCode::Char('q'), KeyModifiers::empty()).unwrap();
+        console
+            .handle_normal_mode_key(KeyCode::Char('q'), KeyModifiers::empty())
+            .unwrap();
         assert!(console.should_quit);
     }
 
@@ -2212,7 +2350,9 @@ mod tests {
         let mut console = Console::new(PathBuf::from("/test/project.logicx"));
         assert!(!console.should_quit);
 
-        console.handle_normal_mode_key(KeyCode::Char('c'), KeyModifiers::CONTROL).unwrap();
+        console
+            .handle_normal_mode_key(KeyCode::Char('c'), KeyModifiers::CONTROL)
+            .unwrap();
         assert!(console.should_quit);
     }
 
@@ -2221,15 +2361,21 @@ mod tests {
         let mut console = Console::new(PathBuf::from("/test/project.logicx"));
 
         // Enter help mode with '?'
-        console.handle_normal_mode_key(KeyCode::Char('?'), KeyModifiers::empty()).unwrap();
+        console
+            .handle_normal_mode_key(KeyCode::Char('?'), KeyModifiers::empty())
+            .unwrap();
         assert_eq!(console.mode, ConsoleMode::Help);
 
         // Any key exits help mode
-        console.handle_help_mode_key(KeyCode::Char('x'), KeyModifiers::empty()).unwrap();
+        console
+            .handle_help_mode_key(KeyCode::Char('x'), KeyModifiers::empty())
+            .unwrap();
         assert_eq!(console.mode, ConsoleMode::Normal);
 
         // Enter help mode with 'h'
-        console.handle_normal_mode_key(KeyCode::Char('h'), KeyModifiers::empty()).unwrap();
+        console
+            .handle_normal_mode_key(KeyCode::Char('h'), KeyModifiers::empty())
+            .unwrap();
         assert_eq!(console.mode, ConsoleMode::Help);
     }
 

@@ -30,7 +30,8 @@ impl LogicParser {
         let alternatives = project_path.join("Alternatives");
         let project_data = alternatives.join("001").join("ProjectData");
 
-        alternatives.exists() && (project_data.exists() || alternatives.join("000").join("ProjectData").exists())
+        alternatives.exists()
+            && (project_data.exists() || alternatives.join("000").join("ProjectData").exists())
     }
 
     /// Get Logic Pro version without full parsing
@@ -69,7 +70,10 @@ mod tests {
         fs::create_dir_all(project_path.join("Alternatives").join("001")).unwrap();
 
         // Create minimal ProjectData file
-        let project_data = project_path.join("Alternatives").join("001").join("ProjectData");
+        let project_data = project_path
+            .join("Alternatives")
+            .join("001")
+            .join("ProjectData");
         fs::write(project_data, vec![0; 1024]).unwrap();
 
         (temp_dir, project_path)

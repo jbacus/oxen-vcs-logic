@@ -379,7 +379,9 @@ impl BlenderMetadata {
                 if let Some(res_str) = line.strip_prefix("Resolution:") {
                     let parts: Vec<&str> = res_str.trim().split('x').collect();
                     if parts.len() == 2 {
-                        if let (Ok(width), Ok(height)) = (parts[0].parse::<u32>(), parts[1].parse::<u32>()) {
+                        if let (Ok(width), Ok(height)) =
+                            (parts[0].parse::<u32>(), parts[1].parse::<u32>())
+                        {
                             metadata.resolution = Some((width, height));
                         }
                     }
@@ -396,7 +398,9 @@ impl BlenderMetadata {
                 if let Some(range_str) = line.strip_prefix("Frame Range:") {
                     let parts: Vec<&str> = range_str.trim().split('-').collect();
                     if parts.len() == 2 {
-                        if let (Ok(start), Ok(end)) = (parts[0].parse::<u32>(), parts[1].parse::<u32>()) {
+                        if let (Ok(start), Ok(end)) =
+                            (parts[0].parse::<u32>(), parts[1].parse::<u32>())
+                        {
                             metadata.frame_start = Some(start);
                             metadata.frame_end = Some(end);
                         }
@@ -547,8 +551,7 @@ mod tests {
 
     #[test]
     fn test_file_size_formatting() {
-        let metadata = BlenderMetadata::new("Large file")
-            .with_file_size(104857600); // 100 MB
+        let metadata = BlenderMetadata::new("Large file").with_file_size(104857600); // 100 MB
 
         let formatted = metadata.format_commit_message();
         assert!(formatted.contains("File Size: 100.00 MB"));

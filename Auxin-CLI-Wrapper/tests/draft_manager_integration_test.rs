@@ -245,10 +245,7 @@ mod tests {
 
         // Get updated stats
         let stats = draft_manager.get_stats().unwrap();
-        assert!(
-            stats.commit_count >= 1,
-            "Commit count should be at least 1"
-        );
+        assert!(stats.commit_count >= 1, "Commit count should be at least 1");
 
         // Test print (should not panic)
         stats.print();
@@ -348,8 +345,7 @@ mod tests {
         if let Err(err) = result {
             let err_msg = err.to_string();
             assert!(
-                err_msg.contains("Repository not found")
-                    || err_msg.contains("Run 'auxin init'"),
+                err_msg.contains("Repository not found") || err_msg.contains("Run 'auxin init'"),
                 "Error message should mention repository not found: {}",
                 err_msg
             );

@@ -110,12 +110,7 @@ pub trait OxenBackend: Send + Sync {
     fn delete_branch(&self, repo_path: &Path, branch_name: &str) -> Result<()>;
 
     /// Push to remote
-    fn push(
-        &self,
-        repo_path: &Path,
-        remote: Option<&str>,
-        branch: Option<&str>,
-    ) -> Result<()>;
+    fn push(&self, repo_path: &Path, remote: Option<&str>, branch: Option<&str>) -> Result<()>;
 
     /// Pull from remote
     fn pull(&self, repo_path: &Path) -> Result<()>;
@@ -248,12 +243,7 @@ impl OxenBackend for SubprocessBackend {
         self.inner.delete_branch(repo_path, branch_name)
     }
 
-    fn push(
-        &self,
-        repo_path: &Path,
-        remote: Option<&str>,
-        branch: Option<&str>,
-    ) -> Result<()> {
+    fn push(&self, repo_path: &Path, remote: Option<&str>, branch: Option<&str>) -> Result<()> {
         self.inner.push(repo_path, remote, branch)
     }
 
@@ -345,40 +335,36 @@ impl OxenBackend for FFIBackend {
     }
 
     fn add(&self, repo_path: &Path, files: &[&Path]) -> Result<()> {
-        let repo = LocalRepository::from_dir(repo_path)
-            .map_err(Self::convert_error)?;
+        let repo = LocalRepository::from_dir(repo_path).map_err(Self::convert_error)?;
 
         for file in files {
-            self.runtime.block_on(repositories::add(&repo, file))
+            self.runtime
+                .block_on(repositories::add(&repo, file))
                 .map_err(Self::convert_error)?;
         }
         Ok(())
     }
 
     fn add_all(&self, repo_path: &Path) -> Result<()> {
-        let repo = LocalRepository::from_dir(repo_path)
-            .map_err(Self::convert_error)?;
+        let repo = LocalRepository::from_dir(repo_path).map_err(Self::convert_error)?;
 
-        self.runtime.block_on(repositories::add(&repo, "."))
+        self.runtime
+            .block_on(repositories::add(&repo, "."))
             .map_err(Self::convert_error)
     }
 
     fn commit(&self, repo_path: &Path, message: &str) -> Result<CommitInfo> {
-        let repo = LocalRepository::from_dir(repo_path)
-            .map_err(Self::convert_error)?;
+        let repo = LocalRepository::from_dir(repo_path).map_err(Self::convert_error)?;
 
-        let commit = repositories::commit(&repo, message)
-            .map_err(Self::convert_error)?;
+        let commit = repositories::commit(&repo, message).map_err(Self::convert_error)?;
 
         Ok(Self::commit_to_info(&commit))
     }
 
     fn log(&self, repo_path: &Path, limit: Option<usize>) -> Result<Vec<CommitInfo>> {
-        let repo = LocalRepository::from_dir(repo_path)
-            .map_err(Self::convert_error)?;
+        let repo = LocalRepository::from_dir(repo_path).map_err(Self::convert_error)?;
 
-        let commits = repositories::commits::list(&repo)
-            .map_err(Self::convert_error)?;
+        let commits = repositories::commits::list(&repo).map_err(Self::convert_error)?;
 
         let commits: Vec<CommitInfo> = commits
             .iter()
@@ -390,27 +376,18 @@ impl OxenBackend for FFIBackend {
     }
 
     fn status(&self, repo_path: &Path) -> Result<StatusInfo> {
-        let repo = LocalRepository::from_dir(repo_path)
-            .map_err(Self::convert_error)?;
+        let repo = LocalRepository::from_dir(repo_path).map_err(Self::convert_error)?;
 
-        let staged_data = repositories::status(&repo)
-            .map_err(Self::convert_error)?;
+        let staged_data = repositories::status(&repo).map_err(Self::convert_error)?;
 
         // Convert StagedData to our StatusInfo
-        let staged: Vec<std::path::PathBuf> = staged_data.staged_files
-            .keys()
-            .cloned()
-            .collect();
+        let staged: Vec<std::path::PathBuf> = staged_data.staged_files.keys().cloned().collect();
 
-        let modified: Vec<std::path::PathBuf> = staged_data.modified_files
-            .iter()
-            .cloned()
-            .collect();
+        let modified: Vec<std::path::PathBuf> =
+            staged_data.modified_files.iter().cloned().collect();
 
-        let untracked: Vec<std::path::PathBuf> = staged_data.untracked_files
-            .iter()
-            .cloned()
-            .collect();
+        let untracked: Vec<std::path::PathBuf> =
+            staged_data.untracked_files.iter().cloned().collect();
 
         Ok(StatusInfo {
             staged,
@@ -420,17 +397,16 @@ impl OxenBackend for FFIBackend {
     }
 
     fn checkout(&self, repo_path: &Path, target: &str) -> Result<()> {
-        let repo = LocalRepository::from_dir(repo_path)
-            .map_err(Self::convert_error)?;
+        let repo = LocalRepository::from_dir(repo_path).map_err(Self::convert_error)?;
 
-        self.runtime.block_on(repositories::checkout(&repo, target))
+        self.runtime
+            .block_on(repositories::checkout(&repo, target))
             .map(|_| ())
             .map_err(Self::convert_error)
     }
 
     fn create_branch(&self, repo_path: &Path, branch_name: &str) -> Result<()> {
-        let repo = LocalRepository::from_dir(repo_path)
-            .map_err(Self::convert_error)?;
+        let repo = LocalRepository::from_dir(repo_path).map_err(Self::convert_error)?;
 
         repositories::branches::create_from_head(&repo, branch_name)
             .map(|_| ())
@@ -438,14 +414,11 @@ impl OxenBackend for FFIBackend {
     }
 
     fn list_branches(&self, repo_path: &Path) -> Result<Vec<BranchInfo>> {
-        let repo = LocalRepository::from_dir(repo_path)
-            .map_err(Self::convert_error)?;
+        let repo = LocalRepository::from_dir(repo_path).map_err(Self::convert_error)?;
 
-        let branches = repositories::branches::list(&repo)
-            .map_err(Self::convert_error)?;
+        let branches = repositories::branches::list(&repo).map_err(Self::convert_error)?;
 
-        let current = repositories::branches::current_branch(&repo)
-            .map_err(Self::convert_error)?;
+        let current = repositories::branches::current_branch(&repo).map_err(Self::convert_error)?;
 
         let current_name = current.map(|b| b.name).unwrap_or_default();
 
@@ -462,43 +435,35 @@ impl OxenBackend for FFIBackend {
     }
 
     fn current_branch(&self, repo_path: &Path) -> Result<String> {
-        let repo = LocalRepository::from_dir(repo_path)
-            .map_err(Self::convert_error)?;
+        let repo = LocalRepository::from_dir(repo_path).map_err(Self::convert_error)?;
 
-        let branch = repositories::branches::current_branch(&repo)
-            .map_err(Self::convert_error)?;
+        let branch = repositories::branches::current_branch(&repo).map_err(Self::convert_error)?;
 
         Ok(branch.map(|b| b.name).unwrap_or_else(|| "HEAD".to_string()))
     }
 
     fn delete_branch(&self, repo_path: &Path, branch_name: &str) -> Result<()> {
-        let repo = LocalRepository::from_dir(repo_path)
-            .map_err(Self::convert_error)?;
+        let repo = LocalRepository::from_dir(repo_path).map_err(Self::convert_error)?;
 
         repositories::branches::delete(&repo, branch_name)
             .map(|_| ())
             .map_err(Self::convert_error)
     }
 
-    fn push(
-        &self,
-        repo_path: &Path,
-        _remote: Option<&str>,
-        _branch: Option<&str>,
-    ) -> Result<()> {
-        let repo = LocalRepository::from_dir(repo_path)
-            .map_err(Self::convert_error)?;
+    fn push(&self, repo_path: &Path, _remote: Option<&str>, _branch: Option<&str>) -> Result<()> {
+        let repo = LocalRepository::from_dir(repo_path).map_err(Self::convert_error)?;
 
-        self.runtime.block_on(repositories::push(&repo))
+        self.runtime
+            .block_on(repositories::push(&repo))
             .map(|_| ())
             .map_err(Self::convert_error)
     }
 
     fn pull(&self, repo_path: &Path) -> Result<()> {
-        let repo = LocalRepository::from_dir(repo_path)
-            .map_err(Self::convert_error)?;
+        let repo = LocalRepository::from_dir(repo_path).map_err(Self::convert_error)?;
 
-        self.runtime.block_on(repositories::pull(&repo))
+        self.runtime
+            .block_on(repositories::pull(&repo))
             .map(|_| ())
             .map_err(Self::convert_error)
     }

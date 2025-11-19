@@ -238,8 +238,7 @@ impl OxenCache {
 
     fn invalidate(&mut self, repo_path: &Path) {
         // Remove all entries for this repository
-        self.log_cache
-            .retain(|(path, _), _| path != repo_path);
+        self.log_cache.retain(|(path, _), _| path != repo_path);
         self.status_cache.remove(repo_path);
         self.branches_cache.remove(repo_path);
     }
@@ -296,8 +295,7 @@ impl Default for OxenConfig {
                 .unwrap_or(1000),
             default_remote: std::env::var("AUXIN_DEFAULT_REMOTE")
                 .unwrap_or_else(|_| "origin".to_string()),
-            main_branch: std::env::var("AUXIN_MAIN_BRANCH")
-                .unwrap_or_else(|_| "main".to_string()),
+            main_branch: std::env::var("AUXIN_MAIN_BRANCH").unwrap_or_else(|_| "main".to_string()),
             draft_branch: std::env::var("AUXIN_DRAFT_BRANCH")
                 .unwrap_or_else(|_| "draft".to_string()),
         }
@@ -335,14 +333,15 @@ fn sanitize_path(path: &Path, repo_root: Option<&Path>) -> Result<String> {
     }
 
     // Check for control characters
-    if path_str.chars().any(|c| c.is_control() && c != '\n' && c != '\t') {
+    if path_str
+        .chars()
+        .any(|c| c.is_control() && c != '\n' && c != '\t')
+    {
         return Err(anyhow!("Invalid path: contains control characters"));
     }
 
     // Check for command injection patterns
-    let dangerous_patterns = [
-        "$(", "`", ";", "&&", "||", "|", ">", "<", "\n", "\r",
-    ];
+    let dangerous_patterns = ["$(", "`", ";", "&&", "||", "|", ">", "<", "\n", "\r"];
     for pattern in &dangerous_patterns {
         if path_str.contains(pattern) {
             return Err(anyhow!(
@@ -356,9 +355,9 @@ fn sanitize_path(path: &Path, repo_root: Option<&Path>) -> Result<String> {
     if let Some(root) = repo_root {
         // For existing paths, canonicalize to check for path traversal
         if path.exists() {
-            let canonical = path.canonicalize()
-                .context("Failed to canonicalize path")?;
-            let root_canonical = root.canonicalize()
+            let canonical = path.canonicalize().context("Failed to canonicalize path")?;
+            let root_canonical = root
+                .canonicalize()
                 .context("Failed to canonicalize repository root")?;
 
             if !canonical.starts_with(&root_canonical) {
@@ -604,11 +603,7 @@ impl OxenSubprocess {
         let batch_size = self.config.batch_size;
         let total_batches = files.len().div_ceil(batch_size);
 
-        vlog!(
-            "Adding {} files in {} batches",
-            files.len(),
-            total_batches
-        );
+        vlog!("Adding {} files in {} batches", files.len(), total_batches);
 
         for (i, chunk) in files.chunks(batch_size).enumerate() {
             vlog!("Processing batch {}/{}", i + 1, total_batches);
@@ -627,7 +622,11 @@ impl OxenSubprocess {
         }
 
         self.invalidate_cache(repo_path);
-        info!("Added {} file(s) to staging in {} batches", files.len(), total_batches);
+        info!(
+            "Added {} file(s) to staging in {} batches",
+            files.len(),
+            total_batches
+        );
         Ok(())
     }
 
@@ -655,7 +654,8 @@ impl OxenSubprocess {
         // Sanitize the commit message
         let sanitized_message = sanitize_message(message)?;
 
-        let output = self.run_command(&["commit", "-m", &sanitized_message], Some(repo_path), None)?;
+        let output =
+            self.run_command(&["commit", "-m", &sanitized_message], Some(repo_path), None)?;
         self.invalidate_cache(repo_path);
 
         // Parse commit hash from output
@@ -974,9 +974,7 @@ impl OxenSubprocess {
         }
 
         let mut cmd = Command::new(&self.config.oxen_path);
-        cmd.args(args)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
+        cmd.args(args).stdout(Stdio::piped()).stderr(Stdio::piped());
 
         if let Some(dir) = cwd {
             cmd.current_dir(dir);
@@ -1005,7 +1003,10 @@ impl OxenSubprocess {
                 let _ = child.wait();
 
                 let cmd_str = args.join(" ");
-                error!("Command timed out after {:?}: oxen {}", timeout_duration, cmd_str);
+                error!(
+                    "Command timed out after {:?}: oxen {}",
+                    timeout_duration, cmd_str
+                );
 
                 Err(anyhow!(OxenError::Timeout(format!(
                     "Command timed out after {:?}: oxen {}",
@@ -1818,7 +1819,8 @@ Date: 2025-01-01
             };
 
             assert_eq!(
-                is_compatible, should_be_compatible,
+                is_compatible,
+                should_be_compatible,
                 "Version {} should be {}compatible",
                 version_str,
                 if should_be_compatible { "" } else { "in" }

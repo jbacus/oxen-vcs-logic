@@ -63,9 +63,6 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Select Xcode version
-      run: sudo xcode-select -s /Applications/Xcode_15.2.app/Contents/Developer
-
     - name: Build
       working-directory: ./Auxin-LaunchAgent
       run: swift build -c release
@@ -82,9 +79,6 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-
-    - name: Select Xcode version
-      run: sudo xcode-select -s /Applications/Xcode_15.2.app/Contents/Developer
 
     - name: Build
       working-directory: ./Auxin-App

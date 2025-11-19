@@ -39,11 +39,7 @@ pub fn handle_lock_acquire(repo_path: &Path, timeout_hours: u64) -> Result<()> {
             println!("│  ✓ You now have exclusive editing rights                │");
             println!("│                                                          │");
             println!("│  Lock ID: {:<44} │", truncate(&lock.lock_id, 44));
-            println!(
-                "│  Expires in: {} hours{:<36} │",
-                timeout_hours,
-                ""
-            );
+            println!("│  Expires in: {} hours{:<36} │", timeout_hours, "");
             println!(
                 "│  Expires at: {}{:<27} │",
                 lock.expires_at.format("%Y-%m-%d %H:%M UTC"),
@@ -134,10 +130,7 @@ pub fn handle_lock_status(repo_path: &Path) -> Result<()> {
             }
 
             println!("│                                                          │");
-            println!(
-                "│  Holder:    {:<45} │",
-                truncate(&lock.locked_by, 45)
-            );
+            println!("│  Holder:    {:<45} │", truncate(&lock.locked_by, 45));
             println!(
                 "│  Acquired:  {}{:<27} │",
                 lock.acquired_at.format("%Y-%m-%d %H:%M UTC"),
@@ -153,12 +146,7 @@ pub fn handle_lock_status(repo_path: &Path) -> Result<()> {
             if remaining.num_seconds() > 0 {
                 let hours = remaining.num_hours();
                 let mins = remaining.num_minutes() % 60;
-                println!(
-                    "│  Remaining: {}h {}m{:<38} │",
-                    hours,
-                    mins,
-                    ""
-                );
+                println!("│  Remaining: {}h {}m{:<38} │", hours, mins, "");
             }
 
             println!("│                                                          │");

@@ -204,7 +204,9 @@ impl NetworkResilienceManager {
     /// Get default queue file path (~/.auxin/operation_queue.json)
     fn default_queue_path() -> PathBuf {
         let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-        PathBuf::from(home).join(".auxin").join("operation_queue.json")
+        PathBuf::from(home)
+            .join(".auxin")
+            .join("operation_queue.json")
     }
 
     /// Load queued operations from disk
@@ -213,11 +215,11 @@ impl NetworkResilienceManager {
             return Ok(());
         }
 
-        let contents = fs::read_to_string(&self.queue_file)
-            .context("Failed to read operation queue file")?;
+        let contents =
+            fs::read_to_string(&self.queue_file).context("Failed to read operation queue file")?;
 
-        let ops: Vec<QueuedOperation> = serde_json::from_str(&contents)
-            .context("Failed to parse operation queue")?;
+        let ops: Vec<QueuedOperation> =
+            serde_json::from_str(&contents).context("Failed to parse operation queue")?;
 
         self.operations = ops.into();
         Ok(())
@@ -233,8 +235,7 @@ impl NetworkResilienceManager {
         let ops: Vec<_> = self.operations.iter().collect();
         let json = serde_json::to_string_pretty(&ops)?;
 
-        fs::write(&self.queue_file, json)
-            .context("Failed to write operation queue file")?;
+        fs::write(&self.queue_file, json).context("Failed to write operation queue file")?;
 
         Ok(())
     }
@@ -310,7 +311,12 @@ impl NetworkResilienceManager {
                         let backoff_ms = INITIAL_BACKOFF_MS * 2u64.pow(attempt - 1);
                         let backoff_ms = backoff_ms.min(MAX_BACKOFF_MS);
 
-                        crate::vlog!("Retry attempt {}/{}, waiting {}ms", attempt, MAX_RETRIES, backoff_ms);
+                        crate::vlog!(
+                            "Retry attempt {}/{}, waiting {}ms",
+                            attempt,
+                            MAX_RETRIES,
+                            backoff_ms
+                        );
                         thread::sleep(StdDuration::from_millis(backoff_ms));
                     }
                 }
@@ -345,7 +351,9 @@ pub fn is_transient_error(error: &anyhow::Error) -> bool {
         "try again",
     ];
 
-    transient_patterns.iter().any(|pattern| error_str.contains(pattern))
+    transient_patterns
+        .iter()
+        .any(|pattern| error_str.contains(pattern))
 }
 
 /// Check if network is available by attempting to connect to Oxen Hub
@@ -446,14 +454,18 @@ mod tests {
         };
 
         // First 3 failures should re-queue
-        let will_retry = manager.mark_failed(op.clone(), "Network error".to_string()).unwrap();
+        let will_retry = manager
+            .mark_failed(op.clone(), "Network error".to_string())
+            .unwrap();
         assert!(will_retry);
         assert_eq!(manager.queue_size(), 1);
 
         // After MAX_RETRIES, should not re-queue
         let mut op_max = op.clone();
         op_max.attempt_count = MAX_RETRIES - 1;
-        let will_retry = manager.mark_failed(op_max, "Network error".to_string()).unwrap();
+        let will_retry = manager
+            .mark_failed(op_max, "Network error".to_string())
+            .unwrap();
         assert!(!will_retry);
     }
 

@@ -362,7 +362,11 @@ impl SearchEngine {
 
         // Score for message relevance
         if let Some(ref msg_contains) = query.message_contains {
-            if metadata.message.to_lowercase().contains(&msg_contains.to_lowercase()) {
+            if metadata
+                .message
+                .to_lowercase()
+                .contains(&msg_contains.to_lowercase())
+            {
                 score += 3.0;
             }
         }

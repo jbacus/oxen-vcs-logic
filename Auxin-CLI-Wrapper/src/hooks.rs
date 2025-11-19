@@ -105,8 +105,7 @@ impl HookManager {
         let hooks_dir = self.hooks_dir();
 
         // Create hooks directory
-        fs::create_dir_all(&hooks_dir)
-            .context("Failed to create hooks directory")?;
+        fs::create_dir_all(&hooks_dir).context("Failed to create hooks directory")?;
 
         // Create subdirectories for each hook type
         fs::create_dir_all(self.hook_type_dir(HookType::PreCommit))?;
@@ -134,9 +133,7 @@ impl HookManager {
         // Get all hook scripts in the directory
         let mut entries: Vec<_> = fs::read_dir(&hooks_dir)?
             .filter_map(|e| e.ok())
-            .filter(|e| {
-                e.file_type().map(|ft| ft.is_file()).unwrap_or(false)
-            })
+            .filter(|e| e.file_type().map(|ft| ft.is_file()).unwrap_or(false))
             .collect();
 
         // Sort by name for predictable execution order
@@ -174,8 +171,17 @@ impl HookManager {
         // Prepare environment variables for the hook
         let output = Command::new(hook_path)
             .env("AUXIN_MESSAGE", &metadata.message)
-            .env("AUXIN_BPM", metadata.bpm.map(|b| b.to_string()).unwrap_or_default())
-            .env("AUXIN_SAMPLE_RATE", metadata.sample_rate.map(|s| s.to_string()).unwrap_or_default())
+            .env(
+                "AUXIN_BPM",
+                metadata.bpm.map(|b| b.to_string()).unwrap_or_default(),
+            )
+            .env(
+                "AUXIN_SAMPLE_RATE",
+                metadata
+                    .sample_rate
+                    .map(|s| s.to_string())
+                    .unwrap_or_default(),
+            )
             .env("AUXIN_KEY", metadata.key_signature.as_deref().unwrap_or(""))
             .env("AUXIN_TAGS", metadata.tags.join(","))
             .env("AUXIN_REPO_PATH", &self.repo_path)
@@ -460,9 +466,13 @@ mod tests {
         let manager = HookManager::new(dir.path());
 
         manager.init().unwrap();
-        manager.install_builtin("validate-metadata", HookType::PreCommit).unwrap();
+        manager
+            .install_builtin("validate-metadata", HookType::PreCommit)
+            .unwrap();
 
-        let hook_path = manager.hook_type_dir(HookType::PreCommit).join("validate-metadata");
+        let hook_path = manager
+            .hook_type_dir(HookType::PreCommit)
+            .join("validate-metadata");
         assert!(hook_path.exists());
     }
 
@@ -472,7 +482,9 @@ mod tests {
         let manager = HookManager::new(dir.path());
 
         manager.init().unwrap();
-        manager.install_builtin("validate-metadata", HookType::PreCommit).unwrap();
+        manager
+            .install_builtin("validate-metadata", HookType::PreCommit)
+            .unwrap();
 
         let hooks = manager.list_hooks().unwrap();
         assert!(!hooks.is_empty());
@@ -485,10 +497,16 @@ mod tests {
         let manager = HookManager::new(dir.path());
 
         manager.init().unwrap();
-        manager.install_builtin("validate-metadata", HookType::PreCommit).unwrap();
-        manager.remove_hook("validate-metadata", HookType::PreCommit).unwrap();
+        manager
+            .install_builtin("validate-metadata", HookType::PreCommit)
+            .unwrap();
+        manager
+            .remove_hook("validate-metadata", HookType::PreCommit)
+            .unwrap();
 
-        let hook_path = manager.hook_type_dir(HookType::PreCommit).join("validate-metadata");
+        let hook_path = manager
+            .hook_type_dir(HookType::PreCommit)
+            .join("validate-metadata");
         assert!(!hook_path.exists());
     }
 }

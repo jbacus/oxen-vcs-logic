@@ -536,8 +536,7 @@ mod tests {
 
     #[test]
     fn test_file_size_formatting() {
-        let metadata = SketchUpMetadata::new("Large model")
-            .with_file_size(52428800); // 50 MB
+        let metadata = SketchUpMetadata::new("Large model").with_file_size(52428800); // 50 MB
 
         let formatted = metadata.format_commit_message();
         assert!(formatted.contains("File Size: 50.00 MB"));

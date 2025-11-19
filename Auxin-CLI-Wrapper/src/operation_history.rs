@@ -148,8 +148,8 @@ impl OperationHistoryManager {
         let contents = fs::read_to_string(&self.history_file)
             .context("Failed to read operation history file")?;
 
-        let entries: Vec<OperationHistoryEntry> = serde_json::from_str(&contents)
-            .context("Failed to parse operation history")?;
+        let entries: Vec<OperationHistoryEntry> =
+            serde_json::from_str(&contents).context("Failed to parse operation history")?;
 
         Ok(entries)
     }
@@ -163,8 +163,7 @@ impl OperationHistoryManager {
 
         let json = serde_json::to_string_pretty(entries)?;
 
-        fs::write(&self.history_file, json)
-            .context("Failed to write operation history file")?;
+        fs::write(&self.history_file, json).context("Failed to write operation history file")?;
 
         Ok(())
     }
@@ -200,7 +199,9 @@ impl OperationHistoryManager {
         let entries = self.load_history()?;
         Ok(entries
             .into_iter()
-            .filter(|e| std::mem::discriminant(&e.operation) == std::mem::discriminant(&operation_type))
+            .filter(|e| {
+                std::mem::discriminant(&e.operation) == std::mem::discriminant(&operation_type)
+            })
             .collect())
     }
 
@@ -232,21 +233,25 @@ impl OperationHistoryManager {
 
         let lock_operations = entries
             .iter()
-            .filter(|e| matches!(
-                e.operation,
-                HistoryOperation::LockAcquire
-                    | HistoryOperation::LockRelease
-                    | HistoryOperation::LockRenew
-                    | HistoryOperation::LockBreak
-            ))
+            .filter(|e| {
+                matches!(
+                    e.operation,
+                    HistoryOperation::LockAcquire
+                        | HistoryOperation::LockRelease
+                        | HistoryOperation::LockRenew
+                        | HistoryOperation::LockBreak
+                )
+            })
             .count();
 
         let network_operations = entries
             .iter()
-            .filter(|e| matches!(
-                e.operation,
-                HistoryOperation::Push | HistoryOperation::Pull | HistoryOperation::Fetch
-            ))
+            .filter(|e| {
+                matches!(
+                    e.operation,
+                    HistoryOperation::Push | HistoryOperation::Pull | HistoryOperation::Fetch
+                )
+            })
             .count();
 
         Ok(OperationStats {
@@ -261,8 +266,7 @@ impl OperationHistoryManager {
     /// Clear all history (use with caution)
     pub fn clear_history(&self) -> Result<()> {
         if self.history_file.exists() {
-            fs::remove_file(&self.history_file)
-                .context("Failed to remove history file")?;
+            fs::remove_file(&self.history_file).context("Failed to remove history file")?;
         }
         Ok(())
     }
@@ -310,7 +314,10 @@ impl OperationHistoryManager {
             return Ok(());
         }
 
-        println!("\n{}", "┌─ Operation History ─────────────────────────────────────┐".bright_blue());
+        println!(
+            "\n{}",
+            "┌─ Operation History ─────────────────────────────────────┐".bright_blue()
+        );
 
         for entry in entries.iter().rev() {
             let icon = match entry.operation {
@@ -347,7 +354,10 @@ impl OperationHistoryManager {
             }
         }
 
-        println!("{}\n", "└──────────────────────────────────────────────────────────┘".bright_blue());
+        println!(
+            "{}\n",
+            "└──────────────────────────────────────────────────────────┘".bright_blue()
+        );
 
         Ok(())
     }
@@ -445,7 +455,9 @@ mod tests {
             .record(OperationHistoryEntry::new(HistoryOperation::LockAcquire))
             .unwrap();
 
-        let lock_ops = manager.get_by_operation(HistoryOperation::LockAcquire).unwrap();
+        let lock_ops = manager
+            .get_by_operation(HistoryOperation::LockAcquire)
+            .unwrap();
         assert_eq!(lock_ops.len(), 2);
     }
 
@@ -481,13 +493,21 @@ mod tests {
         let history_file = temp_dir.path().join("history.json");
         let manager = OperationHistoryManager::with_history_path(history_file);
 
-        manager.record(OperationHistoryEntry::new(HistoryOperation::LockAcquire)).unwrap();
-        manager.record(OperationHistoryEntry::new(HistoryOperation::Push)).unwrap();
-        manager.record(OperationHistoryEntry::new(HistoryOperation::Pull)).unwrap();
-        manager.record(
-            OperationHistoryEntry::new(HistoryOperation::Commit)
-                .with_result(OperationResult::Failure("Test error".to_string())),
-        ).unwrap();
+        manager
+            .record(OperationHistoryEntry::new(HistoryOperation::LockAcquire))
+            .unwrap();
+        manager
+            .record(OperationHistoryEntry::new(HistoryOperation::Push))
+            .unwrap();
+        manager
+            .record(OperationHistoryEntry::new(HistoryOperation::Pull))
+            .unwrap();
+        manager
+            .record(
+                OperationHistoryEntry::new(HistoryOperation::Commit)
+                    .with_result(OperationResult::Failure("Test error".to_string())),
+            )
+            .unwrap();
 
         let stats = manager.get_stats().unwrap();
         assert_eq!(stats.total, 4);
@@ -507,7 +527,10 @@ mod tests {
         // (Use small number for test performance)
         for i in 0..15 {
             manager
-                .record(OperationHistoryEntry::new(HistoryOperation::Commit).with_metadata("i", i.to_string()))
+                .record(
+                    OperationHistoryEntry::new(HistoryOperation::Commit)
+                        .with_metadata("i", i.to_string()),
+                )
                 .unwrap();
         }
 
@@ -522,7 +545,9 @@ mod tests {
         let history_file = temp_dir.path().join("history.json");
         let manager = OperationHistoryManager::with_history_path(history_file.clone());
 
-        manager.record(OperationHistoryEntry::new(HistoryOperation::Commit)).unwrap();
+        manager
+            .record(OperationHistoryEntry::new(HistoryOperation::Commit))
+            .unwrap();
         assert!(history_file.exists());
 
         manager.clear_history().unwrap();
@@ -536,8 +561,12 @@ mod tests {
         let csv_file = temp_dir.path().join("export.csv");
         let manager = OperationHistoryManager::with_history_path(history_file);
 
-        manager.record(OperationHistoryEntry::new(HistoryOperation::LockAcquire)).unwrap();
-        manager.record(OperationHistoryEntry::new(HistoryOperation::Push)).unwrap();
+        manager
+            .record(OperationHistoryEntry::new(HistoryOperation::LockAcquire))
+            .unwrap();
+        manager
+            .record(OperationHistoryEntry::new(HistoryOperation::Push))
+            .unwrap();
 
         manager.export_csv(&csv_file).unwrap();
 

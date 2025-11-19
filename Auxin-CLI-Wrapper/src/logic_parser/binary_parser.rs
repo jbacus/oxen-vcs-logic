@@ -39,10 +39,12 @@ pub fn parse_logic_project(path: &Path) -> Result<LogicProjectData> {
     parse_project_data_file(&project_data_path, path)
 }
 
-fn parse_project_data_file(project_data_path: &Path, project_root: &Path) -> Result<LogicProjectData> {
+fn parse_project_data_file(
+    project_data_path: &Path,
+    project_root: &Path,
+) -> Result<LogicProjectData> {
     // Read binary file
-    let binary = std::fs::read(project_data_path)
-        .context("Failed to read ProjectData binary")?;
+    let binary = std::fs::read(project_data_path).context("Failed to read ProjectData binary")?;
 
     log::info!("Parsing ProjectData binary ({} bytes)", binary.len());
 
@@ -78,8 +80,8 @@ fn parse_binary_format(binary: &[u8], project_root: &Path) -> Result<LogicProjec
         tempo: parse_tempo_placeholder(binary)?,
         sample_rate: parse_sample_rate_placeholder(binary)?,
         key_signature: "C Major".to_string(), // TODO: Parse from binary
-        time_signature: (4, 4), // TODO: Parse from binary
-        bit_depth: 24, // TODO: Parse from binary
+        time_signature: (4, 4),               // TODO: Parse from binary
+        bit_depth: 24,                        // TODO: Parse from binary
         tracks: parse_tracks_placeholder(binary)?,
         automation: vec![],
         plugins: vec![],
@@ -133,7 +135,11 @@ fn parse_sample_rate_placeholder(binary: &[u8]) -> Result<u32> {
         let value = u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
 
         if common_rates.contains(&value) {
-            log::debug!("Found potential sample rate at offset {}: {}", offset, value);
+            log::debug!(
+                "Found potential sample rate at offset {}: {}",
+                offset,
+                value
+            );
             return Ok(value);
         }
     }
@@ -189,8 +195,7 @@ fn parse_string_at_offset(binary: &[u8], offset: usize, max_len: usize) -> Resul
     // Find null terminator
     let null_pos = slice.iter().position(|&b| b == 0).unwrap_or(slice.len());
 
-    String::from_utf8(slice[..null_pos].to_vec())
-        .context("Invalid UTF-8 in string")
+    String::from_utf8(slice[..null_pos].to_vec()).context("Invalid UTF-8 in string")
 }
 
 #[cfg(test)]

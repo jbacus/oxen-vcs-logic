@@ -362,7 +362,10 @@ mod tests {
 
         if let Ok(project) = result {
             assert!(project.file_path.exists());
-            assert!(project.file_path.to_string_lossy().contains("test_model.skp"));
+            assert!(project
+                .file_path
+                .to_string_lossy()
+                .contains("test_model.skp"));
         }
 
         let _ = fs::remove_file(&project_file);

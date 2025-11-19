@@ -96,12 +96,16 @@ impl OxenRepository {
         vlog!("Staging .oxenignore file...");
 
         let ignore_file = Path::new(".oxenignore");
-        repo_instance.oxen.add(path, &[ignore_file])
+        repo_instance
+            .oxen
+            .add(path, &[ignore_file])
             .context("Failed to stage .oxenignore")?;
 
         vlog!("Creating initial commit...");
         let initial_commit_msg = "Initial commit\n\nInitialized Oxen repository for Logic Pro project with .oxenignore template.";
-        repo_instance.oxen.commit(path, initial_commit_msg)
+        repo_instance
+            .oxen
+            .commit(path, initial_commit_msg)
             .context("Failed to create initial commit")?;
 
         info!("Created initial commit");
@@ -279,9 +283,11 @@ impl OxenRepository {
     pub async fn has_changes(&self) -> Result<bool> {
         let status = self.status().await?;
 
-        Ok(!status.staged.is_empty()
-            || !status.untracked.is_empty()
-            || !status.modified.is_empty())
+        Ok(
+            !status.staged.is_empty()
+                || !status.untracked.is_empty()
+                || !status.modified.is_empty(),
+        )
     }
 
     /// Get the draft manager for this repository

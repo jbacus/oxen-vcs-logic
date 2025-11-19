@@ -50,7 +50,10 @@ impl LogicProjectData {
 
     /// Get tracks by type
     pub fn tracks_by_type(&self, track_type: TrackType) -> Vec<&Track> {
-        self.tracks.iter().filter(|t| t.track_type == track_type).collect()
+        self.tracks
+            .iter()
+            .filter(|t| t.track_type == track_type)
+            .collect()
     }
 }
 
@@ -306,19 +309,17 @@ mod tests {
             key_signature: "C Major".to_string(),
             time_signature: (4, 4),
             bit_depth: 24,
-            tracks: vec![
-                Track {
-                    id: "track1".to_string(),
-                    name: "Lead Synth".to_string(),
-                    track_type: TrackType::MIDI,
-                    track_number: 0,
-                    channel_strip: ChannelStrip::default(),
-                    regions: vec![],
-                    color: Some((255, 0, 0)),
-                    muted: false,
-                    soloed: false,
-                },
-            ],
+            tracks: vec![Track {
+                id: "track1".to_string(),
+                name: "Lead Synth".to_string(),
+                track_type: TrackType::MIDI,
+                track_number: 0,
+                channel_strip: ChannelStrip::default(),
+                regions: vec![],
+                color: Some((255, 0, 0)),
+                muted: false,
+                soloed: false,
+            }],
             automation: vec![],
             plugins: vec![],
             logic_version: "11.0.0".to_string(),

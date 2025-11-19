@@ -424,7 +424,11 @@ impl CommitMetadata {
                 output.push_str(&format!("  {} {}\n", "-".red(), format!("{}", old).red()));
             }
             if let Some(new) = other.bpm {
-                output.push_str(&format!("  {} {}\n", "+".green(), format!("{}", new).green()));
+                output.push_str(&format!(
+                    "  {} {}\n",
+                    "+".green(),
+                    format!("{}", new).green()
+                ));
             }
             output.push('\n');
         }
@@ -433,10 +437,18 @@ impl CommitMetadata {
         if self.sample_rate != other.sample_rate {
             output.push_str(&"Sample Rate:\n".yellow().to_string());
             if let Some(old) = self.sample_rate {
-                output.push_str(&format!("  {} {} Hz\n", "-".red(), format!("{}", old).red()));
+                output.push_str(&format!(
+                    "  {} {} Hz\n",
+                    "-".red(),
+                    format!("{}", old).red()
+                ));
             }
             if let Some(new) = other.sample_rate {
-                output.push_str(&format!("  {} {} Hz\n", "+".green(), format!("{}", new).green()));
+                output.push_str(&format!(
+                    "  {} {} Hz\n",
+                    "+".green(),
+                    format!("{}", new).green()
+                ));
             }
             output.push('\n');
         }
@@ -454,8 +466,16 @@ impl CommitMetadata {
         }
 
         // Tags diff
-        let added_tags: Vec<_> = other.tags.iter().filter(|t| !self.tags.contains(t)).collect();
-        let removed_tags: Vec<_> = self.tags.iter().filter(|t| !other.tags.contains(t)).collect();
+        let added_tags: Vec<_> = other
+            .tags
+            .iter()
+            .filter(|t| !self.tags.contains(t))
+            .collect();
+        let removed_tags: Vec<_> = self
+            .tags
+            .iter()
+            .filter(|t| !other.tags.contains(t))
+            .collect();
 
         if !added_tags.is_empty() || !removed_tags.is_empty() {
             output.push_str(&"Tags:\n".yellow().to_string());
@@ -524,8 +544,16 @@ impl CommitMetadata {
         }
 
         // Tags diff
-        let added_tags: Vec<_> = other.tags.iter().filter(|t| !self.tags.contains(t)).collect();
-        let removed_tags: Vec<_> = self.tags.iter().filter(|t| !other.tags.contains(t)).collect();
+        let added_tags: Vec<_> = other
+            .tags
+            .iter()
+            .filter(|t| !self.tags.contains(t))
+            .collect();
+        let removed_tags: Vec<_> = self
+            .tags
+            .iter()
+            .filter(|t| !other.tags.contains(t))
+            .collect();
 
         if !added_tags.is_empty() || !removed_tags.is_empty() {
             output.push_str("Tags:\n");
@@ -576,8 +604,16 @@ impl CommitMetadata {
             }
         }
 
-        let added_tags: Vec<_> = other.tags.iter().filter(|t| !self.tags.contains(t)).collect();
-        let removed_tags: Vec<_> = self.tags.iter().filter(|t| !other.tags.contains(t)).collect();
+        let added_tags: Vec<_> = other
+            .tags
+            .iter()
+            .filter(|t| !self.tags.contains(t))
+            .collect();
+        let removed_tags: Vec<_> = self
+            .tags
+            .iter()
+            .filter(|t| !other.tags.contains(t))
+            .collect();
 
         if !added_tags.is_empty() {
             parts.push(format!("+{} tags", added_tags.len()));

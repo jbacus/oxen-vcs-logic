@@ -102,7 +102,12 @@ pub struct BounceMetadata {
 
 impl BounceMetadata {
     /// Create new bounce metadata
-    pub fn new(commit_id: &str, original_filename: &str, format: AudioFormat, size_bytes: u64) -> Self {
+    pub fn new(
+        commit_id: &str,
+        original_filename: &str,
+        format: AudioFormat,
+        size_bytes: u64,
+    ) -> Self {
         Self {
             commit_id: commit_id.to_string(),
             original_filename: original_filename.to_string(),
@@ -188,8 +193,7 @@ impl BounceManager {
     /// Initialize bounce storage directory
     pub fn init(&self) -> Result<()> {
         if !self.bounces_dir.exists() {
-            fs::create_dir_all(&self.bounces_dir)
-                .context("Failed to create bounces directory")?;
+            fs::create_dir_all(&self.bounces_dir).context("Failed to create bounces directory")?;
         }
         Ok(())
     }
@@ -219,8 +223,7 @@ impl BounceManager {
             .ok_or_else(|| anyhow!("Unsupported audio format: {}", ext))?;
 
         // Get file info
-        let file_meta = fs::metadata(source_file)
-            .context("Failed to read file metadata")?;
+        let file_meta = fs::metadata(source_file).context("Failed to read file metadata")?;
         let size_bytes = file_meta.len();
 
         // Generate filename: commit_id.extension
@@ -228,8 +231,7 @@ impl BounceManager {
         let dest_path = self.bounces_dir.join(&bounce_filename);
 
         // Copy file to bounces directory
-        fs::copy(source_file, &dest_path)
-            .context("Failed to copy bounce file")?;
+        fs::copy(source_file, &dest_path).context("Failed to copy bounce file")?;
 
         // Create metadata
         let original_filename = source_file
@@ -274,11 +276,11 @@ impl BounceManager {
             return Ok(None);
         }
 
-        let contents = fs::read_to_string(&metadata_path)
-            .context("Failed to read bounce metadata")?;
+        let contents =
+            fs::read_to_string(&metadata_path).context("Failed to read bounce metadata")?;
 
-        let metadata: BounceMetadata = serde_json::from_str(&contents)
-            .context("Failed to parse bounce metadata")?;
+        let metadata: BounceMetadata =
+            serde_json::from_str(&contents).context("Failed to parse bounce metadata")?;
 
         Ok(Some(metadata))
     }
@@ -324,7 +326,8 @@ impl BounceManager {
 
     /// Play a bounce using the system audio player
     pub fn play_bounce(&self, commit_id: &str) -> Result<()> {
-        let path = self.get_bounce_path(commit_id)?
+        let path = self
+            .get_bounce_path(commit_id)?
             .ok_or_else(|| anyhow!("No bounce found for commit {}", commit_id))?;
 
         // Use macOS 'afplay' command
@@ -344,15 +347,13 @@ impl BounceManager {
     pub fn delete_bounce(&self, commit_id: &str) -> Result<()> {
         // Delete audio file
         if let Some(audio_path) = self.get_bounce_path(commit_id)? {
-            fs::remove_file(&audio_path)
-                .context("Failed to delete bounce audio file")?;
+            fs::remove_file(&audio_path).context("Failed to delete bounce audio file")?;
         }
 
         // Delete metadata
         let metadata_path = self.bounces_dir.join(format!("{}.json", commit_id));
         if metadata_path.exists() {
-            fs::remove_file(&metadata_path)
-                .context("Failed to delete bounce metadata")?;
+            fs::remove_file(&metadata_path).context("Failed to delete bounce metadata")?;
         }
 
         Ok(())
@@ -360,11 +361,12 @@ impl BounceManager {
 
     /// Save bounce metadata to JSON file
     fn save_metadata(&self, metadata: &BounceMetadata) -> Result<()> {
-        let path = self.bounces_dir.join(format!("{}.json", metadata.commit_id));
-        let json = serde_json::to_string_pretty(metadata)
-            .context("Failed to serialize metadata")?;
-        fs::write(&path, json)
-            .context("Failed to write metadata file")?;
+        let path = self
+            .bounces_dir
+            .join(format!("{}.json", metadata.commit_id));
+        let json =
+            serde_json::to_string_pretty(metadata).context("Failed to serialize metadata")?;
+        fs::write(&path, json).context("Failed to write metadata file")?;
         Ok(())
     }
 
@@ -470,7 +472,10 @@ mod tests {
     #[test]
     fn test_bounce_manager_creation() {
         let manager = BounceManager::new(Path::new("/tmp/test-repo"));
-        assert_eq!(manager.bounces_dir, PathBuf::from("/tmp/test-repo/.auxin/bounces"));
+        assert_eq!(
+            manager.bounces_dir,
+            PathBuf::from("/tmp/test-repo/.auxin/bounces")
+        );
     }
 
     #[test]

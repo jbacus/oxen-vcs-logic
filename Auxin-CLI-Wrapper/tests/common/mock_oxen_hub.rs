@@ -3,11 +3,11 @@
 // This module provides a mock implementation of Oxen Hub that can be used
 // for testing collaboration features locally without network connectivity.
 
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
 
 /// Mock Oxen Hub state
 #[derive(Debug, Clone)]
@@ -90,7 +90,10 @@ impl MockOxenHub {
             email: email.to_string(),
         };
 
-        self.users.lock().unwrap().insert(username.to_string(), user);
+        self.users
+            .lock()
+            .unwrap()
+            .insert(username.to_string(), user);
     }
 
     /// Authenticate user and return token
@@ -102,7 +105,10 @@ impl MockOxenHub {
                 let token = format!("token_{}", uuid::Uuid::new_v4());
                 drop(users); // Release lock before acquiring another
 
-                self.tokens.lock().unwrap().insert(token.clone(), username.to_string());
+                self.tokens
+                    .lock()
+                    .unwrap()
+                    .insert(token.clone(), username.to_string());
                 return Ok(token);
             }
         }
@@ -112,7 +118,9 @@ impl MockOxenHub {
 
     /// Verify token is valid
     pub fn verify_token(&self, token: &str) -> Result<String, String> {
-        self.tokens.lock().unwrap()
+        self.tokens
+            .lock()
+            .unwrap()
             .get(token)
             .cloned()
             .ok_or_else(|| "Invalid token".to_string())
@@ -149,7 +157,10 @@ impl MockOxenHub {
         message: &str,
         metadata: HashMap<String, String>,
     ) -> String {
-        let commit_hash = format!("commit_{}", uuid::Uuid::new_v4().to_string()[..8].to_string());
+        let commit_hash = format!(
+            "commit_{}",
+            uuid::Uuid::new_v4().to_string()[..8].to_string()
+        );
 
         let commit = MockCommit {
             hash: commit_hash.clone(),
@@ -169,7 +180,9 @@ impl MockOxenHub {
 
     /// Get repository commits
     pub fn get_commits(&self, repo_name: &str) -> Vec<MockCommit> {
-        self.repositories.lock().unwrap()
+        self.repositories
+            .lock()
+            .unwrap()
             .get(repo_name)
             .map(|repo| repo.commits.clone())
             .unwrap_or_default()
@@ -194,8 +207,7 @@ impl MockOxenHub {
             if Utc::now() < existing_lock.expires_at {
                 return Err(format!(
                     "Project locked by {} until {}",
-                    existing_lock.locked_by,
-                    existing_lock.expires_at
+                    existing_lock.locked_by, existing_lock.expires_at
                 ));
             }
         }
@@ -327,12 +339,22 @@ pub fn create_test_hub() -> MockOxenHub {
     let mut metadata1 = HashMap::new();
     metadata1.insert("bpm".to_string(), "120".to_string());
     metadata1.insert("key".to_string(), "C Major".to_string());
-    hub.add_commit("testuser1/test-project", "testuser1", "Initial commit", metadata1);
+    hub.add_commit(
+        "testuser1/test-project",
+        "testuser1",
+        "Initial commit",
+        metadata1,
+    );
 
     let mut metadata2 = HashMap::new();
     metadata2.insert("bpm".to_string(), "128".to_string());
     metadata2.insert("tags".to_string(), "drums,tracking".to_string());
-    hub.add_commit("testuser1/test-project", "testuser1", "Added drums", metadata2);
+    hub.add_commit(
+        "testuser1/test-project",
+        "testuser1",
+        "Added drums",
+        metadata2,
+    );
 
     hub
 }
@@ -361,7 +383,9 @@ mod tests {
         assert_eq!(hub.user_count(), 1);
 
         // Authenticate with valid credentials
-        let token = hub.authenticate("testuser", "test_key").expect("Auth should succeed");
+        let token = hub
+            .authenticate("testuser", "test_key")
+            .expect("Auth should succeed");
         assert!(!token.is_empty());
 
         // Verify token
@@ -378,7 +402,8 @@ mod tests {
         let hub = MockOxenHub::new();
 
         // Acquire lock
-        let lock = hub.acquire_lock("project.logicx", "user1@machine1", "machine1", 4)
+        let lock = hub
+            .acquire_lock("project.logicx", "user1@machine1", "machine1", 4)
             .expect("Lock acquire should succeed");
 
         assert_eq!(lock.project_path, "project.logicx");
@@ -403,7 +428,8 @@ mod tests {
         let hub = MockOxenHub::new();
 
         // User 1 acquires lock
-        let lock1 = hub.acquire_lock("project.logicx", "user1@machine1", "machine1", 4)
+        let lock1 = hub
+            .acquire_lock("project.logicx", "user1@machine1", "machine1", 4)
             .expect("First lock should succeed");
 
         // User 2 tries to acquire (should fail)
@@ -416,7 +442,8 @@ mod tests {
             .expect("Release should succeed");
 
         // User 2 can now acquire
-        let lock2 = hub.acquire_lock("project.logicx", "user2@machine2", "machine2", 4)
+        let lock2 = hub
+            .acquire_lock("project.logicx", "user2@machine2", "machine2", 4)
             .expect("Second lock should succeed after release");
 
         assert_eq!(lock2.locked_by, "user2@machine2");
@@ -427,13 +454,15 @@ mod tests {
         let hub = MockOxenHub::new();
 
         // Acquire lock
-        let lock = hub.acquire_lock("project.logicx", "user1@machine1", "machine1", 2)
+        let lock = hub
+            .acquire_lock("project.logicx", "user1@machine1", "machine1", 2)
             .expect("Lock acquire should succeed");
 
         let original_expiration = lock.expires_at;
 
         // Renew lock
-        let renewed = hub.renew_lock("project.logicx", &lock.lock_id, 4)
+        let renewed = hub
+            .renew_lock("project.logicx", &lock.lock_id, 4)
             .expect("Renewal should succeed");
 
         assert!(renewed.expires_at > original_expiration);

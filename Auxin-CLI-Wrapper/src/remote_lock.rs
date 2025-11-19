@@ -70,8 +70,8 @@ use std::thread;
 use std::time::Duration as StdDuration;
 use uuid::Uuid;
 
-use crate::oxen_subprocess::OxenSubprocess;
 use crate::network_resilience::RetryPolicy;
+use crate::oxen_subprocess::OxenSubprocess;
 
 // ========== Audit Logging ==========
 
@@ -324,7 +324,8 @@ impl RemoteLockManager {
                     repo_path.to_string_lossy(),
                     true,
                     format!("Lock ID: {}", lock.lock_id),
-                ).log();
+                )
+                .log();
 
                 crate::info!("Lock acquired: {}", lock.lock_id);
                 Ok(lock)
@@ -337,7 +338,8 @@ impl RemoteLockManager {
                     repo_path.to_string_lossy(),
                     false,
                     e.to_string(),
-                ).log();
+                )
+                .log();
 
                 Err(e)
             }
@@ -352,7 +354,8 @@ impl RemoteLockManager {
         self.fetch_locks_branch(repo_path)?;
 
         // 2. Verify we own the lock
-        let current_lock = self.get_lock(repo_path)?
+        let current_lock = self
+            .get_lock(repo_path)?
             .ok_or_else(|| anyhow!("No lock exists for this project"))?;
 
         if current_lock.lock_id != lock_id {
@@ -387,7 +390,8 @@ impl RemoteLockManager {
             repo_path.to_string_lossy(),
             true,
             format!("Lock ID: {}", lock_id),
-        ).log();
+        )
+        .log();
 
         crate::info!("Lock released: {}", lock_id);
         Ok(())
@@ -406,7 +410,8 @@ impl RemoteLockManager {
         self.fetch_locks_branch(repo_path)?;
 
         // 2. Get current lock
-        let mut lock = self.get_lock(repo_path)?
+        let mut lock = self
+            .get_lock(repo_path)?
             .ok_or_else(|| anyhow!("No lock exists for this project"))?;
 
         // 3. Verify ownership
@@ -442,11 +447,10 @@ impl RemoteLockManager {
             return Ok(None);
         }
 
-        let content = std::fs::read_to_string(&lock_file)
-            .context("Failed to read lock file")?;
+        let content = std::fs::read_to_string(&lock_file).context("Failed to read lock file")?;
 
-        let lock: RemoteLock = serde_json::from_str(&content)
-            .context("Failed to parse lock file")?;
+        let lock: RemoteLock =
+            serde_json::from_str(&content).context("Failed to parse lock file")?;
 
         Ok(Some(lock))
     }
@@ -463,7 +467,8 @@ impl RemoteLockManager {
         let user_id = get_user_identifier();
 
         // Get current lock info for audit trail
-        let lock_info = self.get_lock(repo_path)?
+        let lock_info = self
+            .get_lock(repo_path)?
             .map(|l| format!("Previous owner: {}, Lock ID: {}", l.locked_by, l.lock_id))
             .unwrap_or_else(|| "No lock found".to_string());
 
@@ -484,7 +489,8 @@ impl RemoteLockManager {
             repo_path.to_string_lossy(),
             true,
             lock_info,
-        ).log();
+        )
+        .log();
 
         crate::info!("Lock forcibly broken");
         Ok(())
@@ -531,8 +537,7 @@ impl RemoteLockManager {
     fn ensure_locks_branch(&self, repo_path: &Path) -> Result<()> {
         // Check if locks branch exists
         let branches = self.oxen.list_branches(repo_path)?;
-        let locks_branch_exists = branches.iter()
-            .any(|b| b.name == self.locks_branch);
+        let locks_branch_exists = branches.iter().any(|b| b.name == self.locks_branch);
 
         if !locks_branch_exists {
             crate::vlog!("Creating locks branch");
@@ -627,7 +632,8 @@ impl RemoteLockManager {
                 }
                 Ok(())
             } else {
-                self.oxen.push(&repo_path_owned, Some("origin"), Some(&locks_branch))
+                self.oxen
+                    .push(&repo_path_owned, Some("origin"), Some(&locks_branch))
                     .context("Failed to push locks branch")
             }
         });
@@ -650,7 +656,8 @@ impl RemoteLockManager {
         self.fetch_locks_branch(repo_path)?;
 
         // Read current lock
-        let current_lock = self.get_lock(repo_path)?
+        let current_lock = self
+            .get_lock(repo_path)?
             .ok_or_else(|| anyhow!("Lock disappeared after push (race condition)"))?;
 
         // Verify it's our lock
@@ -782,7 +789,13 @@ fn get_machine_id() -> String {
 /// Sanitize filename (remove invalid characters)
 fn sanitize_filename(name: &str) -> String {
     name.chars()
-        .map(|c| if c.is_alphanumeric() || c == '-' || c == '_' { c } else { '_' })
+        .map(|c| {
+            if c.is_alphanumeric() || c == '-' || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
         .collect()
 }
 
