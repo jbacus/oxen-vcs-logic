@@ -60,7 +60,7 @@ fn parse_binary_format(binary: &[u8], project_root: &Path) -> Result<LogicProjec
     }
 
     // TODO: Parse header to identify format version
-    let logic_version = detect_logic_version(&binary)?;
+    let logic_version = detect_logic_version(binary)?;
     log::info!("Detected Logic Pro version: {}", logic_version);
 
     // TODO: Parse global settings
@@ -75,12 +75,12 @@ fn parse_binary_format(binary: &[u8], project_root: &Path) -> Result<LogicProjec
     log::warn!("To complete: analyze binary format at {:?}", project_root);
 
     Ok(LogicProjectData {
-        tempo: parse_tempo_placeholder(&binary)?,
-        sample_rate: parse_sample_rate_placeholder(&binary)?,
+        tempo: parse_tempo_placeholder(binary)?,
+        sample_rate: parse_sample_rate_placeholder(binary)?,
         key_signature: "C Major".to_string(), // TODO: Parse from binary
         time_signature: (4, 4), // TODO: Parse from binary
         bit_depth: 24, // TODO: Parse from binary
-        tracks: parse_tracks_placeholder(&binary)?,
+        tracks: parse_tracks_placeholder(binary)?,
         automation: vec![],
         plugins: vec![],
         logic_version,
@@ -111,7 +111,7 @@ fn parse_tempo_placeholder(binary: &[u8]) -> Result<f32> {
         let value = f32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
 
         // Reasonable tempo range: 40-300 BPM
-        if value >= 40.0 && value <= 300.0 && value == value.floor() {
+        if (40.0..=300.0).contains(&value) && value == value.floor() {
             log::debug!("Found potential tempo at offset {}: {}", offset, value);
             return Ok(value);
         }

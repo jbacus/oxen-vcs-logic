@@ -2,7 +2,6 @@
 ///
 /// Provides CLI commands to control and query the background daemon service.
 /// Uses launchctl for daemon lifecycle management and status checks.
-
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::process::Command;
@@ -254,7 +253,7 @@ mod tests {
 
     #[test]
     fn test_daemon_client_creation() {
-        let client = DaemonClient::new();
+        let _client = DaemonClient::new();
         // Just verify it can be created
         assert!(true);
     }

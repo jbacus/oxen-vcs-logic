@@ -5,7 +5,6 @@
 /// - Activity log with real-time updates
 /// - Repository status display
 /// - Keyboard shortcuts for common operations
-
 use anyhow::{Context, Result};
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyModifiers},
@@ -80,7 +79,7 @@ pub struct Console {
 }
 
 /// State for commit dialog
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 struct CommitDialogState {
     message: String,
     bpm: String,
@@ -90,35 +89,13 @@ struct CommitDialogState {
     active_field: usize, // 0=message, 1=bpm, 2=sample_rate, 3=key, 4=tags
 }
 
-impl Default for CommitDialogState {
-    fn default() -> Self {
-        Self {
-            message: String::new(),
-            bpm: String::new(),
-            sample_rate: String::new(),
-            key: String::new(),
-            tags: String::new(),
-            active_field: 0,
-        }
-    }
-}
-
 /// State for restore browser
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 struct RestoreBrowserState {
     commits: Vec<CommitEntry>,
     selected_index: usize,
+    #[allow(dead_code)]
     loading: bool,
-}
-
-impl Default for RestoreBrowserState {
-    fn default() -> Self {
-        Self {
-            commits: Vec::new(),
-            selected_index: 0,
-            loading: false,
-        }
-    }
 }
 
 /// Commit entry for restore browser
@@ -131,7 +108,7 @@ struct CommitEntry {
 }
 
 /// State for compare mode (semantic diff)
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 struct CompareState {
     commits: Vec<CommitEntry>,
     selected_a: usize,
@@ -140,50 +117,19 @@ struct CompareState {
     diff_result: Option<String>,
 }
 
-impl Default for CompareState {
-    fn default() -> Self {
-        Self {
-            commits: Vec::new(),
-            selected_a: 0,
-            selected_b: 0,
-            active_selector: 0,
-            diff_result: None,
-        }
-    }
-}
-
 /// State for search mode
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 struct SearchState {
     query: String,
     results: Vec<CommitEntry>,
     selected_index: usize,
 }
 
-impl Default for SearchState {
-    fn default() -> Self {
-        Self {
-            query: String::new(),
-            results: Vec::new(),
-            selected_index: 0,
-        }
-    }
-}
-
 /// State for hooks mode
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 struct HooksState {
     hooks: Vec<(String, String)>, // (type, name)
     selected_index: usize,
-}
-
-impl Default for HooksState {
-    fn default() -> Self {
-        Self {
-            hooks: Vec::new(),
-            selected_index: 0,
-        }
-    }
 }
 
 /// Single entry in the activity log

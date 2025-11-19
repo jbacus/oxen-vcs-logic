@@ -133,8 +133,10 @@ impl AuxinServerClient {
 
     /// Create a client for a specific server URL
     pub fn with_url(url: &str) -> Result<Self> {
-        let mut config = ServerConfig::default();
-        config.url = url.to_string();
+        let config = ServerConfig {
+            url: url.to_string(),
+            ..Default::default()
+        };
         Self::new(config)
     }
 

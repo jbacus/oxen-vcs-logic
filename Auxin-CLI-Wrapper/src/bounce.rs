@@ -168,6 +168,7 @@ impl BounceMetadata {
 /// Manages bounce files for a repository
 pub struct BounceManager {
     /// Root directory of the repository
+    #[allow(dead_code)]
     repo_root: PathBuf,
 
     /// Directory where bounces are stored

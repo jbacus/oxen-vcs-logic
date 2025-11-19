@@ -225,18 +225,13 @@ impl Default for UiConfig {
 }
 
 /// Color output mode
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum ColorMode {
+    #[default]
     Auto,
     Always,
     Never,
-}
-
-impl Default for ColorMode {
-    fn default() -> Self {
-        ColorMode::Auto
-    }
 }
 
 /// Project type configuration
@@ -255,10 +250,11 @@ impl Default for ProjectConfig {
 }
 
 /// Supported project types
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum ProjectType {
     /// Auto-detect based on file extensions
+    #[default]
     Auto,
     /// Logic Pro projects (.logicx)
     LogicPro,
@@ -268,15 +264,9 @@ pub enum ProjectType {
     Blender,
 }
 
-impl Default for ProjectType {
-    fn default() -> Self {
-        ProjectType::Auto
-    }
-}
-
 impl ProjectType {
-    /// Convert string to ProjectType
-    pub fn from_str(s: &str) -> Option<Self> {
+    /// Parse a string into a ProjectType
+    pub fn parse(s: &str) -> Option<Self> {
         match s.to_lowercase().as_str() {
             "auto" => Some(ProjectType::Auto),
             "logicpro" | "logic-pro" | "logic" => Some(ProjectType::LogicPro),
@@ -421,7 +411,7 @@ impl Config {
 
         // AUXIN_PROJECT_TYPE
         if let Ok(val) = std::env::var("AUXIN_PROJECT_TYPE") {
-            if let Some(project_type) = ProjectType::from_str(&val) {
+            if let Some(project_type) = ProjectType::parse(&val) {
                 config.project.project_type = project_type;
             }
         }

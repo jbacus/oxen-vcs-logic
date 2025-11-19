@@ -1770,7 +1770,7 @@ async fn main() -> anyhow::Result<()> {
                 vlog!("Using legacy --logic flag, treating as LogicPro");
                 ProjectType::LogicPro
             } else if let Some(type_str) = r#type {
-                ProjectType::from_str(&type_str).unwrap_or_else(|| {
+                ProjectType::parse(&type_str).unwrap_or_else(|| {
                     progress::error(&format!("Unknown project type: {}. Supported types: auto, logicpro, sketchup", type_str));
                     std::process::exit(1);
                 })
@@ -2008,7 +2008,7 @@ async fn main() -> anyhow::Result<()> {
                     // Build server metadata
                     let server_metadata = auxin::server_client::LogicProMetadata {
                         bpm: bpm.map(|b| b as f64),
-                        sample_rate: sample_rate,
+                        sample_rate,
                         key_signature: key.clone(),
                         tags: tags.as_ref().map(|t| t.split(',').map(|s| s.trim().to_string()).collect()),
                         custom: None,
@@ -2478,7 +2478,7 @@ async fn main() -> anyhow::Result<()> {
                 "text" => {
                     println!("{}", metadata_a.compare_with_plain(&metadata_b));
                 }
-                "colored" | _ => {
+                _ => {
                     if plain {
                         println!("{}", metadata_a.compare_with_plain(&metadata_b));
                     } else {
@@ -2578,7 +2578,7 @@ async fn main() -> anyhow::Result<()> {
                         println!("{}. {}", i + 1, parts.join(" │ "));
                     }
                 }
-                "list" | _ => {
+                _ => {
                     for (i, commit) in results.iter().enumerate() {
                         let metadata = CommitMetadata::parse_commit_message(&commit.message);
                         let short_id = if commit.id.len() >= 7 {
@@ -2636,21 +2636,18 @@ async fn main() -> anyhow::Result<()> {
             let current_dir = env::current_dir()?;
 
             // Auto-sync pending queue if online (for all lock commands)
-            match check_connectivity() {
-                ConnectivityState::Online => {
-                    let mut queue = OfflineQueue::new()?;
-                    let pending_count = queue.pending().len();
+            if check_connectivity() == ConnectivityState::Online {
+                let mut queue = OfflineQueue::new()?;
+                let pending_count = queue.pending().len();
 
-                    if pending_count > 0 {
-                        vlog!("Auto-syncing {} pending operation(s) before lock operation...", pending_count);
-                        let report = queue.sync_all()?;
+                if pending_count > 0 {
+                    vlog!("Auto-syncing {} pending operation(s) before lock operation...", pending_count);
+                    let report = queue.sync_all()?;
 
-                        if !report.failed.is_empty() {
-                            warn!("{} queued operation(s) failed to sync", report.failed.len());
-                        }
+                    if !report.failed.is_empty() {
+                        warn!("{} queued operation(s) failed to sync", report.failed.len());
                     }
                 }
-                _ => {}
             }
 
             match lock_cmd {
@@ -3420,7 +3417,7 @@ async fn main() -> anyhow::Result<()> {
                     let json = MetadataDiffer::to_json(&diff)?;
                     println!("{}", json);
                 }
-                "text" | _ => {
+                _ => {
                     // Determine color usage
                     let use_color = if color {
                         true
@@ -3730,14 +3727,12 @@ async fn main() -> anyhow::Result<()> {
 
             // Check daemon status
             let daemon_client = DaemonClient::new();
-            let status = daemon_client.status().unwrap_or_else(|_| {
-                auxin::daemon_client::DaemonStatus {
-                    is_running: false,
-                    pid: None,
-                    project_count: None,
-                    version: None,
-                    uptime: None,
-                }
+            let status = daemon_client.status().unwrap_or(auxin::daemon_client::DaemonStatus {
+                is_running: false,
+                pid: None,
+                project_count: None,
+                version: None,
+                uptime: None,
             });
 
             // Set initial daemon status
@@ -4050,7 +4045,7 @@ async fn main() -> anyhow::Result<()> {
                     let pb = progress::spinner("Adding comment...");
 
                     match comment_mgr.add_comment(&current_dir, &commit_id, &user, &text) {
-                        Ok(comment) => {
+                        Ok(_comment) => {
                             progress::finish_success(&pb, "Comment added");
                             println!();
                             progress::success("Comment added successfully");

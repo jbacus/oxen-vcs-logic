@@ -447,8 +447,10 @@ impl OxenSubprocess {
 
     /// Create with custom oxen executable path
     pub fn with_path(oxen_path: impl Into<String>) -> Self {
-        let mut config = OxenConfig::default();
-        config.oxen_path = oxen_path.into();
+        let config = OxenConfig {
+            oxen_path: oxen_path.into(),
+            ..Default::default()
+        };
         let cache_ttl = Duration::from_millis(config.cache_ttl_ms);
         Self {
             config,
@@ -600,7 +602,7 @@ impl OxenSubprocess {
     /// Add files in batches (for large file sets)
     fn add_batched(&self, repo_path: &Path, files: &[&Path]) -> Result<()> {
         let batch_size = self.config.batch_size;
-        let total_batches = (files.len() + batch_size - 1) / batch_size;
+        let total_batches = files.len().div_ceil(batch_size);
 
         vlog!(
             "Adding {} files in {} batches",
@@ -653,7 +655,7 @@ impl OxenSubprocess {
         // Sanitize the commit message
         let sanitized_message = sanitize_message(message)?;
 
-        let output = self.run_command(&["commit", "-m", message], Some(repo_path), None)?;
+        let output = self.run_command(&["commit", "-m", &sanitized_message], Some(repo_path), None)?;
         self.invalidate_cache(repo_path);
 
         // Parse commit hash from output
@@ -1062,7 +1064,7 @@ impl OxenSubprocess {
         // Look for "commit " prefix first (most reliable)
         for line in output.lines() {
             if let Some(rest) = line.trim().strip_prefix("commit ") {
-                let hash = rest.trim().split_whitespace().next()?;
+                let hash = rest.split_whitespace().next()?;
                 if hash.len() >= 7 && hash.chars().all(|c| c.is_ascii_hexdigit()) {
                     return Some(hash.to_string());
                 }

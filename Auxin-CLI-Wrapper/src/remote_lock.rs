@@ -61,7 +61,6 @@
 ///     Err(e) => eprintln!("Failed to acquire lock: {}", e),
 /// }
 /// ```
-
 use anyhow::{anyhow, Context, Result};
 use chrono::{DateTime, Duration, Utc};
 use colored::Colorize;
@@ -772,14 +771,12 @@ fn get_user_identifier() -> String {
 /// Get machine identifier (unique per machine)
 fn get_machine_id() -> String {
     // Use hostname + MAC address hash for machine ID
-    let hostname = hostname::get()
-        .ok()
-        .and_then(|h| h.into_string().ok())
-        .unwrap_or_else(|| "unknown".to_string());
-
     // In production, you'd want to use actual MAC address or UUID
     // For now, just use hostname
-    hostname
+    hostname::get()
+        .ok()
+        .and_then(|h| h.into_string().ok())
+        .unwrap_or_else(|| "unknown".to_string())
 }
 
 /// Sanitize filename (remove invalid characters)
@@ -885,7 +882,7 @@ mod tests {
         use tempfile::TempDir;
 
         let temp_dir = TempDir::new().unwrap();
-        let manager = RemoteLockManager::new();
+        let _manager = RemoteLockManager::new();
 
         // Create locks directory
         let locks_dir = temp_dir.path().join(".oxen").join("locks");

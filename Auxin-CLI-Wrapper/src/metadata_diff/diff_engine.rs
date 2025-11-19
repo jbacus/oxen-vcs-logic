@@ -495,9 +495,9 @@ fn diff_plugin_chain(
     }
 
     if chain_b.len() < chain_a.len() {
-        for i in chain_b.len()..chain_a.len() {
+        for (i, plugin) in chain_a.iter().enumerate().skip(chain_b.len()) {
             changes.push(PluginChainChange::PluginRemoved {
-                plugin_name: chain_a[i].name.clone(),
+                plugin_name: plugin.name.clone(),
                 position: i,
             });
         }
