@@ -1,6 +1,6 @@
 # Auxin Roadmap
 
-**Last Updated**: 2025-11-18
+**Last Updated**: 2025-11-19
 **Vision**: The definitive version control system for professional creative applications
 
 ---
@@ -22,11 +22,12 @@ Auxin solves the fundamental incompatibility between traditional VCS (like Git) 
 | **Phase 3** | GUI Application | Code Complete | 100% |
 | **Phase 4** | Team Collaboration | Complete | 95% |
 | **Phase 5** | 3D Modeling Support | Complete | 100% |
-| **Phase 6** | Network Resilience | Not Started | 0% |
+| **Phase 5.5** | Security & Performance | Complete | 100% |
+| **Phase 6** | Network Resilience | Infrastructure Complete | 40% |
 | **Phase 7** | Auxin Server | In Progress | 30% |
 | **Phase 8** | AI-Powered Diffing | Future | 0% |
 
-**Current Focus**: Phase 6 (Network Resilience) and Phase 7 (Server)
+**Current Focus**: Phase 6 (Network Resilience integration) and Phase 7 (Server)
 
 ---
 
@@ -41,9 +42,12 @@ Auxin solves the fundamental incompatibility between traditional VCS (like Git) 
 - .oxenignore generation for Logic-specific patterns
 - All VCS operations (init, add, commit, log, restore, status, diff, show)
 - Oxen subprocess wrapper for reliable backend operations
-- 331 unit tests, 88% code coverage
+- 434 unit tests, 88% code coverage
+- Output caching (1s TTL) for 10-100x faster repeated queries
+- Automatic file batching (1000 files/batch)
+- Configurable timeouts (30s default, 120s network)
 
-**Key Files**: `oxen_subprocess.rs`, `logic_project.rs`, `commit_metadata.rs`
+**Key Files**: `oxen_subprocess.rs`, `logic_project.rs`, `commit_metadata.rs`, `oxen_backend.rs`
 
 ---
 
@@ -88,9 +92,11 @@ Auxin solves the fundamental incompatibility between traditional VCS (like Git) 
 - Activity feeds with timeline
 - Team discovery from commit history
 - Comments on commits
+- Audit logging for all lock operations
+- Lock lifecycle management (expiration, staleness, emergency unlock)
 - 17 tests passing
 
-**Gap**: Network resilience (no retry logic, no offline mode)
+**Gap**: Full network resilience integration (retry logic infrastructure exists, needs offline mode)
 
 **Key Files**: `remote_lock.rs`, `collaboration.rs`, `auth.rs`
 
@@ -114,23 +120,55 @@ Auxin solves the fundamental incompatibility between traditional VCS (like Git) 
 
 ---
 
+### Phase 5.5: Security & Performance (100%)
+
+**Delivered**: Critical security hardening and performance optimization
+
+**Security Improvements**:
+- Input sanitization (8 dangerous patterns, path traversal prevention)
+- XPC code signature verification (SecCode API)
+- Commit message validation (10k char limit, null byte detection)
+- Audit logging for all sensitive operations
+- Version verification (requires Oxen 0.19+)
+
+**Performance Improvements**:
+- OxenBackend trait abstraction for FFI migration
+- Liboxen FFI backend (10-100x faster, feature-gated)
+- Output caching with 1s TTL
+- Automatic file batching (1000 files/batch)
+- Improved error categorization (8 error types, retryable detection)
+
+**Test Coverage**: 12 dedicated security tests, 434 total tests
+
+**Key Files**: `oxen_subprocess.rs`, `oxen_backend.rs`, `remote_lock.rs`, `XPCService.swift`
+
+---
+
 ## In Progress
 
-### Phase 6: Network Resilience (0%)
+### Phase 6: Network Resilience (40%)
 
 **Goal**: Reliable operation on unreliable networks
 
-**Planned Features**:
-- Offline mode with commit queue
-- Smart retry with exponential backoff
+**Completed Infrastructure**:
+- RetryPolicy with configurable exponential backoff
+- NetworkResilienceManager for operation queuing
+- Persistent queue on disk (`~/.auxin/operation_queue.json`)
+- Transient error detection (timeout, connection refused, 502/503/504)
+- Network availability checking (ping hub.oxen.ai)
+- OxenError.is_retryable() for error classification
+
+**Remaining Integration**:
+- Offline mode with commit queue (infrastructure ready)
+- Automatic retry on push/pull failures
 - Partial push recovery
 - Pre-pull conflict detection
-- Network connectivity monitoring
-- Emergency unlock protocol
 
-**Why Critical**: Current system assumes reliable connectivity. Push failures leave repository in inconsistent state. No retry on transient errors.
+**Why Critical**: Infrastructure exists but not integrated into core workflows. Push failures now detectable but not automatically retried.
 
-**Estimated Effort**: 2-3 weeks
+**Estimated Effort**: 1-2 weeks (integration only)
+
+**Key File**: `network_resilience.rs`
 
 ---
 
@@ -208,12 +246,15 @@ Auxin solves the fundamental incompatibility between traditional VCS (like Git) 
 
 ## Technical Debt
 
-| Item | Priority | Effort |
-|------|----------|--------|
-| Remove liboxen_stub (deprecated fallback) | Low | 1 day |
-| Fix 12 failing doctests | Low | 1 day |
-| Improve XPC reconnection logic | Medium | 2 days |
-| Add property-based testing | Low | 2 days |
+| Item | Priority | Effort | Status |
+|------|----------|--------|--------|
+| ~~Remove liboxen_stub (deprecated fallback)~~ | ~~Low~~ | ~~1 day~~ | DONE |
+| Implement write-ahead logging (WAL) | Medium | 3 days | Pending |
+| Replace force-push locks with CAS | Medium | 2 days | Pending |
+| Enable strict XPC validation in production | Low | 1 day | Pending |
+| Fix 12 failing doctests | Low | 1 day | Pending |
+| Improve XPC reconnection logic | Medium | 2 days | Pending |
+| Add property-based testing | Low | 2 days | Pending |
 
 ---
 
@@ -250,12 +291,14 @@ Auxin solves the fundamental incompatibility between traditional VCS (like Git) 
 
 | Metric | Value |
 |--------|-------|
-| Rust code | 10,498 lines |
+| Rust code | 11,000+ lines |
 | Swift code | ~5,000 lines |
-| Unit tests | 348 passing |
+| Unit tests | 434 passing |
 | Integration tests | 40+ |
 | Coverage | 88% |
 | Supported apps | 3 (Logic Pro, SketchUp, Blender) |
+| Security tests | 12 dedicated |
+| Error types | 8 categorized |
 
 ### Target State (v1.0)
 
@@ -272,34 +315,48 @@ Auxin solves the fundamental incompatibility between traditional VCS (like Git) 
 
 ## Architecture Principles
 
-1. **Oxen-first**: All VCS operations go through Oxen subprocess wrapper
+1. **Oxen-first**: All VCS operations go through OxenBackend trait (subprocess or FFI)
 2. **Binary-aware**: Never attempt algorithmic merge of binary files
 3. **Pessimistic locking**: Prevent conflicts rather than resolve them
 4. **Application-specific**: Metadata and ignore patterns per application
 5. **Offline-capable**: Queue operations when network unavailable
 6. **Power-safe**: Commit before sleep/shutdown
+7. **Secure-by-default**: Input sanitization, audit logging, code signature verification
+8. **Performance-optimized**: Caching, batching, FFI migration path
 
 ---
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines.
+See [docs/developer/contributing.md](docs/developer/contributing.md) for development guidelines.
 
 **Current Priorities**:
-1. Network resilience implementation
-2. macOS integration testing
-3. Server development
-4. Documentation improvements
+1. Network resilience integration (infrastructure complete)
+2. macOS integration testing for Swift components
+3. Server development (Phase 7)
+4. Enable FFI backend by default when liboxen stabilizes
 
 ---
 
 ## Resources
 
-- **User Guide**: [docs/FOR_MUSICIANS.md](docs/FOR_MUSICIANS.md)
-- **Developer Guide**: [docs/FOR_DEVELOPERS.md](docs/FOR_DEVELOPERS.md)
-- **CLI Examples**: [docs/CLI_EXAMPLES.md](docs/CLI_EXAMPLES.md)
+### User Documentation
+- **Getting Started**: [docs/user/getting-started.md](docs/user/getting-started.md)
+- **For Musicians**: [docs/user/for-musicians.md](docs/user/for-musicians.md)
+- **For Modelers**: [docs/user/for-modelers.md](docs/user/for-modelers.md)
+- **CLI Reference**: [docs/user/cli-reference.md](docs/user/cli-reference.md)
+- **Troubleshooting**: [docs/user/troubleshooting.md](docs/user/troubleshooting.md)
+
+### Developer Documentation
+- **Architecture**: [docs/developer/architecture.md](docs/developer/architecture.md)
+- **Architectural Review**: [docs/developer/architectural-review.md](docs/developer/architectural-review.md)
+- **Development Setup**: [docs/developer/development-setup.md](docs/developer/development-setup.md)
+- **Contributing**: [docs/developer/contributing.md](docs/developer/contributing.md)
+- **Testing**: [docs/developer/testing.md](docs/developer/testing.md)
+
+### Project Status
 - **Feature Status**: [FEATURE_STATUS.md](FEATURE_STATUS.md)
-- **Troubleshooting**: [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
+- **Changelog**: [CHANGELOG.md](CHANGELOG.md)
 
 ---
 
