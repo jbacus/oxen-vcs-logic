@@ -1,9 +1,3 @@
-// STUB: Using local liboxen stub until official Rust bindings are published
-pub mod liboxen_stub;
-// Alias stub as liboxen for compatibility
-#[allow(unused_imports)] // Used by other modules via the alias
-use liboxen_stub as liboxen;
-
 pub mod auth;
 pub mod backup_recovery;
 pub mod collaboration;
@@ -69,7 +63,8 @@ pub use operation_history::{
 };
 pub use oxen_ops::OxenRepository;
 pub use oxen_subprocess::{
-    BranchInfo, CommitInfo as SubprocessCommitInfo, OxenSubprocess, StatusInfo,
+    BranchInfo, CommitInfo as SubprocessCommitInfo, OxenConfig, OxenError, OxenSubprocess,
+    StatusInfo,
 };
 pub use remote_lock::{RemoteLock, RemoteLockManager};
 pub use server_client::{AuxinServerClient, ServerConfig, LockInfo, LockHolder, LogicProMetadata as ServerMetadata};

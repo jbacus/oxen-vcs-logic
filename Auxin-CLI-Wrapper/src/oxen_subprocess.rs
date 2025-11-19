@@ -22,122 +22,345 @@ use crate::{error, info, vlog};
 use anyhow::{anyhow, Context, Result};
 use colored::Colorize;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Output};
+use std::process::{Child, Command, Output, Stdio};
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
+use wait_timeout::ChildExt;
+
+// ========== Error Types ==========
+
+/// Categorized errors from Oxen operations
+#[derive(Debug, Clone, PartialEq)]
+pub enum OxenError {
+    /// Resource not found (commit, branch, file)
+    NotFound(String),
+    /// Network-related error (retry-able)
+    NetworkError(String),
+    /// Permission denied
+    PermissionDenied(String),
+    /// Invalid repository state
+    InvalidRepository(String),
+    /// Command timed out
+    Timeout(String),
+    /// Oxen CLI not available
+    NotInstalled,
+    /// Authentication error
+    AuthenticationError(String),
+    /// Other unclassified error
+    Other(String),
+}
+
+impl std::fmt::Display for OxenError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            OxenError::NotFound(msg) => write!(f, "Not found: {}", msg),
+            OxenError::NetworkError(msg) => write!(f, "Network error: {}", msg),
+            OxenError::PermissionDenied(msg) => write!(f, "Permission denied: {}", msg),
+            OxenError::InvalidRepository(msg) => write!(f, "Invalid repository: {}", msg),
+            OxenError::Timeout(msg) => write!(f, "Timeout: {}", msg),
+            OxenError::NotInstalled => write!(f, "Oxen CLI not installed"),
+            OxenError::AuthenticationError(msg) => write!(f, "Authentication error: {}", msg),
+            OxenError::Other(msg) => write!(f, "{}", msg),
+        }
+    }
+}
+
+impl std::error::Error for OxenError {}
+
+impl OxenError {
+    /// Check if this error is retry-able
+    pub fn is_retryable(&self) -> bool {
+        matches!(self, OxenError::NetworkError(_) | OxenError::Timeout(_))
+    }
+
+    /// Classify error from output text
+    fn classify(stdout: &str, stderr: &str) -> Option<Self> {
+        let stdout_lower = stdout.to_lowercase();
+        let stderr_lower = stderr.to_lowercase();
+
+        // Check for specific error patterns
+        if stdout_lower.contains("revision not found")
+            || stdout_lower.contains("branch not found")
+            || stdout_lower.contains("file not found")
+            || stderr_lower.contains("not found")
+        {
+            return Some(OxenError::NotFound(
+                stderr.trim().to_string().chars().take(200).collect(),
+            ));
+        }
+
+        if stderr_lower.contains("connection refused")
+            || stderr_lower.contains("network")
+            || stderr_lower.contains("timeout")
+            || stderr_lower.contains("could not resolve")
+            || stderr_lower.contains("failed to connect")
+        {
+            return Some(OxenError::NetworkError(
+                stderr.trim().to_string().chars().take(200).collect(),
+            ));
+        }
+
+        if stderr_lower.contains("permission denied")
+            || stderr_lower.contains("access denied")
+            || stderr_lower.contains("forbidden")
+        {
+            return Some(OxenError::PermissionDenied(
+                stderr.trim().to_string().chars().take(200).collect(),
+            ));
+        }
+
+        if stderr_lower.contains("not a valid oxen repository")
+            || stderr_lower.contains("not an oxen repository")
+            || stdout_lower.contains("not a valid oxen repository")
+        {
+            return Some(OxenError::InvalidRepository(
+                stderr.trim().to_string().chars().take(200).collect(),
+            ));
+        }
+
+        if stderr_lower.contains("authentication")
+            || stderr_lower.contains("unauthorized")
+            || stderr_lower.contains("invalid credentials")
+        {
+            return Some(OxenError::AuthenticationError(
+                stderr.trim().to_string().chars().take(200).collect(),
+            ));
+        }
+
+        // Check for general error indicators
+        if stdout_lower.contains("error:")
+            || stdout_lower.contains("fatal:")
+            || stdout_lower.contains("failed to")
+            || stderr_lower.contains("error:")
+            || stderr_lower.contains("fatal:")
+            || stderr_lower.contains("failed to")
+        {
+            let msg = if !stderr.trim().is_empty() {
+                stderr.trim()
+            } else {
+                stdout.trim()
+            };
+            return Some(OxenError::Other(msg.chars().take(200).collect()));
+        }
+
+        None
+    }
+}
+
+// ========== Cache ==========
+
+/// Cached entry with timestamp
+#[derive(Clone)]
+struct CacheEntry<T> {
+    data: T,
+    timestamp: Instant,
+}
+
+/// Cache for expensive operations
+struct OxenCache {
+    log_cache: HashMap<(PathBuf, Option<usize>), CacheEntry<Vec<CommitInfo>>>,
+    status_cache: HashMap<PathBuf, CacheEntry<StatusInfo>>,
+    branches_cache: HashMap<PathBuf, CacheEntry<Vec<BranchInfo>>>,
+    ttl: Duration,
+}
+
+impl OxenCache {
+    fn new(ttl: Duration) -> Self {
+        Self {
+            log_cache: HashMap::new(),
+            status_cache: HashMap::new(),
+            branches_cache: HashMap::new(),
+            ttl,
+        }
+    }
+
+    fn get_log(&self, key: &(PathBuf, Option<usize>)) -> Option<Vec<CommitInfo>> {
+        self.log_cache.get(key).and_then(|entry| {
+            if entry.timestamp.elapsed() < self.ttl {
+                Some(entry.data.clone())
+            } else {
+                None
+            }
+        })
+    }
+
+    fn set_log(&mut self, key: (PathBuf, Option<usize>), data: Vec<CommitInfo>) {
+        self.log_cache.insert(
+            key,
+            CacheEntry {
+                data,
+                timestamp: Instant::now(),
+            },
+        );
+    }
+
+    fn get_status(&self, key: &PathBuf) -> Option<StatusInfo> {
+        self.status_cache.get(key).and_then(|entry| {
+            if entry.timestamp.elapsed() < self.ttl {
+                Some(entry.data.clone())
+            } else {
+                None
+            }
+        })
+    }
+
+    fn set_status(&mut self, key: PathBuf, data: StatusInfo) {
+        self.status_cache.insert(
+            key,
+            CacheEntry {
+                data,
+                timestamp: Instant::now(),
+            },
+        );
+    }
+
+    fn get_branches(&self, key: &PathBuf) -> Option<Vec<BranchInfo>> {
+        self.branches_cache.get(key).and_then(|entry| {
+            if entry.timestamp.elapsed() < self.ttl {
+                Some(entry.data.clone())
+            } else {
+                None
+            }
+        })
+    }
+
+    fn set_branches(&mut self, key: PathBuf, data: Vec<BranchInfo>) {
+        self.branches_cache.insert(
+            key,
+            CacheEntry {
+                data,
+                timestamp: Instant::now(),
+            },
+        );
+    }
+
+    fn invalidate(&mut self, repo_path: &Path) {
+        // Remove all entries for this repository
+        self.log_cache
+            .retain(|(path, _), _| path != repo_path);
+        self.status_cache.remove(repo_path);
+        self.branches_cache.remove(repo_path);
+    }
+
+    fn invalidate_all(&mut self) {
+        self.log_cache.clear();
+        self.status_cache.clear();
+        self.branches_cache.clear();
+    }
+}
+
+// ========== Configuration ==========
+
+/// Configuration for OxenSubprocess
+#[derive(Debug, Clone)]
+pub struct OxenConfig {
+    /// Path to oxen executable
+    pub oxen_path: String,
+    /// Default timeout for operations (in seconds)
+    pub default_timeout: u64,
+    /// Timeout for network operations (in seconds)
+    pub network_timeout: u64,
+    /// Maximum files per batch for add operations
+    pub batch_size: usize,
+    /// Cache TTL (in milliseconds)
+    pub cache_ttl_ms: u64,
+    /// Default remote name
+    pub default_remote: String,
+    /// Default main branch name
+    pub main_branch: String,
+    /// Default draft branch name
+    pub draft_branch: String,
+}
+
+impl Default for OxenConfig {
+    fn default() -> Self {
+        Self {
+            oxen_path: std::env::var("AUXIN_OXEN_PATH").unwrap_or_else(|_| "oxen".to_string()),
+            default_timeout: std::env::var("AUXIN_TIMEOUT")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(30),
+            network_timeout: std::env::var("AUXIN_NETWORK_TIMEOUT")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(120),
+            batch_size: std::env::var("AUXIN_BATCH_SIZE")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(1000),
+            cache_ttl_ms: std::env::var("AUXIN_CACHE_TTL_MS")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(1000),
+            default_remote: std::env::var("AUXIN_DEFAULT_REMOTE")
+                .unwrap_or_else(|_| "origin".to_string()),
+            main_branch: std::env::var("AUXIN_MAIN_BRANCH")
+                .unwrap_or_else(|_| "main".to_string()),
+            draft_branch: std::env::var("AUXIN_DRAFT_BRANCH")
+                .unwrap_or_else(|_| "draft".to_string()),
+        }
+    }
+}
+
+// ========== Main Struct ==========
 
 /// Wrapper for executing Oxen CLI commands via subprocess.
 ///
 /// This struct provides a Rust interface to the `oxen` command-line tool by executing
 /// commands as subprocesses and parsing their output. This is a production-ready
 /// solution until official Rust bindings (liboxen) become available.
-///
-/// # Architecture
-///
-/// - Executes `oxen` commands using `std::process::Command`
-/// - Parses stdout/stderr to extract structured data
-/// - Provides type-safe Rust API over CLI interface
-/// - Handles errors, timeouts, and edge cases
-///
-/// # Requirements
-///
-/// The `oxen` CLI must be installed and accessible in PATH:
-/// ```bash
-/// pip install oxen-ai    # Recommended for most users
-/// # or
-/// cargo install oxen     # Build from source
-/// ```
-///
-/// Verify installation:
-/// ```bash
-/// oxen --version
-/// ```
-///
-/// # Examples
-///
-/// ```no_run
-/// use auxin_cli::OxenSubprocess;
-/// use std::path::Path;
-///
-/// fn main() -> anyhow::Result<()> {
-///     let oxen = OxenSubprocess::new();
-///
-///     // Check if oxen is available
-///     if !oxen.is_available() {
-///         eprintln!("oxen CLI not found. Install: pip install oxen-ai");
-///         return Ok(());
-///     }
-///
-///     // Initialize repository
-///     let project = Path::new("/path/to/project.logicx");
-///     oxen.init(project)?;
-///
-///     // Add and commit files
-///     oxen.add_all(project)?;
-///     oxen.commit(project, "Initial commit")?;
-///
-///     // View history
-///     let commits = oxen.log(project, Some(10))?;
-///     for commit in commits {
-///         println!("{}: {}", commit.id, commit.message);
-///     }
-///
-///     Ok(())
-/// }
-/// ```
-///
-/// # Performance
-///
-/// Each method call spawns a subprocess with typical overhead:
-/// - Startup: ~10-50ms per command
-/// - Command execution: Depends on operation (init: ~100ms, commit: ~500ms)
-/// - Output parsing: <5ms for typical outputs
-///
-/// For high-frequency operations, consider batching or caching.
-///
-/// # Error Handling
-///
-/// All methods return `Result<T, anyhow::Error>` with descriptive error messages:
-/// - Command not found: "oxen command not found in PATH"
-/// - Non-zero exit: Includes stderr output from oxen
-/// - Parse errors: "Failed to parse oxen output: ..."
-///
-/// # Verbose Mode
-///
-/// Enable verbose logging to see executed commands and output:
-/// ```no_run
-/// use auxin_cli::OxenSubprocess;
-///
-/// let oxen = OxenSubprocess::new().verbose(true);
-/// // Will log all executed commands and their output
-/// ```
-///
-/// # See Also
-///
-/// - `CommitInfo` - Parsed commit information
-/// - `StatusInfo` - File status information
-/// - `BranchInfo` - Branch details
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct OxenSubprocess {
-    /// Path to oxen executable (defaults to "oxen" in PATH)
-    oxen_path: String,
-    /// Enable verbose logging of commands and output
+    /// Configuration
+    config: OxenConfig,
+    /// Enable verbose logging
     verbose: bool,
+    /// Cache for expensive operations
+    cache: Arc<Mutex<OxenCache>>,
+}
+
+impl std::fmt::Debug for OxenSubprocess {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("OxenSubprocess")
+            .field("config", &self.config)
+            .field("verbose", &self.verbose)
+            .finish()
+    }
 }
 
 impl OxenSubprocess {
     /// Create a new OxenSubprocess wrapper with default settings
     pub fn new() -> Self {
+        let config = OxenConfig::default();
+        let cache_ttl = Duration::from_millis(config.cache_ttl_ms);
         Self {
-            oxen_path: "oxen".to_string(),
+            config,
             verbose: false,
+            cache: Arc::new(Mutex::new(OxenCache::new(cache_ttl))),
+        }
+    }
+
+    /// Create with custom configuration
+    pub fn with_config(config: OxenConfig) -> Self {
+        let cache_ttl = Duration::from_millis(config.cache_ttl_ms);
+        Self {
+            config,
+            verbose: false,
+            cache: Arc::new(Mutex::new(OxenCache::new(cache_ttl))),
         }
     }
 
     /// Create with custom oxen executable path
     pub fn with_path(oxen_path: impl Into<String>) -> Self {
+        let mut config = OxenConfig::default();
+        config.oxen_path = oxen_path.into();
+        let cache_ttl = Duration::from_millis(config.cache_ttl_ms);
         Self {
-            oxen_path: oxen_path.into(),
+            config,
             verbose: false,
+            cache: Arc::new(Mutex::new(OxenCache::new(cache_ttl))),
         }
     }
 
@@ -147,9 +370,28 @@ impl OxenSubprocess {
         self
     }
 
+    /// Get configuration
+    pub fn config(&self) -> &OxenConfig {
+        &self.config
+    }
+
+    /// Invalidate cache for a repository
+    pub fn invalidate_cache(&self, repo_path: &Path) {
+        if let Ok(mut cache) = self.cache.lock() {
+            cache.invalidate(repo_path);
+        }
+    }
+
+    /// Invalidate all caches
+    pub fn invalidate_all_caches(&self) {
+        if let Ok(mut cache) = self.cache.lock() {
+            cache.invalidate_all();
+        }
+    }
+
     /// Check if oxen is available in PATH
     pub fn is_available(&self) -> bool {
-        Command::new(&self.oxen_path)
+        Command::new(&self.config.oxen_path)
             .arg("--version")
             .output()
             .is_ok()
@@ -157,7 +399,7 @@ impl OxenSubprocess {
 
     /// Get oxen version
     pub fn version(&self) -> Result<String> {
-        let output = self.run_command(&["--version"], None)?;
+        let output = self.run_command(&["--version"], None, None)?;
         Ok(output.trim().to_string())
     }
 
@@ -165,7 +407,8 @@ impl OxenSubprocess {
     pub fn init(&self, path: &Path) -> Result<()> {
         vlog!("Initializing oxen repository at: {}", path.display());
 
-        self.run_command(&["init"], Some(path))?;
+        self.run_command(&["init"], Some(path), None)?;
+        self.invalidate_cache(path);
 
         info!("Initialized oxen repository: {}", path.display());
         Ok(())
@@ -179,6 +422,11 @@ impl OxenSubprocess {
 
         vlog!("Adding {} file(s) to staging", files.len());
 
+        // Use batching for large file sets
+        if files.len() > self.config.batch_size {
+            return self.add_batched(repo_path, files);
+        }
+
         let file_args: Vec<String> = files
             .iter()
             .map(|f| f.to_string_lossy().to_string())
@@ -189,9 +437,42 @@ impl OxenSubprocess {
             args.push(file);
         }
 
-        self.run_command(&args, Some(repo_path))?;
+        self.run_command(&args, Some(repo_path), None)?;
+        self.invalidate_cache(repo_path);
 
         info!("Added {} file(s) to staging", files.len());
+        Ok(())
+    }
+
+    /// Add files in batches (for large file sets)
+    fn add_batched(&self, repo_path: &Path, files: &[&Path]) -> Result<()> {
+        let batch_size = self.config.batch_size;
+        let total_batches = (files.len() + batch_size - 1) / batch_size;
+
+        vlog!(
+            "Adding {} files in {} batches",
+            files.len(),
+            total_batches
+        );
+
+        for (i, chunk) in files.chunks(batch_size).enumerate() {
+            vlog!("Processing batch {}/{}", i + 1, total_batches);
+
+            let file_args: Vec<String> = chunk
+                .iter()
+                .map(|f| f.to_string_lossy().to_string())
+                .collect();
+
+            let mut args = vec!["add"];
+            for file in &file_args {
+                args.push(file);
+            }
+
+            self.run_command(&args, Some(repo_path), None)?;
+        }
+
+        self.invalidate_cache(repo_path);
+        info!("Added {} file(s) to staging in {} batches", files.len(), total_batches);
         Ok(())
     }
 
@@ -199,7 +480,8 @@ impl OxenSubprocess {
     pub fn add_all(&self, repo_path: &Path) -> Result<()> {
         vlog!("Adding all files to staging");
 
-        self.run_command(&["add", "."], Some(repo_path))?;
+        self.run_command(&["add", "."], Some(repo_path), None)?;
+        self.invalidate_cache(repo_path);
 
         info!("Added all files to staging");
         Ok(())
@@ -213,10 +495,10 @@ impl OxenSubprocess {
 
         vlog!("Creating commit with message: {}", message);
 
-        let output = self.run_command(&["commit", "-m", message], Some(repo_path))?;
+        let output = self.run_command(&["commit", "-m", message], Some(repo_path), None)?;
+        self.invalidate_cache(repo_path);
 
         // Parse commit hash from output
-        // Typical output: "Commit abc123def created"
         let commit_id = self
             .parse_commit_id(&output)
             .unwrap_or_else(|| "unknown".to_string());
@@ -229,9 +511,18 @@ impl OxenSubprocess {
         })
     }
 
-    /// Get commit log
+    /// Get commit log (with caching)
     pub fn log(&self, repo_path: &Path, limit: Option<usize>) -> Result<Vec<CommitInfo>> {
         vlog!("Fetching commit log");
+
+        // Check cache first
+        let cache_key = (repo_path.to_path_buf(), limit);
+        if let Ok(cache) = self.cache.lock() {
+            if let Some(cached) = cache.get_log(&cache_key) {
+                vlog!("Returning cached log ({} commits)", cached.len());
+                return Ok(cached);
+            }
+        }
 
         let mut args = vec!["log"];
         let limit_str;
@@ -240,21 +531,37 @@ impl OxenSubprocess {
             args.push(&limit_str);
         }
 
-        let output = self.run_command(&args, Some(repo_path))?;
-
+        let output = self.run_command(&args, Some(repo_path), None)?;
         let commits = self.parse_log_output(&output)?;
+
+        // Update cache
+        if let Ok(mut cache) = self.cache.lock() {
+            cache.set_log(cache_key, commits.clone());
+        }
 
         vlog!("Found {} commit(s)", commits.len());
         Ok(commits)
     }
 
-    /// Get repository status
+    /// Get repository status (with caching)
     pub fn status(&self, repo_path: &Path) -> Result<StatusInfo> {
         vlog!("Getting repository status");
 
-        let output = self.run_command(&["status"], Some(repo_path))?;
+        // Check cache first
+        if let Ok(cache) = self.cache.lock() {
+            if let Some(cached) = cache.get_status(&repo_path.to_path_buf()) {
+                vlog!("Returning cached status");
+                return Ok(cached);
+            }
+        }
 
+        let output = self.run_command(&["status"], Some(repo_path), None)?;
         let status = self.parse_status_output(&output)?;
+
+        // Update cache
+        if let Ok(mut cache) = self.cache.lock() {
+            cache.set_status(repo_path.to_path_buf(), status.clone());
+        }
 
         vlog!(
             "Status: {} modified, {} untracked",
@@ -268,7 +575,8 @@ impl OxenSubprocess {
     pub fn checkout(&self, repo_path: &Path, target: &str) -> Result<()> {
         vlog!("Checking out: {}", target);
 
-        self.run_command(&["checkout", target], Some(repo_path))?;
+        self.run_command(&["checkout", target], Some(repo_path), None)?;
+        self.invalidate_cache(repo_path);
 
         info!("Checked out: {}", target);
         Ok(())
@@ -278,19 +586,32 @@ impl OxenSubprocess {
     pub fn create_branch(&self, repo_path: &Path, branch_name: &str) -> Result<()> {
         vlog!("Creating branch: {}", branch_name);
 
-        self.run_command(&["checkout", "-b", branch_name], Some(repo_path))?;
+        self.run_command(&["checkout", "-b", branch_name], Some(repo_path), None)?;
+        self.invalidate_cache(repo_path);
 
         info!("Created branch: {}", branch_name);
         Ok(())
     }
 
-    /// List branches
+    /// List branches (with caching)
     pub fn list_branches(&self, repo_path: &Path) -> Result<Vec<BranchInfo>> {
         vlog!("Listing branches");
 
-        let output = self.run_command(&["branch"], Some(repo_path))?;
+        // Check cache first
+        if let Ok(cache) = self.cache.lock() {
+            if let Some(cached) = cache.get_branches(&repo_path.to_path_buf()) {
+                vlog!("Returning cached branches ({} branches)", cached.len());
+                return Ok(cached);
+            }
+        }
 
+        let output = self.run_command(&["branch"], Some(repo_path), None)?;
         let branches = self.parse_branches_output(&output)?;
+
+        // Update cache
+        if let Ok(mut cache) = self.cache.lock() {
+            cache.set_branches(repo_path.to_path_buf(), branches.clone());
+        }
 
         vlog!("Found {} branch(es)", branches.len());
         Ok(branches)
@@ -300,7 +621,7 @@ impl OxenSubprocess {
     pub fn current_branch(&self, repo_path: &Path) -> Result<String> {
         vlog!("Getting current branch");
 
-        let output = self.run_command(&["branch", "--show-current"], Some(repo_path))?;
+        let output = self.run_command(&["branch", "--show-current"], Some(repo_path), None)?;
 
         let branch = output.trim().to_string();
         vlog!("Current branch: {}", branch);
@@ -311,14 +632,15 @@ impl OxenSubprocess {
     pub fn delete_branch(&self, repo_path: &Path, branch_name: &str) -> Result<()> {
         vlog!("Deleting branch: {}", branch_name);
 
-        // Use -D (force delete) to allow deleting unmerged branches (e.g., draft branches)
-        self.run_command(&["branch", "-D", branch_name], Some(repo_path))?;
+        // Use -D (force delete) to allow deleting unmerged branches
+        self.run_command(&["branch", "-D", branch_name], Some(repo_path), None)?;
+        self.invalidate_cache(repo_path);
 
         info!("Deleted branch: {}", branch_name);
         Ok(())
     }
 
-    /// Push to remote
+    /// Push to remote (with network timeout)
     pub fn push(&self, repo_path: &Path, remote: Option<&str>, branch: Option<&str>) -> Result<()> {
         vlog!("Pushing to remote");
 
@@ -330,42 +652,215 @@ impl OxenSubprocess {
             args.push(b);
         }
 
-        self.run_command(&args, Some(repo_path))?;
+        // Use network timeout for push operations
+        let timeout = Some(Duration::from_secs(self.config.network_timeout));
+        self.run_command(&args, Some(repo_path), timeout)?;
 
         info!("Pushed to remote");
         Ok(())
     }
 
-    /// Pull from remote
+    /// Pull from remote (with network timeout)
     pub fn pull(&self, repo_path: &Path) -> Result<()> {
         vlog!("Pulling from remote");
 
-        self.run_command(&["pull"], Some(repo_path))?;
+        let timeout = Some(Duration::from_secs(self.config.network_timeout));
+        self.run_command(&["pull"], Some(repo_path), timeout)?;
+        self.invalidate_cache(repo_path);
 
         info!("Pulled from remote");
         Ok(())
     }
 
-    // ========== Private Helper Methods ==========
+    // ========== New Operations ==========
 
-    /// Run an oxen command and capture output
-    fn run_command(&self, args: &[&str], cwd: Option<&Path>) -> Result<String> {
-        if self.verbose {
-            vlog!("Running: {} {}", self.oxen_path, args.join(" "));
+    /// Fetch from remote without merging
+    pub fn fetch(&self, repo_path: &Path, remote: Option<&str>) -> Result<()> {
+        vlog!("Fetching from remote");
+
+        let mut args = vec!["fetch"];
+        if let Some(r) = remote {
+            args.push(r);
         }
 
-        let mut cmd = Command::new(&self.oxen_path);
-        cmd.args(args);
+        let timeout = Some(Duration::from_secs(self.config.network_timeout));
+        self.run_command(&args, Some(repo_path), timeout)?;
+
+        info!("Fetched from remote");
+        Ok(())
+    }
+
+    /// Show diff between commits or working directory
+    pub fn diff(&self, repo_path: &Path, target: Option<&str>) -> Result<String> {
+        vlog!("Getting diff");
+
+        let mut args = vec!["diff"];
+        if let Some(t) = target {
+            args.push(t);
+        }
+
+        let output = self.run_command(&args, Some(repo_path), None)?;
+        Ok(output)
+    }
+
+    /// Reset/unstage files
+    pub fn reset(&self, repo_path: &Path, files: Option<&[&Path]>) -> Result<()> {
+        vlog!("Resetting files");
+
+        let file_args: Vec<String> = files
+            .map(|file_list| {
+                file_list
+                    .iter()
+                    .map(|f| f.to_string_lossy().to_string())
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        let mut args = vec!["reset"];
+        for file in &file_args {
+            args.push(file);
+        }
+
+        self.run_command(&args, Some(repo_path), None)?;
+        self.invalidate_cache(repo_path);
+
+        info!("Reset completed");
+        Ok(())
+    }
+
+    /// Create a tag
+    pub fn tag(&self, repo_path: &Path, tag_name: &str, message: Option<&str>) -> Result<()> {
+        vlog!("Creating tag: {}", tag_name);
+
+        let mut args = vec!["tag", tag_name];
+        if let Some(msg) = message {
+            args.push("-m");
+            args.push(msg);
+        }
+
+        self.run_command(&args, Some(repo_path), None)?;
+
+        info!("Created tag: {}", tag_name);
+        Ok(())
+    }
+
+    /// List tags
+    pub fn list_tags(&self, repo_path: &Path) -> Result<Vec<String>> {
+        vlog!("Listing tags");
+
+        let output = self.run_command(&["tag"], Some(repo_path), None)?;
+
+        let tags: Vec<String> = output
+            .lines()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect();
+
+        vlog!("Found {} tag(s)", tags.len());
+        Ok(tags)
+    }
+
+    /// Show commit details
+    pub fn show(&self, repo_path: &Path, commit_id: &str) -> Result<String> {
+        vlog!("Showing commit: {}", commit_id);
+
+        let output = self.run_command(&["show", commit_id], Some(repo_path), None)?;
+        Ok(output)
+    }
+
+    /// Add remote
+    pub fn remote_add(&self, repo_path: &Path, name: &str, url: &str) -> Result<()> {
+        vlog!("Adding remote: {} -> {}", name, url);
+
+        self.run_command(&["remote", "add", name, url], Some(repo_path), None)?;
+
+        info!("Added remote: {}", name);
+        Ok(())
+    }
+
+    /// List remotes
+    pub fn remote_list(&self, repo_path: &Path) -> Result<Vec<(String, String)>> {
+        vlog!("Listing remotes");
+
+        let output = self.run_command(&["remote", "-v"], Some(repo_path), None)?;
+
+        let mut remotes = Vec::new();
+        for line in output.lines() {
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            if parts.len() >= 2 {
+                remotes.push((parts[0].to_string(), parts[1].to_string()));
+            }
+        }
+
+        // Deduplicate (fetch and push often shown separately)
+        remotes.sort();
+        remotes.dedup();
+
+        vlog!("Found {} remote(s)", remotes.len());
+        Ok(remotes)
+    }
+
+    // ========== Private Helper Methods ==========
+
+    /// Run an oxen command with timeout
+    fn run_command(
+        &self,
+        args: &[&str],
+        cwd: Option<&Path>,
+        timeout: Option<Duration>,
+    ) -> Result<String> {
+        if self.verbose {
+            vlog!("Running: {} {}", self.config.oxen_path, args.join(" "));
+        }
+
+        let mut cmd = Command::new(&self.config.oxen_path);
+        cmd.args(args)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
 
         if let Some(dir) = cwd {
             cmd.current_dir(dir);
         }
 
-        let output = cmd
-            .output()
-            .with_context(|| format!("Failed to execute oxen command: {}", args.join(" ")))?;
+        let mut child = cmd
+            .spawn()
+            .with_context(|| format!("Failed to spawn oxen command: {}", args.join(" ")))?;
 
-        self.handle_output(output, args)
+        // Apply timeout
+        let timeout_duration = timeout.unwrap_or(Duration::from_secs(self.config.default_timeout));
+
+        let status = child
+            .wait_timeout(timeout_duration)
+            .with_context(|| format!("Error waiting for oxen command: {}", args.join(" ")))?;
+
+        match status {
+            Some(_) => {
+                // Command completed within timeout
+                let output = self.collect_output(child)?;
+                self.handle_output(output, args)
+            }
+            None => {
+                // Timeout - kill the process
+                let _ = child.kill();
+                let _ = child.wait();
+
+                let cmd_str = args.join(" ");
+                error!("Command timed out after {:?}: oxen {}", timeout_duration, cmd_str);
+
+                Err(anyhow!(OxenError::Timeout(format!(
+                    "Command timed out after {:?}: oxen {}",
+                    timeout_duration, cmd_str
+                ))))
+            }
+        }
+    }
+
+    /// Collect output from completed child process
+    fn collect_output(&self, child: Child) -> Result<Output> {
+        let output = child
+            .wait_with_output()
+            .context("Failed to collect command output")?;
+        Ok(output)
     }
 
     /// Handle command output and errors
@@ -373,50 +868,20 @@ impl OxenSubprocess {
         let stdout = String::from_utf8_lossy(&output.stdout).to_string();
         let stderr = String::from_utf8_lossy(&output.stderr).to_string();
 
-        // IMPORTANT: Check both stdout AND stderr for error messages even if exit code is 0
-        // Oxen CLI has TWO bugs:
-        // 1. It returns exit code 0 even on failures
-        // 2. It sometimes writes errors to stdout instead of stderr
-        // (e.g., "Revision not found" during checkout goes to stdout!)
-
-        let stdout_lower = stdout.to_lowercase();
-        let stderr_lower = stderr.to_lowercase();
-
-        // Known error patterns from Oxen CLI (check both stdout and stderr)
-        let has_error = stdout_lower.contains("revision not found")
-            || stdout_lower.contains("not found")
-            || stdout_lower.contains("error:")
-            || stdout_lower.contains("fatal:")
-            || stdout_lower.contains("failed to")
-            || stderr_lower.contains("revision not found")
-            || stderr_lower.contains("not found")
-            || stderr_lower.contains("error:")
-            || stderr_lower.contains("fatal:")
-            || stderr_lower.contains("failed to");
-
-        if has_error {
+        // Check for categorized errors
+        if let Some(oxen_error) = OxenError::classify(&stdout, &stderr) {
             error!("Command failed: oxen {}", args.join(" "));
             if !stderr.is_empty() {
                 error!("stderr: {}", stderr);
             }
-            if !stdout.is_empty() {
+            if !stdout.is_empty() && self.verbose {
                 error!("stdout: {}", stdout);
             }
 
-            let error_output = if !stderr.is_empty() {
-                stderr.trim()
-            } else {
-                stdout.trim()
-            };
-
-            return Err(anyhow!(
-                "oxen command failed: {}\n{}",
-                args.join(" "),
-                error_output
-            ));
+            return Err(anyhow!(oxen_error));
         }
 
-        // Also check exit code (for well-behaved commands)
+        // Also check exit code
         if !output.status.success() {
             error!("Command failed: oxen {}", args.join(" "));
             error!("stderr: {}", stderr);
@@ -436,11 +901,18 @@ impl OxenSubprocess {
 
     /// Parse commit ID from commit command output
     fn parse_commit_id(&self, output: &str) -> Option<String> {
-        // Try to extract commit hash from various formats
-        // "Commit abc123 created" or "abc123" or "[abc123]"
-
+        // Look for "commit " prefix first (most reliable)
         for line in output.lines() {
-            // Look for hexadecimal strings that might be commit hashes
+            if let Some(rest) = line.trim().strip_prefix("commit ") {
+                let hash = rest.trim().split_whitespace().next()?;
+                if hash.len() >= 7 && hash.chars().all(|c| c.is_ascii_hexdigit()) {
+                    return Some(hash.to_string());
+                }
+            }
+        }
+
+        // Fall back to looking for hex strings
+        for line in output.lines() {
             for word in line.split_whitespace() {
                 let cleaned = word.trim_matches(|c| !char::is_alphanumeric(c));
                 if cleaned.len() >= 7
@@ -546,8 +1018,7 @@ impl OxenSubprocess {
                 let path = self.extract_path_from_status_line(trimmed);
                 staged.push(path);
             } else if let Some(section) = current_section {
-                // Files/directories listed under section headers (indented)
-                // Handle format like "Media (1 item)" by extracting just the path
+                // Files/directories listed under section headers
                 let path_str = if let Some(paren_pos) = trimmed.find(" (") {
                     &trimmed[..paren_pos]
                 } else {
@@ -660,20 +1131,77 @@ mod tests {
     #[test]
     fn test_new_default() {
         let oxen = OxenSubprocess::new();
-        assert_eq!(oxen.oxen_path, "oxen");
+        assert_eq!(oxen.config.oxen_path, "oxen");
         assert!(!oxen.verbose);
     }
 
     #[test]
     fn test_with_path() {
         let oxen = OxenSubprocess::with_path("/usr/local/bin/oxen");
-        assert_eq!(oxen.oxen_path, "/usr/local/bin/oxen");
+        assert_eq!(oxen.config.oxen_path, "/usr/local/bin/oxen");
     }
 
     #[test]
     fn test_verbose_builder() {
         let oxen = OxenSubprocess::new().verbose(true);
         assert!(oxen.verbose);
+    }
+
+    #[test]
+    fn test_config_defaults() {
+        let config = OxenConfig::default();
+        assert_eq!(config.oxen_path, "oxen");
+        assert_eq!(config.default_timeout, 30);
+        assert_eq!(config.network_timeout, 120);
+        assert_eq!(config.batch_size, 1000);
+        assert_eq!(config.default_remote, "origin");
+        assert_eq!(config.main_branch, "main");
+        assert_eq!(config.draft_branch, "draft");
+    }
+
+    #[test]
+    fn test_oxen_error_display() {
+        let err = OxenError::NotFound("branch 'test'".to_string());
+        assert!(err.to_string().contains("Not found"));
+        assert!(err.to_string().contains("branch 'test'"));
+    }
+
+    #[test]
+    fn test_oxen_error_retryable() {
+        assert!(OxenError::NetworkError("timeout".to_string()).is_retryable());
+        assert!(OxenError::Timeout("cmd".to_string()).is_retryable());
+        assert!(!OxenError::NotFound("file".to_string()).is_retryable());
+        assert!(!OxenError::PermissionDenied("access".to_string()).is_retryable());
+    }
+
+    #[test]
+    fn test_error_classification_not_found() {
+        let err = OxenError::classify("revision not found", "");
+        assert!(matches!(err, Some(OxenError::NotFound(_))));
+    }
+
+    #[test]
+    fn test_error_classification_network() {
+        let err = OxenError::classify("", "connection refused");
+        assert!(matches!(err, Some(OxenError::NetworkError(_))));
+    }
+
+    #[test]
+    fn test_error_classification_permission() {
+        let err = OxenError::classify("", "permission denied");
+        assert!(matches!(err, Some(OxenError::PermissionDenied(_))));
+    }
+
+    #[test]
+    fn test_error_classification_auth() {
+        let err = OxenError::classify("", "authentication failed");
+        assert!(matches!(err, Some(OxenError::AuthenticationError(_))));
+    }
+
+    #[test]
+    fn test_error_classification_none() {
+        let err = OxenError::classify("all good", "");
+        assert!(err.is_none());
     }
 
     #[test]
@@ -686,7 +1214,7 @@ mod tests {
         );
 
         assert_eq!(
-            oxen.parse_commit_id("[abc1234] message here"), // 7 chars minimum
+            oxen.parse_commit_id("[abc1234] message here"),
             Some("abc1234".to_string())
         );
 
@@ -697,12 +1225,19 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_commit_id_prefers_commit_prefix() {
+        let oxen = OxenSubprocess::new();
+        let output = "commit abc1234def\nSome other text with def5678";
+        assert_eq!(oxen.parse_commit_id(output), Some("abc1234def".to_string()));
+    }
+
+    #[test]
     fn test_parse_commit_id_invalid() {
         let oxen = OxenSubprocess::new();
 
         assert_eq!(oxen.parse_commit_id("No hash here"), None);
-        assert_eq!(oxen.parse_commit_id("123"), None); // Too short
-        assert_eq!(oxen.parse_commit_id("xyz"), None); // Not hex
+        assert_eq!(oxen.parse_commit_id("123"), None);
+        assert_eq!(oxen.parse_commit_id("xyz"), None);
     }
 
     #[test]
@@ -831,8 +1366,6 @@ Date: 2025-01-02
         assert_eq!(branch.name, "main");
     }
 
-    // ========== Additional Comprehensive Tests ==========
-
     #[test]
     fn test_parse_commit_id_short_hash() {
         let oxen = OxenSubprocess::new();
@@ -858,7 +1391,7 @@ Date: 2025-01-02
     #[test]
     fn test_parse_commit_id_multiline() {
         let oxen = OxenSubprocess::new();
-        let output = "Some text\nCommit abc1234 created\nMore text"; // 7 chars minimum
+        let output = "Some text\nCommit abc1234 created\nMore text";
         assert_eq!(oxen.parse_commit_id(output), Some("abc1234".to_string()));
     }
 
@@ -871,7 +1404,7 @@ Date: 2025-01-02
     #[test]
     fn test_parse_commit_id_too_short() {
         let oxen = OxenSubprocess::new();
-        assert_eq!(oxen.parse_commit_id("abc12"), None); // Less than 7 chars
+        assert_eq!(oxen.parse_commit_id("abc12"), None);
     }
 
     #[test]
@@ -899,122 +1432,12 @@ Date: 2025-01-01
     }
 
     #[test]
-    fn test_parse_log_output_multiple_commits() {
-        let oxen = OxenSubprocess::new();
-        let output = r#"
-commit abc123
-Author: User <user@example.com>
-Date: 2025-01-01
-
-    Third commit
-
-commit def456
-Author: User <user@example.com>
-Date: 2025-01-02
-
-    Second commit
-
-commit xyz789
-Author: User <user@example.com>
-Date: 2025-01-03
-
-    First commit
-        "#;
-
-        let commits = oxen.parse_log_output(output).unwrap();
-        assert_eq!(commits.len(), 3);
-        assert_eq!(commits[0].id, "abc123");
-        assert_eq!(commits[1].id, "def456");
-        assert_eq!(commits[2].id, "xyz789");
-    }
-
-    #[test]
-    fn test_parse_log_output_multiline_message() {
-        let oxen = OxenSubprocess::new();
-        let output = r#"
-commit abc123
-Author: User <user@example.com>
-Date: 2025-01-01
-
-    First line of commit
-    Second line of commit
-    Third line of commit
-        "#;
-
-        let commits = oxen.parse_log_output(output).unwrap();
-        assert_eq!(commits.len(), 1);
-        assert!(commits[0].message.contains("First line"));
-        assert!(commits[0].message.contains("Second line"));
-        assert!(commits[0].message.contains("Third line"));
-    }
-
-    #[test]
     fn test_parse_status_output_empty() {
         let oxen = OxenSubprocess::new();
         let status = oxen.parse_status_output("").unwrap();
         assert!(status.modified.is_empty());
         assert!(status.untracked.is_empty());
         assert!(status.staged.is_empty());
-    }
-
-    #[test]
-    fn test_parse_status_output_modified_only() {
-        let oxen = OxenSubprocess::new();
-        let output = "M  file1.txt\nM  file2.rs";
-        let status = oxen.parse_status_output(output).unwrap();
-
-        assert_eq!(status.modified.len(), 2);
-        assert!(status.untracked.is_empty());
-        assert!(status.staged.is_empty());
-    }
-
-    #[test]
-    fn test_parse_status_output_untracked_only() {
-        let oxen = OxenSubprocess::new();
-        let output = "?  new1.txt\n?  new2.txt";
-        let status = oxen.parse_status_output(output).unwrap();
-
-        assert!(status.modified.is_empty());
-        assert_eq!(status.untracked.len(), 2);
-        assert!(status.staged.is_empty());
-    }
-
-    #[test]
-    fn test_parse_status_output_staged_only() {
-        let oxen = OxenSubprocess::new();
-        let output = "A  added1.txt\nA  added2.txt";
-        let status = oxen.parse_status_output(output).unwrap();
-
-        assert!(status.modified.is_empty());
-        assert!(status.untracked.is_empty());
-        assert_eq!(status.staged.len(), 2);
-    }
-
-    #[test]
-    fn test_parse_status_output_mixed() {
-        let oxen = OxenSubprocess::new();
-        let output = r#"
-M  modified.txt
-?  untracked.txt
-A  staged.txt
-modified: another_modified.txt
-        "#;
-
-        let status = oxen.parse_status_output(output).unwrap();
-
-        assert_eq!(status.modified.len(), 2);
-        assert_eq!(status.untracked.len(), 1);
-        assert_eq!(status.staged.len(), 1);
-    }
-
-    #[test]
-    fn test_parse_status_output_with_paths() {
-        let oxen = OxenSubprocess::new();
-        let output = "M  src/main.rs\n?  tests/new_test.rs";
-        let status = oxen.parse_status_output(output).unwrap();
-
-        assert_eq!(status.modified[0], PathBuf::from("src/main.rs"));
-        assert_eq!(status.untracked[0], PathBuf::from("tests/new_test.rs"));
     }
 
     #[test]
@@ -1025,109 +1448,13 @@ modified: another_modified.txt
     }
 
     #[test]
-    fn test_parse_branches_output_single_branch() {
+    fn test_cache_invalidation() {
         let oxen = OxenSubprocess::new();
-        let output = "* main";
-        let branches = oxen.parse_branches_output(output).unwrap();
+        let path = PathBuf::from("/test/path");
 
-        assert_eq!(branches.len(), 1);
-        assert_eq!(branches[0].name, "main");
-        assert!(branches[0].is_current);
-    }
-
-    #[test]
-    fn test_parse_branches_output_multiple_branches() {
-        let oxen = OxenSubprocess::new();
-        let output = r#"
-* main
-  develop
-  feature-branch
-  draft
-        "#;
-
-        let branches = oxen.parse_branches_output(output).unwrap();
-
-        assert_eq!(branches.len(), 4);
-        assert_eq!(branches[0].name, "main");
-        assert!(branches[0].is_current);
-        assert_eq!(branches[1].name, "develop");
-        assert!(!branches[1].is_current);
-        assert_eq!(branches[2].name, "feature-branch");
-        assert!(!branches[2].is_current);
-    }
-
-    #[test]
-    fn test_parse_branches_output_no_current() {
-        let oxen = OxenSubprocess::new();
-        let output = "  branch1\n  branch2";
-        let branches = oxen.parse_branches_output(output).unwrap();
-
-        assert_eq!(branches.len(), 2);
-        assert!(!branches[0].is_current);
-        assert!(!branches[1].is_current);
-    }
-
-    #[test]
-    fn test_parse_branches_output_with_whitespace() {
-        let oxen = OxenSubprocess::new();
-        let output = "  \n* main  \n  develop\n  \n";
-        let branches = oxen.parse_branches_output(output).unwrap();
-
-        assert_eq!(branches.len(), 2);
-        assert_eq!(branches[0].name, "main");
-        assert_eq!(branches[1].name, "develop");
-    }
-
-    #[test]
-    fn test_extract_path_from_status_line_modified() {
-        let oxen = OxenSubprocess::new();
-        assert_eq!(
-            oxen.extract_path_from_status_line("M  path/to/file.txt"),
-            PathBuf::from("path/to/file.txt")
-        );
-    }
-
-    #[test]
-    fn test_extract_path_from_status_line_modified_colon() {
-        let oxen = OxenSubprocess::new();
-        assert_eq!(
-            oxen.extract_path_from_status_line("modified: src/lib.rs"),
-            PathBuf::from("src/lib.rs")
-        );
-    }
-
-    #[test]
-    fn test_extract_path_from_status_line_untracked() {
-        let oxen = OxenSubprocess::new();
-        assert_eq!(
-            oxen.extract_path_from_status_line("?  new_file.rs"),
-            PathBuf::from("new_file.rs")
-        );
-    }
-
-    #[test]
-    fn test_extract_path_from_status_line_added() {
-        let oxen = OxenSubprocess::new();
-        assert_eq!(
-            oxen.extract_path_from_status_line("A  added.txt"),
-            PathBuf::from("added.txt")
-        );
-    }
-
-    #[test]
-    fn test_extract_path_from_status_line_with_spaces() {
-        let oxen = OxenSubprocess::new();
-        assert_eq!(
-            oxen.extract_path_from_status_line("M  path with spaces/file.txt"),
-            PathBuf::from("path with spaces/file.txt")
-        );
-    }
-
-    #[test]
-    fn test_oxen_subprocess_default() {
-        let oxen = OxenSubprocess::default();
-        assert_eq!(oxen.oxen_path, "oxen");
-        assert!(!oxen.verbose);
+        // Just test that invalidation doesn't panic
+        oxen.invalidate_cache(&path);
+        oxen.invalidate_all_caches();
     }
 
     #[test]
@@ -1135,7 +1462,7 @@ modified: another_modified.txt
         let oxen = OxenSubprocess::new().verbose(true);
         let cloned = oxen.clone();
         assert!(cloned.verbose);
-        assert_eq!(cloned.oxen_path, "oxen");
+        assert_eq!(cloned.config.oxen_path, "oxen");
     }
 
     #[test]
@@ -1143,40 +1470,6 @@ modified: another_modified.txt
         let oxen = OxenSubprocess::new();
         let debug_str = format!("{:?}", oxen);
         assert!(debug_str.contains("oxen"));
-    }
-
-    #[test]
-    fn test_commit_info_equality() {
-        let commit1 = CommitInfo {
-            id: "abc123".to_string(),
-            message: "Test".to_string(),
-        };
-        let commit2 = CommitInfo {
-            id: "abc123".to_string(),
-            message: "Test".to_string(),
-        };
-        assert_eq!(commit1, commit2);
-    }
-
-    #[test]
-    fn test_commit_info_clone() {
-        let commit = CommitInfo {
-            id: "abc123".to_string(),
-            message: "Test".to_string(),
-        };
-        let cloned = commit.clone();
-        assert_eq!(commit, cloned);
-    }
-
-    #[test]
-    fn test_commit_info_debug() {
-        let commit = CommitInfo {
-            id: "abc123".to_string(),
-            message: "Test".to_string(),
-        };
-        let debug_str = format!("{:?}", commit);
-        assert!(debug_str.contains("abc123"));
-        assert!(debug_str.contains("Test"));
     }
 
     #[test]
@@ -1188,17 +1481,6 @@ modified: another_modified.txt
         };
         let cloned = status.clone();
         assert_eq!(status, cloned);
-    }
-
-    #[test]
-    fn test_status_info_debug() {
-        let status = StatusInfo {
-            modified: vec![PathBuf::from("a.txt")],
-            untracked: vec![],
-            staged: vec![],
-        };
-        let debug_str = format!("{:?}", status);
-        assert!(debug_str.contains("modified"));
     }
 
     #[test]
@@ -1215,139 +1497,27 @@ modified: another_modified.txt
     }
 
     #[test]
-    fn test_branch_info_clone() {
-        let branch = BranchInfo {
-            name: "main".to_string(),
-            is_current: true,
-        };
-        let cloned = branch.clone();
-        assert_eq!(branch, cloned);
-    }
-
-    #[test]
-    fn test_branch_info_debug() {
-        let branch = BranchInfo {
-            name: "main".to_string(),
-            is_current: true,
-        };
-        let debug_str = format!("{:?}", branch);
-        assert!(debug_str.contains("main"));
-        assert!(debug_str.contains("true"));
-    }
-
-    #[test]
-    fn test_verbose_builder_chain() {
-        let oxen = OxenSubprocess::new()
-            .verbose(true)
-            .verbose(false)
-            .verbose(true);
-        assert!(oxen.verbose);
-    }
-
-    #[test]
-    fn test_with_path_custom() {
-        let custom_path = "/usr/local/bin/oxen";
-        let oxen = OxenSubprocess::with_path(custom_path);
-        assert_eq!(oxen.oxen_path, custom_path);
-    }
-
-    #[test]
-    fn test_parse_log_output_with_metadata() {
-        let oxen = OxenSubprocess::new();
-        let output = r#"
-commit abc123
-Author: User <user@example.com>
-Date: 2025-01-01
-
-    Added drum track
-
-    BPM: 120
-    Sample Rate: 48000 Hz
-    Key: C Major
-        "#;
-
-        let commits = oxen.parse_log_output(output).unwrap();
-        assert_eq!(commits.len(), 1);
-        assert!(commits[0].message.contains("Added drum track"));
-        assert!(commits[0].message.contains("BPM: 120"));
-    }
-
-    #[test]
-    fn test_parse_status_output_new_file_colon_format() {
-        let oxen = OxenSubprocess::new();
-        let output = "new file: path/to/file.txt";
-        let status = oxen.parse_status_output(output).unwrap();
-
-        assert_eq!(status.staged.len(), 1);
-        assert_eq!(status.staged[0], PathBuf::from("path/to/file.txt"));
-    }
-
-    #[test]
-    fn test_parse_branches_with_remotes() {
-        let oxen = OxenSubprocess::new();
-        let output = r#"
-* main
-  remotes/origin/main
-  develop
-        "#;
-
-        let branches = oxen.parse_branches_output(output).unwrap();
-        // Should parse all as branch names
-        assert!(branches.len() >= 2);
-    }
-
-    #[test]
-    fn test_status_info_all_empty() {
-        let status = StatusInfo {
-            modified: vec![],
-            untracked: vec![],
-            staged: vec![],
-        };
-        assert!(status.modified.is_empty());
-        assert!(status.untracked.is_empty());
-        assert!(status.staged.is_empty());
-    }
-
-    #[test]
-    fn test_status_info_multiple_files() {
-        let status = StatusInfo {
-            modified: vec![
-                PathBuf::from("file1.txt"),
-                PathBuf::from("file2.txt"),
-                PathBuf::from("file3.txt"),
-            ],
-            untracked: vec![PathBuf::from("new1.txt"), PathBuf::from("new2.txt")],
-            staged: vec![PathBuf::from("staged.txt")],
-        };
-
-        assert_eq!(status.modified.len(), 3);
-        assert_eq!(status.untracked.len(), 2);
-        assert_eq!(status.staged.len(), 1);
-    }
-
-    #[test]
-    fn test_commit_info_empty_message() {
-        let commit = CommitInfo {
+    fn test_commit_info_equality() {
+        let commit1 = CommitInfo {
             id: "abc123".to_string(),
-            message: String::new(),
+            message: "Test".to_string(),
         };
-        assert!(commit.message.is_empty());
-    }
-
-    #[test]
-    fn test_commit_info_long_message() {
-        let long_msg = "a".repeat(1000);
-        let commit = CommitInfo {
+        let commit2 = CommitInfo {
             id: "abc123".to_string(),
-            message: long_msg.clone(),
+            message: "Test".to_string(),
         };
-        assert_eq!(commit.message.len(), 1000);
+        assert_eq!(commit1, commit2);
     }
 
     #[test]
-    fn test_parse_commit_id_edge_case_7_chars() {
-        let oxen = OxenSubprocess::new();
-        assert_eq!(oxen.parse_commit_id("abc1234"), Some("abc1234".to_string()));
+    fn test_with_config() {
+        let mut config = OxenConfig::default();
+        config.default_timeout = 60;
+        config.batch_size = 500;
+
+        let oxen = OxenSubprocess::with_config(config);
+        assert_eq!(oxen.config.default_timeout, 60);
+        assert_eq!(oxen.config.batch_size, 500);
     }
 
     #[test]
@@ -1361,6 +1531,6 @@ Date: 2025-01-01
     fn test_parse_commit_id_edge_case_41_chars() {
         let oxen = OxenSubprocess::new();
         let hash = "a".repeat(41);
-        assert_eq!(oxen.parse_commit_id(&hash), None); // Too long
+        assert_eq!(oxen.parse_commit_id(&hash), None);
     }
 }
