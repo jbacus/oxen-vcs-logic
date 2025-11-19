@@ -68,7 +68,8 @@ pub use operation_history::{
 };
 pub use oxen_ops::OxenRepository;
 pub use oxen_subprocess::{
-    BranchInfo, CommitInfo as SubprocessCommitInfo, OxenSubprocess, StatusInfo,
+    BranchInfo, CommitInfo as SubprocessCommitInfo, OxenConfig, OxenError, OxenSubprocess,
+    StatusInfo,
 };
 pub use oxen_backend::{
     BackendType, OxenBackend, SubprocessBackend,

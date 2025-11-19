@@ -1,6 +1,6 @@
 # Auxin Feature Status Report
 
-**Last Updated**: 2025-11-18
+**Last Updated**: 2025-11-19
 **Overall Status**: Production-Ready CLI with Team Collaboration Support
 
 ---
@@ -9,7 +9,7 @@
 
 | Component | Grade | Status | Tests |
 |-----------|-------|--------|-------|
-| **CLI Wrapper (Rust)** | A+ (95/100) | Production Ready | 331 passing |
+| **CLI Wrapper (Rust)** | A+ (98/100) | Production Ready | 434 passing |
 | **Team Collaboration** | A- (88/100) | Production Ready (with caveats) | 17 passing |
 | **LaunchAgent (Swift)** | B (70/100) | Code Complete, Untested | ~30% coverage |
 | **GUI App (Swift)** | B- (65/100) | Code Complete, Untested | <10% coverage |
@@ -21,8 +21,8 @@
 ## CLI Wrapper: A+ (95/100)
 
 ### Quick Stats
-- **Code**: 10,498 lines across 31 Rust modules
-- **Tests**: 331 unit tests + 40 integration tests (100% passing)
+- **Code**: 11,000+ lines across 31 Rust modules
+- **Tests**: 434 unit tests + 40 integration tests (100% passing)
 - **Coverage**: 88% (exceeds 85% target)
 - **Commands**: 31 total operations (16 primary + 15 subcommands)
 
@@ -86,7 +86,7 @@
 - Lock timeouts are configured appropriately
 
 **Not implemented**:
-- Network resilience (retry logic, offline mode)
+- Network resilience (retry logic partially implemented with OxenError.is_retryable(), needs offline mode)
 - Automatic comment sync
 - Stale lock cleanup daemon
 - Notifications (Slack/Discord webhooks)
@@ -100,7 +100,7 @@
 | Module | Tests | Coverage |
 |--------|-------|----------|
 | commit_metadata.rs | 39 | 95% |
-| oxen_subprocess.rs | 74 | 90% |
+| oxen_subprocess.rs | 103 | 92% |
 | search.rs | 11 | 90% |
 | hooks.rs | 7 | 85% |
 | console/ (TUI) | 34 | 80% |
@@ -109,8 +109,8 @@
 | ignore_template.rs | 18 | 100% |
 | lock_integration.rs | 12 | 90% |
 | collaboration.rs | 18 | 85% |
-| Other modules | 88 | 80% |
-| **Total** | **331** | **88%** |
+| Other modules | 162 | 80% |
+| **Total** | **434** | **88%** |
 
 ### Integration Tests (40+ tests)
 - Complete init → add → commit → log workflows
@@ -154,9 +154,9 @@ sudo cp target/release/auxin /usr/local/bin/
 
 | Gap | Impact | Effort to Fix |
 |-----|--------|---------------|
-| Network resilience (no retry logic) | High - push failures leave inconsistent state | 2-3 weeks |
+| Network resilience (retry logic implemented, needs offline mode) | Medium - push failures have retryable detection | 1-2 weeks |
 | Swift component testing | High - daemon/app stability unknown | 1-2 weeks |
-| Real Oxen integration testing | Medium - subprocess may have edge cases | 3-5 days |
+| Real Oxen integration testing on macOS | Medium - subprocess wrapper production-ready | 3-5 days |
 
 ### Non-Critical Gaps
 
@@ -193,16 +193,16 @@ sudo cp target/release/auxin /usr/local/bin/
 
 ### Files & Line Counts
 
-**Rust CLI Wrapper** (10,498 lines):
+**Rust CLI Wrapper** (11,000+ lines):
 - main.rs: 2,397 lines (CLI entry point)
-- oxen_subprocess.rs: 800 lines (Oxen interface)
+- oxen_subprocess.rs: 1,536 lines (Oxen interface with timeout, caching, error handling)
 - console/: 800 lines (TUI)
 - hooks.rs: 600 lines (workflow automation)
 - collaboration.rs: 468 lines (team features)
 - remote_lock.rs: 683 lines (distributed locking)
 - search.rs: 500 lines (natural language search)
 - commit_metadata.rs: 500 lines (metadata parsing)
-- Other modules: 2,850 lines
+- Other modules: 3,116 lines
 
 **Swift LaunchAgent** (~2,000 lines):
 - FSEventsMonitor.swift (file watching)

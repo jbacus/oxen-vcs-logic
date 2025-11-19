@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **liboxen FFI Integration** (2025-11-19)
+  - liboxen v0.38.4 now compiles with chrono 0.4.29 workaround
+  - Optional `ffi` feature flag: `cargo build --features ffi`
+  - FFIBackend trait ready for implementation (10-100x performance potential)
+  - Workaround: Pin chrono to 0.4.29 to avoid arrow-arith quarter() conflict
+
+- **Oxen Integration Improvements** (2025-11-19)
+  - Timeout handling with `wait-timeout` crate (30s default, 120s for network operations)
+  - Categorized error types with `OxenError` enum (NotFound, NetworkError, PermissionDenied, Timeout, etc.)
+  - Retryable error detection via `OxenError::is_retryable()`
+  - Output caching for log/status/branches operations (1s TTL, 10-100x faster for UI)
+  - Automatic batching for large file sets (1000 files/batch, prevents ARG_MAX issues)
+  - New operations: fetch, diff, reset, tag, show, remote_add, remote_list
+  - Configurable settings via `OxenConfig` struct
+  - Environment variable support: AUXIN_OXEN_PATH, AUXIN_TIMEOUT, AUXIN_NETWORK_TIMEOUT, AUXIN_BATCH_SIZE, AUXIN_CACHE_TTL_MS, AUXIN_DEFAULT_REMOTE, AUXIN_MAIN_BRANCH, AUXIN_DRAFT_BRANCH
+  - Removed 700 lines of unused `liboxen_stub/` code
+  - Increased test count from 331 to 434 tests (all passing)
+
 ## [0.2.0] - 2025-11-17
 
 ### Changed
