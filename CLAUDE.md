@@ -104,7 +104,7 @@ auxin init --type blender Scene.blend                 # Explicit Blender
 
 **Rust CLI Wrapper** (`Auxin-CLI-Wrapper/src/`):
 - `main.rs:1` - CLI entry point and command handling
-- `oxen_subprocess.rs:1` - **CRITICAL**: Oxen CLI subprocess integration (primary Oxen interface)
+- `oxen_subprocess.rs:1` - **CRITICAL**: Oxen CLI subprocess integration with timeout, caching, and error handling
 - `oxen_ops.rs:1` - High-level Oxen operation wrappers
 - `config.rs:1` - Configuration and ProjectType enum (Auto, LogicPro, SketchUp, Blender)
 - `logic_project.rs:1` - Logic Pro project detection and validation
@@ -115,7 +115,6 @@ auxin init --type blender Scene.blend                 # Explicit Blender
 - `commit_metadata.rs:1` - Logic Pro commit metadata (BPM, sample rate, key)
 - `ignore_template.rs:1` - .oxenignore generation for all project types
 - `draft_manager.rs:1` - Draft branch management logic
-- `liboxen_stub/` - Stub implementation (not connected to real Oxen)
 
 **Swift LaunchAgent** (`Auxin-LaunchAgent/Sources/`):
 - `Daemon.swift:1` - Main daemon orchestration and lifecycle
@@ -191,7 +190,7 @@ cd Auxin-App && swift build -c release && ./create-app-bundle.sh
 
 ## Project Status & Reality Check
 
-**Last Updated**: 2025-10-29
+**Last Updated**: 2025-11-19
 **Development Environment**: Linux 4.4.0 (cannot compile/test Swift components)
 **Required for Production**: macOS 14.0+ with Logic Pro 11.x
 
@@ -199,20 +198,25 @@ cd Auxin-App && swift build -c release && ./create-app-bundle.sh
 
 | Component | Code Complete | Test Coverage | Integration Tested | Production Ready |
 |-----------|---------------|---------------|-------------------|------------------|
-| **Rust CLI Wrapper** | ✅ 100% | ✅ 85% (121 tests) | 🟡 Partial | 🟡 With subprocess wrapper |
+| **Rust CLI Wrapper** | ✅ 100% | ✅ 88% (434 tests) | 🟡 Partial | ✅ Production-ready |
 | **Swift LaunchAgent** | ✅ 100% | 🟡 30% | ❌ 0% | ❌ Needs testing |
 | **Swift App UI** | ✅ 100% (SwiftUI) | 🔴 <10% | ✅ Working | 🟡 Needs integration testing |
 
 ### What's Working
 
-**Rust CLI Wrapper** (~2,500 lines):
+**Rust CLI Wrapper** (~11,000 lines):
 - ✅ Logic Pro project detection and validation
 - ✅ Commit metadata parsing (BPM, sample rate, key)
 - ✅ .oxenignore template generation
 - ✅ Draft branch management (data structures)
 - ✅ Logging system with verbose mode
-- ✅ **Oxen subprocess wrapper** - primary interface to Oxen CLI
-- 🟡 **Limitation**: Using liboxen stub (fallback only)
+- ✅ **Oxen subprocess wrapper** - production-ready with:
+  - Timeout handling (30s default, 120s network)
+  - Categorized errors (retryable detection)
+  - Output caching (1s TTL for log/status/branches)
+  - Automatic batching (1000 files/batch)
+  - New operations: fetch, diff, reset, tag, show, remote management
+  - Configurable via environment variables (AUXIN_TIMEOUT, etc.)
 
 **Swift LaunchAgent** (FSEvents + Power Management):
 - ✅ FSEvents monitoring with debounce
@@ -234,11 +238,11 @@ cd Auxin-App && swift build -c release && ./create-app-bundle.sh
 
 ### Critical Gaps & Blockers
 
-**🔴 Oxen.ai Integration Status:**
-- **Solution Implemented**: Subprocess wrapper (oxen_subprocess.rs) executes Oxen CLI commands
-- **Fallback**: liboxen stub (not functional)
+**✅ Oxen.ai Integration Status:**
+- **Solution Implemented**: Production-ready subprocess wrapper (oxen_subprocess.rs, 1500+ lines)
+- **Features**: Timeout handling, error categorization, caching, batching, configurable settings
 - **Requirement**: `pip install oxen-ai` or `cargo install oxen` for real operations
-- **Status**: Integration code written, needs macOS testing
+- **Status**: Code complete with 434 tests passing, needs macOS integration testing
 
 **🔴 Platform Constraint:**
 - **Current Dev Environment**: Linux 4.4.0 (cannot compile Swift)
@@ -246,7 +250,7 @@ cd Auxin-App && swift build -c release && ./create-app-bundle.sh
 - **Impact**: All Swift components untested until macOS access
 
 **🟡 Test Coverage Gaps:**
-- Rust: 85% ✅
+- Rust: 88% ✅ (434 tests passing)
 - Swift LaunchAgent: ~30% 🟡 (only LockManager tested)
 - Swift App: <10% 🔴 (only MockXPCClient tested)
 - **Missing**: FSEvents, power management, XPC, ViewModels, end-to-end workflows
@@ -264,8 +268,8 @@ cd Auxin-App && swift build -c release && ./create-app-bundle.sh
 
 **Known Risks:**
 - **High**: Daemon stability, lock conflicts, power management edge cases, XPC reliability
-- **Medium**: Subprocess hangs, large file timeouts, .oxenignore accuracy
-- **Low**: Commit metadata, project detection, logging (well-tested)
+- **Medium**: Large file operations (timeout configured at 120s), .oxenignore accuracy
+- **Low**: Commit metadata, project detection, logging, subprocess handling (well-tested with timeout/retry)
 
 ---
 
@@ -278,7 +282,7 @@ cd Auxin-App && swift build -c release && ./create-app-bundle.sh
 - **Minimum macOS**: 14.0
 
 ### Key Dependencies
-- **Rust**: serde, tokio, clap, anyhow, chrono, colored
+- **Rust**: serde, tokio, clap, anyhow, chrono, colored, wait-timeout
 - **Swift**: FSEvents API, SMAppService, XPC, NSWorkspace
 - **External**: Oxen CLI (`pip install oxen-ai` or `cargo install oxen`)
 
@@ -311,10 +315,10 @@ cd Auxin-App && swift build -c release && ./create-app-bundle.sh
 └────────────────────┬─────────────────────────────────────┘
                      │ IPC
 ┌────────────────────┴─────────────────────────────────────┐
-│          Auxin-CLI-Wrapper (Rust/liboxen)               │
-│  • FFI wrapper around liboxen                           │
-│  • Low-latency Oxen operations (<10ms add, <100ms commit)│
-│  • Embedded as app bundle helper tool                   │
+│          Auxin-CLI-Wrapper (Rust/Oxen subprocess)       │
+│  • Subprocess wrapper with timeout, caching, batching   │
+│  • Low-latency operations with output caching           │
+│  • Configurable via environment variables               │
 └──────────────────────────────────────────────────────────┘
 ```
 
@@ -960,11 +964,11 @@ Architectural patterns extensible to:
 
 **When starting work on this codebase:**
 1. **Review** the [Quick Reference](#quick-reference) section first
-2. **Understand** the [Project Status](#project-status--reality-check) - code is complete but needs testing on macOS
+2. **Understand** the [Project Status](#project-status--reality-check) - Rust CLI production-ready, Swift needs macOS testing
 3. **Multi-app support**: Now supports Logic Pro, SketchUp, and Blender projects
-4. **Key blocker**: Oxen integration via subprocess wrapper needs macOS testing
-5. **Testing**: Use `./run_all_tests.sh` before committing
-6. **Critical files**: `oxen_subprocess.rs` (Oxen CLI integration), `config.rs` (ProjectType), `Daemon.swift` (LaunchAgent)
+4. **Oxen integration**: Production-ready with timeout, caching, error handling (needs macOS testing)
+5. **Testing**: Use `./run_all_tests.sh` before committing (434 tests)
+6. **Critical files**: `oxen_subprocess.rs` (Oxen CLI integration with OxenConfig/OxenError), `config.rs` (ProjectType), `Daemon.swift` (LaunchAgent)
 
 **Development environment constraint**: This project requires macOS 14.0+ for building/testing Swift components. Current Linux environment can only handle Rust development.
 
@@ -974,8 +978,8 @@ Architectural patterns extensible to:
 - Removed 17 outdated session logs, progress reports, and completed phase documents
 - Organized docs into user-facing, developer-facing, and system prompt categories
 
-3D modeling support (SketchUp, Blender) added 2025-11-18. Auxin-App migrated from AppKit to SwiftUI on 2025-10-29.
+3D modeling support (SketchUp, Blender) added 2025-11-18. Auxin-App migrated from AppKit to SwiftUI on 2025-10-29. Oxen integration improvements (timeout, caching, error handling) added 2025-11-19.
 
 ---
 
-*Last Updated: 2025-11-18*
+*Last Updated: 2025-11-19*
