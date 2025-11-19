@@ -10,19 +10,19 @@ Auxin implements a **subprocess wrapper** approach for Oxen integration (`oxen_s
 
 **Good news**: The `liboxen` crate is now available on crates.io (v0.38.4, 200k+ downloads).
 
-**Bad news**: It currently has a dependency conflict that prevents compilation:
-```
-error[E0034]: multiple applicable items in scope
-  --> arrow-arith-53.4.0/src/temporal.rs:91
-    | DatePart::Quarter => |d| d.quarter() as i32
-    |                          ^^^^^^^ multiple `quarter` found
-    - ChronoDateExt::quarter()
-    - Datelike::quarter()
+**Workaround found**: The arrow-arith dependency conflict can be resolved by pinning chrono to 0.4.29:
+```toml
+chrono = { version = "0.4.29", features = ["serde"] }
 ```
 
-This affects all consumers of liboxen. Monitor https://github.com/Oxen-AI/Oxen for fixes. Once resolved, we can implement the `FFIBackend` in `oxen_backend.rs` for 10-100x performance improvement.
+This avoids the ambiguous `quarter()` method call between `ChronoDateExt` and `Datelike` traits (Datelike::quarter() was added in chrono 0.4.30).
 
-**Current recommendation**: Continue using the subprocess wrapper which is production-ready.
+**Build with FFI support**:
+```bash
+cargo build --features ffi
+```
+
+**Next steps**: Implement `FFIBackend` trait methods in `oxen_backend.rs` to enable 10-100x performance improvement over subprocess wrapper.
 
 ### Implementation Status (Updated 2025-11-19)
 

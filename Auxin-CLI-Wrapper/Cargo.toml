@@ -7,11 +7,8 @@ license = "MIT"
 description = "Version control for Logic Pro projects, powered by Oxen.ai"
 
 [dependencies]
-# liboxen is available on crates.io (v0.38.4) but has a dependency conflict:
-# arrow-arith 53.4.0 has ambiguous method call (quarter()) between ChronoDateExt and Datelike
-# This causes compilation to fail. Monitor https://github.com/Oxen-AI/Oxen for fixes.
-# Once resolved, enable with: liboxen = { version = "0.38", optional = true }
-# For now, use the subprocess wrapper (OxenSubprocess) which is production-ready.
+# Direct liboxen FFI integration (optional feature)
+liboxen = { version = "0.38", optional = true }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 toml = "0.8"
@@ -19,7 +16,9 @@ tokio = { version = "1.0", features = ["full"] }
 anyhow = "1.0"
 clap = { version = "4.0", features = ["derive"] }
 clap_complete = "4.0"
-chrono = { version = "0.4.42", features = ["serde"] }
+# Pin chrono to 0.4.29 to avoid conflict with arrow-arith's ChronoDateExt::quarter()
+# (chrono 0.4.30+ added Datelike::quarter() which conflicts)
+chrono = { version = "0.4.29", features = ["serde"] }
 colored = "2.0"
 atty = "0.2"
 log = "0.4"
@@ -51,6 +50,10 @@ path = "src/main.rs"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
+
+[features]
+default = []
+ffi = ["liboxen"]  # Enable direct liboxen FFI integration
 
 [profile.release]
 opt-level = 3

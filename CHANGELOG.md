@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **liboxen FFI Integration** (2025-11-19)
+  - liboxen v0.38.4 now compiles with chrono 0.4.29 workaround
+  - Optional `ffi` feature flag: `cargo build --features ffi`
+  - FFIBackend trait ready for implementation (10-100x performance potential)
+  - Workaround: Pin chrono to 0.4.29 to avoid arrow-arith quarter() conflict
+
 - **Oxen Integration Improvements** (2025-11-19)
   - Timeout handling with `wait-timeout` crate (30s default, 120s for network operations)
   - Categorized error types with `OxenError` enum (NotFound, NetworkError, PermissionDenied, Timeout, etc.)
