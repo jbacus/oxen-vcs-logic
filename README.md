@@ -43,13 +43,13 @@ Migrated Auxin.app from AppKit to SwiftUI for improved reliability:
 - **Improved**: Native NavigationSplitView with automatic layout
 - **Benefits**: Declarative UI, better window management, modern macOS features
 
-### 📚 Documentation Consolidation (November 15, 2025)
+### 📚 Documentation Restructure (November 18, 2025)
 
 Project documentation has been streamlined and organized:
-- **Removed**: 23 outdated development plans, phase reports, and session summaries
-- **Consolidated**: Created two audience-specific guides (FOR_MUSICIANS.md and FOR_DEVELOPERS.md)
-- **Cleaned**: 42 markdown files reduced to 8 essential documents
-- **Updated**: All references and dates refreshed
+- **Created**: ROADMAP.md (project vision and progress) and FEATURE_STATUS.md (component assessment)
+- **Removed**: 17 outdated session logs, progress reports, and completed phase documents
+- **Consolidated**: 63 files reduced to 46 essential documents
+- **Organized**: Documentation categorized into user-facing, developer-facing, and system prompt groups
 
 ### 🚀 Advanced CLI Features - Week 3 Complete! (November 15, 2025)
 
@@ -79,7 +79,8 @@ Powerful new features for professional workflows:
 - All features accessible from one unified interface
 
 **📊 Test Coverage**
-- 349 total tests (274 unit + 49 integration + 26 doctests)
+- 348 unit tests passing with 88% coverage
+- 40+ integration tests
 - All tests passing ✅
 
 See [CHANGELOG.md](CHANGELOG.md) for complete project history.
@@ -266,34 +267,37 @@ For manual build instructions, see [Installation Guide](INSTALL.md).
 
 ## Implementation Status
 
-All three development phases are complete. See [Developer Guide](docs/FOR_DEVELOPERS.md) for detailed architecture and roadmap.
+The first five phases are complete with Phases 6 and 7 in progress. See [Roadmap](ROADMAP.md) for detailed progress and [Feature Status](FEATURE_STATUS.md) for component assessment.
 
-- [x] **Phase 1: Core Data Management (MVP)** - ✅ COMPLETE
-  - Logic Pro project detection and validation
-  - .oxenignore template generation
-  - Oxen initialization wrapper
-  - Core operations (init, add, commit, log, restore)
-  - Structured commit metadata (BPM, sample rate, key signature)
-  - FSEvents monitoring with debounce (proof of concept)
-- [x] **Phase 2: Service Architecture & Resilience** - ✅ COMPLETE
-  - LaunchAgent integration with automatic startup
-  - Power management integration (sleep/shutdown commits)
-  - Auto-commit workflow with draft branches
-  - XPC communication for UI integration
-  - Multi-project monitoring
-- [x] **Phase 3: UI Application & Collaboration** - ✅ COMPLETE
-  - Native macOS AppKit UI application
-  - Repository browser and project management
-  - Milestone commit interface with rich metadata
-  - Rollback/restore interface
-  - Exclusive file locking system
-  - Manual merge protocol documentation
-  - Settings and configuration panel
+- [x] **Phase 1: Core CLI & Logic Pro** - ✅ COMPLETE (100%)
+  - Logic Pro project detection, validation, and metadata
+  - .oxenignore generation and Oxen subprocess wrapper
+  - Core operations (init, add, commit, log, restore, status, diff, show)
+  - 331 unit tests, 88% coverage
+- [x] **Phase 2: Background Services** - ✅ COMPLETE (100%)
+  - LaunchAgent with FSEvents monitoring and debounce
+  - Power management (sleep/shutdown safety commits)
+  - XPC communication and multi-project support
+- [x] **Phase 3: GUI Application** - ✅ COMPLETE (100%)
+  - Native macOS SwiftUI application
+  - Repository browser, commit history, status bar
+  - Needs macOS integration testing
+- [x] **Phase 4: Team Collaboration** - ✅ COMPLETE (95%)
+  - Authentication, distributed locking, activity feeds
+  - Team discovery and commit comments
+  - Gap: Network resilience
+- [x] **Phase 5: 3D Modeling Support** - ✅ COMPLETE (100%)
+  - SketchUp and Blender project support
+  - Application-specific metadata and .oxenignore patterns
+- [ ] **Phase 6: Network Resilience** - 🔄 IN PROGRESS
+  - Offline mode, retry logic, partial push recovery
+- [ ] **Phase 7: Auxin Server** - 🔄 IN PROGRESS (30%)
+  - Self-hosted collaboration server with web interface
 
 ## Key Features
 
 ### Automatic Draft Tracking
-Background daemon monitors Logic Pro project folder and automatically commits working states to a local draft branch after detecting file inactivity.
+Background daemon monitors project folders (Logic Pro, SketchUp, Blender) and automatically commits working states to a local draft branch after detecting file inactivity.
 
 ### Milestone Commits
 User-triggered commits that:
@@ -326,13 +330,18 @@ auxin/
 
 ## Documentation
 
+### Project Overview
+- [Roadmap](ROADMAP.md) - Project vision, phases, and progress
+- [Feature Status](FEATURE_STATUS.md) - Component completeness and test coverage
+- [Changelog](CHANGELOG.md) - Version history
+
 ### User Guides
 - [For Musicians](docs/FOR_MUSICIANS.md) - Complete guide for music producers (non-technical, covers both GUI and CLI)
 - [CLI Examples](docs/CLI_EXAMPLES.md) - Real-world command line examples with visual output
 - [SketchUp Examples](docs/SKETCHUP_EXAMPLES.md) - SketchUp workflow examples and best practices
+- [Cloud Sharing Guide](docs/CLOUD_SHARING_GUIDE.md) - Team collaboration guide
 - [Installation Guide](INSTALL.md) - Complete installation instructions
-- [App Bundle Guide](Auxin-App/APP_BUNDLE.md) - Double-clickable app creation
-- [CLI Usage Guide](Auxin-CLI-Wrapper/USAGE.md) - Complete CLI reference
+- [Troubleshooting](docs/TROUBLESHOOTING.md) - Common issues and solutions
 
 ### Technical Documentation
 - [For Developers](docs/FOR_DEVELOPERS.md) - Full technical specification, architecture, and API reference
