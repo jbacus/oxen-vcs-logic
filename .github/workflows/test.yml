@@ -42,7 +42,13 @@ jobs:
 
     - name: Install Oxen CLI (for integration tests)
       run: |
-        pip3 install oxen-ai
+        python3 -m pip install --user oxen-ai
+        # Add user bin to PATH for this and subsequent steps
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
+        echo "$HOME/Library/Python/3.12/bin" >> $GITHUB_PATH
+        # Configure oxen
+        ~/.local/bin/oxen config --name "CI Test" --email "ci@test.com" || \
+        ~/Library/Python/3.12/bin/oxen config --name "CI Test" --email "ci@test.com" || \
         oxen config --name "CI Test" --email "ci@test.com"
 
     - name: Make test script executable
