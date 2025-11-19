@@ -3084,6 +3084,7 @@ async fn main() -> anyhow::Result<()> {
                                                 println!("  {} {}", "Machine:".dimmed(), lock.machine_id.dimmed());
                                                 println!("  {} {}", "Acquired:".dimmed(), lock.acquired_at.dimmed());
                                                 println!("  {} {}", "Expires:".dimmed(), lock.expires_at.yellow());
+                                                println!("  {} {}", "Last seen:".dimmed(), lock.last_heartbeat.dimmed());
                                             }
                                         } else {
                                             println!("{}", "🔓 Repository is UNLOCKED".green().bold());

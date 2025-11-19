@@ -251,7 +251,7 @@ To get a working end-to-end solution for distributed teams:
 - [x] Graceful handling when lock holder goes offline
 - [x] Lock health status reporting
 - [x] Warning when lock expiring soon
-- [ ] Lock status includes "last seen" timestamp
+- [x] Lock status includes "last seen" timestamp
 
 #### 6.5 Connection Monitoring (Week 3-4) ✅ COMPLETE
 - [x] Pre-flight connectivity check
