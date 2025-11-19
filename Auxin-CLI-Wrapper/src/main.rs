@@ -2467,6 +2467,21 @@ async fn main() -> anyhow::Result<()> {
                 );
             }
 
+            // Check for pending sync operations
+            {
+                use auxin::OfflineQueue;
+                if let Ok(queue) = OfflineQueue::new() {
+                    let pending_count = queue.pending().len();
+                    if pending_count > 0 {
+                        println!("│                                                          │");
+                        println!("│  {} {} pending sync operation(s)                        │",
+                            "⟳".yellow(),
+                            pending_count.to_string().yellow()
+                        );
+                    }
+                }
+            }
+
             println!("│                                                          │");
             println!("└──────────────────────────────────────────────────────────┘");
             println!();
@@ -2501,6 +2516,18 @@ async fn main() -> anyhow::Result<()> {
                     progress::info("Next step: auxin add --all");
                 } else if !status.staged.is_empty() {
                     progress::info("Next step: auxin commit -m \"Your message\"");
+                }
+            }
+
+            // Hint about pending sync operations
+            {
+                use auxin::OfflineQueue;
+                if let Ok(queue) = OfflineQueue::new() {
+                    let pending_count = queue.pending().len();
+                    if pending_count > 0 {
+                        progress::warning(&format!("{} operation(s) pending sync", pending_count));
+                        progress::info("Sync with: auxin queue sync");
+                    }
                 }
             }
 

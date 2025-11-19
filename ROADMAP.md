@@ -230,13 +230,13 @@ To get a working end-to-end solution for distributed teams:
 - [x] Circuit breaker pattern for cascading failure prevention
 - [x] Adaptive retry policy (linear for rate limits, exponential for network)
 
-#### 6.2 Offline Mode (Week 2) 🚧 FRAMEWORK READY
+#### 6.2 Offline Mode (Week 2) 🚧 MOSTLY COMPLETE
 - [x] Detect network availability before operations
 - [x] Queue commits locally when offline
 - [x] Persist queue to disk (survive app restart)
-- [ ] Auto-sync when connection restored (needs CLI integration)
-- [ ] Status command shows pending sync count
-- [ ] Manual sync trigger option
+- [ ] Auto-sync when connection restored (needs background daemon)
+- [x] Status command shows pending sync count
+- [x] Manual sync trigger option (auxin queue sync)
 
 #### 6.3 Large File Handling (Week 2-3) ⏳ NOT STARTED
 - [ ] Chunked uploads with resume capability
