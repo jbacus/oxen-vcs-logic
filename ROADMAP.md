@@ -1,7 +1,8 @@
 # Auxin Roadmap
 
-**Last Updated**: 2025-11-18
+**Last Updated**: 2025-11-19
 **Vision**: The definitive version control system for professional creative applications
+**Priority**: Remote team collaboration (distributed teams, unreliable networks)
 
 ---
 
@@ -26,7 +27,57 @@ Auxin solves the fundamental incompatibility between traditional VCS (like Git) 
 | **Phase 7** | Auxin Server | In Progress | 30% |
 | **Phase 8** | AI-Powered Diffing | Future | 0% |
 
-**Current Focus**: Phase 6 (Network Resilience) and Phase 7 (Server)
+**Current Focus**: Phase 6 (Network Resilience) - CRITICAL for remote teams
+
+---
+
+## End-to-End Remote Collaboration Checklist
+
+**Use Case**: Distributed teams (e.g., Colorado ↔ London) collaborating on the same project
+
+### What's Working Now
+- [x] Core VCS operations (init, add, commit, log, restore)
+- [x] Logic Pro project support with metadata
+- [x] Pessimistic locking system (acquire, release, break)
+- [x] Team discovery and activity feeds
+- [x] Authentication with Oxen Hub
+- [x] Local file monitoring and auto-commits
+
+### What's Blocking Remote Collaboration
+
+| Feature | Status | Why Critical |
+|---------|--------|--------------|
+| **Network retry logic** | Partial | Push failures over long distances leave repo in bad state |
+| **Offline commit queue** | Not started | Can't work when network is temporarily down |
+| **Partial push recovery** | Not started | Large sessions (2GB+) fail halfway = lost time |
+| **Remote lock synchronization** | Basic | Race conditions possible with high latency |
+| **Connection health monitoring** | Not started | No warning before operations fail |
+
+### Minimum Viable Remote Collaboration (v0.2)
+
+To get a working end-to-end solution for distributed teams:
+
+1. **Smart Retry System** (1 week)
+   - Exponential backoff for transient failures
+   - Distinguish network errors from auth/permission errors
+   - Resume interrupted uploads from last successful chunk
+
+2. **Offline Mode** (1 week)
+   - Queue commits locally when offline
+   - Sync automatically when connection restored
+   - Clear status indicators ("3 commits pending sync")
+
+3. **Lock Robustness** (3-5 days)
+   - Heartbeat system for active locks
+   - Graceful handling of lock holder going offline
+   - Configurable timeouts for different time zones
+
+4. **Connection Monitoring** (2-3 days)
+   - Pre-flight check before push/pull
+   - Estimated transfer time for large files
+   - Warning when connection is unstable
+
+**Total Estimated Effort**: 3-4 weeks
 
 ---
 
@@ -116,21 +167,61 @@ Auxin solves the fundamental incompatibility between traditional VCS (like Git) 
 
 ## In Progress
 
-### Phase 6: Network Resilience (0%)
+### Phase 6: Network Resilience (0%) ⚠️ HIGHEST PRIORITY
 
-**Goal**: Reliable operation on unreliable networks
+**Goal**: Reliable operation on unreliable networks - REQUIRED for remote collaboration
 
-**Planned Features**:
-- Offline mode with commit queue
-- Smart retry with exponential backoff
-- Partial push recovery
-- Pre-pull conflict detection
-- Network connectivity monitoring
-- Emergency unlock protocol
+**Why This Is Priority #1**:
+- Remote teams (different cities/countries) cannot reliably use Auxin today
+- Long-distance connections have higher latency and more transient failures
+- Large audio files (1-5GB) are prone to upload interruption
+- Without this, Auxin is limited to local/single-user workflows
 
-**Why Critical**: Current system assumes reliable connectivity. Push failures leave repository in inconsistent state. No retry on transient errors.
+**Implementation Phases**:
 
-**Estimated Effort**: 2-3 weeks
+#### 6.1 Smart Retry System (Week 1)
+- [ ] Classify errors: retryable (network) vs fatal (auth, permissions)
+- [ ] Exponential backoff: 2s → 4s → 8s → 16s → fail
+- [ ] Maximum retry attempts (configurable, default 4)
+- [ ] Progress preservation between retries
+- [ ] Clear error messages with suggested actions
+
+#### 6.2 Offline Mode (Week 2)
+- [ ] Detect network availability before operations
+- [ ] Queue commits locally when offline
+- [ ] Persist queue to disk (survive app restart)
+- [ ] Auto-sync when connection restored
+- [ ] Status command shows pending sync count
+- [ ] Manual sync trigger option
+
+#### 6.3 Large File Handling (Week 2-3)
+- [ ] Chunked uploads with resume capability
+- [ ] Track upload progress per-file
+- [ ] Resume from last successful chunk on retry
+- [ ] Bandwidth estimation and ETA display
+- [ ] Abort and resume later option
+
+#### 6.4 Lock Resilience (Week 3)
+- [ ] Heartbeat system (ping every 60s while locked)
+- [ ] Auto-release on missed heartbeats (configurable timeout)
+- [ ] Graceful handling when lock holder goes offline
+- [ ] Time zone aware timeout configuration
+- [ ] Lock status includes "last seen" timestamp
+
+#### 6.5 Connection Monitoring (Week 3-4)
+- [ ] Pre-flight connectivity check
+- [ ] Estimated transfer time for large pushes
+- [ ] Warning when connection is unstable
+- [ ] Bandwidth test option
+- [ ] Network quality indicator in status
+
+**Files to Modify**:
+- `oxen_subprocess.rs` - Add retry logic and error classification
+- `remote_lock.rs` - Add heartbeat system
+- New: `offline_queue.rs` - Offline commit queue
+- New: `network_monitor.rs` - Connection health checks
+
+**Estimated Effort**: 3-4 weeks (prioritized over Phase 7)
 
 ---
 
@@ -221,19 +312,35 @@ Auxin solves the fundamental incompatibility between traditional VCS (like Git) 
 
 ### v0.1 - CLI First (Ready Now)
 - Full CLI functionality
-- Local workflows
+- Local workflows only
 - Requires `oxen` CLI
-- Early adopter release
+- Single user or same-location teams
 
-### v0.2 - Network Ready (ETA: 3 weeks)
-- Network resilience
+### v0.2 - Remote Collaboration Ready (ETA: 4 weeks) ⭐ NEXT MILESTONE
+**Target**: Distributed teams can reliably collaborate across any distance
+
+**Week 1-2 Deliverables**:
+- Smart retry with exponential backoff
+- Error classification (retryable vs fatal)
+- Offline commit queue with auto-sync
+
+**Week 3-4 Deliverables**:
+- Chunked uploads with resume
+- Lock heartbeat system
+- Connection health monitoring
 - macOS integration testing
-- Stable for team use
 
-### v0.3 - Server Alpha (ETA: 8 weeks)
-- Self-hosted server
-- Web dashboard
-- Real-time collaboration
+**Success Criteria**:
+- Push 2GB session from Colorado to Oxen Hub with simulated packet loss → succeeds with retries
+- Work offline for 1 hour, reconnect → all commits sync automatically
+- Lock held for 6 hours across time zones → no false expiration
+- Two users in different countries can complete full workflow without errors
+
+### v0.3 - Server Alpha (ETA: 10 weeks)
+- Self-hosted collaboration server
+- Web dashboard for project overview
+- Real-time activity notifications
+- Centralized lock management
 
 ### v1.0 - Production (ETA: 4 months)
 - All phases through 7 complete
@@ -241,6 +348,7 @@ Auxin solves the fundamental incompatibility between traditional VCS (like Git) 
 - Documentation polish
 - Pre-built binaries
 - Homebrew tap
+- Enterprise support options
 
 ---
 
@@ -285,11 +393,12 @@ Auxin solves the fundamental incompatibility between traditional VCS (like Git) 
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines.
 
-**Current Priorities**:
-1. Network resilience implementation
-2. macOS integration testing
-3. Server development
-4. Documentation improvements
+**Current Priorities** (in order):
+1. **Network resilience implementation** - BLOCKING remote collaboration
+2. Offline commit queue
+3. Lock heartbeat system
+4. macOS integration testing
+5. Documentation for distributed teams
 
 ---
 
