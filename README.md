@@ -349,14 +349,17 @@ auxin/
 ├── Auxin-App/              # Swift/SwiftUI UI application
 ├── Auxin-LaunchAgent/      # Background monitoring daemon
 ├── Auxin-CLI-Wrapper/      # Rust wrapper for Oxen CLI
-├── docs/                   # User and developer documentation
-│   ├── FOR_MUSICIANS.md    # User guide for music producers
-│   ├── FOR_DEVELOPERS.md   # Technical guide for contributors
-│   └── TESTING_STRATEGY.md # Testing approach and coverage
+├── docs/
+│   ├── user/               # User documentation
+│   ├── developer/          # Developer documentation
+│   ├── system/             # AI/system prompts
+│   └── INDEX.md            # Documentation map
 └── tests/                  # Unit and integration tests
 ```
 
 ## Documentation
+
+See [Documentation Index](docs/INDEX.md) for a complete map of all documentation.
 
 ### Project Overview
 - [Roadmap](ROADMAP.md) - Project vision, phases, and progress
@@ -364,18 +367,20 @@ auxin/
 - [Changelog](CHANGELOG.md) - Version history
 
 ### User Guides
-- [For Musicians](docs/FOR_MUSICIANS.md) - Complete guide for music producers (non-technical, covers both GUI and CLI)
-- [CLI Examples](docs/CLI_EXAMPLES.md) - Real-world command line examples with visual output
-- [SketchUp Examples](docs/SKETCHUP_EXAMPLES.md) - SketchUp workflow examples and best practices
-- [Cloud Sharing Guide](docs/CLOUD_SHARING_GUIDE.md) - Team collaboration guide
-- [Installation Guide](INSTALL.md) - Complete installation instructions
-- [Troubleshooting](docs/TROUBLESHOOTING.md) - Common issues and solutions
+- [Getting Started](docs/user/getting-started.md) - 5-minute quick start
+- [For Musicians](docs/user/for-musicians.md) - Complete guide for music producers
+- [For Modelers](docs/user/for-modelers.md) - SketchUp and Blender workflows
+- [CLI Reference](docs/user/cli-reference.md) - Command line examples
+- [Cloud Sharing](docs/user/cloud-sharing.md) - Team collaboration guide
+- [Installation](INSTALL.md) - Complete installation instructions
+- [Troubleshooting](docs/user/troubleshooting.md) - Common issues and solutions
 
-### Technical Documentation
-- [For Developers](docs/FOR_DEVELOPERS.md) - Full technical specification, architecture, and API reference
-- [Extensibility Guide](docs/EXTENSIBILITY.md) - Adding support for new applications
-- [Testing Strategy](docs/TESTING_STRATEGY.md) - Comprehensive testing approach
-- [Contributing Guidelines](CONTRIBUTING.md) - Code style, testing, and PR process
+### Developer Documentation
+- [Development Setup](docs/developer/development-setup.md) - Environment configuration
+- [Architecture](docs/developer/architecture.md) - System design and patterns
+- [Contributing](docs/developer/contributing.md) - Code style, testing, PR process
+- [Testing Strategy](docs/developer/testing.md) - Comprehensive testing approach
+- [Extensibility](docs/developer/extensibility.md) - Adding support for new applications
 
 ## License
 
