@@ -1,4 +1,9 @@
+// NOTE: liboxen_stub has been removed as it provided no real functionality.
+// When liboxen crate is officially published, implement OxenBackend trait
+// for FFIBackend in oxen_backend.rs
+
 pub mod auth;
+pub mod oxen_backend;
 pub mod backup_recovery;
 pub mod collaboration;
 pub mod commit_metadata;
@@ -65,6 +70,10 @@ pub use oxen_ops::OxenRepository;
 pub use oxen_subprocess::{
     BranchInfo, CommitInfo as SubprocessCommitInfo, OxenConfig, OxenError, OxenSubprocess,
     StatusInfo,
+};
+pub use oxen_backend::{
+    BackendType, OxenBackend, SubprocessBackend,
+    create_backend, create_default_backend,
 };
 pub use remote_lock::{RemoteLock, RemoteLockManager};
 pub use server_client::{AuxinServerClient, ServerConfig, LockInfo, LockHolder, LogicProMetadata as ServerMetadata};
