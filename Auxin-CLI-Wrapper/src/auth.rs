@@ -25,7 +25,6 @@
 ///     println!("Authenticated as: {}", creds.username);
 /// }
 /// ```
-
 use anyhow::{anyhow, Context, Result};
 use colored::Colorize;
 use serde::{Deserialize, Serialize};

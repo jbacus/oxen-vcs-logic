@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Context, Result};
+use anyhow::Result;
 use crate::oxen_subprocess::OxenSubprocess;
 use crate::remote_lock::RemoteLockManager;
 use std::path::Path;
@@ -45,6 +45,7 @@ pub enum ConflictRecommendation {
 
 /// Manager for detecting and preventing conflicts
 pub struct ConflictDetector {
+    #[allow(dead_code)]
     oxen: OxenSubprocess,
     lock_manager: RemoteLockManager,
 }
@@ -100,9 +101,7 @@ impl ConflictDetector {
         let lock_status = self.check_lock_status(repo_path)?;
 
         // Determine recommendation
-        let recommendation = if !lock_status.is_locked {
-            ConflictRecommendation::AcquireLock
-        } else if lock_status.locked_by_other {
+        let recommendation = if !lock_status.is_locked || lock_status.locked_by_other {
             ConflictRecommendation::AcquireLock
         } else {
             ConflictRecommendation::Safe
@@ -162,7 +161,7 @@ mod tests {
 
     #[test]
     fn test_conflict_detector_creation() {
-        let detector = ConflictDetector::new();
+        let _detector = ConflictDetector::new();
         // Just verify it compiles and creates
         assert!(true);
     }

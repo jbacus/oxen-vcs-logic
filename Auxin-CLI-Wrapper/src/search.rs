@@ -29,7 +29,6 @@
 /// let engine = SearchEngine::new();
 /// let results = engine.search(&commits, &query);
 /// ```
-
 use crate::oxen_subprocess::CommitInfo;
 use crate::CommitMetadata;
 use serde::{Deserialize, Serialize};
@@ -294,14 +293,14 @@ impl SearchEngine {
                                     query = query.bpm_range(min, max);
                                 }
                             }
-                        } else if value.starts_with('>') {
+                        } else if let Some(stripped) = value.strip_prefix('>') {
                             // Greater than: ">120"
-                            if let Ok(min) = value[1..].parse::<f32>() {
+                            if let Ok(min) = stripped.parse::<f32>() {
                                 query = query.bpm_min(min);
                             }
-                        } else if value.starts_with('<') {
+                        } else if let Some(stripped) = value.strip_prefix('<') {
                             // Less than: "<140"
-                            if let Ok(max) = value[1..].parse::<f32>() {
+                            if let Ok(max) = stripped.parse::<f32>() {
                                 query = query.bpm_max(max);
                             }
                         } else {
@@ -458,7 +457,7 @@ mod tests {
     #[test]
     fn test_combined_filters() {
         let engine = SearchEngine::new();
-        let mut metadata = CommitMetadata::new("Final mix")
+        let metadata = CommitMetadata::new("Final mix")
             .with_bpm(128.0)
             .with_key_signature("A Minor")
             .with_tag("mixing");

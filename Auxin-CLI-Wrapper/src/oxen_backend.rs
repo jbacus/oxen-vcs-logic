@@ -27,8 +27,7 @@
 /// backend.add(path, &files)?;
 /// backend.commit(path, "Message")?;
 /// ```
-
-use anyhow::{Context, Result};
+use anyhow::Result;
 use std::path::Path;
 
 // Feature-gated liboxen imports
@@ -43,20 +42,14 @@ use liboxen::{
 pub use crate::oxen_subprocess::{BranchInfo, CommitInfo, StatusInfo};
 
 /// Backend implementation type
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum BackendType {
     /// Use subprocess calls to oxen CLI (current, production-ready)
+    #[default]
     Subprocess,
     /// Use direct FFI bindings to liboxen (future, 10-100x faster)
     #[allow(dead_code)]
     FFI,
-}
-
-impl Default for BackendType {
-    fn default() -> Self {
-        // Default to subprocess until FFI is ready
-        BackendType::Subprocess
-    }
 }
 
 /// Trait defining all Oxen VCS operations
@@ -193,7 +186,7 @@ impl SubprocessBackend {
     }
 
     /// Create with default settings
-    pub fn default() -> Self {
+    pub fn with_defaults() -> Self {
         Self::new(crate::oxen_subprocess::OxenSubprocess::new())
     }
 }
@@ -583,7 +576,7 @@ mod tests {
 
     #[test]
     fn test_subprocess_backend_wrapper() {
-        let backend = SubprocessBackend::default();
+        let backend = SubprocessBackend::with_defaults();
         assert_eq!(backend.backend_type(), BackendType::Subprocess);
         assert_eq!(backend.name(), "OxenSubprocess");
     }

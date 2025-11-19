@@ -39,7 +39,6 @@
 /// # Ok(())
 /// # }
 /// ```
-
 use crate::CommitMetadata;
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};

@@ -22,7 +22,6 @@
 ///     println!("{}: {} - {}", activity.timestamp, activity.author, activity.message);
 /// }
 /// ```
-
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -450,13 +449,13 @@ mod tests {
 
     #[test]
     fn test_activity_feed_creation() {
-        let feed = ActivityFeed::new();
+        let _feed = ActivityFeed::new();
         assert!(true); // Just verify it compiles
     }
 
     #[test]
     fn test_team_manager_creation() {
-        let manager = TeamManager::new();
+        let _manager = TeamManager::new();
         assert!(true);
     }
 

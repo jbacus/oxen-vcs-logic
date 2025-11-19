@@ -262,7 +262,7 @@ impl BackupRecoveryManager {
                 "   cd {}",
                 snapshot.repo_path.display()
             ));
-            instructions.push(format!("   oxen log  # Find commit"));
+            instructions.push("   oxen log  # Find commit".to_string());
             instructions.push(format!("   oxen checkout {}", commit_id));
         } else {
             instructions.push("1. Manual restore required (no commit ID stored)".to_string());

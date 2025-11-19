@@ -2,9 +2,8 @@
 ///
 /// This module provides helper functions to integrate RemoteLockManager
 /// with the CLI commands, handling user feedback and error presentation.
-
+use crate::progress;
 use crate::remote_lock::RemoteLockManager;
-use crate::{progress, RemoteLock};
 use anyhow::Result;
 use colored::Colorize;
 use std::path::Path;
