@@ -6,7 +6,35 @@
 [![Rust](https://img.shields.io/badge/rust-stable-orange.svg)](https://www.rust-lang.org)
 [![Swift](https://img.shields.io/badge/swift-5.9+-orange.svg)](https://swift.org)
 
-A native macOS version control system for creative applications, leveraging Oxen.ai for efficient large binary file management.
+A native macOS version control system designed specifically for creative applications, leveraging [Oxen.ai](https://oxen.ai) for efficient large binary file management.
+
+## Why Auxin?
+
+### The Problem
+
+Creative professionals—music producers, 3D modelers, architects—work with projects that are fundamentally incompatible with traditional version control:
+
+- **Massive binary files**: A single Logic Pro session can contain gigabytes of audio samples, virtual instruments, and recorded takes
+- **Proprietary formats**: Project files are opaque binaries that cannot be meaningfully diffed or merged
+- **Repository bloat**: Git stores entire files on each modification, causing repositories to balloon rapidly
+- **Merge conflicts are catastrophic**: When two people edit a binary project file, there's no way to automatically reconcile the changes
+
+### The Solution
+
+Auxin solves these problems by combining Oxen's block-level deduplication with creative-workflow-aware features:
+
+- **Efficient storage**: Only changed blocks are stored, not entire files—a 2GB project with minor changes stores just the delta
+- **Pessimistic locking**: Prevents merge conflicts entirely by ensuring only one person edits at a time
+- **Application-aware metadata**: Tracks BPM, sample rate, key signature, layers, components—not just file changes
+- **Automatic safety net**: Background daemon commits drafts as you work, with power-safe commits before sleep
+- **Non-destructive history**: Roll back to any previous state without losing work
+
+### About the Name
+
+**Auxin** is a triple wordplay:
+- Rhymes with **Oxen**, the powerful VCS backend that makes large binary versioning possible
+- References the **AUX In** jack found on audio equipment—the universal input that connects everything
+- Named after the **plant growth hormone** that directs growth and development, just as Auxin helps creative projects grow and evolve
 
 ## Supported Applications
 
