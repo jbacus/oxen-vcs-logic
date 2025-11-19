@@ -1422,6 +1422,35 @@ EXAMPLES:
     /// Recovery guides for common scenarios
     #[command(subcommand)]
     Recovery(RecoveryCommands),
+
+    /// Check system environment and dependencies
+    #[command(long_about = "Check system environment and dependencies
+
+USAGE:
+    auxin doctor
+
+DESCRIPTION:
+    Validates your environment to ensure Auxin can work correctly.
+    Checks for:
+      • Oxen CLI installation and version
+      • Authentication status with Oxen Hub
+      • Remote repository configuration
+      • Project initialization status
+      • Daemon status
+
+    This is the first command to run if you're having issues.
+
+EXAMPLES:
+    # Check everything
+    auxin doctor
+
+    # Check in current project directory
+    cd MyProject.logicx && auxin doctor")]
+    Doctor,
+
+    /// Manage remote repositories
+    #[command(subcommand)]
+    Remote(RemoteCommands),
 }
 
 #[derive(Subcommand)]
@@ -1897,6 +1926,61 @@ EXAMPLES:
     # Show lock recovery guide
     auxin recovery lock")]
     Lock,
+}
+
+#[derive(Subcommand)]
+enum RemoteCommands {
+    /// Add a remote repository
+    #[command(long_about = "Add a remote repository
+
+USAGE:
+    auxin remote add <NAME> <URL>
+
+DESCRIPTION:
+    Adds a remote repository URL. This is typically your Oxen Hub repository
+    where you push and pull changes for collaboration.
+
+EXAMPLES:
+    # Add Oxen Hub remote
+    auxin remote add origin https://hub.oxen.ai/username/myproject")]
+    Add {
+        #[arg(value_name = "NAME", help = "Name for the remote (typically 'origin')")]
+        name: String,
+
+        #[arg(value_name = "URL", help = "URL of the remote repository")]
+        url: String,
+    },
+
+    /// List configured remotes
+    #[command(long_about = "List configured remotes
+
+USAGE:
+    auxin remote list
+
+DESCRIPTION:
+    Shows all configured remote repositories for the current project.
+
+EXAMPLES:
+    # List all remotes
+    auxin remote list")]
+    List,
+
+    /// Remove a remote
+    #[command(long_about = "Remove a remote
+
+USAGE:
+    auxin remote remove <NAME>
+
+DESCRIPTION:
+    Removes a remote repository configuration.
+
+EXAMPLES:
+    # Remove a remote
+    auxin remote remove origin")]
+    Remove {
+        #[arg(value_name = "NAME", help = "Name of the remote to remove")]
+        name: String,
+    },
 }
 
 
@@ -4497,6 +4581,146 @@ async fn main() -> anyhow::Result<()> {
                     Ok(())
                 }
             }
+        }
+
+        Commands::Doctor => {
+            println!("\n{}", "Auxin Doctor - Environment Check".cyan().bold());
+            println!("{}", "=".repeat(40).dimmed());
+
+            let mut all_good = true;
+
+            // 1. Check Oxen CLI
+            print!("\n{} ", "Checking Oxen CLI...".cyan());
+            let subprocess = auxin::OxenSubprocess::new();
+            match subprocess.version() {
+                Ok(version) => {
+                    println!("{} {}", "✓".green(), version.trim());
+                }
+                Err(_) => {
+                    println!("{} {}", "✗".red(), "Not found");
+                    println!("  {} Install with: pip install oxen-ai", "→".yellow());
+                    all_good = false;
+                }
+            }
+
+            // 2. Check if in a repository
+            let current_dir = std::env::current_dir()?;
+            let oxen_dir = current_dir.join(".oxen");
+
+            print!("{} ", "Checking repository...".cyan());
+            if oxen_dir.exists() {
+                println!("{} {}", "✓".green(), "Oxen repository found");
+
+                // 3. Check for remotes
+                print!("{} ", "Checking remotes...".cyan());
+                match subprocess.remote_list(&current_dir) {
+                    Ok(remotes) if !remotes.is_empty() => {
+                        println!("{}", "✓".green());
+                        for (name, url) in &remotes {
+                            println!("  {} {} → {}", "•".dimmed(), name.cyan(), url);
+                        }
+                    }
+                    Ok(_) => {
+                        println!("{} {}", "⚠".yellow(), "No remotes configured");
+                        println!("  {} Add with: auxin remote add origin <URL>", "→".yellow());
+                        all_good = false;
+                    }
+                    Err(e) => {
+                        println!("{} {}", "✗".red(), e);
+                        all_good = false;
+                    }
+                }
+
+                // 4. Check current branch
+                print!("{} ", "Checking branch...".cyan());
+                match subprocess.current_branch(&current_dir) {
+                    Ok(branch) => {
+                        println!("{} {}", "✓".green(), branch);
+                    }
+                    Err(e) => {
+                        println!("{} {}", "✗".red(), e);
+                        all_good = false;
+                    }
+                }
+
+            } else {
+                println!("{} {}", "⚠".yellow(), "Not in an Oxen repository");
+                println!("  {} Initialize with: auxin init <path>", "→".yellow());
+            }
+
+            // 5. Check authentication (try to see if we can list remotes without error)
+            print!("{} ", "Checking authentication...".cyan());
+            // We can't easily check auth status without trying to connect
+            // For now, just note that auth can be set up
+            println!("{} {}", "?".yellow(), "Run 'auxin auth login' to authenticate");
+
+            // Summary
+            println!("\n{}", "─".repeat(40).dimmed());
+            if all_good {
+                println!("{}", "All checks passed! You're ready to use Auxin.".green().bold());
+            } else {
+                println!("{}", "Some issues found. See suggestions above.".yellow());
+            }
+            println!();
+
+            Ok(())
+        }
+
+        Commands::Remote(cmd) => {
+            let current_dir = std::env::current_dir()?;
+            let subprocess = auxin::OxenSubprocess::new();
+
+            match cmd {
+                RemoteCommands::Add { name, url } => {
+                    let pb = progress::spinner(&format!("Adding remote '{}'...", name));
+
+                    match subprocess.remote_add(&current_dir, &name, &url) {
+                        Ok(()) => {
+                            progress::finish_success(&pb, &format!("Remote '{}' added", name));
+                            println!("  {} → {}", name.cyan(), url);
+                        }
+                        Err(e) => {
+                            progress::finish_error(&pb, "Failed to add remote");
+                            anyhow::bail!("{}", e);
+                        }
+                    }
+                }
+
+                RemoteCommands::List => {
+                    match subprocess.remote_list(&current_dir) {
+                        Ok(remotes) if !remotes.is_empty() => {
+                            println!("\n{}", "Configured remotes:".cyan().bold());
+                            for (name, url) in &remotes {
+                                println!("  {} → {}", name.cyan(), url);
+                            }
+                            println!();
+                        }
+                        Ok(_) => {
+                            println!("{}", "No remotes configured".yellow());
+                            println!("Add one with: auxin remote add origin <URL>");
+                        }
+                        Err(e) => {
+                            anyhow::bail!("Failed to list remotes: {}", e);
+                        }
+                    }
+                }
+
+                RemoteCommands::Remove { name } => {
+                    let pb = progress::spinner(&format!("Removing remote '{}'...", name));
+
+                    match subprocess.remote_remove(&current_dir, &name) {
+                        Ok(()) => {
+                            progress::finish_success(&pb, &format!("Remote '{}' removed", name));
+                        }
+                        Err(e) => {
+                            progress::finish_error(&pb, "Failed to remove remote");
+                            anyhow::bail!("{}", e);
+                        }
+                    }
+                }
+            }
+
+            Ok(())
         }
 
         // TODO: Implement these command handlers

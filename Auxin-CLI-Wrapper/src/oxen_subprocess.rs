@@ -354,9 +354,16 @@ fn sanitize_path(path: &Path, repo_root: Option<&Path>) -> Result<String> {
 
     // If repo_root is provided, ensure path is within it (canonicalize if possible)
     if let Some(root) = repo_root {
+        // For relative paths, resolve them relative to repo root
+        let resolved_path = if path.is_relative() {
+            root.join(path)
+        } else {
+            path.to_path_buf()
+        };
+
         // For existing paths, canonicalize to check for path traversal
-        if path.exists() {
-            let canonical = path.canonicalize()
+        if resolved_path.exists() {
+            let canonical = resolved_path.canonicalize()
                 .context("Failed to canonicalize path")?;
             let root_canonical = root.canonicalize()
                 .context("Failed to canonicalize repository root")?;
@@ -958,6 +965,16 @@ impl OxenSubprocess {
 
         vlog!("Found {} remote(s)", remotes.len());
         Ok(remotes)
+    }
+
+    /// Remove remote
+    pub fn remote_remove(&self, repo_path: &Path, name: &str) -> Result<()> {
+        vlog!("Removing remote: {}", name);
+
+        self.run_command(&["remote", "remove", name], Some(repo_path), None)?;
+
+        info!("Removed remote: {}", name);
+        Ok(())
     }
 
     // ========== Private Helper Methods ==========
