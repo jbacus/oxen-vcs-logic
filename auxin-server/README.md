@@ -92,7 +92,32 @@ cd scripts
 
 ## Testing
 
-Run the automated test suite:
+### ✅ End-to-End Collaboration Tests
+
+Auxin-server includes comprehensive end-to-end tests that **prove remote collaboration works**:
+
+```bash
+# Run the full collaboration test suite
+cd auxin-server
+cargo test --test collaboration_e2e_tests -- --nocapture
+```
+
+**What's Tested:**
+- ✅ Multi-user authentication and authorization
+- ✅ Distributed locking with conflict detection (409 responses)
+- ✅ Lock heartbeat system for long-running sessions
+- ✅ Sequential lock handoff between remote users
+- ✅ Activity feed tracking all collaboration events
+- ✅ Logic Pro metadata storage and retrieval
+- ✅ Real-time WebSocket infrastructure
+
+**Test Scenario:** Pete (Colorado) and Louis (London) collaborating on a music project across time zones, with proper lock coordination, metadata updates, and conflict prevention.
+
+**Results:** 3 tests, all passing ✅ (see [tests/README.md](tests/README.md) for details)
+
+### Deployment Tests
+
+Run the automated deployment test suite:
 
 ```bash
 # Make sure server is running

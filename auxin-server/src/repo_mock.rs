@@ -412,7 +412,7 @@ impl RepositoryOps {
     ) -> AppResult<FileLock> {
         FileLock::acquire(&self.repo_path, user, machine_id, timeout_hours).map_err(|e| {
             if e.kind() == std::io::ErrorKind::AlreadyExists {
-                AppError::BadRequest(e.to_string())
+                AppError::Conflict(e.to_string())
             } else {
                 AppError::Internal(format!("Failed to acquire lock: {}", e))
             }
