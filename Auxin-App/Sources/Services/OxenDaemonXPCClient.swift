@@ -8,7 +8,7 @@ import Foundation
     func registerProject(_ projectPath: String, withReply reply: @escaping (Bool, String?) -> Void)
     func unregisterProject(_ projectPath: String, withReply reply: @escaping (Bool, String?) -> Void)
     func getMonitoredProjects(withReply reply: @escaping ([String]) -> Void)
-    func commitProject(_ projectPath: String, message: String?, withReply reply: @escaping (String?, String?) -> Void)
+    func commitProject(_ projectPath: String, message: String?, metadata: [String: Any]?, withReply reply: @escaping (String?, String?) -> Void)
     func getStatus(withReply reply: @escaping ([String: Any]) -> Void)
     func getCommitHistory(for projectPath: String, limit: Int, withReply reply: @escaping ([[String: Any]]) -> Void)
     func restoreProject(_ projectPath: String, toCommit commitId: String, withReply reply: @escaping (Bool, String?) -> Void)
@@ -115,7 +115,7 @@ class OxenDaemonXPCClient {
             completion(false)
             return
         }
-        proxy.commitProject(path, message: message, withReply: { commitId, error in
+        proxy.commitProject(path, message: message, metadata: metadata, withReply: { commitId, error in
             if let error = error {
                 print("XPC commitProject error: \(error)")
                 completion(false)
