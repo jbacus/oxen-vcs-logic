@@ -83,6 +83,7 @@ async fn main() -> std::io::Result<()> {
             .route("/api/repos/{namespace}/{name}/locks/release", web::post().to(api::release_lock))
             .route("/api/repos/{namespace}/{name}/locks/heartbeat", web::post().to(api::heartbeat_lock))
             .route("/api/repos/{namespace}/{name}/locks/status", web::get().to(api::lock_status))
+            .route("/api/repos/{namespace}/{name}/activity", web::get().to(api::get_activity))
             // Bounce audio endpoints
             .route("/api/repos/{namespace}/{name}/bounces", web::get().to(api::list_bounces))
             .route("/api/repos/{namespace}/{name}/bounces/{commit}", web::get().to(api::get_bounce))

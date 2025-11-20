@@ -13,7 +13,7 @@ use crate::repo::RepositoryOps;
 
 // Re-export API handlers
 pub use repo_ops::{
-    acquire_lock, create_branch, get_commits, get_metadata, heartbeat_lock,
+    acquire_lock, create_branch, get_activity, get_commits, get_metadata, heartbeat_lock,
     list_branches, lock_status, pull_repository, push_repository,
     release_lock, store_metadata,
 };

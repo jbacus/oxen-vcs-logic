@@ -4,7 +4,7 @@ use tracing::info;
 
 use crate::config::Config;
 use crate::error::AppResult;
-use crate::extensions::LogicProMetadata;
+use crate::extensions::{get_activities, LogicProMetadata};
 use crate::repo::RepositoryOps;
 use std::path::PathBuf;
 
@@ -63,6 +63,11 @@ pub async fn get_commits(
 
 #[derive(Debug, Deserialize)]
 pub struct CommitQuery {
+    pub limit: Option<usize>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ActivityQuery {
     pub limit: Option<usize>,
 }
 
@@ -284,4 +289,23 @@ pub async fn lock_status(
             "locked": false
         }))),
     }
+}
+
+/// Get activity feed for repository
+pub async fn get_activity(
+    config: web::Data<Config>,
+    path: web::Path<(String, String)>,
+    query: web::Query<ActivityQuery>,
+) -> AppResult<HttpResponse> {
+    let (namespace, repo_name) = path.into_inner();
+    info!("Getting activity for: {}/{}", namespace, repo_name);
+
+    let repo_path = PathBuf::from(&config.sync_dir)
+        .join(&namespace)
+        .join(&repo_name);
+
+    let limit = query.limit.unwrap_or(50);
+    let activities = get_activities(&repo_path, limit)?;
+
+    Ok(HttpResponse::Ok().json(activities))
 }
