@@ -24,7 +24,7 @@ Auxin solves the fundamental incompatibility between traditional VCS (like Git) 
 | **Phase 4** | Team Collaboration | Complete | 95% |
 | **Phase 5** | 3D Modeling Support | Complete | 100% |
 | **Phase 6** | Network Resilience | Complete | 100% |
-| **Phase 7** | Auxin Server | In Progress | 30% |
+| **Phase 7** | Auxin Server | In Progress | 60% |
 | **Phase 8** | AI-Powered Diffing | Future | 0% |
 
 **Current Focus**: Phase 7 (Auxin Server) - Self-hosted collaboration
@@ -268,28 +268,36 @@ All features delivered for distributed team collaboration:
 
 ---
 
-### Phase 7: Auxin Server (30%)
+### Phase 7: Auxin Server (60%)
 
 **Goal**: Self-hosted collaboration server with web interface
 
-**Architecture**: Rust backend (Axum) + React/TypeScript frontend
+**Architecture**: Rust backend (Actix Web) + React/TypeScript frontend
 
 **Completed**:
 - Project structure and build system
 - Basic repository management API
 - Initial frontend scaffolding
 - Local development scripts
+- Lock management server ✅
+- User authentication with bcrypt password hashing ✅
+- Activity logging and aggregation ✅
+- Real-time notifications (WebSocket) ✅
 
 **Remaining**:
-- Lock management server
-- Activity aggregation
-- User authentication
-- Web dashboard
-- Real-time notifications (WebSocket)
+- Web dashboard polish
+- VCS operations integration (full-oxen mode)
+- End-to-end testing
+- Production deployment docs
 
-**Estimated Effort**: 6-8 weeks
+**Estimated Effort**: 3-4 weeks remaining
 
 **Key Directory**: `auxin-server/`
+
+**Key Files Added**:
+- `src/auth.rs` - User registration, login, token management (567 lines)
+- `src/extensions/activity.rs` - Activity logging system (262 lines)
+- `src/websocket.rs` - Real-time WebSocket notifications (282 lines)
 
 ---
 
@@ -434,10 +442,11 @@ All features delivered for distributed team collaboration:
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines.
 
 **Current Priorities** (in order):
-1. **Phase 7: Auxin Server** - Self-hosted collaboration
-2. macOS integration testing
-3. Documentation for distributed teams
-4. Technical debt cleanup
+1. **Phase 7: Auxin Server** - Web dashboard polish, VCS integration
+2. macOS integration testing (Swift components)
+3. End-to-end testing for remote collaboration
+4. Documentation for distributed teams
+5. Technical debt cleanup
 
 ---
 
