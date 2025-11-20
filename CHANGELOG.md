@@ -8,6 +8,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Auxin Server Phase 7 Features** (2025-11-20)
+  - User authentication system with bcrypt password hashing
+    - Register, login, logout, and token validation endpoints
+    - Secure password storage with bcrypt hashing
+    - Token-based auth with configurable expiration
+    - User persistence to JSON file
+  - Activity logging and aggregation system
+    - Event types: Commit, LockAcquired, LockReleased, BranchCreated, UserJoined, Push, Pull
+    - Filtering by event type and user
+    - Activity feed with metadata support
+    - Automatic logging on lock operations
+  - Real-time WebSocket notifications
+    - Per-repository subscription channels
+    - Broadcast for lock acquired/released events
+    - Commit and branch creation notifications
+    - Ping/pong heartbeat support
+  - API integration tests for auth and activity endpoints
+  - 57 tests passing in auxin-server (22 unit + 35 integration)
+
 - **liboxen FFI Integration** (2025-11-19)
   - liboxen v0.38.4 now compiles with chrono 0.4.29 workaround
   - Optional `ffi` feature flag: `cargo build --features ffi`

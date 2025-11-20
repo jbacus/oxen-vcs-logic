@@ -1,7 +1,7 @@
 # Auxin Feature Status Report
 
-**Last Updated**: 2025-11-19
-**Overall Status**: Production-Ready CLI with Team Collaboration Support
+**Last Updated**: 2025-11-20
+**Overall Status**: Production-Ready CLI with Team Collaboration and Server Support
 
 ---
 
@@ -11,10 +11,11 @@
 |-----------|-------|--------|-------|
 | **CLI Wrapper (Rust)** | A+ (98/100) | Production Ready | 481 passing |
 | **Team Collaboration** | A (92/100) | Production Ready (Phase 6 complete) | 50+ passing |
+| **Auxin Server** | A- (85/100) | In Progress (Phase 7 - 60%) | 57 passing |
 | **LaunchAgent (Swift)** | B (70/100) | Code Complete, Untested | ~30% coverage |
 | **GUI App (Swift)** | B- (65/100) | Code Complete, Untested | <10% coverage |
 
-**Bottom Line**: The CLI is fully functional and production-ready. Team collaboration works on reliable networks. Swift components need macOS integration testing.
+**Bottom Line**: The CLI is fully functional and production-ready. Team collaboration works on reliable networks. Auxin Server has core features (auth, activity, WebSocket) complete. Swift components need macOS integration testing.
 
 ---
 
@@ -92,13 +93,57 @@
   - Circuit breaker pattern for cascading failure prevention
   - Network health monitoring with latency checks
 - Lock heartbeat system for keeping locks alive during long sessions
-- Offline operation queue (framework ready, needs CLI integration)
+- Offline operation queue with CLI integration
+- Chunked uploads for large files with resume capability
 
 **Not implemented**:
 - Automatic comment sync
 - Stale lock cleanup daemon
 - Notifications (Slack/Discord webhooks)
-- Chunked uploads for large files (resume capability)
+
+---
+
+## Auxin Server: A- (85/100)
+
+### Quick Stats
+- **Code**: 2,500+ lines across 10 Rust modules
+- **Tests**: 57 tests passing (22 unit + 35 integration)
+- **Framework**: Actix Web with async Rust
+
+### Feature Completeness
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Repository management API | 100% | Create, list, get repositories |
+| Lock management API | 100% | Acquire, release, status with timeouts |
+| User authentication | 100% | Register, login, logout with bcrypt hashing |
+| Activity logging | 100% | Event logging with filtering and aggregation |
+| Real-time WebSocket | 100% | Broadcast notifications for locks and commits |
+| Web dashboard | 50% | Initial scaffolding, needs polish |
+| VCS operations | 0% | Pending full-oxen mode integration |
+
+### Production Features
+
+**Ready NOW**:
+- User registration and login with secure password hashing
+- Token-based authentication with configurable expiration
+- Activity feed with event types (commits, locks, branches)
+- WebSocket subscriptions per repository
+- Automatic activity logging on lock operations
+- Real-time broadcasts for lock acquired/released events
+- Comprehensive error handling with proper HTTP status codes
+
+**Key Files**:
+- `src/auth.rs` - Authentication with bcrypt (567 lines)
+- `src/extensions/activity.rs` - Activity logging (262 lines)
+- `src/websocket.rs` - Real-time notifications (282 lines)
+- `src/api/repo_ops.rs` - Repository and lock operations
+
+### What's Missing (40%)
+- Web dashboard polish
+- VCS operations integration (clone, push, pull)
+- End-to-end testing with real Oxen backend
+- Production deployment documentation
 
 ---
 

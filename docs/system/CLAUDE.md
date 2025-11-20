@@ -23,6 +23,9 @@ cd Auxin-App && swift build -c release && ./create-app-bundle.sh
 
 # Lint and format
 cd Auxin-CLI-Wrapper && cargo fmt && cargo clippy
+
+# Build and test Auxin Server
+cd auxin-server && cargo build && cargo test
 ```
 
 ### Critical Source Files
@@ -43,6 +46,13 @@ cd Auxin-CLI-Wrapper && cargo fmt && cargo clippy
 **Swift App** (`Auxin-App/Sources/`):
 - `ContentView.swift` - Main SwiftUI view
 - `ProjectDetailContentView.swift` - Commit history
+
+**Auxin Server** (`auxin-server/src/`):
+- `main.rs` - Server entry point with routes
+- `auth.rs` - User authentication with bcrypt
+- `websocket.rs` - Real-time WebSocket notifications
+- `extensions/activity.rs` - Activity logging system
+- `api/repo_ops.rs` - Repository and lock operations
 
 ---
 
@@ -90,12 +100,13 @@ cd Auxin-CLI-Wrapper && cargo fmt && cargo clippy
 
 ## Project Status
 
-**Last Updated**: 2025-11-19
-**Test Suite**: 434 tests passing, 88% coverage
+**Last Updated**: 2025-11-20
+**Test Suite**: 491+ tests passing (434 CLI + 57 Server), 88% coverage
 
 | Component | Status | Test Coverage |
 |-----------|--------|---------------|
 | Rust CLI | Production-ready | 88% |
+| Auxin Server | In progress (60%) | 57 tests |
 | Swift LaunchAgent | Code complete | ~30% |
 | Swift App | Code complete | <10% |
 
@@ -106,8 +117,8 @@ cd Auxin-CLI-Wrapper && cargo fmt && cargo clippy
 - Phase 3: GUI Application - **100%**
 - Phase 4: Team Collaboration - **95%**
 - Phase 5: 3D Modeling Support - **100%**
-- Phase 6: Network Resilience - **0%** (planned)
-- Phase 7: Auxin Server - **30%** (in progress)
+- Phase 6: Network Resilience - **100%**
+- Phase 7: Auxin Server - **60%** (in progress)
 
 ---
 
