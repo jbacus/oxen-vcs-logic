@@ -1,11 +1,62 @@
-// Mock implementations for Oxen VCS operations
-// Used when liboxen is not available (e.g., macOS 26.x compilation issues)
+// VCS operations using Oxen CLI subprocess
+// This approach works without liboxen compilation and uses the same
+// proven subprocess wrapper approach as the Auxin CLI
 
 use std::path::{Path, PathBuf};
-use tracing::{info, warn};
+use std::process::{Command, Output};
+use tracing::{debug, info, warn};
 
 use crate::error::{AppError, AppResult};
 use crate::extensions::{FileLock, LogicProMetadata};
+
+/// Execute an oxen command and return the output
+fn run_oxen_command(args: &[&str], cwd: Option<&Path>) -> AppResult<Output> {
+    let mut cmd = Command::new("oxen");
+    cmd.args(args);
+
+    if let Some(dir) = cwd {
+        cmd.current_dir(dir);
+    }
+
+    debug!("Running oxen command: oxen {}", args.join(" "));
+
+    let output = cmd.output().map_err(|e| {
+        if e.kind() == std::io::ErrorKind::NotFound {
+            AppError::Internal(
+                "Oxen CLI not found. Install with: pip install oxenai".to_string()
+            )
+        } else {
+            AppError::Internal(format!("Failed to execute oxen command: {}", e))
+        }
+    })?;
+
+    Ok(output)
+}
+
+/// Check if oxen command succeeded and return stdout
+fn check_oxen_output(output: Output, operation: &str) -> AppResult<String> {
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        // Check for specific error types
+        let error_msg = if !stderr.is_empty() {
+            stderr.to_string()
+        } else {
+            stdout.to_string()
+        };
+
+        if error_msg.contains("not found") || error_msg.contains("does not exist") {
+            Err(AppError::NotFound(format!("{}: {}", operation, error_msg)))
+        } else if error_msg.contains("permission") || error_msg.contains("unauthorized") {
+            Err(AppError::Unauthorized(format!("{}: {}", operation, error_msg)))
+        } else {
+            Err(AppError::Internal(format!("{} failed: {}", operation, error_msg)))
+        }
+    }
+}
 
 /// Repository operations wrapper (mock implementation)
 pub struct RepositoryOps {
@@ -29,37 +80,19 @@ impl RepositoryOps {
     pub fn init(repo_path: impl AsRef<Path>) -> AppResult<Self> {
         let repo_path = repo_path.as_ref().to_path_buf();
 
-        info!("Initializing repository at: {:?} (mock mode)", repo_path);
+        info!("Initializing repository at: {:?}", repo_path);
 
         // Create directory if it doesn't exist
         std::fs::create_dir_all(&repo_path).map_err(|e| {
             AppError::Internal(format!("Failed to create repository directory: {}", e))
         })?;
 
-        // Mock implementation: create minimal .oxen structure
-        let oxen_dir = repo_path.join(".oxen");
-        std::fs::create_dir_all(&oxen_dir).map_err(|e| {
-            AppError::Internal(format!("Failed to create .oxen directory: {}", e))
-        })?;
-
-        // Create HEAD file
-        std::fs::write(oxen_dir.join("HEAD"), "refs/heads/main\n").map_err(|e| {
-            AppError::Internal(format!("Failed to create HEAD: {}", e))
-        })?;
-
-        // Create refs structure
-        std::fs::create_dir_all(oxen_dir.join("refs/heads")).map_err(|e| {
-            AppError::Internal(format!("Failed to create refs: {}", e))
-        })?;
-
-        // Create config
-        std::fs::write(
-            oxen_dir.join("config.toml"),
-            "[repository]\nversion = \"0.2.0-mock\"\n",
-        )
-        .map_err(|e| AppError::Internal(format!("Failed to create config: {}", e)))?;
+        // Initialize using oxen CLI
+        let output = run_oxen_command(&["init"], Some(&repo_path))?;
+        check_oxen_output(output, "Repository init")?;
 
         // Create Auxin extension directories
+        let oxen_dir = repo_path.join(".oxen");
         std::fs::create_dir_all(oxen_dir.join("metadata")).map_err(|e| {
             AppError::Internal(format!("Failed to create metadata directory: {}", e))
         })?;
@@ -68,87 +101,236 @@ impl RepositoryOps {
             AppError::Internal(format!("Failed to create locks directory: {}", e))
         })?;
 
-        warn!("Using mock Oxen implementation - VCS operations will return NotImplemented");
-        info!("Repository structure created successfully");
+        info!("Repository initialized successfully");
 
         Ok(Self { repo_path })
     }
 
-    /// Add files to the staging area (mock)
-    pub fn add(&self, _paths: &[impl AsRef<Path>]) -> AppResult<()> {
-        Err(AppError::NotImplemented(
-            "VCS add operation requires full-oxen feature".to_string(),
-        ))
-    }
+    /// Add files to the staging area
+    pub fn add(&self, paths: &[impl AsRef<Path>]) -> AppResult<()> {
+        for path in paths {
+            let path_str = path.as_ref().to_string_lossy();
+            debug!("Adding file: {}", path_str);
 
-    /// Commit staged changes (mock)
-    pub fn commit(&self, _message: &str) -> AppResult<String> {
-        Err(AppError::NotImplemented(
-            "VCS commit operation requires full-oxen feature".to_string(),
-        ))
-    }
-
-    /// Get commit history (mock)
-    pub fn log(&self, _limit: Option<usize>) -> AppResult<Vec<CommitInfo>> {
-        warn!("Mock VCS: Returning empty commit history");
-        Ok(Vec::new())
-    }
-
-    /// Push to remote repository (mock)
-    pub fn push(&self, _remote: &str, _branch: &str) -> AppResult<()> {
-        Err(AppError::NotImplemented(
-            "VCS push operation requires full-oxen feature".to_string(),
-        ))
-    }
-
-    /// Pull from remote repository (mock)
-    pub fn pull(&self, _remote: &str, _branch: &str) -> AppResult<()> {
-        Err(AppError::NotImplemented(
-            "VCS pull operation requires full-oxen feature".to_string(),
-        ))
-    }
-
-    /// Clone a remote repository (mock)
-    pub fn clone(_remote_url: &str, _dest_path: impl AsRef<Path>) -> AppResult<Self> {
-        Err(AppError::NotImplemented(
-            "VCS clone operation requires full-oxen feature".to_string(),
-        ))
-    }
-
-    /// Get current branch name (mock)
-    pub fn current_branch(&self) -> AppResult<String> {
-        // Try to read HEAD file
-        let head_path = self.repo_path.join(".oxen/HEAD");
-        if head_path.exists() {
-            let content = std::fs::read_to_string(&head_path)
-                .map_err(|e| AppError::Internal(format!("Failed to read HEAD: {}", e)))?;
-
-            if let Some(branch) = content.strip_prefix("refs/heads/") {
-                return Ok(branch.trim().to_string());
-            }
+            let output = run_oxen_command(&["add", &path_str], Some(&self.repo_path))?;
+            check_oxen_output(output, &format!("Add {}", path_str))?;
         }
 
-        Ok("main".to_string())
+        Ok(())
     }
 
-    /// List all branches (mock)
+    /// Commit staged changes
+    pub fn commit(&self, message: &str) -> AppResult<String> {
+        info!("Creating commit: {}", message);
+
+        let output = run_oxen_command(&["commit", "-m", message], Some(&self.repo_path))?;
+        let stdout = check_oxen_output(output, "Commit")?;
+
+        // Parse commit ID from output (format: "Commit <id>")
+        let commit_id = stdout
+            .lines()
+            .find(|line| line.contains("Commit"))
+            .and_then(|line| line.split_whitespace().last())
+            .unwrap_or("unknown")
+            .to_string();
+
+        info!("Commit created: {}", commit_id);
+        Ok(commit_id)
+    }
+
+    /// Get commit history
+    pub fn log(&self, limit: Option<usize>) -> AppResult<Vec<CommitInfo>> {
+        let mut args = vec!["log", "--json"];
+        let limit_str;
+
+        if let Some(n) = limit {
+            limit_str = n.to_string();
+            args.push("-n");
+            args.push(&limit_str);
+        }
+
+        let output = run_oxen_command(&args, Some(&self.repo_path))?;
+        let stdout = check_oxen_output(output, "Log")?;
+
+        // Parse JSON output
+        if stdout.trim().is_empty() {
+            return Ok(Vec::new());
+        }
+
+        // Try to parse as JSON array
+        let commits: Vec<CommitInfo> = serde_json::from_str(&stdout).unwrap_or_else(|_| {
+            // Fallback: parse line by line if not valid JSON
+            warn!("Could not parse log output as JSON, returning empty");
+            Vec::new()
+        });
+
+        Ok(commits)
+    }
+
+    /// Push to remote repository
+    pub fn push(&self, remote: &str, branch: &str) -> AppResult<()> {
+        info!("Pushing to remote: {} (branch: {})", remote, branch);
+
+        let output = run_oxen_command(&["push", remote, branch], Some(&self.repo_path))?;
+        check_oxen_output(output, "Push")?;
+
+        info!("Push completed successfully");
+        Ok(())
+    }
+
+    /// Pull from remote repository
+    pub fn pull(&self, remote: &str, branch: &str) -> AppResult<()> {
+        info!("Pulling from remote: {} (branch: {})", remote, branch);
+
+        let output = run_oxen_command(&["pull", remote, branch], Some(&self.repo_path))?;
+        check_oxen_output(output, "Pull")?;
+
+        info!("Pull completed successfully");
+        Ok(())
+    }
+
+    /// Clone a remote repository
+    pub fn clone(remote_url: &str, dest_path: impl AsRef<Path>) -> AppResult<Self> {
+        let dest_path = dest_path.as_ref();
+        info!("Cloning repository from: {} to: {:?}", remote_url, dest_path);
+
+        // Get parent directory for clone command
+        let parent = dest_path.parent().ok_or_else(|| {
+            AppError::BadRequest("Invalid destination path".to_string())
+        })?;
+
+        // Create parent directory if it doesn't exist
+        std::fs::create_dir_all(parent).map_err(|e| {
+            AppError::Internal(format!("Failed to create parent directory: {}", e))
+        })?;
+
+        let dest_str = dest_path.to_string_lossy();
+        let output = run_oxen_command(&["clone", remote_url, &dest_str], None)?;
+        check_oxen_output(output, "Clone")?;
+
+        // Create Auxin extension directories
+        let oxen_dir = dest_path.join(".oxen");
+        std::fs::create_dir_all(oxen_dir.join("metadata")).map_err(|e| {
+            AppError::Internal(format!("Failed to create metadata directory: {}", e))
+        })?;
+
+        std::fs::create_dir_all(oxen_dir.join("locks")).map_err(|e| {
+            AppError::Internal(format!("Failed to create locks directory: {}", e))
+        })?;
+
+        info!("Clone completed successfully");
+        Ok(Self {
+            repo_path: dest_path.to_path_buf(),
+        })
+    }
+
+    /// Get current branch name
+    pub fn current_branch(&self) -> AppResult<String> {
+        let output = run_oxen_command(&["branch", "--current"], Some(&self.repo_path))?;
+        let stdout = check_oxen_output(output, "Current branch")?;
+
+        Ok(stdout.trim().to_string())
+    }
+
+    /// List all branches
     pub fn list_branches(&self) -> AppResult<Vec<String>> {
-        warn!("Mock VCS: Returning mock branch list");
-        Ok(vec!["main".to_string()])
+        let output = run_oxen_command(&["branch"], Some(&self.repo_path))?;
+        let stdout = check_oxen_output(output, "List branches")?;
+
+        let branches: Vec<String> = stdout
+            .lines()
+            .map(|line| {
+                // Remove leading "* " from current branch
+                line.trim_start_matches("* ").trim().to_string()
+            })
+            .filter(|s| !s.is_empty())
+            .collect();
+
+        Ok(branches)
     }
 
-    /// Create a new branch (mock)
-    pub fn create_branch(&self, _branch_name: &str) -> AppResult<()> {
-        Err(AppError::NotImplemented(
-            "VCS branch creation requires full-oxen feature".to_string(),
-        ))
+    /// Create a new branch
+    pub fn create_branch(&self, branch_name: &str) -> AppResult<()> {
+        info!("Creating branch: {}", branch_name);
+
+        let output = run_oxen_command(&["branch", branch_name], Some(&self.repo_path))?;
+        check_oxen_output(output, &format!("Create branch {}", branch_name))?;
+
+        Ok(())
     }
 
-    /// Checkout a branch (mock)
-    pub fn checkout(&self, _branch_name: &str) -> AppResult<()> {
-        Err(AppError::NotImplemented(
-            "VCS checkout operation requires full-oxen feature".to_string(),
-        ))
+    /// Checkout a branch
+    pub fn checkout(&self, branch_name: &str) -> AppResult<()> {
+        info!("Checking out branch: {}", branch_name);
+
+        let output = run_oxen_command(&["checkout", branch_name], Some(&self.repo_path))?;
+        check_oxen_output(output, &format!("Checkout {}", branch_name))?;
+
+        Ok(())
+    }
+
+    /// Delete a branch
+    pub fn delete_branch(&self, branch_name: &str) -> AppResult<()> {
+        info!("Deleting branch: {}", branch_name);
+
+        // Prevent deletion of main/master
+        if branch_name == "main" || branch_name == "master" {
+            return Err(AppError::BadRequest(
+                "Cannot delete main/master branch".to_string(),
+            ));
+        }
+
+        let output = run_oxen_command(&["branch", "-d", branch_name], Some(&self.repo_path))?;
+        check_oxen_output(output, &format!("Delete branch {}", branch_name))?;
+
+        Ok(())
+    }
+
+    /// Fetch from remote
+    pub fn fetch(&self, remote: &str) -> AppResult<()> {
+        info!("Fetching from remote: {}", remote);
+
+        let output = run_oxen_command(&["fetch", remote], Some(&self.repo_path))?;
+        check_oxen_output(output, "Fetch")?;
+
+        info!("Fetch completed successfully");
+        Ok(())
+    }
+
+    /// Get repository status
+    pub fn status(&self) -> AppResult<String> {
+        let output = run_oxen_command(&["status"], Some(&self.repo_path))?;
+        check_oxen_output(output, "Status")
+    }
+
+    /// Add remote
+    pub fn add_remote(&self, name: &str, url: &str) -> AppResult<()> {
+        info!("Adding remote: {} -> {}", name, url);
+
+        let output = run_oxen_command(&["remote", "add", name, url], Some(&self.repo_path))?;
+        check_oxen_output(output, &format!("Add remote {}", name))?;
+
+        Ok(())
+    }
+
+    /// List remotes
+    pub fn list_remotes(&self) -> AppResult<Vec<(String, String)>> {
+        let output = run_oxen_command(&["remote", "-v"], Some(&self.repo_path))?;
+        let stdout = check_oxen_output(output, "List remotes")?;
+
+        let remotes: Vec<(String, String)> = stdout
+            .lines()
+            .filter_map(|line| {
+                let parts: Vec<&str> = line.split_whitespace().collect();
+                if parts.len() >= 2 {
+                    Some((parts[0].to_string(), parts[1].to_string()))
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        Ok(remotes)
     }
 
     /// Get repository path

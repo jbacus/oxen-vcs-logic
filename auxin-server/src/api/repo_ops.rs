@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use tracing::info;
 
 use crate::config::Config;
-use crate::error::AppResult;
+use crate::error::{AppError, AppResult};
 use crate::extensions::{get_activities, log_activity, ActivityType, LogicProMetadata};
 use crate::repo::RepositoryOps;
 use crate::websocket::WsHub;
@@ -43,6 +43,16 @@ pub struct HeartbeatRequest {
     pub lock_id: String,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CloneRequest {
+    pub remote_url: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DeleteBranchRequest {
+    pub branch_name: String,
+}
+
 /// Get commit history for a repository
 pub async fn get_commits(
     config: web::Data<Config>,
@@ -77,6 +87,7 @@ pub async fn push_repository(
     config: web::Data<Config>,
     path: web::Path<(String, String)>,
     req: web::Json<PushRequest>,
+    ws_hub: web::Data<WsHub>,
 ) -> AppResult<HttpResponse> {
     let (namespace, repo_name) = path.into_inner();
     info!("Pushing repository: {}/{}", namespace, repo_name);
@@ -89,6 +100,29 @@ pub async fn push_repository(
     let branch = req.branch.clone().unwrap_or_else(|| "main".to_string());
 
     repo.push(&req.remote, &branch)?;
+
+    // Log activity
+    log_activity(
+        &repo_path,
+        ActivityType::Push,
+        "system",
+        &format!("Pushed to {} (branch: {})", req.remote, branch),
+        Some(serde_json::json!({
+            "remote": req.remote,
+            "branch": branch
+        })),
+    )?;
+
+    // Broadcast to WebSocket subscribers
+    let _ = ws_hub
+        .broadcast_commit(
+            &namespace,
+            &repo_name,
+            "push",
+            &format!("Pushed to {} (branch: {})", req.remote, branch),
+            "system",
+        )
+        .await;
 
     Ok(HttpResponse::Ok().json(serde_json::json!({
         "status": "success",
@@ -113,6 +147,18 @@ pub async fn pull_repository(
     let branch = req.branch.clone().unwrap_or_else(|| "main".to_string());
 
     repo.pull(&req.remote, &branch)?;
+
+    // Log activity
+    log_activity(
+        &repo_path,
+        ActivityType::Pull,
+        "system",
+        &format!("Pulled from {} (branch: {})", req.remote, branch),
+        Some(serde_json::json!({
+            "remote": req.remote,
+            "branch": branch
+        })),
+    )?;
 
     Ok(HttpResponse::Ok().json(serde_json::json!({
         "status": "success",
@@ -353,4 +399,123 @@ pub async fn get_activity(
     let activities = get_activities(&repo_path, limit)?;
 
     Ok(HttpResponse::Ok().json(activities))
+}
+
+/// Clone a repository from remote
+pub async fn clone_repository(
+    config: web::Data<Config>,
+    path: web::Path<(String, String)>,
+    req: web::Json<CloneRequest>,
+) -> AppResult<HttpResponse> {
+    let (namespace, repo_name) = path.into_inner();
+    info!("Cloning repository to: {}/{}", namespace, repo_name);
+
+    // Validate namespace (prevent path traversal)
+    if namespace.is_empty() || namespace.contains("..") || namespace.contains('/') {
+        return Err(AppError::BadRequest("Invalid namespace".to_string()));
+    }
+
+    // Validate repository name
+    if repo_name.is_empty() || repo_name.contains("..") || repo_name.contains('/') {
+        return Err(AppError::BadRequest("Invalid repository name".to_string()));
+    }
+
+    // Validate URL
+    if req.remote_url.is_empty() {
+        return Err(AppError::BadRequest("Remote URL is required".to_string()));
+    }
+
+    // Build destination path
+    let dest_path = PathBuf::from(&config.sync_dir)
+        .join(&namespace)
+        .join(&repo_name);
+
+    // Check if repository already exists
+    if dest_path.exists() {
+        return Err(AppError::BadRequest(
+            "Repository already exists at this location".to_string(),
+        ));
+    }
+
+    // Clone the repository
+    let _repo = RepositoryOps::clone(&req.remote_url, &dest_path)?;
+
+    info!("Repository cloned successfully: {}/{}", namespace, repo_name);
+
+    Ok(HttpResponse::Created().json(serde_json::json!({
+        "status": "success",
+        "namespace": namespace,
+        "name": repo_name,
+        "path": dest_path.to_string_lossy(),
+        "remote_url": req.remote_url
+    })))
+}
+
+/// Delete a branch
+pub async fn delete_branch(
+    config: web::Data<Config>,
+    path: web::Path<(String, String, String)>,
+) -> AppResult<HttpResponse> {
+    let (namespace, repo_name, branch_name) = path.into_inner();
+    info!("Deleting branch '{}' from: {}/{}", branch_name, namespace, repo_name);
+
+    let repo_path = PathBuf::from(&config.sync_dir)
+        .join(&namespace)
+        .join(&repo_name);
+
+    let repo = RepositoryOps::open(&repo_path)?;
+    repo.delete_branch(&branch_name)?;
+
+    Ok(HttpResponse::Ok().json(serde_json::json!({
+        "status": "success",
+        "message": format!("Branch '{}' deleted", branch_name)
+    })))
+}
+
+/// Get repository status
+pub async fn get_status(
+    config: web::Data<Config>,
+    path: web::Path<(String, String)>,
+) -> AppResult<HttpResponse> {
+    let (namespace, repo_name) = path.into_inner();
+    info!("Getting status for: {}/{}", namespace, repo_name);
+
+    let repo_path = PathBuf::from(&config.sync_dir)
+        .join(&namespace)
+        .join(&repo_name);
+
+    let repo = RepositoryOps::open(&repo_path)?;
+    let status = repo.status()?;
+
+    Ok(HttpResponse::Ok().json(serde_json::json!({
+        "status": status
+    })))
+}
+
+/// Fetch from remote
+pub async fn fetch_repository(
+    config: web::Data<Config>,
+    path: web::Path<(String, String)>,
+    query: web::Query<FetchQuery>,
+) -> AppResult<HttpResponse> {
+    let (namespace, repo_name) = path.into_inner();
+    let remote = query.remote.clone().unwrap_or_else(|| "origin".to_string());
+    info!("Fetching {} for: {}/{}", remote, namespace, repo_name);
+
+    let repo_path = PathBuf::from(&config.sync_dir)
+        .join(&namespace)
+        .join(&repo_name);
+
+    let repo = RepositoryOps::open(&repo_path)?;
+    repo.fetch(&remote)?;
+
+    Ok(HttpResponse::Ok().json(serde_json::json!({
+        "status": "success",
+        "message": format!("Fetched from {}", remote)
+    })))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct FetchQuery {
+    pub remote: Option<String>,
 }
