@@ -1082,7 +1082,38 @@ impl OxenSubprocess {
     pub fn remote_add(&self, repo_path: &Path, name: &str, url: &str) -> Result<()> {
         vlog!("Adding remote: {} -> {}", name, url);
 
-        self.run_command(&["remote", "add", name, url], Some(repo_path), None)?;
+        // Oxen doesn't have a "remote add" subcommand - we need to edit .oxen/config.toml directly
+        let config_path = repo_path.join(".oxen").join("config.toml");
+
+        // Read existing config
+        let config_str = std::fs::read_to_string(&config_path)
+            .map_err(|e| anyhow::anyhow!("Failed to read Oxen config: {}", e))?;
+
+        // Parse and modify config
+        let mut config: toml::Value = toml::from_str(&config_str)
+            .map_err(|e| anyhow::anyhow!("Failed to parse Oxen config: {}", e))?;
+
+        // Ensure remote section exists
+        if !config.as_table().map_or(false, |t| t.contains_key("remote")) {
+            if let Some(table) = config.as_table_mut() {
+                table.insert("remote".to_string(), toml::Value::Table(toml::map::Map::new()));
+            }
+        }
+
+        // Add the remote
+        if let Some(table) = config.as_table_mut() {
+            if let Some(remote) = table.get_mut("remote").and_then(|v| v.as_table_mut()) {
+                let mut remote_config = toml::map::Map::new();
+                remote_config.insert("url".to_string(), toml::Value::String(url.to_string()));
+                remote.insert(name.to_string(), toml::Value::Table(remote_config));
+            }
+        }
+
+        // Write back to file
+        let new_config = toml::to_string(&config)
+            .map_err(|e| anyhow::anyhow!("Failed to serialize config: {}", e))?;
+        std::fs::write(&config_path, new_config)
+            .map_err(|e| anyhow::anyhow!("Failed to write Oxen config: {}", e))?;
 
         info!("Added remote: {}", name);
         Ok(())
