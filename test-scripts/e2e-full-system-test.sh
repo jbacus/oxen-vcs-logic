@@ -45,14 +45,14 @@ log_info() {
 
 log_success() {
     echo -e "${GREEN}[PASS]${NC} $1"
-    ((TESTS_PASSED++))
-    ((TESTS_RUN++))
+    ((TESTS_PASSED++)) || true
+    ((TESTS_RUN++)) || true
 }
 
 log_error() {
     echo -e "${RED}[FAIL]${NC} $1"
-    ((TESTS_FAILED++))
-    ((TESTS_RUN++))
+    ((TESTS_FAILED++)) || true
+    ((TESTS_RUN++)) || true
 }
 
 log_section() {
@@ -118,7 +118,7 @@ assert_dir_exists() {
 }
 
 assert_contains() {
-    if echo "$1" | grep -q "$2"; then
+    if echo "$1" | grep -qF "$2"; then
         log_success "Output contains: $2"
         return 0
     else
@@ -187,13 +187,24 @@ fi
 log_success "auxin CLI found: $(which auxin)"
 
 # Check auxin-server binary exists
-SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-AUXIN_SERVER="$SCRIPT_DIR/auxin-server/target/release/auxin-server"
-if [ ! -f "$AUXIN_SERVER" ]; then
-    log_error "auxin-server binary not found at: $AUXIN_SERVER"
-    log_info "Run: cd auxin-server && cargo build --release --features mock-oxen"
+# Determine the auxin root directory
+if [ -f "./auxin-server/target/release/auxin-server" ]; then
+    # Running from auxin root
+    AUXIN_ROOT="$(pwd)"
+elif [ -f "../auxin-server/target/release/auxin-server" ]; then
+    # Running from test-scripts directory
+    AUXIN_ROOT="$(cd .. && pwd)"
+else
+    log_error "Cannot find auxin-server binary. Please run from auxin root directory:"
+    log_info "  cd /path/to/auxin"
+    log_info "  ./test-scripts/e2e-full-system-test.sh"
+    log_info ""
+    log_info "Or build the server first:"
+    log_info "  cd auxin-server && cargo build --release --features mock-oxen"
     exit 1
 fi
+
+AUXIN_SERVER="$AUXIN_ROOT/auxin-server/target/release/auxin-server"
 log_success "auxin-server found: $AUXIN_SERVER"
 
 # =============================================================================
@@ -229,8 +240,6 @@ assert_equals "$HEALTH" "OK"
 REPOS=$(curl -s "$SERVER_URL/api/repos")
 assert_contains "$REPOS" "["
 
-cd - > /dev/null
-
 # =============================================================================
 # PHASE 2: PETE CREATES INITIAL PROJECT
 # =============================================================================
@@ -246,6 +255,7 @@ cd "$PROJECT_NAME"
 # Simulate Logic Pro project structure
 mkdir -p "Audio Files"
 mkdir -p "Resources"
+mkdir -p "Alternatives/000"
 echo "Pete's initial session" > "Alternatives/000/DisplayState.plist"
 echo "120" > "Resources/tempo.txt"
 echo "Pete's bass line" > "Audio Files/bass.wav"
@@ -529,7 +539,7 @@ log_info "  4. Test restore functionality in GUI"
 log_info "  5. Verify metadata is shown correctly"
 
 # We can test if the app bundle exists
-AUXIN_APP="$SCRIPT_DIR/Auxin-App/Auxin.app"
+AUXIN_APP="$AUXIN_ROOT/Auxin-App/Auxin.app"
 if [ -d "$AUXIN_APP" ]; then
     log_success "Auxin.app bundle exists at: $AUXIN_APP"
 
