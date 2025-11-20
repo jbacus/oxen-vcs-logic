@@ -72,6 +72,9 @@ export const createRepository = (
 export const getCommits = (namespace: string, name: string) =>
   api.get<Commit[]>(`/repos/${namespace}/${name}/commits`);
 
+export const restoreCommit = (namespace: string, name: string, commitId: string) =>
+  api.post(`/repos/${namespace}/${name}/commits/${commitId}/restore`);
+
 // Branch endpoints
 export const listBranches = (namespace: string, name: string) =>
   api.get<Branch[]>(`/repos/${namespace}/${name}/branches`);

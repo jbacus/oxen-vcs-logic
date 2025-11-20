@@ -206,6 +206,51 @@ pub async fn create_branch(
     })))
 }
 
+/// Restore/rollback to a specific commit
+pub async fn restore_commit(
+    config: web::Data<Config>,
+    path: web::Path<(String, String, String)>,
+    ws_hub: web::Data<WsHub>,
+) -> AppResult<HttpResponse> {
+    let (namespace, repo_name, commit_id) = path.into_inner();
+    info!("Restoring to commit {} in: {}/{}", commit_id, namespace, repo_name);
+
+    let repo_path = PathBuf::from(&config.sync_dir)
+        .join(&namespace)
+        .join(&repo_name);
+
+    let repo = RepositoryOps::open(&repo_path)?;
+
+    // Checkout the specific commit
+    repo.checkout(&commit_id)?;
+
+    // Log activity
+    log_activity(
+        &repo_path,
+        ActivityType::Restore,
+        "system",
+        &format!("Restored to commit {}", &commit_id[..8]),
+        Some(serde_json::json!({
+            "commit_id": commit_id
+        })),
+    )?;
+
+    // Broadcast via WebSocket
+    use crate::websocket::WsMessage;
+    ws_hub.broadcast(&format!("{}/{}", namespace, repo_name), WsMessage::Activity {
+        activity_type: "restore".to_string(),
+        user: "system".to_string(),
+        message: format!("Restored to commit {}", &commit_id[..8]),
+        timestamp: chrono::Utc::now().to_rfc3339(),
+    }).await?;
+
+    Ok(HttpResponse::Ok().json(serde_json::json!({
+        "status": "success",
+        "commit_id": commit_id,
+        "message": "Repository restored to commit"
+    })))
+}
+
 /// Get Logic Pro metadata for a commit
 pub async fn get_metadata(
     config: web::Data<Config>,

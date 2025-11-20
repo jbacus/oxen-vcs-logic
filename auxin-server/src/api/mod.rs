@@ -15,7 +15,7 @@ use crate::repo::RepositoryOps;
 pub use repo_ops::{
     acquire_lock, clone_repository, create_branch, delete_branch, fetch_repository,
     get_activity, get_commits, get_metadata, get_status, heartbeat_lock, list_branches,
-    lock_status, pull_repository, push_repository, release_lock, store_metadata,
+    lock_status, pull_repository, push_repository, release_lock, restore_commit, store_metadata,
 };
 
 pub use bounce_ops::{

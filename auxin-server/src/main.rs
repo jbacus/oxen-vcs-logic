@@ -80,6 +80,7 @@ async fn main() -> std::io::Result<()> {
             .route("/api/repos/{namespace}/{name}/clone", web::post().to(api::clone_repository))
             .route("/api/repos/{namespace}/{name}/status", web::get().to(api::get_status))
             .route("/api/repos/{namespace}/{name}/commits", web::get().to(api::get_commits))
+            .route("/api/repos/{namespace}/{name}/commits/{commit}/restore", web::post().to(api::restore_commit))
             .route("/api/repos/{namespace}/{name}/push", web::post().to(api::push_repository))
             .route("/api/repos/{namespace}/{name}/pull", web::post().to(api::pull_repository))
             .route("/api/repos/{namespace}/{name}/fetch", web::post().to(api::fetch_repository))

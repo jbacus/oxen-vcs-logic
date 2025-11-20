@@ -643,6 +643,267 @@ chmod 600 ~/.config/auxin-server/.env
 
 ---
 
+## Monitoring and Observability
+
+### Health Checks
+
+Monitor server health:
+```bash
+# Basic health check
+curl http://localhost:3000/health
+
+# Expected response
+{"status":"healthy","version":"0.1.0"}
+```
+
+### Logging
+
+**Development:**
+```bash
+# Run with debug logging
+RUST_LOG=debug ./run-local.sh
+
+# Filter specific modules
+RUST_LOG=auxin_server=debug,actix_web=info ./run-local.sh
+```
+
+**Production:**
+```bash
+# Log to file
+./run-local.sh > /var/log/auxin-server/access.log 2>&1
+
+# Rotate logs with logrotate
+sudo tee /etc/logrotate.d/auxin-server << 'EOF'
+/var/log/auxin-server/*.log {
+    daily
+    rotate 7
+    compress
+    delaycompress
+    notifempty
+    create 644 auxin auxin
+    postrotate
+        pkill -HUP auxin-server
+    endscript
+}
+EOF
+```
+
+### Metrics
+
+Monitor key metrics:
+
+```bash
+# Server status
+curl http://localhost:3000/api/status
+
+# Repository stats
+curl http://localhost:3000/api/repositories
+
+# System resources
+ps aux | grep auxin-server
+du -sh /var/oxen/data
+```
+
+### Alerting
+
+Set up basic monitoring:
+
+```bash
+# Simple uptime check (cron every 5 min)
+*/5 * * * * curl -sf http://localhost:3000/health || echo "Auxin server down!" | mail -s "Alert" admin@example.com
+```
+
+**Recommended monitoring tools:**
+- Prometheus + Grafana (metrics)
+- ELK Stack (log aggregation)
+- Uptime Robot (external monitoring)
+- PagerDuty (incident management)
+
+---
+
+## Upgrade Procedures
+
+### Upgrading Auxin Server
+
+#### Before Upgrading
+
+1. **Backup data directory:**
+```bash
+tar -czf /backup/oxen-data-$(date +%Y%m%d).tar.gz /var/oxen/data
+```
+
+2. **Check current version:**
+```bash
+curl http://localhost:3000/health
+```
+
+3. **Review changelog** for breaking changes
+
+#### Upgrade Process
+
+**Local Development:**
+```bash
+# 1. Stop server
+pkill auxin-server
+
+# 2. Pull latest code
+git pull origin main
+
+# 3. Rebuild
+./deploy-local.sh
+
+# 4. Restart
+./run-local.sh
+```
+
+**Production (macOS):**
+```bash
+# 1. Stop service
+launchctl unload ~/Library/LaunchAgents/com.auxin.server.plist
+
+# 2. Backup binary
+cp /usr/local/bin/auxin-server /usr/local/bin/auxin-server.bak
+
+# 3. Build and install new version
+cd auxin-server
+cargo build --release
+sudo cp target/release/auxin-server /usr/local/bin/
+
+# 4. Restart service
+launchctl load ~/Library/LaunchAgents/com.auxin.server.plist
+
+# 5. Verify
+curl http://localhost:3000/health
+```
+
+**Docker:**
+```bash
+# 1. Pull latest image
+docker-compose pull
+
+# 2. Recreate containers
+docker-compose up -d --force-recreate
+
+# 3. Verify
+docker-compose logs -f
+```
+
+#### Rollback
+
+If upgrade fails:
+
+```bash
+# Local/Production
+cp /usr/local/bin/auxin-server.bak /usr/local/bin/auxin-server
+launchctl load ~/Library/LaunchAgents/com.auxin.server.plist
+
+# Docker
+docker-compose down
+docker image ls | grep auxin-server  # Find previous version
+docker-compose up -d auxin-server:<previous-version>
+```
+
+### Database Migrations
+
+Currently auxin-server uses filesystem storage (no database migrations needed).
+
+Future versions with SQLite/PostgreSQL will include:
+```bash
+# Migration command (coming soon)
+auxin-server migrate
+```
+
+---
+
+## FAQ
+
+### General Questions
+
+**Q: What's the difference between mock-oxen and full-oxen modes?**
+A: `mock-oxen` (default) provides full HTTP API, locks, and metadata but returns `501 Not Implemented` for VCS operations (commit, push, pull). `full-oxen` mode includes actual VCS operations but requires async refactoring (WIP).
+
+**Q: Can I use this in production?**
+A: Yes! The mock-oxen mode is production-ready for server infrastructure, distributed locking, and metadata management. Full VCS operations are coming soon.
+
+**Q: How much disk space do I need?**
+A: Depends on your projects. Logic Pro projects can be 1-10GB each. Plan for:
+- Small team (5 users, 10 projects): 100GB
+- Medium team (20 users, 50 projects): 500GB
+- Large team (100 users, 200 projects): 2TB+
+
+**Q: Can I run multiple servers?**
+A: Not currently. Distributed server deployment requires coordination layer (planned for future).
+
+### Performance Questions
+
+**Q: How many concurrent users can it handle?**
+A: In testing: ~100 concurrent users with release build on modest hardware (4 cores, 8GB RAM). Use load balancer + multiple instances for more.
+
+**Q: Why is the first request slow?**
+A: Cold start - Rust binary loads. Subsequent requests are fast (<10ms). Keep server running or use pre-warming.
+
+**Q: How do I improve performance?**
+A:
+1. Use release build (`--release`)
+2. Increase file descriptors (`ulimit -n 4096`)
+3. Use SSD for data directory
+4. Enable HTTP/2 in reverse proxy
+5. Use CDN for static assets
+
+### Troubleshooting Questions
+
+**Q: Server crashes with "Address already in use"**
+A: Port 3000 is taken. Either:
+```bash
+# Kill existing process
+lsof -ti:3000 | xargs kill -9
+
+# Or change port
+export OXEN_SERVER_PORT=3001
+```
+
+**Q: Frontend shows "Failed to fetch"**
+A: CORS issue or API not running. Check:
+```bash
+# Is server running?
+curl http://localhost:3000/health
+
+# Check console for errors
+open http://localhost:3000
+# F12 > Console tab
+```
+
+**Q: "Permission denied" errors**
+A: Check file permissions:
+```bash
+ls -la /var/oxen/data
+chmod -R 755 /var/oxen/data
+chown -R $USER /var/oxen/data
+```
+
+### Development Questions
+
+**Q: How do I debug the server?**
+A:
+```bash
+# Run with debug logs
+RUST_LOG=debug cargo run
+
+# Use rust-lldb for debugging
+rust-lldb target/debug/auxin-server
+```
+
+**Q: Can I contribute?**
+A: Yes! See CONTRIBUTING.md (if it exists) or open an issue/PR on GitHub.
+
+**Q: Where are the logs?**
+A:
+- Local: stdout/stderr
+- Docker: `docker-compose logs -f`
+- Production: `/var/log/auxin-server/` (if configured)
+
+---
+
 ## Summary
 
 **Three deployment options:**

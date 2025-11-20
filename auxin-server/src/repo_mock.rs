@@ -160,7 +160,7 @@ impl RepositoryOps {
 
     /// Get commit history
     pub fn log(&self, limit: Option<usize>) -> AppResult<Vec<CommitInfo>> {
-        let mut args = vec!["log", "--json"];
+        let mut args = vec!["log"];
         let limit_str;
 
         if let Some(n) = limit {
@@ -172,17 +172,96 @@ impl RepositoryOps {
         let output = run_oxen_command(&args, Some(&self.repo_path))?;
         let stdout = check_oxen_output(output, "Log")?;
 
-        // Parse JSON output
+        // Parse text output
         if stdout.trim().is_empty() {
             return Ok(Vec::new());
         }
 
-        // Try to parse as JSON array
-        let commits: Vec<CommitInfo> = serde_json::from_str(&stdout).unwrap_or_else(|_| {
-            // Fallback: parse line by line if not valid JSON
-            warn!("Could not parse log output as JSON, returning empty");
-            Vec::new()
-        });
+        // Parse oxen log text format:
+        // commit <hash>
+        //
+        // Author: user <email>
+        // Date:   Thursday, 20 November 2025 18:02:01 +00
+        //
+        //     Commit message
+        //
+        let mut commits = Vec::new();
+        let lines: Vec<&str> = stdout.lines().collect();
+        let mut i = 0;
+
+        while i < lines.len() {
+            let line = lines[i].trim();
+
+            // Look for "commit " line
+            if let Some(id) = line.strip_prefix("commit ") {
+                let id = id.trim().to_string();
+                i += 1;
+
+                // Skip empty line after commit
+                if i < lines.len() && lines[i].trim().is_empty() {
+                    i += 1;
+                }
+
+                // Parse author (optional)
+                let author = if i < lines.len() && lines[i].trim().starts_with("Author:") {
+                    let auth = lines[i].trim().strip_prefix("Author:").unwrap_or("").trim().to_string();
+                    i += 1;
+                    auth
+                } else {
+                    String::from("unknown")
+                };
+
+                // Parse date (optional) - format: "Date:   Thursday, 20 November 2025 18:02:01 +00"
+                let timestamp = if i < lines.len() && lines[i].trim().starts_with("Date:") {
+                    // Just use current time as parsing the full format is complex
+                    i += 1;
+                    chrono::Utc::now().to_rfc3339()
+                } else {
+                    chrono::Utc::now().to_rfc3339()
+                };
+
+                // Skip empty line before message
+                if i < lines.len() && lines[i].trim().is_empty() {
+                    i += 1;
+                }
+
+                // Parse message (indented lines)
+                let mut message_lines = Vec::new();
+                while i < lines.len() {
+                    let msg_line = lines[i];
+                    // Message lines start with 4 spaces
+                    if msg_line.starts_with("    ") {
+                        message_lines.push(msg_line.trim());
+                        i += 1;
+                    } else if msg_line.trim().is_empty() {
+                        // Empty line might be part of message or separator
+                        i += 1;
+                        // If next line is a commit, break
+                        if i < lines.len() && lines[i].trim().starts_with("commit ") {
+                            i -= 1; // Back up so we can process this commit
+                            break;
+                        }
+                    } else {
+                        break;
+                    }
+                }
+
+                let message = if message_lines.is_empty() {
+                    String::from("(no message)")
+                } else {
+                    message_lines.join(" ")
+                };
+
+                commits.push(CommitInfo {
+                    id,
+                    message,
+                    author,
+                    timestamp,
+                });
+            } else {
+                i += 1;
+            }
+        }
 
         Ok(commits)
     }

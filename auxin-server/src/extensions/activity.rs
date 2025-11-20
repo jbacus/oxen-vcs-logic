@@ -16,6 +16,7 @@ pub enum ActivityType {
     UserJoined,
     Push,
     Pull,
+    Restore,
 }
 
 /// Single activity event
