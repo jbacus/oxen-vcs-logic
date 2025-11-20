@@ -496,7 +496,7 @@ impl WalRecoveryManager {
                 let oxen = crate::oxen_subprocess::OxenSubprocess::new();
                 let status = oxen.status(repo_path)?;
 
-                if status.staged_files.is_empty() && status.modified_files.is_empty() {
+                if status.staged.is_empty() && status.modified.is_empty() {
                     // No pending changes, commit likely succeeded
                     println!("  {} Commit appears to have succeeded", "✓".green());
                     Ok(true)
