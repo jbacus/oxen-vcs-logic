@@ -4,18 +4,22 @@
 #[test]
 fn test_mock_feature_is_active() {
     // This test verifies we're using the mock implementation
-    // by checking that it compiles and VCS operations return NotImplemented
+    // by checking that it compiles and can initialize repositories
 
-    use auxin_server::error::AppError;
     use auxin_server::repo::RepositoryOps;
     use tempfile::TempDir;
 
     let temp_dir = TempDir::new().unwrap();
     let repo = RepositoryOps::init(temp_dir.path()).unwrap();
 
-    // In mock mode, VCS operations should return NotImplemented
-    let result = repo.commit("test");
-    assert!(matches!(result, Err(AppError::NotImplemented(_))));
+    // In mock mode, init should create basic directory structure
+    // even without the Oxen CLI being available
+    assert!(temp_dir.path().join(".oxen").exists());
+    assert!(temp_dir.path().join(".oxen/metadata").exists());
+    assert!(temp_dir.path().join(".oxen/locks").exists());
+
+    // Verify we can get the path
+    assert_eq!(repo.path(), temp_dir.path());
 }
 
 #[test]
