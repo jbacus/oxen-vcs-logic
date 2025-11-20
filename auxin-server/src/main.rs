@@ -77,11 +77,15 @@ async fn main() -> std::io::Result<()> {
             .route("/api/repos/{namespace}/{name}", web::get().to(api::get_repository))
             // Repository operations
             .route("/api/repos/{namespace}/{name}", web::post().to(api::create_repository))
+            .route("/api/repos/{namespace}/{name}/clone", web::post().to(api::clone_repository))
+            .route("/api/repos/{namespace}/{name}/status", web::get().to(api::get_status))
             .route("/api/repos/{namespace}/{name}/commits", web::get().to(api::get_commits))
             .route("/api/repos/{namespace}/{name}/push", web::post().to(api::push_repository))
             .route("/api/repos/{namespace}/{name}/pull", web::post().to(api::pull_repository))
+            .route("/api/repos/{namespace}/{name}/fetch", web::post().to(api::fetch_repository))
             .route("/api/repos/{namespace}/{name}/branches", web::get().to(api::list_branches))
             .route("/api/repos/{namespace}/{name}/branches", web::post().to(api::create_branch))
+            .route("/api/repos/{namespace}/{name}/branches/{branch}", web::delete().to(api::delete_branch))
             // Auxin extensions
             .route("/api/repos/{namespace}/{name}/metadata/{commit}", web::get().to(api::get_metadata))
             .route("/api/repos/{namespace}/{name}/metadata/{commit}", web::post().to(api::store_metadata))
