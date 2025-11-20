@@ -217,6 +217,27 @@ impl HookManager {
         Ok(hooks)
     }
 
+    /// List hooks filtered by type
+    pub fn list_hooks_by_type(&self, hook_type: HookType) -> Result<Vec<String>> {
+        let hooks_dir = self.hook_type_dir(hook_type);
+        let mut hooks = Vec::new();
+
+        if !hooks_dir.exists() {
+            return Ok(hooks);
+        }
+
+        for entry in fs::read_dir(&hooks_dir)? {
+            let entry = entry?;
+            let name = entry.file_name().to_string_lossy().to_string();
+
+            if !name.starts_with('.') && name != "README.md" {
+                hooks.push(name);
+            }
+        }
+
+        Ok(hooks)
+    }
+
     /// Install a built-in hook from a template
     pub fn install_builtin(&self, name: &str, hook_type: HookType) -> Result<()> {
         let hook_content = match (hook_type, name) {

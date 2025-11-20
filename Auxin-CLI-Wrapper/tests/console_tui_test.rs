@@ -4,589 +4,256 @@
 /// - Mode switching
 /// - Keyboard input handling
 /// - Status display
-/// - Commit dialog
-/// - History browsing
-
-#[cfg(test)]
-mod common;
+/// - Console state management
 
 #[cfg(test)]
 mod tests {
-    use auxin::console::{
-        Console, ConsoleMode, KeyEvent, ConsoleState,
-        StatusView, HistoryView, CommitDialog, SearchView,
-        HooksView, DiffView, HelpView
-    };
-    use tempfile::TempDir;
-
-    /// Helper to create a test console
-    fn create_test_console() -> (TempDir, Console) {
-        let temp_dir = TempDir::new().unwrap();
-        let console = Console::new(temp_dir.path());
-        (temp_dir, console)
-    }
+    use auxin::{Console, ConsoleMode, DaemonStatus, LogLevel};
+    use std::path::PathBuf;
 
     // ===================
     // Console Initialization Tests
     // ===================
 
     #[test]
-    fn test_console_new() {
-        let (_temp_dir, console) = create_test_console();
-
-        assert_eq!(console.current_mode(), ConsoleMode::Status);
+    fn test_console_creation() {
+        let console = Console::new(PathBuf::from("/test/project.logicx"));
+        // Console should initialize with empty activity log and unknown daemon status
+        assert_eq!(console.activity_log.len(), 0);
+        assert_eq!(console.daemon_status, DaemonStatus::Unknown);
     }
 
     #[test]
-    fn test_console_initial_state() {
-        let (_temp_dir, console) = create_test_console();
-
-        let state = console.get_state();
-        assert!(!state.is_running);
-        assert_eq!(state.mode, ConsoleMode::Status);
-    }
-
-    // ===================
-    // Mode Switching Tests
-    // ===================
-
-    #[test]
-    fn test_switch_to_history_mode() {
-        let (_temp_dir, mut console) = create_test_console();
-
-        console.switch_mode(ConsoleMode::History);
-        assert_eq!(console.current_mode(), ConsoleMode::History);
+    fn test_console_initial_mode_is_normal() {
+        let console = Console::new(PathBuf::from("/test/project.logicx"));
+        assert_eq!(console.mode, ConsoleMode::Normal);
     }
 
     #[test]
-    fn test_switch_to_commit_mode() {
-        let (_temp_dir, mut console) = create_test_console();
-
-        console.switch_mode(ConsoleMode::Commit);
-        assert_eq!(console.current_mode(), ConsoleMode::Commit);
+    fn test_console_should_not_quit_initially() {
+        let console = Console::new(PathBuf::from("/test/project.logicx"));
+        assert!(!console.should_quit);
     }
 
     #[test]
-    fn test_switch_to_search_mode() {
-        let (_temp_dir, mut console) = create_test_console();
-
-        console.switch_mode(ConsoleMode::Search);
-        assert_eq!(console.current_mode(), ConsoleMode::Search);
-    }
-
-    #[test]
-    fn test_switch_to_diff_mode() {
-        let (_temp_dir, mut console) = create_test_console();
-
-        console.switch_mode(ConsoleMode::Diff);
-        assert_eq!(console.current_mode(), ConsoleMode::Diff);
-    }
-
-    #[test]
-    fn test_switch_to_hooks_mode() {
-        let (_temp_dir, mut console) = create_test_console();
-
-        console.switch_mode(ConsoleMode::Hooks);
-        assert_eq!(console.current_mode(), ConsoleMode::Hooks);
-    }
-
-    #[test]
-    fn test_switch_to_help_mode() {
-        let (_temp_dir, mut console) = create_test_console();
-
-        console.switch_mode(ConsoleMode::Help);
-        assert_eq!(console.current_mode(), ConsoleMode::Help);
+    fn test_console_no_repo_status_initially() {
+        let console = Console::new(PathBuf::from("/test/project.logicx"));
+        assert!(console.repo_status.is_none());
     }
 
     // ===================
-    // Keyboard Input Tests
+    // Logging Tests
     // ===================
 
     #[test]
-    fn test_key_event_char() {
-        let event = KeyEvent::Char('a');
-        assert_eq!(event.to_char(), Some('a'));
+    fn test_console_log_entry() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+        console.log(LogLevel::Info, "Test message");
+
+        assert_eq!(console.activity_log.len(), 1);
+        assert_eq!(console.activity_log[0].message, "Test message");
+        assert_eq!(console.activity_log[0].level, LogLevel::Info);
     }
 
     #[test]
-    fn test_key_event_special() {
-        let event = KeyEvent::Enter;
-        assert_eq!(event.to_char(), None);
+    fn test_console_log_multiple_entries() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+
+        console.log(LogLevel::Info, "First message");
+        console.log(LogLevel::Success, "Second message");
+        console.log(LogLevel::Warning, "Third message");
+        console.log(LogLevel::Error, "Fourth message");
+
+        assert_eq!(console.activity_log.len(), 4);
+        // Most recent should be first
+        assert_eq!(console.activity_log[0].message, "Fourth message");
+        assert_eq!(console.activity_log[3].message, "First message");
     }
 
     #[test]
-    fn test_handle_key_quit() {
-        let (_temp_dir, mut console) = create_test_console();
+    fn test_console_log_levels() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
 
-        let result = console.handle_key(KeyEvent::Char('q'));
-        assert!(result.should_quit);
+        console.log(LogLevel::Info, "Info");
+        console.log(LogLevel::Success, "Success");
+        console.log(LogLevel::Warning, "Warning");
+        console.log(LogLevel::Error, "Error");
+
+        assert_eq!(console.activity_log[3].level, LogLevel::Info);
+        assert_eq!(console.activity_log[2].level, LogLevel::Success);
+        assert_eq!(console.activity_log[1].level, LogLevel::Warning);
+        assert_eq!(console.activity_log[0].level, LogLevel::Error);
     }
 
     #[test]
-    fn test_handle_key_help() {
-        let (_temp_dir, mut console) = create_test_console();
-
-        console.handle_key(KeyEvent::Char('?'));
-        assert_eq!(console.current_mode(), ConsoleMode::Help);
-    }
-
-    #[test]
-    fn test_handle_key_refresh() {
-        let (_temp_dir, mut console) = create_test_console();
-
-        let result = console.handle_key(KeyEvent::Char('r'));
-        assert!(result.needs_refresh);
-    }
-
-    #[test]
-    fn test_handle_key_commit_shortcut() {
-        let (_temp_dir, mut console) = create_test_console();
-
-        console.handle_key(KeyEvent::Char('i'));
-        assert_eq!(console.current_mode(), ConsoleMode::Commit);
-    }
-
-    #[test]
-    fn test_handle_key_log_shortcut() {
-        let (_temp_dir, mut console) = create_test_console();
-
-        console.handle_key(KeyEvent::Char('l'));
-        assert_eq!(console.current_mode(), ConsoleMode::History);
-    }
-
-    #[test]
-    fn test_handle_key_diff_shortcut() {
-        let (_temp_dir, mut console) = create_test_console();
-
-        console.handle_key(KeyEvent::Char('d'));
-        assert_eq!(console.current_mode(), ConsoleMode::Diff);
-    }
-
-    #[test]
-    fn test_handle_key_search_shortcut() {
-        let (_temp_dir, mut console) = create_test_console();
-
-        console.handle_key(KeyEvent::Char('s'));
-        assert_eq!(console.current_mode(), ConsoleMode::Search);
-    }
-
-    #[test]
-    fn test_handle_key_hooks_shortcut() {
-        let (_temp_dir, mut console) = create_test_console();
-
-        console.handle_key(KeyEvent::Char('k'));
-        assert_eq!(console.current_mode(), ConsoleMode::Hooks);
-    }
-
-    #[test]
-    fn test_handle_key_escape_returns_to_status() {
-        let (_temp_dir, mut console) = create_test_console();
-
-        console.switch_mode(ConsoleMode::History);
-        console.handle_key(KeyEvent::Escape);
-        assert_eq!(console.current_mode(), ConsoleMode::Status);
-    }
-
-    #[test]
-    fn test_handle_key_navigation_up() {
-        let (_temp_dir, mut console) = create_test_console();
-        console.switch_mode(ConsoleMode::History);
-
-        let state_before = console.get_state().selected_index;
-        console.handle_key(KeyEvent::Up);
-        // Selected index should change (if possible)
-    }
-
-    #[test]
-    fn test_handle_key_navigation_down() {
-        let (_temp_dir, mut console) = create_test_console();
-        console.switch_mode(ConsoleMode::History);
-
-        console.handle_key(KeyEvent::Down);
-        // Navigation should work
-    }
-
-    // ===================
-    // StatusView Tests
-    // ===================
-
-    #[test]
-    fn test_status_view_render() {
-        let (_temp_dir, console) = create_test_console();
-
-        let view = StatusView::new(console.get_repo_path());
-        let output = view.render();
-
-        assert!(!output.is_empty());
-    }
-
-    #[test]
-    fn test_status_view_shows_staged() {
-        let temp_dir = TempDir::new().unwrap();
-
-        // Create a file to stage
-        std::fs::write(temp_dir.path().join("test.txt"), "content").unwrap();
-
-        let view = StatusView::new(temp_dir.path());
-        let output = view.render();
-
-        // Should show untracked or modified files
-    }
-
-    // ===================
-    // HistoryView Tests
-    // ===================
-
-    #[test]
-    fn test_history_view_render() {
-        let temp_dir = TempDir::new().unwrap();
-
-        let view = HistoryView::new(temp_dir.path());
-        let output = view.render();
-
-        // Should render even with no history
-        assert!(!output.is_empty() || output.is_empty()); // May be empty for new repo
-    }
-
-    #[test]
-    fn test_history_view_scroll() {
-        let temp_dir = TempDir::new().unwrap();
-
-        let mut view = HistoryView::new(temp_dir.path());
-
-        view.scroll_down();
-        view.scroll_up();
-        // Should not crash
-    }
-
-    #[test]
-    fn test_history_view_select() {
-        let temp_dir = TempDir::new().unwrap();
-
-        let mut view = HistoryView::new(temp_dir.path());
-
-        let selected = view.get_selected();
-        // May be None for empty repo
-    }
-
-    // ===================
-    // CommitDialog Tests
-    // ===================
-
-    #[test]
-    fn test_commit_dialog_new() {
-        let dialog = CommitDialog::new();
-
-        assert!(dialog.get_message().is_empty());
-        assert!(dialog.get_bpm().is_none());
-    }
-
-    #[test]
-    fn test_commit_dialog_set_message() {
-        let mut dialog = CommitDialog::new();
-
-        dialog.set_message("Test commit");
-        assert_eq!(dialog.get_message(), "Test commit");
-    }
-
-    #[test]
-    fn test_commit_dialog_set_bpm() {
-        let mut dialog = CommitDialog::new();
-
-        dialog.set_bpm(128.0);
-        assert_eq!(dialog.get_bpm(), Some(128.0));
-    }
-
-    #[test]
-    fn test_commit_dialog_set_key() {
-        let mut dialog = CommitDialog::new();
-
-        dialog.set_key("A Minor");
-        assert_eq!(dialog.get_key(), Some("A Minor".to_string()));
-    }
-
-    #[test]
-    fn test_commit_dialog_set_tags() {
-        let mut dialog = CommitDialog::new();
-
-        dialog.set_tags("mixing,vocals");
-        assert_eq!(dialog.get_tags(), Some("mixing,vocals".to_string()));
-    }
-
-    #[test]
-    fn test_commit_dialog_validate_empty() {
-        let dialog = CommitDialog::new();
-
-        assert!(!dialog.is_valid()); // Empty message is invalid
-    }
-
-    #[test]
-    fn test_commit_dialog_validate_with_message() {
-        let mut dialog = CommitDialog::new();
-        dialog.set_message("Valid commit");
-
-        assert!(dialog.is_valid());
-    }
-
-    #[test]
-    fn test_commit_dialog_field_navigation() {
-        let mut dialog = CommitDialog::new();
-
-        dialog.next_field();
-        dialog.next_field();
-        dialog.prev_field();
-        // Should cycle through fields
-    }
-
-    #[test]
-    fn test_commit_dialog_input_char() {
-        let mut dialog = CommitDialog::new();
-
-        dialog.input_char('H');
-        dialog.input_char('i');
-        assert_eq!(dialog.get_message(), "Hi");
-    }
-
-    #[test]
-    fn test_commit_dialog_backspace() {
-        let mut dialog = CommitDialog::new();
-
-        dialog.set_message("Hello");
-        dialog.backspace();
-        assert_eq!(dialog.get_message(), "Hell");
-    }
-
-    // ===================
-    // SearchView Tests
-    // ===================
-
-    #[test]
-    fn test_search_view_new() {
-        let temp_dir = TempDir::new().unwrap();
-
-        let view = SearchView::new(temp_dir.path());
-        assert!(view.get_query().is_empty());
-    }
-
-    #[test]
-    fn test_search_view_set_query() {
-        let temp_dir = TempDir::new().unwrap();
-
-        let mut view = SearchView::new(temp_dir.path());
-        view.set_query("bpm:120");
-
-        assert_eq!(view.get_query(), "bpm:120");
-    }
-
-    #[test]
-    fn test_search_view_execute() {
-        let temp_dir = TempDir::new().unwrap();
-
-        let mut view = SearchView::new(temp_dir.path());
-        view.set_query("bpm:100-140");
-
-        let results = view.execute();
-        // Results depend on repo content
-    }
-
-    #[test]
-    fn test_search_view_clear() {
-        let temp_dir = TempDir::new().unwrap();
-
-        let mut view = SearchView::new(temp_dir.path());
-        view.set_query("test");
-        view.clear();
-
-        assert!(view.get_query().is_empty());
-    }
-
-    // ===================
-    // DiffView Tests
-    // ===================
-
-    #[test]
-    fn test_diff_view_new() {
-        let temp_dir = TempDir::new().unwrap();
-
-        let view = DiffView::new(temp_dir.path());
-        // Should initialize
-    }
-
-    #[test]
-    fn test_diff_view_set_commits() {
-        let temp_dir = TempDir::new().unwrap();
-
-        let mut view = DiffView::new(temp_dir.path());
-        view.set_commits("abc123", "def456");
-
-        // Should store commits to compare
-    }
-
-    #[test]
-    fn test_diff_view_render() {
-        let temp_dir = TempDir::new().unwrap();
-
-        let view = DiffView::new(temp_dir.path());
-        let output = view.render();
-
-        // Should render something
-    }
-
-    // ===================
-    // HooksView Tests
-    // ===================
-
-    #[test]
-    fn test_hooks_view_new() {
-        let temp_dir = TempDir::new().unwrap();
-
-        let view = HooksView::new(temp_dir.path());
-        // Should initialize
-    }
-
-    #[test]
-    fn test_hooks_view_list() {
-        let temp_dir = TempDir::new().unwrap();
-
-        let view = HooksView::new(temp_dir.path());
-        let hooks = view.list_hooks();
-
-        // May be empty
-    }
-
-    #[test]
-    fn test_hooks_view_render() {
-        let temp_dir = TempDir::new().unwrap();
-
-        let view = HooksView::new(temp_dir.path());
-        let output = view.render();
-
-        assert!(!output.is_empty());
-    }
-
-    // ===================
-    // HelpView Tests
-    // ===================
-
-    #[test]
-    fn test_help_view_render() {
-        let view = HelpView::new();
-        let output = view.render();
-
-        assert!(!output.is_empty());
-        assert!(output.contains("q") || output.contains("quit"));
-    }
-
-    #[test]
-    fn test_help_view_contains_shortcuts() {
-        let view = HelpView::new();
-        let output = view.render();
-
-        // Should contain all shortcuts
-        assert!(output.contains("i") || output.contains("commit"));
-        assert!(output.contains("l") || output.contains("log"));
-        assert!(output.contains("s") || output.contains("search"));
-    }
-
-    // ===================
-    // Rendering Tests
-    // ===================
-
-    #[test]
-    fn test_console_render_status_mode() {
-        let (_temp_dir, console) = create_test_console();
-
-        let output = console.render();
-        assert!(!output.is_empty());
-    }
-
-    #[test]
-    fn test_console_render_history_mode() {
-        let (_temp_dir, mut console) = create_test_console();
-
-        console.switch_mode(ConsoleMode::History);
-        let output = console.render();
-        assert!(!output.is_empty());
-    }
-
-    #[test]
-    fn test_console_render_help_mode() {
-        let (_temp_dir, mut console) = create_test_console();
-
-        console.switch_mode(ConsoleMode::Help);
-        let output = console.render();
-
-        assert!(!output.is_empty());
-    }
-
-    // ===================
-    // Terminal Size Tests
-    // ===================
-
-    #[test]
-    fn test_console_handle_resize() {
-        let (_temp_dir, mut console) = create_test_console();
-
-        console.handle_resize(80, 24);
-        let state = console.get_state();
-
-        assert_eq!(state.terminal_width, 80);
-        assert_eq!(state.terminal_height, 24);
-    }
-
-    #[test]
-    fn test_console_minimum_size() {
-        let (_temp_dir, mut console) = create_test_console();
-
-        // Should handle small terminal gracefully
-        console.handle_resize(40, 10);
-        let output = console.render();
-        // Should not crash
-    }
-
-    // ===================
-    // Color Tests
-    // ===================
-
-    #[test]
-    fn test_console_colored_output() {
-        let (_temp_dir, console) = create_test_console();
-
-        let output = console.render();
-        // Output may contain ANSI codes
-    }
-
-    #[test]
-    fn test_console_disable_colors() {
-        let (_temp_dir, mut console) = create_test_console();
-
-        console.set_colored(false);
-        let output = console.render();
-
-        // Should not contain ANSI escape codes
-        assert!(!output.contains("\x1b["));
-    }
-
-    // ===================
-    // State Persistence Tests
-    // ===================
-
-    #[test]
-    fn test_console_state_persistence() {
-        let temp_dir = TempDir::new().unwrap();
-
-        // Set some state
-        {
-            let mut console = Console::new(temp_dir.path());
-            console.switch_mode(ConsoleMode::History);
-            console.save_state().unwrap();
+    fn test_console_log_pruning() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+
+        // Add more than MAX_LOG_ENTRIES (100)
+        for i in 0..150 {
+            console.log(LogLevel::Info, format!("Message {}", i));
         }
 
-        // Restore state
-        {
-            let console = Console::new(temp_dir.path());
-            // State may or may not persist based on implementation
-        }
+        // Should be pruned to MAX_LOG_ENTRIES
+        assert_eq!(console.activity_log.len(), 100);
+        // Most recent should be "Message 149"
+        assert_eq!(console.activity_log[0].message, "Message 149");
+    }
+
+    // ===================
+    // Daemon Status Tests
+    // ===================
+
+    #[test]
+    fn test_daemon_status_update_running() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+
+        console.set_daemon_status(DaemonStatus::Running);
+
+        assert_eq!(console.daemon_status, DaemonStatus::Running);
+        // Should log the status change
+        assert!(!console.activity_log.is_empty());
+    }
+
+    #[test]
+    fn test_daemon_status_update_stopped() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+
+        console.set_daemon_status(DaemonStatus::Stopped);
+
+        assert_eq!(console.daemon_status, DaemonStatus::Stopped);
+    }
+
+    #[test]
+    fn test_daemon_status_no_duplicate_logs() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+
+        console.set_daemon_status(DaemonStatus::Running);
+        let log_count_after_first = console.activity_log.len();
+
+        // Setting to same status shouldn't add new log entry
+        console.set_daemon_status(DaemonStatus::Running);
+
+        assert_eq!(console.activity_log.len(), log_count_after_first);
+    }
+
+    #[test]
+    fn test_daemon_status_transitions_log() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+
+        console.set_daemon_status(DaemonStatus::Running);
+        console.set_daemon_status(DaemonStatus::Stopped);
+        console.set_daemon_status(DaemonStatus::Running);
+
+        // Each transition should log
+        assert!(console.activity_log.len() >= 3);
+    }
+
+    // ===================
+    // Repository Status Tests
+    // ===================
+
+    #[test]
+    fn test_repo_status_update() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+
+        console.set_repo_status(2, 3, 1);
+
+        assert!(console.repo_status.is_some());
+        let status = console.repo_status.as_ref().unwrap();
+        assert_eq!(status.staged, 2);
+        assert_eq!(status.modified, 3);
+        assert_eq!(status.untracked, 1);
+    }
+
+    #[test]
+    fn test_repo_status_zero_values() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+
+        console.set_repo_status(0, 0, 0);
+
+        assert!(console.repo_status.is_some());
+        let status = console.repo_status.as_ref().unwrap();
+        assert_eq!(status.staged, 0);
+        assert_eq!(status.modified, 0);
+        assert_eq!(status.untracked, 0);
+    }
+
+    #[test]
+    fn test_repo_status_large_values() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+
+        console.set_repo_status(1000, 5000, 10000);
+
+        let status = console.repo_status.as_ref().unwrap();
+        assert_eq!(status.staged, 1000);
+        assert_eq!(status.modified, 5000);
+        assert_eq!(status.untracked, 10000);
+    }
+
+    // ===================
+    // ConsoleMode Tests
+    // ===================
+
+    #[test]
+    fn test_console_mode_enum_values() {
+        // Ensure all modes exist
+        let _ = ConsoleMode::Normal;
+        let _ = ConsoleMode::CommitDialog;
+        let _ = ConsoleMode::RestoreBrowser;
+        let _ = ConsoleMode::Compare;
+        let _ = ConsoleMode::Search;
+        let _ = ConsoleMode::Hooks;
+        let _ = ConsoleMode::Help;
+    }
+
+    #[test]
+    fn test_console_mode_equality() {
+        assert_eq!(ConsoleMode::Normal, ConsoleMode::Normal);
+        assert_eq!(ConsoleMode::Help, ConsoleMode::Help);
+        assert_ne!(ConsoleMode::Normal, ConsoleMode::Help);
+    }
+
+    #[test]
+    fn test_console_mode_copy() {
+        let mode = ConsoleMode::Search;
+        let mode_copy = mode; // Copy
+        assert_eq!(mode, mode_copy);
+    }
+
+    // ===================
+    // DaemonStatus Tests
+    // ===================
+
+    #[test]
+    fn test_daemon_status_enum_values() {
+        let _ = DaemonStatus::Running;
+        let _ = DaemonStatus::Stopped;
+        let _ = DaemonStatus::Unknown;
+    }
+
+    #[test]
+    fn test_daemon_status_equality() {
+        assert_eq!(DaemonStatus::Running, DaemonStatus::Running);
+        assert_ne!(DaemonStatus::Running, DaemonStatus::Stopped);
+    }
+
+    // ===================
+    // LogLevel Tests
+    // ===================
+
+    #[test]
+    fn test_log_level_enum_values() {
+        let _ = LogLevel::Info;
+        let _ = LogLevel::Success;
+        let _ = LogLevel::Warning;
+        let _ = LogLevel::Error;
+    }
+
+    #[test]
+    fn test_log_level_equality() {
+        assert_eq!(LogLevel::Info, LogLevel::Info);
+        assert_ne!(LogLevel::Info, LogLevel::Error);
     }
 
     // ===================
@@ -594,40 +261,71 @@ mod tests {
     // ===================
 
     #[test]
-    fn test_console_rapid_key_input() {
-        let (_temp_dir, mut console) = create_test_console();
-
-        // Rapid key presses should not crash
-        for _ in 0..100 {
-            console.handle_key(KeyEvent::Char('r'));
-        }
+    fn test_console_with_empty_path() {
+        let console = Console::new(PathBuf::from(""));
+        assert!(!console.should_quit);
     }
 
     #[test]
-    fn test_console_invalid_mode_transition() {
-        let (_temp_dir, mut console) = create_test_console();
-
-        // Switching to same mode should be no-op
-        console.switch_mode(ConsoleMode::Status);
-        console.switch_mode(ConsoleMode::Status);
-        assert_eq!(console.current_mode(), ConsoleMode::Status);
+    fn test_console_with_unicode_path() {
+        let console = Console::new(PathBuf::from("/projects/日本語/プロジェクト.logicx"));
+        assert!(console.repo_status.is_none());
     }
 
     #[test]
-    fn test_commit_dialog_very_long_message() {
-        let mut dialog = CommitDialog::new();
+    fn test_log_entry_with_empty_message() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+        console.log(LogLevel::Info, "");
+        assert_eq!(console.activity_log[0].message, "");
+    }
 
+    #[test]
+    fn test_log_entry_with_unicode_message() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+        console.log(LogLevel::Info, "日本語メッセージ 🎵");
+        assert!(console.activity_log[0].message.contains("日本語"));
+    }
+
+    #[test]
+    fn test_log_entry_with_very_long_message() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
         let long_message = "A".repeat(10000);
-        dialog.set_message(&long_message);
-
-        assert_eq!(dialog.get_message().len(), 10000);
+        console.log(LogLevel::Info, &long_message);
+        assert_eq!(console.activity_log[0].message.len(), 10000);
     }
 
     #[test]
-    fn test_commit_dialog_unicode_message() {
-        let mut dialog = CommitDialog::new();
+    fn test_multiple_repo_status_updates() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
 
-        dialog.set_message("Added Japanese lyrics: 日本語");
-        assert!(dialog.get_message().contains("日本語"));
+        console.set_repo_status(1, 1, 1);
+        console.set_repo_status(2, 2, 2);
+        console.set_repo_status(3, 3, 3);
+
+        // Should reflect latest values
+        let status = console.repo_status.as_ref().unwrap();
+        assert_eq!(status.staged, 3);
+        assert_eq!(status.modified, 3);
+        assert_eq!(status.untracked, 3);
+    }
+
+    // ===================
+    // Field Access Tests
+    // ===================
+
+    #[test]
+    fn test_console_activity_log_is_vec() {
+        let console = Console::new(PathBuf::from("/test/project.logicx"));
+        let log_count = console.activity_log.len();
+        assert_eq!(log_count, 0);
+    }
+
+    #[test]
+    fn test_log_entry_has_timestamp() {
+        let mut console = Console::new(PathBuf::from("/test/project.logicx"));
+        console.log(LogLevel::Info, "Test");
+
+        // LogEntry should have a timestamp field
+        let _timestamp = console.activity_log[0].timestamp;
     }
 }

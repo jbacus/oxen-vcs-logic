@@ -47,6 +47,7 @@ pub use collaboration::{
 pub use commit_metadata::CommitMetadata;
 pub use config::{Config, ProjectType};
 pub use conflict_detection::{ConflictCheckResult, ConflictDetector, ConflictRecommendation};
+pub use console::{Console, ConsoleMode, DaemonStatus, LogEntry, LogLevel, RepositoryStatus};
 pub use draft_manager::{DraftManager, DraftStats};
 pub use ignore_template::{generate_blender_oxenignore, generate_oxenignore, generate_sketchup_oxenignore};
 pub use logic_parser::{LogicParser, LogicProjectData};
@@ -62,8 +63,10 @@ pub use chunked_upload::{
     UploadSessionInfo, UploadStatus,
 };
 pub use network_resilience::{
-    check_network_availability, is_transient_error,
+    check_network_availability, is_transient_error, check_network_health, estimate_transfer_time,
     NetworkResilienceManager, OperationData, OperationType, QueuedOperation,
+    RetryPolicy, CircuitBreaker, CircuitState, CircuitBreakerStats,
+    AdaptiveRetryPolicy, NetworkHealth, NetworkQuality, ConnectivityState,
 };
 pub use offline_queue::{
     OfflineQueue, QueueEntry, QueueStats, QueuedOperation as OfflineQueuedOperation, SyncReport,

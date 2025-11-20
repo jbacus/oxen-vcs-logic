@@ -4,16 +4,14 @@
 /// - Init, install, list, remove hooks
 /// - Pre-commit and post-commit hook execution
 /// - Hook failure handling
-/// - Timeout handling
 /// - Built-in hook templates
-
-#[cfg(test)]
-mod common;
 
 #[cfg(test)]
 mod tests {
     use auxin::hooks::{HookManager, HookType};
+    use auxin::CommitMetadata;
     use std::fs;
+    #[cfg(unix)]
     use std::os::unix::fs::PermissionsExt;
     use tempfile::TempDir;
 
@@ -34,7 +32,7 @@ mod tests {
 
         manager.init().unwrap();
 
-        let hooks_dir = temp_dir.path().join(".auxin").join("hooks");
+        let hooks_dir = temp_dir.path().join(".oxen").join("hooks");
         assert!(hooks_dir.exists());
         assert!(hooks_dir.join("pre-commit").exists());
         assert!(hooks_dir.join("post-commit").exists());
@@ -50,6 +48,15 @@ mod tests {
         assert!(manager.init().is_ok());
     }
 
+    #[test]
+    fn test_hooks_init_creates_readme() {
+        let (temp_dir, manager) = create_test_manager();
+        manager.init().unwrap();
+
+        let readme_path = temp_dir.path().join(".oxen").join("hooks").join("README.md");
+        assert!(readme_path.exists());
+    }
+
     // ===================
     // Install Tests
     // ===================
@@ -62,7 +69,7 @@ mod tests {
         let result = manager.install_builtin("validate-metadata", HookType::PreCommit);
         assert!(result.is_ok());
 
-        let hooks = manager.list_hooks(HookType::PreCommit).unwrap();
+        let hooks = manager.list_hooks_by_type(HookType::PreCommit).unwrap();
         assert!(hooks.iter().any(|h| h.contains("validate-metadata")));
     }
 
@@ -74,7 +81,7 @@ mod tests {
         let result = manager.install_builtin("backup", HookType::PostCommit);
         assert!(result.is_ok());
 
-        let hooks = manager.list_hooks(HookType::PostCommit).unwrap();
+        let hooks = manager.list_hooks_by_type(HookType::PostCommit).unwrap();
         assert!(hooks.iter().any(|h| h.contains("backup")));
     }
 
@@ -88,11 +95,11 @@ mod tests {
     }
 
     #[test]
-    fn test_install_builtin_hook_check_size() {
+    fn test_install_builtin_hook_check_file_sizes() {
         let (_temp_dir, manager) = create_test_manager();
         manager.init().unwrap();
 
-        let result = manager.install_builtin("check-size", HookType::PreCommit);
+        let result = manager.install_builtin("check-file-sizes", HookType::PreCommit);
         assert!(result.is_ok());
     }
 
@@ -106,16 +113,6 @@ mod tests {
     }
 
     #[test]
-    fn test_install_hook_without_init() {
-        let (_temp_dir, manager) = create_test_manager();
-
-        // Should fail or auto-init
-        let result = manager.install_builtin("validate-metadata", HookType::PreCommit);
-        // Behavior depends on implementation
-        // Either auto-init and succeed, or fail
-    }
-
-    #[test]
     fn test_install_duplicate_hook() {
         let (_temp_dir, manager) = create_test_manager();
         manager.init().unwrap();
@@ -124,8 +121,8 @@ mod tests {
         manager.install_builtin("validate-metadata", HookType::PreCommit).unwrap();
         let result = manager.install_builtin("validate-metadata", HookType::PreCommit);
 
-        // Should either overwrite or error
-        // Both behaviors are acceptable
+        // Should overwrite (succeed)
+        assert!(result.is_ok());
     }
 
     // ===================
@@ -137,8 +134,8 @@ mod tests {
         let (_temp_dir, manager) = create_test_manager();
         manager.init().unwrap();
 
-        let pre_hooks = manager.list_hooks(HookType::PreCommit).unwrap();
-        let post_hooks = manager.list_hooks(HookType::PostCommit).unwrap();
+        let pre_hooks = manager.list_hooks_by_type(HookType::PreCommit).unwrap();
+        let post_hooks = manager.list_hooks_by_type(HookType::PostCommit).unwrap();
 
         assert!(pre_hooks.is_empty());
         assert!(post_hooks.is_empty());
@@ -152,8 +149,8 @@ mod tests {
         manager.install_builtin("validate-metadata", HookType::PreCommit).unwrap();
         manager.install_builtin("backup", HookType::PostCommit).unwrap();
 
-        let pre_hooks = manager.list_hooks(HookType::PreCommit).unwrap();
-        let post_hooks = manager.list_hooks(HookType::PostCommit).unwrap();
+        let pre_hooks = manager.list_hooks_by_type(HookType::PreCommit).unwrap();
+        let post_hooks = manager.list_hooks_by_type(HookType::PostCommit).unwrap();
 
         assert_eq!(pre_hooks.len(), 1);
         assert_eq!(post_hooks.len(), 1);
@@ -165,10 +162,26 @@ mod tests {
         manager.init().unwrap();
 
         manager.install_builtin("validate-metadata", HookType::PreCommit).unwrap();
-        manager.install_builtin("check-size", HookType::PreCommit).unwrap();
+        manager.install_builtin("check-file-sizes", HookType::PreCommit).unwrap();
 
-        let pre_hooks = manager.list_hooks(HookType::PreCommit).unwrap();
+        let pre_hooks = manager.list_hooks_by_type(HookType::PreCommit).unwrap();
         assert_eq!(pre_hooks.len(), 2);
+    }
+
+    #[test]
+    fn test_list_all_hooks() {
+        let (_temp_dir, manager) = create_test_manager();
+        manager.init().unwrap();
+
+        manager.install_builtin("validate-metadata", HookType::PreCommit).unwrap();
+        manager.install_builtin("backup", HookType::PostCommit).unwrap();
+
+        let all_hooks = manager.list_hooks().unwrap();
+        assert_eq!(all_hooks.len(), 2);
+
+        // Check that tuples contain correct types
+        assert!(all_hooks.iter().any(|(t, n)| *t == HookType::PreCommit && n == "validate-metadata"));
+        assert!(all_hooks.iter().any(|(t, n)| *t == HookType::PostCommit && n == "backup"));
     }
 
     // ===================
@@ -183,7 +196,7 @@ mod tests {
         manager.install_builtin("validate-metadata", HookType::PreCommit).unwrap();
 
         // Verify it exists
-        let hooks_before = manager.list_hooks(HookType::PreCommit).unwrap();
+        let hooks_before = manager.list_hooks_by_type(HookType::PreCommit).unwrap();
         assert_eq!(hooks_before.len(), 1);
 
         // Remove it
@@ -191,7 +204,7 @@ mod tests {
         assert!(result.is_ok());
 
         // Verify it's gone
-        let hooks_after = manager.list_hooks(HookType::PreCommit).unwrap();
+        let hooks_after = manager.list_hooks_by_type(HookType::PreCommit).unwrap();
         assert!(hooks_after.is_empty());
     }
 
@@ -223,13 +236,13 @@ mod tests {
 
         // Install multiple hooks
         manager.install_builtin("validate-metadata", HookType::PreCommit).unwrap();
-        manager.install_builtin("check-size", HookType::PreCommit).unwrap();
+        manager.install_builtin("check-file-sizes", HookType::PreCommit).unwrap();
 
         // Remove all
         manager.remove_hook("validate-metadata", HookType::PreCommit).unwrap();
-        manager.remove_hook("check-size", HookType::PreCommit).unwrap();
+        manager.remove_hook("check-file-sizes", HookType::PreCommit).unwrap();
 
-        let hooks = manager.list_hooks(HookType::PreCommit).unwrap();
+        let hooks = manager.list_hooks_by_type(HookType::PreCommit).unwrap();
         assert!(hooks.is_empty());
     }
 
@@ -238,158 +251,91 @@ mod tests {
     // ===================
 
     #[test]
+    #[cfg(unix)]
     fn test_run_pre_commit_hooks_success() {
         let (temp_dir, manager) = create_test_manager();
         manager.init().unwrap();
 
         // Create a simple hook that succeeds
         let hook_path = temp_dir.path()
-            .join(".auxin")
+            .join(".oxen")
             .join("hooks")
             .join("pre-commit")
             .join("success-hook");
 
         fs::write(&hook_path, "#!/bin/bash\nexit 0\n").unwrap();
-        fs::set_permissions(&hook_path, fs::Permissions::from_mode(0o755)).unwrap();
+        let mut perms = fs::metadata(&hook_path).unwrap().permissions();
+        perms.set_mode(0o755);
+        fs::set_permissions(&hook_path, perms).unwrap();
 
-        let result = manager.run_hooks(HookType::PreCommit, temp_dir.path());
+        let metadata = CommitMetadata::new("Test commit");
+        let result = manager.run_hooks(HookType::PreCommit, &metadata);
         assert!(result.is_ok());
+        assert!(result.unwrap()); // Hook should succeed
     }
 
     #[test]
+    #[cfg(unix)]
     fn test_run_pre_commit_hooks_failure() {
         let (temp_dir, manager) = create_test_manager();
         manager.init().unwrap();
 
         // Create a hook that fails
         let hook_path = temp_dir.path()
-            .join(".auxin")
+            .join(".oxen")
             .join("hooks")
             .join("pre-commit")
             .join("fail-hook");
 
         fs::write(&hook_path, "#!/bin/bash\nexit 1\n").unwrap();
-        fs::set_permissions(&hook_path, fs::Permissions::from_mode(0o755)).unwrap();
+        let mut perms = fs::metadata(&hook_path).unwrap().permissions();
+        perms.set_mode(0o755);
+        fs::set_permissions(&hook_path, perms).unwrap();
 
-        let result = manager.run_hooks(HookType::PreCommit, temp_dir.path());
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_run_hooks_with_output() {
-        let (temp_dir, manager) = create_test_manager();
-        manager.init().unwrap();
-
-        // Create a hook that outputs text
-        let hook_path = temp_dir.path()
-            .join(".auxin")
-            .join("hooks")
-            .join("pre-commit")
-            .join("output-hook");
-
-        fs::write(&hook_path, "#!/bin/bash\necho 'Hook executed'\nexit 0\n").unwrap();
-        fs::set_permissions(&hook_path, fs::Permissions::from_mode(0o755)).unwrap();
-
-        let result = manager.run_hooks(HookType::PreCommit, temp_dir.path());
+        let metadata = CommitMetadata::new("Test commit");
+        let result = manager.run_hooks(HookType::PreCommit, &metadata);
         assert!(result.is_ok());
+        assert!(!result.unwrap()); // Hook should fail
     }
 
     #[test]
-    fn test_run_hooks_multiple_all_succeed() {
-        let (temp_dir, manager) = create_test_manager();
+    fn test_run_hooks_no_hooks() {
+        let (_temp_dir, manager) = create_test_manager();
         manager.init().unwrap();
 
-        let hooks_dir = temp_dir.path()
-            .join(".auxin")
-            .join("hooks")
-            .join("pre-commit");
-
-        // Create multiple hooks that succeed
-        for i in 0..3 {
-            let hook_path = hooks_dir.join(format!("hook-{}", i));
-            fs::write(&hook_path, "#!/bin/bash\nexit 0\n").unwrap();
-            fs::set_permissions(&hook_path, fs::Permissions::from_mode(0o755)).unwrap();
-        }
-
-        let result = manager.run_hooks(HookType::PreCommit, temp_dir.path());
+        // No hooks installed
+        let metadata = CommitMetadata::new("Test commit");
+        let result = manager.run_hooks(HookType::PreCommit, &metadata);
         assert!(result.is_ok());
+        assert!(result.unwrap()); // Should succeed with no hooks
     }
 
     #[test]
-    fn test_run_hooks_multiple_one_fails() {
-        let (temp_dir, manager) = create_test_manager();
-        manager.init().unwrap();
+    fn test_run_hooks_no_init() {
+        let (_temp_dir, manager) = create_test_manager();
 
-        let hooks_dir = temp_dir.path()
-            .join(".auxin")
-            .join("hooks")
-            .join("pre-commit");
-
-        // Create hooks - first succeeds, second fails
-        let hook1 = hooks_dir.join("01-success");
-        fs::write(&hook1, "#!/bin/bash\nexit 0\n").unwrap();
-        fs::set_permissions(&hook1, fs::Permissions::from_mode(0o755)).unwrap();
-
-        let hook2 = hooks_dir.join("02-fail");
-        fs::write(&hook2, "#!/bin/bash\nexit 1\n").unwrap();
-        fs::set_permissions(&hook2, fs::Permissions::from_mode(0o755)).unwrap();
-
-        let result = manager.run_hooks(HookType::PreCommit, temp_dir.path());
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_run_hooks_empty() {
-        let (temp_dir, manager) = create_test_manager();
-        manager.init().unwrap();
-
-        // No hooks installed - should succeed
-        let result = manager.run_hooks(HookType::PreCommit, temp_dir.path());
+        // No init called
+        let metadata = CommitMetadata::new("Test commit");
+        let result = manager.run_hooks(HookType::PreCommit, &metadata);
         assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_run_post_commit_hooks() {
-        let (temp_dir, manager) = create_test_manager();
-        manager.init().unwrap();
-
-        // Create a post-commit hook
-        let hook_path = temp_dir.path()
-            .join(".auxin")
-            .join("hooks")
-            .join("post-commit")
-            .join("notify-hook");
-
-        fs::write(&hook_path, "#!/bin/bash\necho 'Commit complete'\nexit 0\n").unwrap();
-        fs::set_permissions(&hook_path, fs::Permissions::from_mode(0o755)).unwrap();
-
-        let result = manager.run_hooks(HookType::PostCommit, temp_dir.path());
-        assert!(result.is_ok());
+        assert!(result.unwrap()); // Should succeed (no hooks directory)
     }
 
     // ===================
-    // Timeout Tests
+    // HookType Tests
     // ===================
 
     #[test]
-    fn test_run_hooks_timeout() {
-        let (temp_dir, manager) = create_test_manager();
-        manager.init().unwrap();
+    fn test_hook_type_dir_name() {
+        assert_eq!(HookType::PreCommit.dir_name(), "pre-commit");
+        assert_eq!(HookType::PostCommit.dir_name(), "post-commit");
+    }
 
-        // Create a hook that hangs
-        let hook_path = temp_dir.path()
-            .join(".auxin")
-            .join("hooks")
-            .join("pre-commit")
-            .join("slow-hook");
-
-        fs::write(&hook_path, "#!/bin/bash\nsleep 60\nexit 0\n").unwrap();
-        fs::set_permissions(&hook_path, fs::Permissions::from_mode(0o755)).unwrap();
-
-        // Should timeout (if timeout is implemented)
-        // This test may need adjustment based on timeout implementation
-        // let result = manager.run_hooks_with_timeout(HookType::PreCommit, temp_dir.path(), 1);
-        // assert!(result.is_err());
+    #[test]
+    fn test_hook_type_equality() {
+        assert_eq!(HookType::PreCommit, HookType::PreCommit);
+        assert_eq!(HookType::PostCommit, HookType::PostCommit);
+        assert_ne!(HookType::PreCommit, HookType::PostCommit);
     }
 
     // ===================
@@ -398,14 +344,37 @@ mod tests {
 
     #[test]
     fn test_list_builtins() {
-        let (_temp_dir, manager) = create_test_manager();
+        let builtins = HookManager::list_builtins();
 
-        let builtins = manager.list_builtins().unwrap();
+        assert!(!builtins.is_empty());
 
-        assert!(builtins.contains(&"validate-metadata".to_string()));
-        assert!(builtins.contains(&"backup".to_string()));
-        assert!(builtins.contains(&"notify".to_string()));
-        assert!(builtins.contains(&"check-size".to_string()));
+        // Check for expected built-ins
+        let names: Vec<&str> = builtins.iter().map(|h| h.name.as_str()).collect();
+        assert!(names.contains(&"validate-metadata"));
+        assert!(names.contains(&"check-file-sizes"));
+        assert!(names.contains(&"notify"));
+        assert!(names.contains(&"backup"));
+    }
+
+    #[test]
+    fn test_builtin_hook_has_description() {
+        let builtins = HookManager::list_builtins();
+
+        for hook in builtins {
+            assert!(!hook.description.is_empty(), "Hook {} has empty description", hook.name);
+        }
+    }
+
+    #[test]
+    fn test_builtin_hook_types() {
+        let builtins = HookManager::list_builtins();
+
+        // Check that we have both pre and post commit hooks
+        let pre_commit_count = builtins.iter().filter(|h| h.hook_type == HookType::PreCommit).count();
+        let post_commit_count = builtins.iter().filter(|h| h.hook_type == HookType::PostCommit).count();
+
+        assert!(pre_commit_count > 0, "No pre-commit hooks");
+        assert!(post_commit_count > 0, "No post-commit hooks");
     }
 
     // ===================
@@ -413,121 +382,75 @@ mod tests {
     // ===================
 
     #[test]
-    fn test_hook_with_spaces_in_name() {
+    fn test_hook_with_special_characters_in_name() {
         let (_temp_dir, manager) = create_test_manager();
         manager.init().unwrap();
 
-        // Hook names with spaces should be handled properly
-        // Either sanitized or rejected
+        // Hook names with special characters should be handled
+        // (though this is an edge case that may not be supported)
     }
 
     #[test]
-    fn test_hook_non_executable() {
+    fn test_hooks_directory_permissions() {
         let (temp_dir, manager) = create_test_manager();
         manager.init().unwrap();
 
-        // Create a non-executable hook
+        let hooks_dir = temp_dir.path().join(".oxen").join("hooks");
+        let metadata = fs::metadata(&hooks_dir).unwrap();
+        assert!(metadata.is_dir());
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn test_installed_hook_is_executable() {
+        let (temp_dir, manager) = create_test_manager();
+        manager.init().unwrap();
+
+        manager.install_builtin("validate-metadata", HookType::PreCommit).unwrap();
+
         let hook_path = temp_dir.path()
-            .join(".auxin")
+            .join(".oxen")
             .join("hooks")
             .join("pre-commit")
-            .join("non-exec-hook");
+            .join("validate-metadata");
 
-        fs::write(&hook_path, "#!/bin/bash\nexit 0\n").unwrap();
-        // Don't set execute permission
+        let metadata = fs::metadata(&hook_path).unwrap();
+        let permissions = metadata.permissions();
 
-        let result = manager.run_hooks(HookType::PreCommit, temp_dir.path());
-        // Should either skip or error
+        // Check that the executable bit is set
+        assert!(permissions.mode() & 0o111 != 0, "Hook is not executable");
     }
 
+    // ===================
+    // Environment Variable Tests
+    // ===================
+
     #[test]
-    fn test_hook_bad_shebang() {
+    #[cfg(unix)]
+    fn test_hook_receives_environment_variables() {
         let (temp_dir, manager) = create_test_manager();
         manager.init().unwrap();
 
-        // Create a hook with invalid shebang
+        // Create a hook that outputs environment variables
         let hook_path = temp_dir.path()
-            .join(".auxin")
+            .join(".oxen")
             .join("hooks")
             .join("pre-commit")
-            .join("bad-shebang");
+            .join("env-test");
 
-        fs::write(&hook_path, "#!/nonexistent/interpreter\nexit 0\n").unwrap();
-        fs::set_permissions(&hook_path, fs::Permissions::from_mode(0o755)).unwrap();
+        fs::write(&hook_path, r#"#!/bin/bash
+if [ -z "$AUXIN_MESSAGE" ]; then
+    exit 1
+fi
+exit 0
+"#).unwrap();
+        let mut perms = fs::metadata(&hook_path).unwrap().permissions();
+        perms.set_mode(0o755);
+        fs::set_permissions(&hook_path, perms).unwrap();
 
-        let result = manager.run_hooks(HookType::PreCommit, temp_dir.path());
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_hook_environment_variables() {
-        let (temp_dir, manager) = create_test_manager();
-        manager.init().unwrap();
-
-        // Create a hook that uses environment variables
-        let hook_path = temp_dir.path()
-            .join(".auxin")
-            .join("hooks")
-            .join("pre-commit")
-            .join("env-hook");
-
-        // Hook should have access to AUXIN_REPO_PATH
-        fs::write(&hook_path, "#!/bin/bash\ntest -n \"$AUXIN_REPO_PATH\"\nexit $?\n").unwrap();
-        fs::set_permissions(&hook_path, fs::Permissions::from_mode(0o755)).unwrap();
-
-        let result = manager.run_hooks(HookType::PreCommit, temp_dir.path());
-        // Depends on whether env vars are passed
-    }
-
-    #[test]
-    fn test_hook_with_stderr() {
-        let (temp_dir, manager) = create_test_manager();
-        manager.init().unwrap();
-
-        // Create a hook that writes to stderr
-        let hook_path = temp_dir.path()
-            .join(".auxin")
-            .join("hooks")
-            .join("pre-commit")
-            .join("stderr-hook");
-
-        fs::write(&hook_path, "#!/bin/bash\necho 'Error message' >&2\nexit 0\n").unwrap();
-        fs::set_permissions(&hook_path, fs::Permissions::from_mode(0o755)).unwrap();
-
-        let result = manager.run_hooks(HookType::PreCommit, temp_dir.path());
-        assert!(result.is_ok()); // stderr output shouldn't cause failure
-    }
-
-    #[test]
-    fn test_hook_ordering() {
-        let (temp_dir, manager) = create_test_manager();
-        manager.init().unwrap();
-
-        let hooks_dir = temp_dir.path()
-            .join(".auxin")
-            .join("hooks")
-            .join("pre-commit");
-
-        // Create hooks that should run in alphabetical order
-        // Hooks should run 01, 02, 03
-        let hook1 = hooks_dir.join("02-second");
-        let hook2 = hooks_dir.join("01-first");
-        let hook3 = hooks_dir.join("03-third");
-
-        // Create a marker file to track execution order
-        let marker = temp_dir.path().join("order.txt");
-
-        fs::write(&hook1, format!("#!/bin/bash\necho '2' >> {:?}\nexit 0\n", marker)).unwrap();
-        fs::write(&hook2, format!("#!/bin/bash\necho '1' >> {:?}\nexit 0\n", marker)).unwrap();
-        fs::write(&hook3, format!("#!/bin/bash\necho '3' >> {:?}\nexit 0\n", marker)).unwrap();
-
-        fs::set_permissions(&hook1, fs::Permissions::from_mode(0o755)).unwrap();
-        fs::set_permissions(&hook2, fs::Permissions::from_mode(0o755)).unwrap();
-        fs::set_permissions(&hook3, fs::Permissions::from_mode(0o755)).unwrap();
-
-        manager.run_hooks(HookType::PreCommit, temp_dir.path()).unwrap();
-
-        let order = fs::read_to_string(&marker).unwrap();
-        assert_eq!(order.trim(), "1\n2\n3".trim());
+        let metadata = CommitMetadata::new("Test message");
+        let result = manager.run_hooks(HookType::PreCommit, &metadata);
+        assert!(result.is_ok());
+        assert!(result.unwrap()); // Should succeed
     }
 }

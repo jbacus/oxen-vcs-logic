@@ -570,6 +570,127 @@ auxin server set <KEY> <VALUE>
 
 ---
 
+## Rust Library API
+
+The `auxin` crate exposes a rich library API for programmatic use. Key types and modules include:
+
+### Network Resilience
+
+**RetryPolicy** - Configurable retry behavior for network operations:
+
+```rust
+use auxin::RetryPolicy;
+
+let policy = RetryPolicy::default();
+
+// Get delay for retry attempt (1-indexed)
+let delay = policy.delay_for_attempt(3); // Exponential backoff
+
+// Check if should retry
+if policy.should_retry(attempt) {
+    // Check if error is retryable
+    if policy.is_retryable(&error_message) {
+        // Retry operation
+    }
+}
+
+// Access configuration
+let max = policy.max_attempts();
+let base = policy.base_delay_ms();
+let max_delay = policy.max_delay_ms();
+```
+
+**Additional Types**: `CircuitBreaker`, `CircuitState`, `NetworkHealth`, `NetworkQuality`, `ConnectivityState`, `AdaptiveRetryPolicy`
+
+### Console TUI
+
+**Console** - Interactive terminal interface for monitoring and control:
+
+```rust
+use auxin::{Console, ConsoleMode, LogLevel, DaemonStatus};
+use std::path::PathBuf;
+
+let mut console = Console::new(PathBuf::from("/path/to/project"));
+
+// Log messages
+console.log(LogLevel::Info, "Status message");
+console.log(LogLevel::Success, "Operation completed");
+console.log(LogLevel::Warning, "Warning message");
+console.log(LogLevel::Error, "Error occurred");
+
+// Update daemon status
+console.set_daemon_status(DaemonStatus::Running);
+
+// Update repository status
+console.set_repo_status(5, 3, 2); // staged, modified, untracked
+
+// Access state
+let mode = console.mode; // ConsoleMode::Normal, Help, etc.
+let should_quit = console.should_quit;
+```
+
+**ConsoleMode** variants: `Normal`, `CommitDialog`, `RestoreBrowser`, `Compare`, `Search`, `Hooks`, `Help`
+
+### Bounce (Audio Snapshots)
+
+**BounceFilter** - Search criteria for audio bounces:
+
+```rust
+use auxin::{BounceFilter, BounceManager, AudioFormat};
+
+let mut filter = BounceFilter::default();
+
+// Pattern field (alias for filename_pattern)
+filter.pattern = Some("mix.*".to_string());
+
+// Other filter options
+filter.format = Some(AudioFormat::Wav);
+filter.min_duration = Some(30.0);
+filter.max_duration = Some(300.0);
+filter.added_by = Some("user".to_string());
+
+// Use filter
+let manager = BounceManager::new(&repo_path);
+let results = manager.search_bounces(&filter)?;
+```
+
+### Hooks
+
+**HookManager** - Workflow automation hooks:
+
+```rust
+use auxin::hooks::{HookManager, HookType};
+
+let manager = HookManager::new(&repo_path);
+manager.init()?;
+
+// Install built-in hooks
+manager.install_builtin("validate-metadata", HookType::PreCommit)?;
+manager.install_builtin("backup", HookType::PostCommit)?;
+
+// List all hooks (returns tuples)
+let all_hooks = manager.list_hooks()?;  // Vec<(HookType, String)>
+
+// List hooks filtered by type
+let pre_commit_hooks = manager.list_hooks_by_type(HookType::PreCommit)?; // Vec<String>
+let post_commit_hooks = manager.list_hooks_by_type(HookType::PostCommit)?;
+
+// Remove hooks
+manager.remove_hook("validate-metadata", HookType::PreCommit)?;
+
+// Run hooks during commit
+let metadata = CommitMetadata::new("My commit");
+let success = manager.run_hooks(HookType::PreCommit, &metadata)?;
+```
+
+**Built-in Hooks**:
+- `validate-metadata` - Ensure BPM/sample rate are set (pre-commit)
+- `check-file-sizes` - Warn about files >100MB (pre-commit)
+- `notify` - Send notifications (post-commit)
+- `backup` - Create timestamped backups (post-commit)
+
+---
+
 ## Exit Codes
 
 | Code | Meaning |
