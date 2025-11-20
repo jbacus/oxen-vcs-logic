@@ -35,6 +35,7 @@ pub mod remote_lock;
 pub mod search;
 pub mod server_client;
 pub mod workflow_automation;
+pub mod write_ahead_log;
 
 pub use auth::{AuthManager, Credentials};
 pub use backup_recovery::{
@@ -84,3 +85,7 @@ pub use remote_lock::{RemoteLock, RemoteLockManager};
 pub use server_client::{AuxinServerClient, ServerConfig, LockInfo, LockHolder, LogicProMetadata as ServerMetadata};
 pub use workflow_automation::{WorkflowAutomation, WorkflowConfig};
 pub use config::ServerConnectionConfig;
+pub use write_ahead_log::{
+    WriteAheadLog, WalOperation, WalStatus, WalEntry, WalStats,
+    WalRecoveryManager, RecoveryReport,
+};

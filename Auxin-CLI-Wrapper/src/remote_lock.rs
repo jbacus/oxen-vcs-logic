@@ -597,40 +597,89 @@ impl RemoteLockManager {
         Ok(())
     }
 
-    /// Push locks branch to remote (with retry)
-    fn push_locks_branch(&self, repo_path: &Path, force: bool) -> Result<()> {
-        crate::vlog!("Pushing locks branch to remote (force: {})", force);
+    /// Push locks branch to remote using compare-and-swap pattern
+    ///
+    /// Instead of force push, this uses a compare-and-swap approach:
+    /// 1. Get expected remote HEAD before local changes
+    /// 2. Attempt normal push
+    /// 3. If push fails due to conflict, fetch and retry (limited attempts)
+    /// 4. Fail atomically if another client pushed concurrently
+    fn push_locks_branch(&self, repo_path: &Path, is_acquire: bool) -> Result<()> {
+        crate::vlog!("Pushing locks branch to remote (acquire: {})", is_acquire);
 
         let current_branch = self.oxen.current_branch(repo_path)?;
 
         // Checkout locks branch
         self.oxen.checkout(repo_path, &self.locks_branch)?;
 
-        // Push with retry
+        // Get local HEAD before push (for compare-and-swap verification)
+        let local_head = self.get_locks_branch_head(repo_path)?;
+
+        // Push with retry and compare-and-swap semantics
         let repo_path_owned = repo_path.to_path_buf();
         let locks_branch = self.locks_branch.clone();
-        let policy = RetryPolicy::new(5, 1000, 15000).set_verbose(true);
+        let max_cas_attempts = 3;
 
-        let push_result = policy.execute(|| {
-            if force {
-                // For force push, we need to use oxen CLI directly
-                use std::process::Command;
-                let output = Command::new("oxen")
-                    .args(["push", "--force", "origin", &locks_branch])
-                    .current_dir(&repo_path_owned)
-                    .output()
-                    .context("Failed to execute oxen push command")?;
+        let mut push_result = Ok(());
 
-                if !output.status.success() {
-                    let stderr = String::from_utf8_lossy(&output.stderr);
-                    return Err(anyhow!("Force push failed: {}", stderr));
+        for attempt in 1..=max_cas_attempts {
+            crate::vlog!("Push attempt {}/{}", attempt, max_cas_attempts);
+
+            // Attempt normal push (no force)
+            let result = self.oxen.push(&repo_path_owned, Some("origin"), Some(&locks_branch));
+
+            match result {
+                Ok(_) => {
+                    push_result = Ok(());
+                    break;
                 }
-                Ok(())
-            } else {
-                self.oxen.push(&repo_path_owned, Some("origin"), Some(&locks_branch))
-                    .context("Failed to push locks branch")
+                Err(e) => {
+                    let err_str = e.to_string().to_lowercase();
+
+                    // Check if this is a conflict (remote has new commits)
+                    if err_str.contains("rejected") || err_str.contains("non-fast-forward")
+                       || err_str.contains("failed to push") || err_str.contains("conflict") {
+
+                        if attempt < max_cas_attempts {
+                            crate::vlog!("Push rejected, fetching latest and retrying...");
+
+                            // Fetch latest
+                            let _ = self.oxen.pull(&repo_path_owned);
+
+                            // Check if remote now has a different lock (compare-and-swap check)
+                            let remote_head = self.get_locks_branch_head(&repo_path_owned)?;
+
+                            if remote_head != local_head && is_acquire {
+                                // Someone else acquired the lock concurrently
+                                // Check if we should fail atomically
+                                if let Some(remote_lock) = self.get_lock(&repo_path_owned)? {
+                                    if !remote_lock.is_owned_by_current_user() {
+                                        push_result = Err(anyhow!(
+                                            "Compare-and-swap failed: lock acquired by {} during push",
+                                            remote_lock.locked_by
+                                        ));
+                                        break;
+                                    }
+                                }
+                            }
+
+                            // Sleep briefly before retry
+                            thread::sleep(StdDuration::from_millis(500 * attempt as u64));
+                            continue;
+                        } else {
+                            push_result = Err(anyhow!(
+                                "Push failed after {} attempts: concurrent modification detected",
+                                max_cas_attempts
+                            ));
+                        }
+                    } else {
+                        // Non-conflict error, don't retry
+                        push_result = Err(e.context("Failed to push locks branch"));
+                    }
+                    break;
+                }
             }
-        });
+        }
 
         // Return to original branch (even if push failed)
         let checkout_result = self.oxen.checkout(repo_path, &current_branch);
@@ -642,6 +691,24 @@ impl RemoteLockManager {
         checkout_result?;
 
         Ok(())
+    }
+
+    /// Get the HEAD commit of the locks branch
+    fn get_locks_branch_head(&self, repo_path: &Path) -> Result<String> {
+        use std::process::Command;
+
+        let output = Command::new("oxen")
+            .args(["log", "-n", "1", "--format", "%H"])
+            .current_dir(repo_path)
+            .output()
+            .context("Failed to get locks branch HEAD")?;
+
+        if output.status.success() {
+            Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+        } else {
+            // No commits yet
+            Ok(String::new())
+        }
     }
 
     /// Verify we still own the lock after pushing (detect race conditions)

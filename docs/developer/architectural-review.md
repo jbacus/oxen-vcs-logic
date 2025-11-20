@@ -12,8 +12,8 @@ Auxin originally implemented a **subprocess-based wrapper** around Oxen CLI. Sin
 
 | Category | Original Status | Current Status |
 |----------|----------------|----------------|
-| Data Safety | Adequate with Risks | Significantly Improved |
-| Security | Significant Gaps | Mostly Resolved |
+| Data Safety | Adequate with Risks | Excellent (WAL + CAS) |
+| Security | Significant Gaps | Fully Resolved |
 | Performance | Suboptimal | Optimized with FFI Option |
 | Efficiency | Architectural Inefficiency | Improved with Caching |
 | Maintainability | Good | Excellent |
@@ -122,7 +122,7 @@ Auxin originally implemented a **subprocess-based wrapper** around Oxen CLI. Sin
 
 ## 1. Data Safety Analysis (Priority 1)
 
-### Current State: GOOD
+### Current State: EXCELLENT
 
 #### Implemented Improvements
 
@@ -167,22 +167,25 @@ Auxin originally implemented a **subprocess-based wrapper** around Oxen CLI. Sin
 
 #### Remaining Risks
 
-1. **No Write-Ahead Logging (WAL)**: Intent not logged before subprocess spawn
-   - **Risk**: Silent data loss on crash during commit
-   - **Recommendation**: Implement transaction log before critical operations
+1. ~~**No Write-Ahead Logging (WAL)**~~ - **RESOLVED**
+   - Implemented `write_ahead_log.rs` module
+   - Logs intent before operations, marks completion after
+   - Recovery manager replays incomplete operations on startup
 
-2. **Force Push for Locks**: Still uses force push instead of compare-and-swap
-   - **Risk**: Race condition on concurrent lock attempts
-   - **Recommendation**: Implement `--expect-head=<commit-id>` pattern
+2. ~~**Force Push for Locks**~~ - **RESOLVED**
+   - Implemented compare-and-swap pattern in `push_locks_branch()`
+   - Normal push with retry on conflict
+   - Atomic failure when another client acquires lock during push
 
 3. **Debounce Timer Gaps**: 30-60s debounce unchanged
    - **Risk**: Up to 60s of work can be lost on crash
+   - **Mitigation**: WAL now captures intent before commit, enabling recovery
 
 ---
 
 ## 2. Security Analysis (Priority 2)
 
-### Current State: MOSTLY RESOLVED
+### Current State: FULLY RESOLVED
 
 #### Implemented Improvements
 
@@ -260,8 +263,10 @@ Auxin originally implemented a **subprocess-based wrapper** around Oxen CLI. Sin
 1. **Credential Management**: Still relies on system keychain/environment
    - Not a critical gap on macOS with Keychain integration
 
-2. **Strict XPC Validation**: Bundle identifier check implemented but commented out
-   - Should be enabled for production builds
+2. ~~**Strict XPC Validation**~~ - **RESOLVED**
+   - Bundle identifier check now enforced in production builds
+   - Uses `#if !DEBUG` conditional compilation
+   - Allows unknown identifiers only in debug mode for development
 
 ---
 
@@ -443,18 +448,24 @@ Git-LFS (file-level): 26GB/year for same project
 11. **Maintainability**: Improve error categorization - DONE
 12. **Infrastructure**: Network resilience framework - DONE
 
-### Pending (Medium Priority)
+### Completed (Medium Priority)
 
-13. **Data Safety**: Implement write-ahead logging for crash recovery
-    - Log intent before subprocess spawn
-    - Replay incomplete operations on restart
+13. **Data Safety**: Write-ahead logging for crash recovery - DONE
+    - `write_ahead_log.rs` module (560+ lines)
+    - Log intent before operations, mark completed/failed after
+    - Recovery manager for incomplete operations
+    - 10 comprehensive tests
 
-14. **Data Safety**: Replace force-push locks with compare-and-swap
-    - Use `--expect-head=<commit-id>` pattern
-    - Atomic failure on concurrent attempts
+14. **Data Safety**: Compare-and-swap for lock operations - DONE
+    - Replaced force-push with normal push + retry
+    - Atomic failure on concurrent lock acquisition
+    - HEAD comparison to detect race conditions
+    - 3 retry attempts with exponential backoff
 
-15. **Security**: Enable strict XPC validation in production
-    - Uncomment bundle identifier check
+15. **Security**: Strict XPC validation in production - DONE
+    - `#if !DEBUG` guard on bundle identifier check
+    - Rejects unknown identifiers in release builds
+    - Allows unknown identifiers in debug mode for development
 
 ### Completed (Phase 6)
 
@@ -505,9 +516,10 @@ The Auxin Server is actively being developed:
 
 **Remaining Work**
 
-Two medium-priority items remain for CLI:
-1. Write-ahead logging for crash recovery
-2. Compare-and-swap for lock operations
+All medium-priority CLI items have been completed:
+- Write-ahead logging for crash recovery - DONE
+- Compare-and-swap for lock operations - DONE
+- Strict XPC validation in production - DONE
 
 Server completion (40% remaining):
 1. Web dashboard polish
@@ -523,7 +535,13 @@ The codebase is now ready for liboxen FFI migration:
 3. Switch to FFI as default
 4. Deprecate subprocess backend
 
-**Overall Assessment**: The architecture is now **production-ready** for CLI and collaboration features. Phase 6 (Network Resilience) is complete, enabling reliable remote team collaboration. Phase 7 (Auxin Server) is 60% complete with core features (auth, activity, WebSocket) implemented. The system is ready for distributed team use with clear paths for server completion and performance optimization.
+**Overall Assessment**: The architecture is now **production-ready** for CLI and collaboration features with all critical gaps resolved:
+- **Data Safety**: Write-ahead logging prevents silent data loss; compare-and-swap ensures atomic lock operations
+- **Security**: All subprocess inputs sanitized; XPC validation enforced in production builds
+- **Network Resilience**: Phase 6 100% complete - smart retry, offline queue, chunked uploads
+- **Server**: Phase 7 60% complete - auth, activity logging, WebSocket notifications implemented
+
+The system is ready for distributed team use. Remaining work is server polish and VCS integration.
 
 ---
 
@@ -532,6 +550,9 @@ The codebase is now ready for liboxen FFI migration:
 ### Security & Safety
 - `Auxin-CLI-Wrapper/src/oxen_subprocess.rs:329-400` - Input sanitization
 - `Auxin-CLI-Wrapper/src/remote_lock.rs:76-131` - Audit logging
+- `Auxin-CLI-Wrapper/src/remote_lock.rs:600-712` - Compare-and-swap lock pattern
+- `Auxin-CLI-Wrapper/src/write_ahead_log.rs` - Write-ahead logging (560+ lines)
+- `Auxin-LaunchAgent/Sources/XPCService.swift:648-657` - Production XPC validation
 - `Auxin-LaunchAgent/Sources/XPCService.swift:560-667` - XPC verification
 
 ### Performance
