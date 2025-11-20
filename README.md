@@ -249,14 +249,14 @@ auxin console
 # ? - Help
 ```
 
-**See:** [CLI Examples](docs/CLI_EXAMPLES.md) for real production scenarios and team workflows.
+**See:** [CLI Reference](docs/user/cli-reference.md) for real production scenarios and team workflows.
 
 **Which should you use?** Both work equally well! Choose based on preference:
 - **New to version control?** Start with GUI
 - **Comfortable with Terminal?** CLI is faster
 - **Working remotely?** CLI works over SSH
 
-See [User Guide for Musicians](docs/FOR_MUSICIANS.md) for detailed usage instructions.
+See [User Guide for Musicians](docs/user/for-musicians.md) for detailed usage instructions.
 
 ## Testing
 
@@ -272,7 +272,7 @@ cd Auxin-App && swift test
 ```
 
 **Documentation**:
-- [Testing Strategy](docs/TESTING_STRATEGY.md) - Comprehensive testing approach
+- [Testing Strategy](docs/developer/testing.md) - Comprehensive testing approach
 - See [CONTRIBUTING.md](CONTRIBUTING.md#testing) for detailed testing guidelines
 
 **Coverage Goals**: 70-80% overall, with 90%+ coverage for critical paths (locks, commits, power management)

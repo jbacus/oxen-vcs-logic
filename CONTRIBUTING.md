@@ -1,4 +1,4 @@
-# Contributing to Oxen-VCS
+# Contributing to Auxin
 
 ## Development Status
 

@@ -290,7 +290,7 @@ The CLI has beautiful visual output with colors and progress indicators:
 ℹ Next step: auxin commit -m "Your message"
 ```
 
-**Full CLI Guide:** See [CLI Examples for Musicians](CLI_EXAMPLES.md) for detailed examples, real production scenarios, and team workflows.
+**Full CLI Guide:** See [CLI Reference](cli-reference.md) for detailed examples, real production scenarios, and team workflows.
 
 **GUI vs CLI - Which Should I Use?**
 
@@ -495,7 +495,7 @@ Like it? Create "Mix v3 - parallel compression works!"
 2. If no response, use "Force Break Lock" (admin feature)
 3. Warning: Their unsaved work will be lost
 
-For more help, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
+For more help, see [Troubleshooting](troubleshooting.md).
 
 ---
 
@@ -509,9 +509,9 @@ For more help, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
 5. ✅ Practice restoring to a previous version
 
 ### Learning More
-- **Full User Guide:** [docs/USER_GUIDE.md](USER_GUIDE.md)
-- **FAQ:** [docs/FAQ.md](FAQ.md)
-- **Troubleshooting:** [docs/TROUBLESHOOTING.md](TROUBLESHOOTING.md)
+- **Full User Guide:** [Getting Started](getting-started.md)
+- **CLI Reference:** [CLI Reference](cli-reference.md)
+- **Troubleshooting:** [Troubleshooting](troubleshooting.md)
 
 ### Getting Help
 - **Questions:** Open an issue on [GitHub](https://github.com/jbacus/auxin/issues)
@@ -548,7 +548,7 @@ For more help, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
 
 **Ready to never lose your work again?**
 
-[Install Auxin](../INSTALL.md) · [Read Full Guide](USER_GUIDE.md) · [Get Help](TROUBLESHOOTING.md)
+[Install Auxin](../../INSTALL.md) · [Read Full Guide](getting-started.md) · [Get Help](troubleshooting.md)
 
 ---
 
