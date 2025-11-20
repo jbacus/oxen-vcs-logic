@@ -289,8 +289,8 @@ curl -s -X POST "$SERVER_URL/api/repos/pete/$PROJECT_NAME" \
 }
 
 log_info "Pushing to server..."
-# Note: This will fail with mock-oxen but should succeed with setup
-auxin push origin main 2>&1 | tee "$TEST_DIR/pete-push.log" || {
+# Note: This will fail with mock-oxen but should succeed with full setup
+auxin push --remote origin --branch main 2>&1 | tee "$TEST_DIR/pete-push.log" || {
     log_info "Push failed (expected with mock-oxen mode)"
 }
 
@@ -363,7 +363,7 @@ assert_contains "$COMMITS" "Add vocal track"
 # --- Test status command ---
 log_info "Testing auxin status..."
 STATUS=$(auxin status)
-assert_contains "$STATUS" "On branch"
+assert_contains "$STATUS" "Repository Status"
 
 # =============================================================================
 # PHASE 6: LOCKING WORKFLOW
