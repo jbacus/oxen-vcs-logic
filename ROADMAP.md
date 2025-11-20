@@ -1,6 +1,6 @@
 # Auxin Roadmap
 
-**Last Updated**: 2025-11-19
+**Last Updated**: 2025-11-20
 **Vision**: The definitive version control system for professional creative applications
 **Priority**: Remote team collaboration (distributed teams, unreliable networks)
 
@@ -24,7 +24,7 @@ Auxin solves the fundamental incompatibility between traditional VCS (like Git) 
 | **Phase 4** | Team Collaboration | Complete | 95% |
 | **Phase 5** | 3D Modeling Support | Complete | 100% |
 | **Phase 6** | Network Resilience | Complete | 100% |
-| **Phase 7** | Auxin Server | In Progress | 30% |
+| **Phase 7** | Auxin Server | In Progress | 60% |
 | **Phase 8** | AI-Powered Diffing | Future | 0% |
 
 **Current Focus**: Phase 7 (Auxin Server) - Self-hosted collaboration
@@ -95,31 +95,29 @@ Louis (London, evening):
 | **Remote lock synchronization** | ✅ Complete | Heartbeat system keeps locks alive during sessions |
 | **Connection health monitoring** | ✅ Complete | Network quality check with latency measurement |
 
-### Minimum Viable Remote Collaboration (v0.2)
+### Minimum Viable Remote Collaboration (v0.2) ✅ COMPLETE
 
-To get a working end-to-end solution for distributed teams:
+All features delivered for distributed team collaboration:
 
-1. **Smart Retry System** (1 week)
+1. **Smart Retry System** ✅
    - Exponential backoff for transient failures
    - Distinguish network errors from auth/permission errors
    - Resume interrupted uploads from last successful chunk
 
-2. **Offline Mode** (1 week)
+2. **Offline Mode** ✅
    - Queue commits locally when offline
    - Sync automatically when connection restored
    - Clear status indicators ("3 commits pending sync")
 
-3. **Lock Robustness** (3-5 days)
+3. **Lock Robustness** ✅
    - Heartbeat system for active locks
    - Graceful handling of lock holder going offline
    - Configurable timeouts for different time zones
 
-4. **Connection Monitoring** (2-3 days)
+4. **Connection Monitoring** ✅
    - Pre-flight check before push/pull
    - Estimated transfer time for large files
    - Warning when connection is unstable
-
-**Total Estimated Effort**: 3-4 weeks
 
 ---
 
@@ -183,7 +181,7 @@ To get a working end-to-end solution for distributed teams:
 - Comments on commits
 - 17 tests passing
 
-**Gap**: Network resilience (no retry logic, no offline mode)
+**Note**: Network resilience gap filled by Phase 6
 
 **Key Files**: `remote_lock.rs`, `collaboration.rs`, `auth.rs`
 
@@ -270,28 +268,36 @@ To get a working end-to-end solution for distributed teams:
 
 ---
 
-### Phase 7: Auxin Server (30%)
+### Phase 7: Auxin Server (60%)
 
 **Goal**: Self-hosted collaboration server with web interface
 
-**Architecture**: Rust backend (Axum) + React/TypeScript frontend
+**Architecture**: Rust backend (Actix Web) + React/TypeScript frontend
 
 **Completed**:
 - Project structure and build system
 - Basic repository management API
 - Initial frontend scaffolding
 - Local development scripts
+- Lock management server ✅
+- User authentication with bcrypt password hashing ✅
+- Activity logging and aggregation ✅
+- Real-time notifications (WebSocket) ✅
 
 **Remaining**:
-- Lock management server
-- Activity aggregation
-- User authentication
-- Web dashboard
-- Real-time notifications (WebSocket)
+- Web dashboard polish
+- VCS operations integration (full-oxen mode)
+- End-to-end testing
+- Production deployment docs
 
-**Estimated Effort**: 6-8 weeks
+**Estimated Effort**: 3-4 weeks remaining
 
 **Key Directory**: `auxin-server/`
+
+**Key Files Added**:
+- `src/auth.rs` - User registration, login, token management (567 lines)
+- `src/extensions/activity.rs` - Activity logging system (262 lines)
+- `src/websocket.rs` - Real-time WebSocket notifications (282 lines)
 
 ---
 
@@ -361,19 +367,16 @@ To get a working end-to-end solution for distributed teams:
 - Requires `oxen` CLI
 - Single user or same-location teams
 
-### v0.2 - Remote Collaboration Ready (ETA: 4 weeks) ⭐ NEXT MILESTONE
+### v0.2 - Remote Collaboration Ready ✅ COMPLETE
 **Target**: Distributed teams can reliably collaborate across any distance
 
-**Week 1-2 Deliverables**:
+**Delivered**:
 - Smart retry with exponential backoff
 - Error classification (retryable vs fatal)
 - Offline commit queue with auto-sync
-
-**Week 3-4 Deliverables**:
 - Chunked uploads with resume
 - Lock heartbeat system
 - Connection health monitoring
-- macOS integration testing
 
 **Success Criteria**:
 - Push 2GB session from Colorado to Oxen Hub with simulated packet loss → succeeds with retries
@@ -439,11 +442,11 @@ To get a working end-to-end solution for distributed teams:
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines.
 
 **Current Priorities** (in order):
-1. **Network resilience implementation** - BLOCKING remote collaboration
-2. Offline commit queue
-3. Lock heartbeat system
-4. macOS integration testing
-5. Documentation for distributed teams
+1. **Phase 7: Auxin Server** - Web dashboard polish, VCS integration
+2. macOS integration testing (Swift components)
+3. End-to-end testing for remote collaboration
+4. Documentation for distributed teams
+5. Technical debt cleanup
 
 ---
 

@@ -13,6 +13,7 @@ actix-rt = "2"
 actix-cors = "0.7"
 actix-web-httpauth = "0.8"
 actix-files = "0.6"
+actix-ws = "0.3"
 
 # Core Oxen library (optional, updated to latest version for macOS 26.x compatibility)
 liboxen = { version = "0.38", optional = true }
@@ -37,6 +38,9 @@ tracing-actix-web = "0.7"
 
 # Configuration
 dotenvy = "0.15"
+
+# Password hashing
+bcrypt = "0.15"
 
 # Optional: Redis for distributed locks
 redis = { version = "0.24", features = ["tokio-comp"], optional = true }

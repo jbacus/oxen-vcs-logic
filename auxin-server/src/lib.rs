@@ -6,6 +6,7 @@ pub mod auth;
 pub mod config;
 pub mod error;
 pub mod extensions;
+pub mod websocket;
 
 // Conditionally use real or mock Oxen implementation
 #[cfg(feature = "full-oxen")]
