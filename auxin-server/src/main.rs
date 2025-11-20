@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use tracing::info;
 
 use auxin_server::api;
-use auxin_server::auth::AuthService;
+use auxin_server::auth::{self, AuthService};
 use auxin_server::config::Config;
 
 #[actix_web::main]
@@ -61,6 +61,11 @@ async fn main() -> std::io::Result<()> {
                     .allow_any_header(),
             )
             .route("/health", web::get().to(health_check))
+            // Auth endpoints
+            .route("/api/auth/register", web::post().to(auth::register))
+            .route("/api/auth/login", web::post().to(auth::login))
+            .route("/api/auth/logout", web::post().to(auth::logout))
+            .route("/api/auth/me", web::get().to(auth::me))
             // Public endpoints
             .route("/api/repos", web::get().to(api::list_repositories))
             .route("/api/repos/{namespace}/{name}", web::get().to(api::get_repository))

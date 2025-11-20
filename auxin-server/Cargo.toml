@@ -38,6 +38,9 @@ tracing-actix-web = "0.7"
 # Configuration
 dotenvy = "0.15"
 
+# Password hashing
+bcrypt = "0.15"
+
 # Optional: Redis for distributed locks
 redis = { version = "0.24", features = ["tokio-comp"], optional = true }
 
