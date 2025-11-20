@@ -439,10 +439,11 @@ pub fn get_authenticated_user(req: &ServiceRequest) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tempfile::TempDir;
 
-    fn test_config() -> Config {
+    fn test_config_with_dir(dir: &TempDir) -> Config {
         Config {
-            sync_dir: "/tmp/test-auth".to_string(),
+            sync_dir: dir.path().to_string_lossy().to_string(),
             host: "127.0.0.1".to_string(),
             port: 3000,
             auth_token_secret: "test_secret".to_string(),
@@ -456,7 +457,8 @@ mod tests {
 
     #[test]
     fn test_register_user() {
-        let auth = AuthService::new(test_config());
+        let temp_dir = TempDir::new().unwrap();
+        let auth = AuthService::new(test_config_with_dir(&temp_dir));
         let user = auth
             .register("testuser", "test@example.com", "password123")
             .unwrap();
@@ -468,7 +470,8 @@ mod tests {
 
     #[test]
     fn test_register_duplicate_email() {
-        let auth = AuthService::new(test_config());
+        let temp_dir = TempDir::new().unwrap();
+        let auth = AuthService::new(test_config_with_dir(&temp_dir));
         auth.register("user1", "test@example.com", "password123")
             .unwrap();
 
@@ -478,14 +481,16 @@ mod tests {
 
     #[test]
     fn test_register_short_password() {
-        let auth = AuthService::new(test_config());
+        let temp_dir = TempDir::new().unwrap();
+        let auth = AuthService::new(test_config_with_dir(&temp_dir));
         let result = auth.register("testuser", "test@example.com", "short");
         assert!(result.is_err());
     }
 
     #[test]
     fn test_login() {
-        let auth = AuthService::new(test_config());
+        let temp_dir = TempDir::new().unwrap();
+        let auth = AuthService::new(test_config_with_dir(&temp_dir));
         auth.register("testuser", "test@example.com", "password123")
             .unwrap();
 
@@ -496,7 +501,8 @@ mod tests {
 
     #[test]
     fn test_login_wrong_password() {
-        let auth = AuthService::new(test_config());
+        let temp_dir = TempDir::new().unwrap();
+        let auth = AuthService::new(test_config_with_dir(&temp_dir));
         auth.register("testuser", "test@example.com", "password123")
             .unwrap();
 
@@ -506,7 +512,8 @@ mod tests {
 
     #[test]
     fn test_get_user_by_token() {
-        let auth = AuthService::new(test_config());
+        let temp_dir = TempDir::new().unwrap();
+        let auth = AuthService::new(test_config_with_dir(&temp_dir));
         let registered = auth
             .register("testuser", "test@example.com", "password123")
             .unwrap();
@@ -520,7 +527,8 @@ mod tests {
 
     #[test]
     fn test_generate_and_validate_token() {
-        let auth = AuthService::new(test_config());
+        let temp_dir = TempDir::new().unwrap();
+        let auth = AuthService::new(test_config_with_dir(&temp_dir));
         let token = auth.generate_token("user-id", "testuser").unwrap();
 
         assert!(token.starts_with("auxin_"));
@@ -531,7 +539,8 @@ mod tests {
 
     #[test]
     fn test_invalid_token() {
-        let auth = AuthService::new(test_config());
+        let temp_dir = TempDir::new().unwrap();
+        let auth = AuthService::new(test_config_with_dir(&temp_dir));
         let result = auth.validate_token("invalid_token");
 
         assert!(result.is_err());
@@ -539,7 +548,8 @@ mod tests {
 
     #[test]
     fn test_revoke_token() {
-        let auth = AuthService::new(test_config());
+        let temp_dir = TempDir::new().unwrap();
+        let auth = AuthService::new(test_config_with_dir(&temp_dir));
         let token = auth.generate_token("user-id", "testuser").unwrap();
 
         auth.revoke_token(&token).unwrap();
@@ -550,7 +560,8 @@ mod tests {
 
     #[test]
     fn test_cleanup_expired() {
-        let mut config = test_config();
+        let temp_dir = TempDir::new().unwrap();
+        let mut config = test_config_with_dir(&temp_dir);
         config.auth_token_expiry_hours = 0; // Tokens expire immediately
 
         let auth = AuthService::new(config);

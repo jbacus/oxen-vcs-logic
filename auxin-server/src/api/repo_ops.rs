@@ -4,8 +4,9 @@ use tracing::info;
 
 use crate::config::Config;
 use crate::error::AppResult;
-use crate::extensions::{get_activities, LogicProMetadata};
+use crate::extensions::{get_activities, log_activity, ActivityType, LogicProMetadata};
 use crate::repo::RepositoryOps;
+use crate::websocket::WsHub;
 use std::path::PathBuf;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -209,6 +210,7 @@ pub async fn acquire_lock(
     config: web::Data<Config>,
     path: web::Path<(String, String)>,
     req: web::Json<LockRequest>,
+    ws_hub: web::Data<WsHub>,
 ) -> AppResult<HttpResponse> {
     let (namespace, repo_name) = path.into_inner();
     info!("Acquiring lock for: {}/{}", namespace, repo_name);
@@ -221,6 +223,24 @@ pub async fn acquire_lock(
     let timeout = req.timeout_hours.unwrap_or(24);
     let lock = repo.acquire_lock(&req.user, &req.machine_id, timeout)?;
 
+    // Log activity
+    log_activity(
+        &repo_path,
+        ActivityType::LockAcquired,
+        &req.user,
+        &format!("Acquired lock for {} hours", timeout),
+        Some(serde_json::json!({
+            "lock_id": lock.lock_id,
+            "machine_id": req.machine_id,
+            "timeout_hours": timeout
+        })),
+    )?;
+
+    // Broadcast to WebSocket subscribers
+    let _ = ws_hub
+        .broadcast_lock_acquired(&namespace, &repo_name, &req.user, &lock.lock_id)
+        .await;
+
     Ok(HttpResponse::Ok().json(lock))
 }
 
@@ -229,6 +249,7 @@ pub async fn release_lock(
     config: web::Data<Config>,
     path: web::Path<(String, String)>,
     req: web::Json<ReleaseLockRequest>,
+    ws_hub: web::Data<WsHub>,
 ) -> AppResult<HttpResponse> {
     let (namespace, repo_name) = path.into_inner();
     info!("Releasing lock for: {}/{}", namespace, repo_name);
@@ -238,7 +259,31 @@ pub async fn release_lock(
         .join(&repo_name);
 
     let repo = RepositoryOps::open(&repo_path)?;
+
+    // Get lock info before releasing (for activity log)
+    let lock_info = repo.lock_status()?;
+    let user = lock_info
+        .as_ref()
+        .map(|l| l.user.clone())
+        .unwrap_or_else(|| "unknown".to_string());
+
     repo.release_lock(&req.lock_id)?;
+
+    // Log activity
+    log_activity(
+        &repo_path,
+        ActivityType::LockReleased,
+        &user,
+        "Released lock",
+        Some(serde_json::json!({
+            "lock_id": req.lock_id
+        })),
+    )?;
+
+    // Broadcast to WebSocket subscribers
+    let _ = ws_hub
+        .broadcast_lock_released(&namespace, &repo_name, &req.lock_id)
+        .await;
 
     Ok(HttpResponse::Ok().json(serde_json::json!({
         "status": "success",
