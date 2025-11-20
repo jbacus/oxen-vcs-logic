@@ -1,6 +1,8 @@
-# Auxin Server (Oxen-Aligned)
-
-**Self-hosted repository server for Auxin, aligned with Oxen.ai architecture**
+<div align="center">
+  <img src="../assets/icon/icon-128.png" alt="Auxin Logo" width="96" height="96">
+  <h1>Auxin Server (Oxen-Aligned)</h1>
+  <p><strong>Self-hosted repository server for Auxin, aligned with Oxen.ai architecture</strong></p>
+</div>
 
 ## ⚡ Quick Note: Build Modes
 

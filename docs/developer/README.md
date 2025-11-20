@@ -1,4 +1,7 @@
-# Auxin Developer Documentation
+<div align="center">
+  <img src="../../assets/icon/icon-128.png" alt="Auxin Logo" width="80" height="80">
+  <h1>Auxin Developer Documentation</h1>
+</div>
 
 **For**: Contributors, maintainers, and developers extending Auxin
 
