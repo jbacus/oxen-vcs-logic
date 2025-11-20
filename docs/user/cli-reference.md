@@ -999,4 +999,4 @@ q:Quit  i:Commit  l:Log  d:Diff  s:Search  k:Hooks  ?:Help
 ---
 
 *Last Updated: November 15, 2025*
-*For GUI users: See [FOR_MUSICIANS.md](FOR_MUSICIANS.md)*
+*For GUI users: See [For Musicians](for-musicians.md)*

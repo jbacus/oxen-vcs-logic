@@ -106,7 +106,7 @@ cd ~/Music/YourProject.logicx
 auxin init --logic .
 ```
 
-See [User Guide](docs/USER_GUIDE.md) for detailed usage instructions.
+See [User Guide](docs/user/getting-started.md) for detailed usage instructions.
 
 ## What Gets Installed
 
@@ -366,10 +366,10 @@ After installation, verify everything is working:
 
 Once installation is complete:
 
-1. **Read the Quick Start Guide**: [docs/USER_GUIDE.md](docs/USER_GUIDE.md)
+1. **Read the Quick Start Guide**: [Getting Started](docs/user/getting-started.md)
 2. **Initialize your first project**: `auxin init --logic ~/Music/YourProject.logicx`
-3. **Learn the CLI**: [Auxin-CLI-Wrapper/USAGE.md](Auxin-CLI-Wrapper/USAGE.md)
-4. **Understand the architecture**: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+3. **Learn the CLI**: [CLI Reference](docs/user/cli-reference.md)
+4. **Understand the architecture**: [Architecture](docs/developer/architecture.md)
 
 ## Getting Help
 
@@ -382,11 +382,11 @@ If you encounter issues:
 
 ## Additional Resources
 
-- [Quick Start Guide](docs/QUICKSTART.md) - Get started in 5 minutes
-- [Usage Guide](Auxin-CLI-Wrapper/USAGE.md) - Complete CLI reference
-- [Testing Strategy](docs/TESTING_STRATEGY.md) - Development and testing
-- [Architecture](docs/ARCHITECTURE.md) - Technical details
+- [Getting Started](docs/user/getting-started.md) - Get started in 5 minutes
+- [CLI Reference](docs/user/cli-reference.md) - Complete CLI reference
+- [Testing Strategy](docs/developer/testing.md) - Development and testing
+- [Architecture](docs/developer/architecture.md) - Technical details
 
 ---
 
-**Installation complete?** Head to the [Quick Start Guide](docs/QUICKSTART.md) to start using Auxin!
+**Installation complete?** Head to the [Getting Started Guide](docs/user/getting-started.md) to start using Auxin!

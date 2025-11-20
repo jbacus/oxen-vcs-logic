@@ -19,6 +19,8 @@ use std::process::Command;
 pub struct BounceFilter {
     /// Filter by audio format
     pub format: Option<AudioFormat>,
+    /// Filter by filename pattern (regex) - alias for filename_pattern
+    pub pattern: Option<String>,
     /// Filter by filename pattern (regex)
     pub filename_pattern: Option<String>,
     /// Filter by minimum duration (seconds)
@@ -35,6 +37,13 @@ pub struct BounceFilter {
     pub min_size: Option<u64>,
     /// Filter by maximum file size (bytes)
     pub max_size: Option<u64>,
+}
+
+impl BounceFilter {
+    /// Get the effective pattern (pattern takes precedence over filename_pattern)
+    pub fn effective_pattern(&self) -> Option<&String> {
+        self.pattern.as_ref().or(self.filename_pattern.as_ref())
+    }
 }
 
 /// Supported audio formats for bounces
@@ -360,8 +369,8 @@ impl BounceManager {
                     }
                 }
 
-                // Filename pattern filter
-                if let Some(pattern) = &filter.filename_pattern {
+                // Filename pattern filter (check both pattern and filename_pattern)
+                if let Some(pattern) = filter.effective_pattern() {
                     if let Ok(regex) = Regex::new(pattern) {
                         if !regex.is_match(&bounce.original_filename) {
                             return false;

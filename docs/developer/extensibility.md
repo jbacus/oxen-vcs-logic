@@ -1,4 +1,4 @@
-# Oxen-VCS Extensibility Guide
+# Auxin Extensibility Guide
 
 **Last Updated**: 2025-11-17
 **Purpose**: Track shared vs. application-specific code for future multi-application support
@@ -7,7 +7,7 @@
 
 ## Overview
 
-Oxen-VCS is currently implemented for **Logic Pro**, but the architecture is designed to support any application with similar version control challenges:
+Auxin is currently implemented for **Logic Pro**, but the architecture is designed to support any application with similar version control challenges:
 - Binary, non-mergeable project files
 - Large embedded assets (audio, textures, models)
 - Collaboration workflows requiring pessimistic locking
@@ -24,7 +24,7 @@ This document categorizes the codebase into:
 
 ## Codebase Categorization
 
-### Rust CLI Wrapper (`OxVCS-CLI-Wrapper/src/`)
+### Rust CLI Wrapper (`Auxin-CLI-Wrapper/src/`)
 
 #### ✅ Shared/Generic Components (Reusable for Any Application)
 
@@ -227,7 +227,7 @@ println!("Detected {} project: {}", app_plugin.name, project.name());
 
 ---
 
-### Swift LaunchAgent (`OxVCS-LaunchAgent/Sources/`)
+### Swift LaunchAgent (`Auxin-LaunchAgent/Sources/`)
 
 #### ✅ Shared/Generic Components
 
@@ -305,7 +305,7 @@ class FSEventsMonitor {
 
 ---
 
-### Swift App (`OxVCS-App/Sources/`)
+### Swift App (`Auxin-App/Sources/`)
 
 #### ✅ Shared/Generic Components
 
@@ -443,7 +443,7 @@ struct MetadataView: View {
 ## Recommended Directory Structure for Multi-App Support
 
 ```
-OxVCS-CLI-Wrapper/src/
+Auxin-CLI-Wrapper/src/
 ├── main.rs                          # ✅ Generic CLI entry point
 ├── lib.rs                           # ✅ Generic library exports
 ├── project.rs                       # 🆕 Generic Project trait
@@ -505,7 +505,7 @@ OxVCS-CLI-Wrapper/src/
 
 **1. Create application module**
 ```bash
-mkdir -p OxVCS-CLI-Wrapper/src/apps/ableton
+mkdir -p Auxin-CLI-Wrapper/src/apps/ableton
 ```
 
 **2. Implement Project trait**
@@ -736,7 +736,7 @@ trait BinaryProjectParser {
 
 ### Key Takeaway
 
-**Oxen-VCS has excellent bones for multi-application support.** With minimal refactoring (~3 weeks), the codebase can cleanly support any application with similar version control challenges. The pessimistic locking model, Oxen integration, and macOS daemon architecture are all application-agnostic.
+**Auxin has excellent bones for multi-application support.** With minimal refactoring (~3 weeks), the codebase can cleanly support any application with similar version control challenges. The pessimistic locking model, Oxen integration, and macOS daemon architecture are all application-agnostic.
 
 ---
 

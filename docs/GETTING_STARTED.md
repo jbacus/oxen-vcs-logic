@@ -307,10 +307,10 @@ auxin auth login
 
 ## Next Steps
 
-- **[FOR_MUSICIANS.md](FOR_MUSICIANS.md)**: Understanding version control concepts
-- **[CLI_EXAMPLES.md](CLI_EXAMPLES.md)**: Complete CLI reference with examples
-- **[CLOUD_SHARING_GUIDE.md](CLOUD_SHARING_GUIDE.md)**: Advanced collaboration workflows
-- **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)**: Common issues and solutions
+- **[For Musicians](user/for-musicians.md)**: Understanding version control concepts
+- **[CLI Reference](user/cli-reference.md)**: Complete CLI reference with examples
+- **[Cloud Sharing Guide](user/cloud-sharing.md)**: Advanced collaboration workflows
+- **[Troubleshooting](user/troubleshooting.md)**: Common issues and solutions
 
 ---
 

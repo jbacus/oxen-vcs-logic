@@ -873,14 +873,14 @@ oxen config remote.hub_url https://your-oxen-server.com
 ## Resources
 
 ### Documentation
-- [Auxin User Guide](USER_GUIDE.md)
+- [Getting Started](getting-started.md)
 - [Oxen.ai Documentation](https://docs.oxen.ai)
-- [Architecture Overview](FOR_DEVELOPERS.md)
+- [Architecture Overview](../developer/architecture.md)
 
 ### Getting Help
 - **GitHub Issues**: https://github.com/jbacus/auxin/issues
 - **Oxen Community**: hello@oxen.ai
-- **Documentation**: Check [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
+- **Documentation**: Check [Troubleshooting](troubleshooting.md)
 
 ### Related Tools
 - [Oxen CLI](https://github.com/Oxen-AI/Oxen) - Core version control engine

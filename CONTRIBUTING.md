@@ -1,4 +1,4 @@
-# Contributing to Oxen-VCS
+# Contributing to Auxin
 
 ## Development Status
 
@@ -53,8 +53,8 @@ Examples:
 ## Testing
 
 We have a comprehensive testing strategy to ensure quality and reliability. Please refer to:
-- **[Testing Strategy](docs/TESTING_STRATEGY.md)** - Overall testing philosophy and approach
-- **[Developer Guide](docs/FOR_DEVELOPERS.md)** - Technical architecture and development roadmap
+- **[Testing Strategy](docs/developer/testing.md)** - Overall testing philosophy and approach
+- **[Architecture Guide](docs/developer/architecture.md)** - Technical architecture and development roadmap
 
 ### Running Tests
 
@@ -212,7 +212,7 @@ cargo bench -- --baseline main
 
 ## Architecture Decisions
 
-Major architectural changes should be discussed in an issue before implementation. Reference the [Developer Guide](docs/FOR_DEVELOPERS.md) for system architecture and design rationale.
+Major architectural changes should be discussed in an issue before implementation. Reference the [Architecture Guide](docs/developer/architecture.md) for system architecture and design rationale.
 
 ## License
 

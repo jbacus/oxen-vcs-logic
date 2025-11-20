@@ -452,11 +452,11 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines.
 
 ## Resources
 
-- **User Guide**: [docs/FOR_MUSICIANS.md](docs/FOR_MUSICIANS.md)
-- **Developer Guide**: [docs/FOR_DEVELOPERS.md](docs/FOR_DEVELOPERS.md)
-- **CLI Examples**: [docs/CLI_EXAMPLES.md](docs/CLI_EXAMPLES.md)
+- **User Guide**: [docs/user/for-musicians.md](docs/user/for-musicians.md)
+- **Developer Guide**: [docs/developer/architecture.md](docs/developer/architecture.md)
+- **CLI Reference**: [docs/user/cli-reference.md](docs/user/cli-reference.md)
 - **Feature Status**: [FEATURE_STATUS.md](FEATURE_STATUS.md)
-- **Troubleshooting**: [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
+- **Troubleshooting**: [docs/user/troubleshooting.md](docs/user/troubleshooting.md)
 
 ---
 

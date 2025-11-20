@@ -87,6 +87,63 @@ impl RetryPolicy {
             }
         }
     }
+
+    /// Get the delay duration for a specific attempt number (1-indexed)
+    pub fn delay_for_attempt(&self, attempt: usize) -> StdDuration {
+        if attempt == 0 {
+            return StdDuration::from_millis(0);
+        }
+        let delay = self.initial_backoff_ms * (1 << (attempt - 1).min(10));
+        StdDuration::from_millis(delay.min(self.max_backoff_ms))
+    }
+
+    /// Check if we should retry for the given attempt number
+    pub fn should_retry(&self, attempt: usize) -> bool {
+        attempt <= self.max_retries as usize
+    }
+
+    /// Check if an error message indicates a retryable error
+    pub fn is_retryable(&self, error: &str) -> bool {
+        let error_lower = error.to_lowercase();
+
+        // Network errors are retryable
+        let retryable_patterns = [
+            "connection refused", "connection reset", "connection timed out",
+            "network", "timeout", "dns", "temporary failure", "try again",
+            "rate limit", "too many requests", "503", "502", "504",
+            "econnrefused", "etimedout", "enotfound", "enetunreach",
+        ];
+
+        // Auth/permission errors are NOT retryable
+        let non_retryable_patterns = [
+            "unauthorized", "forbidden", "invalid credentials", "authentication",
+            "permission denied", "not found", "404", "401", "403",
+            "eacces", "eperm",
+        ];
+
+        // Check for non-retryable first
+        if non_retryable_patterns.iter().any(|p| error_lower.contains(p)) {
+            return false;
+        }
+
+        // Then check for retryable
+        retryable_patterns.iter().any(|p| error_lower.contains(p))
+    }
+
+    /// Get maximum number of retries
+    pub fn max_attempts(&self) -> u32 {
+        self.max_retries
+    }
+
+    /// Get initial backoff in milliseconds
+    pub fn base_delay_ms(&self) -> u64 {
+        self.initial_backoff_ms
+    }
+
+    /// Get maximum backoff in milliseconds
+    pub fn max_delay_ms(&self) -> u64 {
+        self.max_backoff_ms
+    }
 }
 
 impl Default for RetryPolicy {

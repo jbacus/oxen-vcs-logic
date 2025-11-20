@@ -33,7 +33,7 @@ const POLL_INTERVAL_MS: u64 = 2000;
 
 /// Console application mode
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum ConsoleMode {
+pub enum ConsoleMode {
     /// Normal monitoring view
     Normal,
     /// Interactive commit dialog
@@ -53,17 +53,17 @@ enum ConsoleMode {
 /// Console application state
 pub struct Console {
     /// Path to the Logic Pro project being monitored
-    project_path: PathBuf,
+    pub project_path: PathBuf,
     /// Activity log entries (most recent first)
-    activity_log: Vec<LogEntry>,
+    pub activity_log: Vec<LogEntry>,
     /// Current daemon status
-    daemon_status: DaemonStatus,
+    pub daemon_status: DaemonStatus,
     /// Repository status (staged, modified, etc.)
-    repo_status: Option<RepositoryStatus>,
+    pub repo_status: Option<RepositoryStatus>,
     /// Whether the console should exit
-    should_quit: bool,
+    pub should_quit: bool,
     /// Current UI mode
-    mode: ConsoleMode,
+    pub mode: ConsoleMode,
     /// Commit dialog state
     commit_dialog: CommitDialogState,
     /// Restore browser state
@@ -135,9 +135,12 @@ struct HooksState {
 /// Single entry in the activity log
 #[derive(Debug, Clone)]
 pub struct LogEntry {
-    timestamp: SystemTime,
-    level: LogLevel,
-    message: String,
+    /// When the log entry was created
+    pub timestamp: SystemTime,
+    /// Severity level of the log entry
+    pub level: LogLevel,
+    /// The log message
+    pub message: String,
 }
 
 /// Log entry severity level
@@ -160,9 +163,12 @@ pub enum DaemonStatus {
 /// Repository status snapshot
 #[derive(Debug, Clone)]
 pub struct RepositoryStatus {
-    staged: usize,
-    modified: usize,
-    untracked: usize,
+    /// Number of staged files
+    pub staged: usize,
+    /// Number of modified files
+    pub modified: usize,
+    /// Number of untracked files
+    pub untracked: usize,
 }
 
 impl Console {
