@@ -12,7 +12,8 @@
 /// # Example
 ///
 /// ```no_run
-/// use auxin_cli::collaboration::ActivityFeed;
+/// # fn main() -> anyhow::Result<()> {
+/// use auxin::collaboration::ActivityFeed;
 /// use std::path::Path;
 ///
 /// let feed = ActivityFeed::new();
@@ -21,6 +22,8 @@
 /// for activity in activities {
 ///     println!("{}: {} - {}", activity.timestamp, activity.author, activity.message);
 /// }
+/// # Ok(())
+/// # }
 /// ```
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};

@@ -16,8 +16,8 @@
 /// # Usage
 ///
 /// ```no_run
-/// use auxin_cli::search::{SearchQuery, SearchEngine};
-/// use auxin_cli::oxen_subprocess::CommitInfo;
+/// use auxin::search::{SearchQuery, SearchEngine};
+/// use auxin::oxen_subprocess::CommitInfo;
 ///
 /// let query = SearchQuery::new()
 ///     .bpm_range(120.0, 140.0)

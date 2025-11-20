@@ -13,7 +13,8 @@
 /// # Example
 ///
 /// ```no_run
-/// use auxin_cli::write_ahead_log::{WriteAheadLog, WalOperation};
+/// # fn main() -> anyhow::Result<()> {
+/// use auxin::write_ahead_log::{WriteAheadLog, WalOperation};
 /// use std::path::Path;
 ///
 /// let wal = WriteAheadLog::new();
@@ -25,14 +26,16 @@
 ///     message: "My commit".to_string(),
 /// })?;
 ///
-/// // Execute operation
-/// let result = perform_commit(repo, "My commit");
+/// // Execute operation (placeholder for actual commit logic)
+/// let result: Result<(), String> = Ok(());
 ///
 /// // Mark completion
 /// match result {
 ///     Ok(_) => wal.mark_completed(&entry_id)?,
 ///     Err(e) => wal.mark_failed(&entry_id, &e.to_string())?,
 /// }
+/// # Ok(())
+/// # }
 /// ```
 
 use anyhow::{Context, Result};

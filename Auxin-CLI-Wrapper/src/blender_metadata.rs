@@ -27,7 +27,7 @@ use serde::{Deserialize, Serialize};
 /// # Examples
 ///
 /// ```
-/// use auxin_cli::BlenderMetadata;
+/// use auxin::BlenderMetadata;
 ///
 /// // Create milestone commit with full metadata
 /// let commit = BlenderMetadata::new("Character rigging complete")

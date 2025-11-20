@@ -13,7 +13,8 @@
 /// # Usage
 ///
 /// ```no_run
-/// use auxin_cli::auth::AuthManager;
+/// # fn main() -> anyhow::Result<()> {
+/// use auxin::auth::AuthManager;
 ///
 /// let auth = AuthManager::new();
 ///
@@ -24,6 +25,8 @@
 /// if let Some(creds) = auth.get_credentials()? {
 ///     println!("Authenticated as: {}", creds.username);
 /// }
+/// # Ok(())
+/// # }
 /// ```
 use anyhow::{anyhow, Context, Result};
 use colored::Colorize;

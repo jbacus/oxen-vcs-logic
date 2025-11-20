@@ -23,8 +23,8 @@
 /// # Usage
 ///
 /// ```no_run
-/// use auxin_cli::hooks::{HookManager, HookType};
-/// use auxin_cli::CommitMetadata;
+/// use auxin::hooks::{HookManager, HookType};
+/// use auxin::CommitMetadata;
 /// # use anyhow::Result;
 ///
 /// # fn main() -> Result<()> {

@@ -13,7 +13,7 @@ use crate::{error, info, vlog};
 /// # Usage
 ///
 /// ```rust,no_run
-/// use auxin_cli::oxen_subprocess::OxenSubprocess;
+/// use auxin::oxen_subprocess::OxenSubprocess;
 /// use std::path::Path;
 ///
 /// let oxen = OxenSubprocess::new();
@@ -654,10 +654,13 @@ impl OxenSubprocess {
     /// # Example
     ///
     /// ```no_run
-    /// use auxin_cli::OxenSubprocess;
+    /// # fn main() -> anyhow::Result<()> {
+    /// use auxin::OxenSubprocess;
     ///
     /// let oxen = OxenSubprocess::new();
     /// oxen.verify_version()?;
+    /// # Ok(())
+    /// # }
     /// ```
     pub fn verify_version(&self) -> Result<()> {
         let version = self.version()?;

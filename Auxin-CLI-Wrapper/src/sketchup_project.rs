@@ -17,7 +17,7 @@ use std::path::{Path, PathBuf};
 /// # Examples
 ///
 /// ```no_run
-/// use auxin_cli::SketchUpProject;
+/// use auxin::SketchUpProject;
 ///
 /// let project = SketchUpProject::detect("/path/to/MyModel.skp")?;
 /// println!("Project name: {}", project.name());
@@ -68,7 +68,7 @@ impl SketchUpProject {
     /// # Examples
     ///
     /// ```no_run
-    /// use auxin_cli::SketchUpProject;
+    /// use auxin::SketchUpProject;
     ///
     /// // Detect with absolute path
     /// let project = SketchUpProject::detect("/Users/designer/MyModel.skp")?;
@@ -159,7 +159,7 @@ impl SketchUpProject {
     /// # Examples
     ///
     /// ```no_run
-    /// use auxin_cli::SketchUpProject;
+    /// use auxin::SketchUpProject;
     ///
     /// let project = SketchUpProject::detect("/path/to/House Design.skp")?;
     /// assert_eq!(project.name(), "House Design");
@@ -189,7 +189,7 @@ impl SketchUpProject {
     /// # Examples
     ///
     /// ```no_run
-    /// use auxin_cli::SketchUpProject;
+    /// use auxin::SketchUpProject;
     ///
     /// let project = SketchUpProject::detect("/path/to/Model.skp")?;
     /// for path in project.tracked_paths() {
@@ -245,7 +245,7 @@ impl SketchUpProject {
     /// # Examples
     ///
     /// ```
-    /// use auxin_cli::SketchUpProject;
+    /// use auxin::SketchUpProject;
     ///
     /// let patterns = SketchUpProject::ignored_patterns();
     /// assert!(patterns.contains(&"*.skb"));

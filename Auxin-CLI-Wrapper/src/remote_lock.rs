@@ -45,21 +45,20 @@
 /// # Example
 ///
 /// ```no_run
-/// use auxin_cli::remote_lock::RemoteLockManager;
+/// # fn main() -> anyhow::Result<()> {
+/// use auxin::remote_lock::RemoteLockManager;
 /// use std::path::Path;
 ///
 /// let manager = RemoteLockManager::new();
 /// let project = Path::new("MyProject.logicx");
 ///
 /// // Acquire lock
-/// match manager.acquire_lock(project, "john@laptop", 4) {
-///     Ok(lock) => {
-///         println!("Lock acquired: {}", lock.lock_id);
-///         // ... do work ...
-///         manager.release_lock(project, &lock.lock_id)?;
-///     }
-///     Err(e) => eprintln!("Failed to acquire lock: {}", e),
-/// }
+/// let lock = manager.acquire_lock(project, "john@laptop", 4)?;
+/// println!("Lock acquired: {}", lock.lock_id);
+/// // ... do work ...
+/// manager.release_lock(project, &lock.lock_id)?;
+/// # Ok(())
+/// # }
 /// ```
 use anyhow::{anyhow, Context, Result};
 use chrono::{DateTime, Duration, Utc};

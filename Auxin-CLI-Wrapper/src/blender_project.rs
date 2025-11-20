@@ -17,7 +17,7 @@ use std::path::{Path, PathBuf};
 /// # Examples
 ///
 /// ```no_run
-/// use auxin_cli::BlenderProject;
+/// use auxin::BlenderProject;
 ///
 /// let project = BlenderProject::detect("/path/to/MyScene.blend")?;
 /// println!("Project name: {}", project.name());
@@ -68,7 +68,7 @@ impl BlenderProject {
     /// # Examples
     ///
     /// ```no_run
-    /// use auxin_cli::BlenderProject;
+    /// use auxin::BlenderProject;
     ///
     /// // Detect with absolute path
     /// let project = BlenderProject::detect("/Users/artist/MyScene.blend")?;
@@ -160,7 +160,7 @@ impl BlenderProject {
     /// # Examples
     ///
     /// ```no_run
-    /// use auxin_cli::BlenderProject;
+    /// use auxin::BlenderProject;
     ///
     /// let project = BlenderProject::detect("/path/to/Character Rig.blend")?;
     /// assert_eq!(project.name(), "Character Rig");
@@ -192,7 +192,7 @@ impl BlenderProject {
     /// # Examples
     ///
     /// ```no_run
-    /// use auxin_cli::BlenderProject;
+    /// use auxin::BlenderProject;
     ///
     /// let project = BlenderProject::detect("/path/to/Scene.blend")?;
     /// for path in project.tracked_paths() {
@@ -255,7 +255,7 @@ impl BlenderProject {
     /// # Examples
     ///
     /// ```
-    /// use auxin_cli::BlenderProject;
+    /// use auxin::BlenderProject;
     ///
     /// let patterns = BlenderProject::ignored_patterns();
     /// assert!(patterns.contains(&"*.blend1"));

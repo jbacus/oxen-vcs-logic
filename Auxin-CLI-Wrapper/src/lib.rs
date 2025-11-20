@@ -67,6 +67,7 @@ pub use network_resilience::{
     NetworkResilienceManager, OperationData, OperationType, QueuedOperation,
     RetryPolicy, CircuitBreaker, CircuitState, CircuitBreakerStats,
     AdaptiveRetryPolicy, NetworkHealth, NetworkQuality, ConnectivityState,
+    NetworkHealthMonitor, ErrorKind, RetryableError,
 };
 pub use offline_queue::{
     OfflineQueue, QueueEntry, QueueStats, QueuedOperation as OfflineQueuedOperation, SyncReport,

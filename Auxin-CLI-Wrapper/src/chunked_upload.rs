@@ -16,7 +16,7 @@
 //! # Example
 //!
 //! ```no_run
-//! use auxin_cli::chunked_upload::{ChunkedUploadManager, UploadConfig};
+//! use auxin::chunked_upload::{ChunkedUploadManager, UploadConfig};
 //! use std::path::Path;
 //!
 //! let config = UploadConfig::default();
