@@ -186,6 +186,31 @@ struct CommitMetadata: Codable {
     let tags: [String]?
     let fileSizeBytes: Int?
 
+    /// Default initializer with all optional parameters
+    init(bpm: Double? = nil, sampleRate: Int? = nil, keySignature: String? = nil, timeSignature: String? = nil,
+         units: String? = nil, layerCount: Int? = nil, componentCount: Int? = nil, groupCount: Int? = nil,
+         sceneCount: Int? = nil, objectCount: Int? = nil, materialCount: Int? = nil,
+         renderEngine: String? = nil, resolution: String? = nil, fps: Int? = nil, frameRange: String? = nil,
+         tags: [String]? = nil, fileSizeBytes: Int? = nil) {
+        self.bpm = bpm
+        self.sampleRate = sampleRate
+        self.keySignature = keySignature
+        self.timeSignature = timeSignature
+        self.units = units
+        self.layerCount = layerCount
+        self.componentCount = componentCount
+        self.groupCount = groupCount
+        self.sceneCount = sceneCount
+        self.objectCount = objectCount
+        self.materialCount = materialCount
+        self.renderEngine = renderEngine
+        self.resolution = resolution
+        self.fps = fps
+        self.frameRange = frameRange
+        self.tags = tags
+        self.fileSizeBytes = fileSizeBytes
+    }
+
     /// Initialize with Logic Pro metadata
     static func logicPro(bpm: Double?, sampleRate: Int?, keySignature: String?, timeSignature: String?, tags: [String]?) -> CommitMetadata {
         CommitMetadata(

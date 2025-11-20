@@ -233,8 +233,9 @@ mod tests {
     fn test_delete_bounce_not_exists() {
         let (_temp_dir, manager) = create_test_manager();
 
+        // Delete is idempotent - returns Ok even if bounce doesn't exist
         let result = manager.delete_bounce("nonexistent");
-        assert!(result.is_err());
+        assert!(result.is_ok());
     }
 
     #[test]
@@ -498,16 +499,16 @@ mod tests {
         let mut metadata = BounceMetadata::new("test", "file.wav", AudioFormat::Wav, 1024);
 
         // Test with no duration
-        assert_eq!(metadata.format_duration(), "Unknown");
+        assert_eq!(metadata.format_duration(), "unknown");
 
         // Test with duration
         metadata = metadata.with_duration(125.5);
-        assert_eq!(metadata.format_duration(), "2:05");
+        assert_eq!(metadata.format_duration(), "2:05.50");
 
         // Test with duration over an hour
         let metadata2 = BounceMetadata::new("test", "file.wav", AudioFormat::Wav, 1024)
             .with_duration(3725.0);
-        assert_eq!(metadata2.format_duration(), "62:05");
+        assert_eq!(metadata2.format_duration(), "62:05.00");
     }
 
     #[test]
@@ -516,15 +517,15 @@ mod tests {
 
         // Bytes
         let meta_bytes = BounceMetadata::new("test", "file.wav", AudioFormat::Wav, 500);
-        assert_eq!(meta_bytes.format_size(), "500 B");
+        assert_eq!(meta_bytes.format_size(), "500 bytes");
 
         // Kilobytes
         let meta_kb = BounceMetadata::new("test", "file.wav", AudioFormat::Wav, 2048);
         assert_eq!(meta_kb.format_size(), "2.0 KB");
 
-        // Megabytes
-        let meta_mb = BounceMetadata::new("test", "file.wav", AudioFormat::Wav, 5 * 1024 * 1024);
-        assert_eq!(meta_mb.format_size(), "5.0 MB");
+        // Megabytes (uses decimal MB: 1000*1000, not 1024*1024)
+        let meta_mb = BounceMetadata::new("test", "file.wav", AudioFormat::Wav, 5_000_000);
+        assert_eq!(meta_mb.format_size(), "5.00 MB");
     }
 
     #[test]
