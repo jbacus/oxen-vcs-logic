@@ -91,6 +91,12 @@ cleanup() {
         rm -rf "$TEST_DIR"
     fi
 
+    # Clean server data directory
+    if [ -n "$AUXIN_ROOT" ] && [ -d "$AUXIN_ROOT/auxin-server/.local-data" ]; then
+        log_info "Cleaning server data directory"
+        rm -rf "$AUXIN_ROOT/auxin-server/.local-data"
+    fi
+
     log_info "Cleanup complete"
 }
 
@@ -412,8 +418,8 @@ log_info "Pete views commit history..."
 COMMITS=$(auxin log --limit 5)
 echo "$COMMITS"
 
-# Get first commit ID
-FIRST_COMMIT=$(auxin log --limit 10 | grep "commit" | tail -1 | awk '{print $2}')
+# Get first commit ID (format: ● hash - date)
+FIRST_COMMIT=$(auxin log --limit 10 | grep "^●" | tail -1 | awk '{print $2}')
 log_info "First commit ID: $FIRST_COMMIT"
 
 if [ -n "$FIRST_COMMIT" ]; then
@@ -442,8 +448,8 @@ cd "$PETE_WORKSPACE/$PROJECT_NAME"
 log_info "Creating a bounce file..."
 echo "Stereo Mix Audio Data" > "$TEST_DIR/test-bounce.wav"
 
-# Get latest commit
-LATEST_COMMIT=$(auxin log --limit 1 | grep "commit" | head -1 | awk '{print $2}')
+# Get latest commit (format: ● hash - date)
+LATEST_COMMIT=$(auxin log --limit 1 | grep "^●" | head -1 | awk '{print $2}')
 log_info "Latest commit: $LATEST_COMMIT"
 
 if [ -n "$LATEST_COMMIT" ]; then
