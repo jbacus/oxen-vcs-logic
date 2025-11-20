@@ -485,6 +485,16 @@ impl CircuitBreaker {
         self.state
     }
 
+    /// Check if the circuit breaker is in closed (healthy) state
+    pub fn is_closed(&self) -> bool {
+        self.state == CircuitState::Closed
+    }
+
+    /// Check if the circuit breaker is in open (failing) state
+    pub fn is_open(&self) -> bool {
+        self.state == CircuitState::Open
+    }
+
     /// Check if the circuit allows requests
     pub fn allow_request(&mut self) -> bool {
         match self.state {
@@ -776,6 +786,28 @@ pub enum NetworkQuality {
     Offline,
 }
 
+impl NetworkQuality {
+    /// Create NetworkQuality from latency in milliseconds
+    pub fn from_latency(ms: u64) -> Self {
+        match ms {
+            0..=49 => NetworkQuality::Excellent,
+            50..=99 => NetworkQuality::Good,
+            100..=299 => NetworkQuality::Fair,
+            _ => NetworkQuality::Poor,
+        }
+    }
+
+    /// Check if the network quality is usable for operations
+    pub fn is_usable(&self) -> bool {
+        !matches!(self, NetworkQuality::Offline)
+    }
+
+    /// Check if the network quality is degraded
+    pub fn is_degraded(&self) -> bool {
+        matches!(self, NetworkQuality::Fair | NetworkQuality::Poor | NetworkQuality::Offline)
+    }
+}
+
 impl std::fmt::Display for NetworkQuality {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -890,6 +922,115 @@ pub fn estimate_transfer_time(file_size_bytes: u64, latency_ms: Option<u64>) -> 
         format!("{:.1}h", seconds / 3600.0)
     }
 }
+
+// ========== Network Health Monitor ==========
+
+/// Network health monitor for continuous connectivity tracking
+#[derive(Debug, Clone)]
+pub struct NetworkHealthMonitor {
+    /// Last known network quality
+    last_quality: NetworkQuality,
+    /// Last check timestamp
+    last_check: Option<Instant>,
+}
+
+impl NetworkHealthMonitor {
+    /// Create a new network health monitor
+    pub fn new() -> Self {
+        Self {
+            last_quality: NetworkQuality::Offline,
+            last_check: None,
+        }
+    }
+
+    /// Get the current network quality (performs check if stale)
+    pub fn get_quality(&self) -> NetworkQuality {
+        // For now, return the last known quality or check
+        if self.last_check.is_none() {
+            let health = check_network_health();
+            return health.quality;
+        }
+        self.last_quality
+    }
+
+    /// Force a network check and update quality
+    pub fn check(&mut self) -> NetworkQuality {
+        let health = check_network_health();
+        self.last_quality = health.quality;
+        self.last_check = Some(Instant::now());
+        self.last_quality
+    }
+}
+
+impl Default for NetworkHealthMonitor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+// ========== Error Types ==========
+
+/// Error kind for classifying network errors
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ErrorKind {
+    /// Network connectivity error
+    Network,
+    /// Authentication/authorization error
+    Auth,
+    /// Rate limiting error
+    RateLimit,
+    /// Server-side error
+    Server,
+    /// Client-side error
+    Client,
+}
+
+impl std::fmt::Display for ErrorKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ErrorKind::Network => write!(f, "Network"),
+            ErrorKind::Auth => write!(f, "Auth"),
+            ErrorKind::RateLimit => write!(f, "RateLimit"),
+            ErrorKind::Server => write!(f, "Server"),
+            ErrorKind::Client => write!(f, "Client"),
+        }
+    }
+}
+
+/// Error type for retryable operations
+#[derive(Debug, Clone)]
+pub struct RetryableError {
+    /// Error kind
+    pub kind: ErrorKind,
+    /// Error message
+    pub message: String,
+}
+
+impl RetryableError {
+    /// Create a new retryable error
+    pub fn new(kind: ErrorKind, message: impl Into<String>) -> Self {
+        Self {
+            kind,
+            message: message.into(),
+        }
+    }
+
+    /// Check if this error type is retryable
+    pub fn is_retryable(&self) -> bool {
+        matches!(
+            self.kind,
+            ErrorKind::Network | ErrorKind::RateLimit | ErrorKind::Server
+        )
+    }
+}
+
+impl std::fmt::Display for RetryableError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}: {}", self.kind, self.message)
+    }
+}
+
+impl std::error::Error for RetryableError {}
 
 #[cfg(test)]
 mod tests {

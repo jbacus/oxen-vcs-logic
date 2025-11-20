@@ -120,8 +120,8 @@ mod tests {
         let audio_file = create_test_audio_file(temp_dir.path(), 100);
 
         let result = manager.add_bounce(
-            &audio_file,
             "commit123",
+            &audio_file,
             Some("Test bounce"),
         );
 
@@ -134,7 +134,7 @@ mod tests {
         let invalid_file = temp_dir.path().join("test.txt");
         fs::write(&invalid_file, "not audio").unwrap();
 
-        let result = manager.add_bounce(&invalid_file, "commit123", None);
+        let result = manager.add_bounce("commit123", &invalid_file, None);
 
         assert!(result.is_err());
     }
@@ -144,7 +144,7 @@ mod tests {
         let (_temp_dir, manager) = create_test_manager();
         let nonexistent = PathBuf::from("/nonexistent/file.wav");
 
-        let result = manager.add_bounce(&nonexistent, "commit123", None);
+        let result = manager.add_bounce("commit123", &nonexistent, None);
 
         assert!(result.is_err());
     }
@@ -154,7 +154,7 @@ mod tests {
         let (temp_dir, manager) = create_test_manager();
         let audio_file = create_test_audio_file(temp_dir.path(), 50);
 
-        manager.add_bounce(&audio_file, "commit456", Some("Description")).unwrap();
+        manager.add_bounce("commit456", &audio_file, Some("Description")).unwrap();
 
         let bounce = manager.get_bounce("commit456").unwrap();
         assert!(bounce.is_some());
@@ -177,7 +177,7 @@ mod tests {
         let (temp_dir, manager) = create_test_manager();
         let audio_file = create_test_audio_file(temp_dir.path(), 50);
 
-        manager.add_bounce(&audio_file, "commit789", None).unwrap();
+        manager.add_bounce("commit789", &audio_file, None).unwrap();
 
         let path = manager.get_bounce_path("commit789").unwrap();
         assert!(path.is_some());
@@ -200,7 +200,7 @@ mod tests {
         for i in 0..5 {
             let audio_file = temp_dir.path().join(format!("bounce_{}.wav", i));
             fs::write(&audio_file, vec![0u8; 1024]).unwrap();
-            manager.add_bounce(&audio_file, &format!("commit_{}", i), None).unwrap();
+            manager.add_bounce(&format!("commit_{}", i), &audio_file, None).unwrap();
         }
 
         let bounces = manager.list_bounces().unwrap();
@@ -216,7 +216,7 @@ mod tests {
         let (temp_dir, manager) = create_test_manager();
         let audio_file = create_test_audio_file(temp_dir.path(), 50);
 
-        manager.add_bounce(&audio_file, "commit_to_delete", None).unwrap();
+        manager.add_bounce("commit_to_delete", &audio_file, None).unwrap();
 
         // Verify it exists
         assert!(manager.get_bounce("commit_to_delete").unwrap().is_some());
@@ -242,7 +242,7 @@ mod tests {
         let (temp_dir, manager) = create_test_manager();
         let audio_file = create_test_audio_file(temp_dir.path(), 50);
 
-        manager.add_bounce(&audio_file, "commit_del", None).unwrap();
+        manager.add_bounce("commit_del", &audio_file, None).unwrap();
 
         let path = manager.get_bounce_path("commit_del").unwrap().unwrap();
         assert!(path.exists());
@@ -263,7 +263,7 @@ mod tests {
         for i in 0..3 {
             let audio_file = temp_dir.path().join(format!("search_{}.wav", i));
             fs::write(&audio_file, vec![0u8; 1024]).unwrap();
-            manager.add_bounce(&audio_file, &format!("search_{}", i), None).unwrap();
+            manager.add_bounce(&format!("search_{}", i), &audio_file, None).unwrap();
         }
 
         let filter = BounceFilter::default();
@@ -279,16 +279,16 @@ mod tests {
         // Add WAV bounce
         let wav_file = temp_dir.path().join("test.wav");
         fs::write(&wav_file, vec![0u8; 1024]).unwrap();
-        manager.add_bounce(&wav_file, "wav_commit", None).unwrap();
+        manager.add_bounce("wav_commit", &wav_file, None).unwrap();
 
         // Add MP3 bounce
         let mp3_file = temp_dir.path().join("test.mp3");
         fs::write(&mp3_file, vec![0u8; 1024]).unwrap();
-        manager.add_bounce(&mp3_file, "mp3_commit", None).unwrap();
+        manager.add_bounce("mp3_commit", &mp3_file, None).unwrap();
 
         // Search for WAV only
         let mut filter = BounceFilter::default();
-        filter.format = Some("wav".to_string());
+        filter.format = Some(AudioFormat::Wav);
 
         let results = manager.search_bounces(&filter).unwrap();
         assert_eq!(results.len(), 1);
@@ -302,12 +302,12 @@ mod tests {
         // Add small bounce (1KB)
         let small_file = temp_dir.path().join("small.wav");
         fs::write(&small_file, vec![0u8; 1024]).unwrap();
-        manager.add_bounce(&small_file, "small_commit", None).unwrap();
+        manager.add_bounce("small_commit", &small_file, None).unwrap();
 
         // Add large bounce (100KB)
         let large_file = temp_dir.path().join("large.wav");
         fs::write(&large_file, vec![0u8; 100 * 1024]).unwrap();
-        manager.add_bounce(&large_file, "large_commit", None).unwrap();
+        manager.add_bounce("large_commit", &large_file, None).unwrap();
 
         // Search for files > 50KB
         let mut filter = BounceFilter::default();
@@ -325,12 +325,12 @@ mod tests {
         // Add small bounce
         let small_file = temp_dir.path().join("small.wav");
         fs::write(&small_file, vec![0u8; 1024]).unwrap();
-        manager.add_bounce(&small_file, "small_commit", None).unwrap();
+        manager.add_bounce("small_commit", &small_file, None).unwrap();
 
         // Add large bounce
         let large_file = temp_dir.path().join("large.wav");
         fs::write(&large_file, vec![0u8; 100 * 1024]).unwrap();
-        manager.add_bounce(&large_file, "large_commit", None).unwrap();
+        manager.add_bounce("large_commit", &large_file, None).unwrap();
 
         // Search for files < 50KB
         let mut filter = BounceFilter::default();
@@ -348,11 +348,11 @@ mod tests {
         // Add bounces with different names
         let mix_file = temp_dir.path().join("final_mix.wav");
         fs::write(&mix_file, vec![0u8; 1024]).unwrap();
-        manager.add_bounce(&mix_file, "mix_commit", None).unwrap();
+        manager.add_bounce("mix_commit", &mix_file, None).unwrap();
 
         let rough_file = temp_dir.path().join("rough_draft.wav");
         fs::write(&rough_file, vec![0u8; 1024]).unwrap();
-        manager.add_bounce(&rough_file, "rough_commit", None).unwrap();
+        manager.add_bounce("rough_commit", &rough_file, None).unwrap();
 
         // Search for 'mix' pattern
         let mut filter = BounceFilter::default();
@@ -370,19 +370,19 @@ mod tests {
         // Add various bounces
         let file1 = temp_dir.path().join("mix_v1.wav");
         fs::write(&file1, vec![0u8; 10 * 1024]).unwrap();
-        manager.add_bounce(&file1, "commit1", None).unwrap();
+        manager.add_bounce("commit1", &file1, None).unwrap();
 
         let file2 = temp_dir.path().join("mix_v2.wav");
         fs::write(&file2, vec![0u8; 100 * 1024]).unwrap();
-        manager.add_bounce(&file2, "commit2", None).unwrap();
+        manager.add_bounce("commit2", &file2, None).unwrap();
 
         let file3 = temp_dir.path().join("draft.mp3");
         fs::write(&file3, vec![0u8; 50 * 1024]).unwrap();
-        manager.add_bounce(&file3, "commit3", None).unwrap();
+        manager.add_bounce("commit3", &file3, None).unwrap();
 
         // Search: WAV format, contains 'mix', size > 50KB
         let mut filter = BounceFilter::default();
-        filter.format = Some("wav".to_string());
+        filter.format = Some(AudioFormat::Wav);
         filter.pattern = Some("mix".to_string());
         filter.min_size = Some(50 * 1024);
 
@@ -397,7 +397,7 @@ mod tests {
 
         let file = temp_dir.path().join("test.wav");
         fs::write(&file, vec![0u8; 1024]).unwrap();
-        manager.add_bounce(&file, "commit1", None).unwrap();
+        manager.add_bounce("commit1", &file, None).unwrap();
 
         let mut filter = BounceFilter::default();
         filter.pattern = Some("nonexistent".to_string());
@@ -417,12 +417,12 @@ mod tests {
         // Add first bounce (small)
         let file_a = temp_dir.path().join("bounce_a.wav");
         fs::write(&file_a, vec![0u8; 10 * 1024]).unwrap();
-        manager.add_bounce(&file_a, "commit_a", Some("First version")).unwrap();
+        manager.add_bounce("commit_a", &file_a, Some("First version")).unwrap();
 
         // Add second bounce (larger)
         let file_b = temp_dir.path().join("bounce_b.wav");
         fs::write(&file_b, vec![0u8; 50 * 1024]).unwrap();
-        manager.add_bounce(&file_b, "commit_b", Some("Second version")).unwrap();
+        manager.add_bounce("commit_b", &file_b, Some("Second version")).unwrap();
 
         let comparison = manager.compare_bounces("commit_a", "commit_b").unwrap();
 
@@ -437,7 +437,7 @@ mod tests {
 
         let file = temp_dir.path().join("bounce.wav");
         fs::write(&file, vec![0u8; 1024]).unwrap();
-        manager.add_bounce(&file, "same_commit", None).unwrap();
+        manager.add_bounce("same_commit", &file, None).unwrap();
 
         let comparison = manager.compare_bounces("same_commit", "same_commit").unwrap();
 
@@ -450,7 +450,7 @@ mod tests {
 
         let file = temp_dir.path().join("bounce.wav");
         fs::write(&file, vec![0u8; 1024]).unwrap();
-        manager.add_bounce(&file, "exists", None).unwrap();
+        manager.add_bounce("exists", &file, None).unwrap();
 
         let result = manager.compare_bounces("nonexistent", "exists");
         assert!(result.is_err());
@@ -462,7 +462,7 @@ mod tests {
 
         let file = temp_dir.path().join("bounce.wav");
         fs::write(&file, vec![0u8; 1024]).unwrap();
-        manager.add_bounce(&file, "exists", None).unwrap();
+        manager.add_bounce("exists", &file, None).unwrap();
 
         let result = manager.compare_bounces("exists", "nonexistent");
         assert!(result.is_err());
@@ -474,11 +474,11 @@ mod tests {
 
         let file_a = temp_dir.path().join("a.wav");
         fs::write(&file_a, vec![0u8; 1024]).unwrap();
-        manager.add_bounce(&file_a, "a", None).unwrap();
+        manager.add_bounce("a", &file_a, None).unwrap();
 
         let file_b = temp_dir.path().join("b.wav");
         fs::write(&file_b, vec![0u8; 2048]).unwrap();
-        manager.add_bounce(&file_b, "b", None).unwrap();
+        manager.add_bounce("b", &file_b, None).unwrap();
 
         let comparison = manager.compare_bounces("a", "b").unwrap();
         let report = comparison.format_report();
@@ -560,12 +560,12 @@ mod tests {
         // Add first bounce
         let file1 = temp_dir.path().join("first.wav");
         fs::write(&file1, vec![0u8; 1024]).unwrap();
-        manager.add_bounce(&file1, "duplicate_id", None).unwrap();
+        manager.add_bounce("duplicate_id", &file1, None).unwrap();
 
         // Try to add another with same commit ID
         let file2 = temp_dir.path().join("second.wav");
         fs::write(&file2, vec![0u8; 1024]).unwrap();
-        let result = manager.add_bounce(&file2, "duplicate_id", None);
+        let result = manager.add_bounce("duplicate_id", &file2, None);
 
         // Should fail or overwrite - verify behavior
         // The actual behavior depends on implementation
@@ -585,7 +585,7 @@ mod tests {
         let file = temp_dir.path().join("test with spaces & symbols!.wav");
         fs::write(&file, vec![0u8; 1024]).unwrap();
 
-        let result = manager.add_bounce(&file, "special_chars", None);
+        let result = manager.add_bounce("special_chars", &file, None);
         assert!(result.is_ok());
 
         let bounce = manager.get_bounce("special_chars").unwrap();
@@ -608,7 +608,7 @@ mod tests {
 
         // Add all bounces
         for (i, file) in handles.iter().enumerate() {
-            manager.add_bounce(file, &format!("concurrent_{}", i), None).unwrap();
+            manager.add_bounce(&format!("concurrent_{}", i), file, None).unwrap();
         }
 
         // Verify all were added
@@ -623,7 +623,7 @@ mod tests {
         let file = temp_dir.path().join("empty_desc.wav");
         fs::write(&file, vec![0u8; 1024]).unwrap();
 
-        manager.add_bounce(&file, "empty_desc", Some("")).unwrap();
+        manager.add_bounce("empty_desc", &file, Some("")).unwrap();
 
         let bounce = manager.get_bounce("empty_desc").unwrap().unwrap();
         assert_eq!(bounce.description, Some("".to_string()));
@@ -637,7 +637,7 @@ mod tests {
         fs::write(&file, vec![0u8; 1024]).unwrap();
 
         let long_desc = "A".repeat(10000);
-        manager.add_bounce(&file, "long_desc", Some(&long_desc)).unwrap();
+        manager.add_bounce("long_desc", &file, Some(&long_desc)).unwrap();
 
         let bounce = manager.get_bounce("long_desc").unwrap().unwrap();
         assert_eq!(bounce.description.unwrap().len(), 10000);
