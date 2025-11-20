@@ -9,11 +9,11 @@ export function Header() {
             to="/"
             className="flex items-center space-x-3 hover:opacity-80 transition-all duration-200 group"
           >
-            <div className="transform group-hover:scale-105 transition-transform duration-200">
+            <div className="transform group-hover:scale-105 transition-transform duration-200 bg-primary-50 p-2 rounded-lg">
               <img
                 src="/icon-96.png"
                 alt="Auxin Logo"
-                className="w-8 h-8"
+                className="w-6 h-6"
               />
             </div>
             <div>
