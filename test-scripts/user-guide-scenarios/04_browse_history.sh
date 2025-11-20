@@ -22,7 +22,7 @@ TEST_DIR="$HOME/Desktop/auxin-test-projects"
 TEST_PROJECT_PATH="$TEST_DIR/$TEST_PROJECT_NAME"
 
 # CLI path
-AUXIN_CLI="./Auxin-CLI-Wrapper/target/release/auxin"
+AUXIN_CLI="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/Auxin-CLI-Wrapper/target/release/auxin"
 
 # Functions
 print_header() {
@@ -96,15 +96,15 @@ create_version() {
 EOF
 
     if [ "$version" -eq 1 ]; then
-        $AUXIN_CLI init --logic .
+        "$AUXIN_CLI" init --logic .
     else
         oxen add .
-        echo "$message
+        oxen commit -m "$message
 
 BPM: $bpm
 Sample Rate: 48kHz
 Key: $key
-Tags: $tags" | oxen commit -F -
+Tags: $tags"
     fi
 }
 
@@ -144,7 +144,7 @@ sleep 1
 create_version 9 "Master v1 - ready for delivery" 128 "C Major" "master, final, delivery"
 print_success "Commit 9: Master v1"
 
-TOTAL_COMMITS=$(oxen log --oneline | wc -l | tr -d ' ')
+TOTAL_COMMITS=$(oxen log -n 1000 2>/dev/null | grep "^commit " | wc -l | tr -d ' ')
 print_success "Created rich history with $TOTAL_COMMITS commits"
 
 # ------------------------------------------------------------
@@ -154,13 +154,13 @@ print_step 2 "Viewing complete commit history"
 
 echo ""
 echo "Complete history (oneline format):"
-oxen log --oneline
+oxen log -n 100 | grep "^commit " | awk "{print \$2}"
 
 echo ""
 echo "Detailed history (last 3 commits):"
 oxen log -n 3
 
-COMMIT_COUNT=$(oxen log --oneline | wc -l | tr -d ' ')
+COMMIT_COUNT=$(oxen log -n 1000 2>/dev/null | grep "^commit " | wc -l | tr -d ' ')
 if [ "$COMMIT_COUNT" -ge 9 ]; then
     print_success "All $COMMIT_COUNT commits visible in history"
 else
@@ -174,7 +174,7 @@ print_step 3 "Searching history by commit message"
 
 echo ""
 echo "Search: commits containing 'mix':"
-MIX_COMMITS=$(oxen log --grep="mix" --oneline)
+MIX_COMMITS=$(oxen log -n 1000 --grep="mix" | grep "^commit " | awk "{print \$2}")
 echo "$MIX_COMMITS"
 
 MIX_COUNT=$(echo "$MIX_COMMITS" | grep -c "mix" || true)
@@ -186,7 +186,7 @@ fi
 
 echo ""
 echo "Search: commits containing 'final':"
-FINAL_COMMITS=$(oxen log --grep="final" --oneline)
+FINAL_COMMITS=$(oxen log -n 1000 --grep="final" | grep "^commit " | awk "{print \$2}")
 echo "$FINAL_COMMITS"
 
 FINAL_COUNT=$(echo "$FINAL_COMMITS" | grep -c "final" || true)
@@ -203,15 +203,15 @@ print_step 4 "Filtering by metadata tags"
 
 echo ""
 echo "Commits with 'tracking' tag:"
-oxen log --grep="tracking" --oneline
+oxen log -n 1000 --grep="tracking" | grep "^commit " | awk "{print \$2}"
 
 echo ""
 echo "Commits with 'mix' tag:"
-oxen log --grep="Tags:.*mix" --oneline
+oxen log -n 1000 --grep="Tags:.*mix" | grep "^commit " | awk "{print \$2}"
 
 echo ""
 echo "Commits with 'final' tag:"
-oxen log --grep="Tags:.*final" --oneline
+oxen log -n 1000 --grep="Tags:.*final" | grep "^commit " | awk "{print \$2}"
 
 print_success "Tag filtering works"
 
@@ -222,14 +222,14 @@ print_step 5 "Filtering by BPM metadata"
 
 echo ""
 echo "Commits at 120 BPM:"
-oxen log --grep="BPM: 120" --oneline
+oxen log -n 1000 --grep="BPM: 120" | grep "^commit " | awk "{print \$2}"
 
 echo ""
 echo "Commits at 128 BPM:"
-oxen log --grep="BPM: 128" --oneline
+oxen log -n 1000 --grep="BPM: 128" | grep "^commit " | awk "{print \$2}"
 
-BPM_120_COUNT=$(oxen log --grep="BPM: 120" --oneline | wc -l | tr -d ' ')
-BPM_128_COUNT=$(oxen log --grep="BPM: 128" --oneline | wc -l | tr -d ' ')
+BPM_120_COUNT=$(oxen log -n 1000 --grep="BPM: 120" | grep "^commit " | awk "{print \$2}" | wc -l | tr -d ' ')
+BPM_128_COUNT=$(oxen log -n 1000 --grep="BPM: 128" | grep "^commit " | awk "{print \$2}" | wc -l | tr -d ' ')
 
 print_success "BPM 120: $BPM_120_COUNT commits, BPM 128: $BPM_128_COUNT commits"
 
@@ -238,7 +238,7 @@ print_success "BPM 120: $BPM_120_COUNT commits, BPM 128: $BPM_128_COUNT commits"
 # ------------------------------------------------------------
 print_step 6 "Viewing specific commit details"
 
-FIRST_MIX_COMMIT=$(oxen log --grep="Mix v1" --oneline | head -1 | awk '{print $1}')
+FIRST_MIX_COMMIT=$(oxen log -n 1000 --grep="Mix v1" | grep "^commit " | awk "{print \$2}" | head -1 | awk '{print $1}')
 
 echo ""
 echo "Detailed view of 'Mix v1' commit ($FIRST_MIX_COMMIT):"
@@ -255,8 +255,8 @@ fi
 # ------------------------------------------------------------
 print_step 7 "Comparing commits to see changes"
 
-COMMIT_V1=$(oxen log --grep="Mix v1" --oneline | head -1 | awk '{print $1}')
-COMMIT_V3=$(oxen log --grep="Mix v3" --oneline | head -1 | awk '{print $1}')
+COMMIT_V1=$(oxen log -n 1000 --grep="Mix v1" | grep "^commit " | awk "{print \$2}" | head -1 | awk '{print $1}')
+COMMIT_V3=$(oxen log -n 1000 --grep="Mix v3" | grep "^commit " | awk "{print \$2}" | head -1 | awk '{print $1}')
 
 echo ""
 echo "Comparing Mix v1 ($COMMIT_V1) to Mix v3 ($COMMIT_V3):"
@@ -285,7 +285,7 @@ print_step 9 "Viewing changed files per commit"
 
 echo ""
 echo "Files changed in each commit:"
-for commit in $(oxen log --oneline | head -5 | awk '{print $1}'); do
+for commit in $(oxen log -n 5 | grep "^commit " | awk "{print \$2}" | head -5 | awk '{print $1}'); do
     echo ""
     echo "Commit: $commit"
     oxen show --stat $commit | grep -E '(file changed|files changed|insertion|deletion)' || echo "  (stats not available)"
@@ -317,10 +317,10 @@ echo "" >> "$REPORT_FILE"
 echo "" >> "$REPORT_FILE"
 echo "Commits by Type:" >> "$REPORT_FILE"
 echo "----------------" >> "$REPORT_FILE"
-echo "Mix commits: $(oxen log --grep='mix' --oneline | wc -l | tr -d ' ')" >> "$REPORT_FILE"
-echo "Tracking commits: $(oxen log --grep='tracking' --oneline | wc -l | tr -d ' ')" >> "$REPORT_FILE"
-echo "Fix commits: $(oxen log --grep='Fix' --oneline | wc -l | tr -d ' ')" >> "$REPORT_FILE"
-echo "Master commits: $(oxen log --grep='master' --oneline | wc -l | tr -d ' ')" >> "$REPORT_FILE"
+echo "Mix commits: $(oxen log -n 1000 --grep='mix' | grep "^commit " | awk "{print }" | wc -l | tr -d ' ')" >> "$REPORT_FILE"
+echo "Tracking commits: $(oxen log -n 1000 --grep='tracking' | grep "^commit " | awk "{print }" | wc -l | tr -d ' ')" >> "$REPORT_FILE"
+echo "Fix commits: $(oxen log -n 1000 --grep='Fix' | grep "^commit " | awk "{print }" | wc -l | tr -d ' ')" >> "$REPORT_FILE"
+echo "Master commits: $(oxen log -n 1000 --grep='master' | grep "^commit " | awk "{print }" | wc -l | tr -d ' ')" >> "$REPORT_FILE"
 
 print_success "History report generated: $REPORT_FILE"
 

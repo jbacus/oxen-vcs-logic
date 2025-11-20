@@ -99,6 +99,11 @@ impl OxenRepository {
         repo_instance.oxen.add(path, &[ignore_file])
             .context("Failed to stage .oxenignore")?;
 
+        // Stage all project files for initial commit
+        vlog!("Staging all project files...");
+        repo_instance.oxen.add_all(path)
+            .context("Failed to stage project files")?;
+
         vlog!("Creating initial commit...");
         let initial_commit_msg = "Initial commit\n\nInitialized Oxen repository for Logic Pro project with .oxenignore template.";
         repo_instance.oxen.commit(path, initial_commit_msg)

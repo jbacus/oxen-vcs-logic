@@ -22,7 +22,7 @@ TEST_DIR="$HOME/Desktop/auxin-test-projects"
 TEST_PROJECT_PATH="$TEST_DIR/$TEST_PROJECT_NAME"
 
 # CLI path
-AUXIN_CLI="./Auxin-CLI-Wrapper/target/release/auxin"
+AUXIN_CLI="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/Auxin-CLI-Wrapper/target/release/auxin"
 
 # Functions
 print_header() {
@@ -90,7 +90,7 @@ EOF
 
 dd if=/dev/zero of="Resources/Audio Files/drums.wav" bs=1024 count=1024 2>/dev/null
 
-$AUXIN_CLI init --logic .
+"$AUXIN_CLI" init --logic .
 print_success "Version 1 created (Initial recording, BPM: 120)"
 
 # Version 2: Add bass
@@ -107,12 +107,12 @@ EOF
 dd if=/dev/zero of="Resources/Audio Files/bass.wav" bs=1024 count=512 2>/dev/null
 
 oxen add .
-echo "Version 2 - Added bass track
+oxen commit -m "Version 2 - Added bass track
 
 BPM: 120
-Key: C Major" | oxen commit -F -
+Key: C Major"
 
-V2_COMMIT=$(oxen log --oneline | head -1 | awk '{print $1}')
+V2_COMMIT=$(oxen log -n 1 | grep "^commit " | awk "{print \$2}" | head -1 | awk '{print $1}')
 print_success "Version 2 created (Added bass, commit: $V2_COMMIT)"
 
 # Version 3: Changed tempo and key
@@ -129,13 +129,13 @@ EOF
 dd if=/dev/zero of="Resources/Audio Files/synth.wav" bs=1024 count=768 2>/dev/null
 
 oxen add .
-echo "Version 3 - Changed tempo and key
+oxen commit -m "Version 3 - Changed tempo and key
 
 BPM: 140 (was 120)
 Key: A Minor (was C Major)
-Added: synth track" | oxen commit -F -
+Added: synth track"
 
-V3_COMMIT=$(oxen log --oneline | head -1 | awk '{print $1}')
+V3_COMMIT=$(oxen log -n 1 | grep "^commit " | awk "{print \$2}" | head -1 | awk '{print $1}')
 print_success "Version 3 created (Tempo: 140, Key: A Minor, commit: $V3_COMMIT)"
 
 # Version 4: Current work
@@ -152,12 +152,12 @@ EOF
 dd if=/dev/zero of="Resources/Audio Files/vocal.wav" bs=1024 count=2048 2>/dev/null
 
 oxen add .
-echo "Version 4 - Added experimental vocals
+oxen commit -m "Version 4 - Added experimental vocals
 
 BPM: 140
-Key: A Minor" | oxen commit -F -
+Key: A Minor"
 
-V4_COMMIT=$(oxen log --oneline | head -1 | awk '{print $1}')
+V4_COMMIT=$(oxen log -n 1 | grep "^commit " | awk "{print \$2}" | head -1 | awk '{print $1}')
 print_success "Version 4 created (Added vocals, commit: $V4_COMMIT)"
 
 # ------------------------------------------------------------
@@ -175,9 +175,9 @@ ls -lh Resources/Audio\ Files/
 
 echo ""
 echo "Full commit history:"
-oxen log --oneline
+oxen log -n 100 | grep "^commit " | awk "{print \$2}"
 
-COMMIT_COUNT=$(oxen log --oneline | wc -l | tr -d ' ')
+COMMIT_COUNT=$(oxen log -n 1000 2>/dev/null | grep "^commit " | wc -l | tr -d ' ')
 print_success "$COMMIT_COUNT versions in history"
 
 # ------------------------------------------------------------

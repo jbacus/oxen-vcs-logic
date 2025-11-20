@@ -24,7 +24,7 @@ TEST_DIR="$HOME/Desktop/auxin-test-projects"
 TEST_PROJECT_PATH="$TEST_DIR/$TEST_PROJECT_NAME"
 
 # CLI path
-AUXIN_CLI="./Auxin-CLI-Wrapper/target/release/auxin"
+AUXIN_CLI="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/Auxin-CLI-Wrapper/target/release/auxin"
 
 # Auto-commit debounce interval (seconds)
 DEBOUNCE_WAIT=35
@@ -119,10 +119,10 @@ EOF
 
 dd if=/dev/zero of="Resources/Audio Files/audio1.wav" bs=1024 count=1024 2>/dev/null
 
-$AUXIN_CLI init --logic .
+"$AUXIN_CLI" init --logic .
 print_success "Project initialized at: $TEST_PROJECT_PATH"
 
-INITIAL_COMMITS=$(oxen log --oneline | wc -l | tr -d ' ')
+INITIAL_COMMITS=$(oxen log -n 1000 2>/dev/null | grep "^commit " | wc -l | tr -d ' ')
 print_info "Initial commit count: $INITIAL_COMMITS"
 
 # ------------------------------------------------------------
@@ -171,7 +171,7 @@ print_step 5 "Verifying auto-commit was created"
 
 sleep 5  # Extra wait for commit to complete
 
-AFTER_CHANGE1_COMMITS=$(oxen log --all --oneline | wc -l | tr -d ' ')
+AFTER_CHANGE1_COMMITS=$(oxen log -n 1000 --all | grep "^commit " | awk "{print \$2}" | wc -l | tr -d ' ')
 
 echo ""
 echo "Commit count after change 1: $AFTER_CHANGE1_COMMITS (was $INITIAL_COMMITS)"
@@ -185,7 +185,7 @@ fi
 # Check for draft branch or auto-commit message
 echo ""
 echo "Recent commits:"
-oxen log --all --oneline | head -5
+oxen log -n 1000 --all | grep "^commit " | awk "{print \$2}" | head -5
 
 if oxen log --all -n 1 | grep -qE "(Auto-save|draft|automatic)"; then
     print_success "Auto-commit message detected"
@@ -225,7 +225,7 @@ echo ""
 
 sleep 5
 
-AFTER_RAPID_COMMITS=$(oxen log --all --oneline | wc -l | tr -d ' ')
+AFTER_RAPID_COMMITS=$(oxen log -n 1000 --all | grep "^commit " | awk "{print \$2}" | wc -l | tr -d ' ')
 COMMITS_ADDED=$((AFTER_RAPID_COMMITS - AFTER_CHANGE1_COMMITS))
 
 echo ""
@@ -252,7 +252,7 @@ if oxen branch -a | grep -qE "(draft|auto)"; then
 
     echo ""
     echo "Commits on draft branch:"
-    oxen log --oneline --branches=*draft* 2>/dev/null | head -10 || echo "(draft branch log not available)"
+    oxen log -n 100 | grep "^commit " | awk "{print \$2}" --branches=*draft* 2>/dev/null | head -10 || echo "(draft branch log not available)"
 else
     print_info "Note: Draft commits may be on main branch (implementation-dependent)"
 fi
@@ -264,9 +264,9 @@ print_step 8 "Viewing all auto-commits"
 
 echo ""
 echo "All commits (including drafts):"
-oxen log --all --oneline | head -15
+oxen log -n 1000 --all | grep "^commit " | awk "{print \$2}" | head -15
 
-TOTAL_COMMITS=$(oxen log --all --oneline | wc -l | tr -d ' ')
+TOTAL_COMMITS=$(oxen log -n 1000 --all | grep "^commit " | awk "{print \$2}" | wc -l | tr -d ' ')
 AUTO_COMMITS=$((TOTAL_COMMITS - INITIAL_COMMITS))
 
 print_success "Total auto-commits created: $AUTO_COMMITS"
@@ -276,7 +276,7 @@ print_success "Total auto-commits created: $AUTO_COMMITS"
 # ------------------------------------------------------------
 print_step 9 "Verifying no commit when no changes made"
 
-BEFORE_IDLE=$(oxen log --all --oneline | wc -l | tr -d ' ')
+BEFORE_IDLE=$(oxen log -n 1000 --all | grep "^commit " | awk "{print \$2}" | wc -l | tr -d ' ')
 
 print_info "Waiting $DEBOUNCE_WAIT seconds with no changes..."
 for i in $(seq $DEBOUNCE_WAIT -1 1); do
@@ -287,7 +287,7 @@ echo ""
 
 sleep 5
 
-AFTER_IDLE=$(oxen log --all --oneline | wc -l | tr -d ' ')
+AFTER_IDLE=$(oxen log -n 1000 --all | grep "^commit " | awk "{print \$2}" | wc -l | tr -d ' ')
 
 if [ "$AFTER_IDLE" -eq "$BEFORE_IDLE" ]; then
     print_success "No commit created when no changes (correct behavior)"
@@ -303,14 +303,14 @@ print_step 10 "Verifying ignored files don't trigger commits"
 mkdir -p Bounces
 echo "bounce file" > Bounces/bounce1.wav
 
-BEFORE_IGNORED=$(oxen log --all --oneline | wc -l | tr -d ' ')
+BEFORE_IGNORED=$(oxen log -n 1000 --all | grep "^commit " | awk "{print \$2}" | wc -l | tr -d ' ')
 
 print_info "Created file in Bounces/ (should be ignored)"
 print_info "Waiting to confirm no commit triggered..."
 
 sleep $DEBOUNCE_WAIT
 
-AFTER_IGNORED=$(oxen log --all --oneline | wc -l | tr -d ' ')
+AFTER_IGNORED=$(oxen log -n 1000 --all | grep "^commit " | awk "{print \$2}" | wc -l | tr -d ' ')
 
 if [ "$AFTER_IGNORED" -eq "$BEFORE_IGNORED" ]; then
     print_success "Ignored files don't trigger commits (correct)"

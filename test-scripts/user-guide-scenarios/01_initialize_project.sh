@@ -22,7 +22,7 @@ TEST_DIR="$HOME/Desktop/auxin-test-projects"
 TEST_PROJECT_PATH="$TEST_DIR/$TEST_PROJECT_NAME"
 
 # CLI path
-AUXIN_CLI="./Auxin-CLI-Wrapper/target/release/auxin"
+AUXIN_CLI="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/Auxin-CLI-Wrapper/target/release/auxin"
 
 # Function to print test header
 print_header() {
@@ -132,7 +132,7 @@ echo "  - Audio files: 2 files, $(du -sh "$TEST_PROJECT_PATH/Resources/Audio Fil
 print_step 3 "Initializing project with auxin"
 
 cd "$TEST_PROJECT_PATH"
-$AUXIN_CLI init --logic .
+"$AUXIN_CLI" init --logic .
 
 # Verify .oxen directory created
 if [ ! -d ".oxen" ]; then
@@ -184,12 +184,12 @@ else
 fi
 
 # Verify oxen log shows commits
-COMMIT_COUNT=$(oxen log --oneline 2>/dev/null | wc -l | tr -d ' ')
+COMMIT_COUNT=$(oxen log -n 100 | grep "^commit " | awk "{print \$2}" 2>/dev/null | wc -l | tr -d ' ')
 if [ "$COMMIT_COUNT" -gt 0 ]; then
     print_success "Initial commit created ($COMMIT_COUNT commit(s) found)"
     echo ""
     echo "Commit history:"
-    oxen log --oneline | head -5
+    oxen log -n 5 | grep "^commit " | awk "{print \$2}" | head -5
 else
     print_error "No commits found in history"
 fi

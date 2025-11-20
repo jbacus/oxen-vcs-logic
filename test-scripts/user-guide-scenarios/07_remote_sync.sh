@@ -24,7 +24,7 @@ TEST_PROJECT_PATH="$TEST_DIR/$TEST_PROJECT_NAME"
 TEST_REMOTE_DIR="$TEST_DIR/remote-repo.oxen"
 
 # CLI path
-AUXIN_CLI="./Auxin-CLI-Wrapper/target/release/auxin"
+AUXIN_CLI="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/Auxin-CLI-Wrapper/target/release/auxin"
 
 # Functions
 print_header() {
@@ -98,10 +98,10 @@ EOF
 
 dd if=/dev/zero of="Resources/Audio Files/drums.wav" bs=1024 count=2048 2>/dev/null
 
-$AUXIN_CLI init --logic .
+"$AUXIN_CLI" init --logic .
 print_success "Local project created"
 
-INITIAL_COMMIT=$(oxen log --oneline | head -1 | awk '{print $1}')
+INITIAL_COMMIT=$(oxen log -n 1 | grep "^commit " | awk "{print \$2}" | head -1 | awk '{print $1}')
 print_info "Initial commit: $INITIAL_COMMIT"
 
 # ------------------------------------------------------------
@@ -174,9 +174,9 @@ cat >> "Alternatives/001/ProjectData" <<EOF
 EOF
 
 oxen add .
-echo "Added bass track
+oxen commit -m "Added bass track
 
-BPM: 120" | oxen commit -F -
+BPM: 120"
 
 print_success "Local commit created"
 
@@ -203,9 +203,9 @@ fi
 
 # Verify clone has same commits
 cd "$CLONE_DIR"
-CLONE_COMMITS=$(oxen log --oneline | wc -l | tr -d ' ')
+CLONE_COMMITS=$(oxen log -n 1000 2>/dev/null | grep "^commit " | wc -l | tr -d ' ')
 cd "$TEST_PROJECT_PATH"
-LOCAL_COMMITS=$(oxen log --oneline | wc -l | tr -d ' ')
+LOCAL_COMMITS=$(oxen log -n 1000 2>/dev/null | grep "^commit " | wc -l | tr -d ' ')
 
 if [ "$CLONE_COMMITS" -eq "$LOCAL_COMMITS" ]; then
     print_success "Clone has all commits ($CLONE_COMMITS == $LOCAL_COMMITS)"
@@ -225,9 +225,9 @@ cat >> "Alternatives/001/ProjectData" <<EOF
 EOF
 
 oxen add .
-echo "Added synth track (collaborator)
+oxen commit -m "Added synth track (collaborator)
 
-BPM: 120" | oxen commit -F -
+BPM: 120"
 
 oxen push origin main
 print_success "Collaborator pushed changes"
@@ -241,11 +241,11 @@ cd "$TEST_PROJECT_PATH"
 
 print_info "Pulling updates from remote..."
 
-COMMITS_BEFORE=$(oxen log --oneline | wc -l | tr -d ' ')
+COMMITS_BEFORE=$(oxen log -n 1000 2>/dev/null | grep "^commit " | wc -l | tr -d ' ')
 
 oxen pull origin main
 
-COMMITS_AFTER=$(oxen log --oneline | wc -l | tr -d ' ')
+COMMITS_AFTER=$(oxen log -n 1000 2>/dev/null | grep "^commit " | wc -l | tr -d ' ')
 
 if [ "$COMMITS_AFTER" -gt "$COMMITS_BEFORE" ]; then
     print_success "Pulled new commits ($COMMITS_AFTER vs $COMMITS_BEFORE)"
@@ -270,9 +270,9 @@ print_info "Creating large audio file (10MB)..."
 dd if=/dev/zero of="Resources/Audio Files/large_audio.wav" bs=1024 count=10240 2>/dev/null
 
 oxen add .
-echo "Added large audio file (10MB)
+oxen commit -m "Added large audio file (10MB)
 
-BPM: 120" | oxen commit -F -
+BPM: 120"
 
 print_info "Pushing large file..."
 START_TIME=$(date +%s)
@@ -298,9 +298,9 @@ print_step 10 "Verifying remote repository integrity"
 cd "$CLONE_DIR"
 oxen pull origin main
 
-CLONE_FINAL_COMMITS=$(oxen log --oneline | wc -l | tr -d ' ')
+CLONE_FINAL_COMMITS=$(oxen log -n 1000 2>/dev/null | grep "^commit " | wc -l | tr -d ' ')
 cd "$TEST_PROJECT_PATH"
-LOCAL_FINAL_COMMITS=$(oxen log --oneline | wc -l | tr -d ' ')
+LOCAL_FINAL_COMMITS=$(oxen log -n 1000 2>/dev/null | grep "^commit " | wc -l | tr -d ' ')
 
 echo ""
 echo "Final commit counts:"

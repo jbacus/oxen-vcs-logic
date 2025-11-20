@@ -22,7 +22,7 @@ TEST_DIR="$HOME/Desktop/auxin-test-projects"
 TEST_PROJECT_PATH="$TEST_DIR/$TEST_PROJECT_NAME"
 
 # CLI path
-AUXIN_CLI="./Auxin-CLI-Wrapper/target/release/auxin"
+AUXIN_CLI="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/Auxin-CLI-Wrapper/target/release/auxin"
 
 # Functions
 print_header() {
@@ -93,7 +93,7 @@ dd if=/dev/zero of="$TEST_PROJECT_PATH/Resources/Audio Files/bass.wav" bs=1024 c
 cd "$TEST_PROJECT_PATH"
 
 # Initialize
-$AUXIN_CLI init --logic .
+"$AUXIN_CLI" init --logic .
 print_success "Project initialized"
 
 # ------------------------------------------------------------
@@ -138,7 +138,7 @@ Sample Rate: 48kHz
 Key: A Minor
 Tags: mix, final, v1"
 
-echo "$COMMIT_MESSAGE" | oxen commit -F -
+oxen commit -m "$COMMIT_MESSAGE"
 
 print_success "Milestone commit created"
 
@@ -188,23 +188,23 @@ print_step 5 "Creating additional milestones to test history"
 # Second milestone
 echo "<!-- Comment 2 -->" >> Alternatives/001/ProjectData
 oxen add .
-echo "Mix v2 - Client feedback incorporated
+oxen commit -m "Mix v2 - Client feedback incorporated
 
 BPM: 128
 Sample Rate: 48kHz
 Key: A Minor
-Tags: mix, revision, client-feedback" | oxen commit -F -
+Tags: mix, revision, client-feedback"
 print_success "Second milestone created"
 
 # Third milestone
 echo "<!-- Comment 3 -->" >> Alternatives/001/ProjectData
 oxen add .
-echo "Final master - Ready for delivery
+oxen commit -m "Final master - Ready for delivery
 
 BPM: 128
 Sample Rate: 96kHz
 Key: A Minor
-Tags: master, final, delivery" | oxen commit -F -
+Tags: master, final, delivery"
 print_success "Third milestone created"
 
 # ------------------------------------------------------------
@@ -212,7 +212,7 @@ print_success "Third milestone created"
 # ------------------------------------------------------------
 print_step 6 "Verifying commit history"
 
-COMMIT_COUNT=$(oxen log --oneline | wc -l | tr -d ' ')
+COMMIT_COUNT=$(oxen log -n 1000 2>/dev/null | grep "^commit " | wc -l | tr -d ' ')
 if [ "$COMMIT_COUNT" -ge 3 ]; then
     print_success "All milestones in history ($COMMIT_COUNT commits total)"
 else
@@ -221,7 +221,7 @@ fi
 
 echo ""
 echo "Commit history:"
-oxen log --oneline
+oxen log -n 100 | grep "^commit " | awk "{print \$2}"
 
 # ------------------------------------------------------------
 # Step 7: Test Commit Message Best Practices
@@ -231,7 +231,7 @@ print_step 7 "Testing commit message best practices"
 # Good commit message
 echo "<!-- Good commit -->" >> Alternatives/001/ProjectData
 oxen add .
-echo "Add guitar solo in bridge section
+oxen commit -m "Add guitar solo in bridge section
 
 Added 8-bar guitar solo with effects chain:
 - Overdrive pedal
@@ -240,7 +240,7 @@ Added 8-bar guitar solo with effects chain:
 
 BPM: 128
 Key: A Minor
-Tags: tracking, guitar, bridge" | oxen commit -F -
+Tags: tracking, guitar, bridge"
 
 print_success "Descriptive commit message accepted"
 
@@ -258,7 +258,7 @@ print_step 8 "Searching history by metadata"
 
 echo ""
 echo "All commits with 'mix' in message:"
-oxen log --grep="mix" --oneline
+oxen log -n 1000 --grep="mix" | grep "^commit " | awk "{print \$2}"
 
 echo ""
 echo "All commits (showing metadata):"

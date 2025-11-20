@@ -27,7 +27,7 @@ USER1="alice@studio.com"
 USER2="bob@studio.com"
 
 # CLI path
-AUXIN_CLI="./Auxin-CLI-Wrapper/target/release/auxin"
+AUXIN_CLI="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/Auxin-CLI-Wrapper/target/release/auxin"
 
 # Functions
 print_header() {
@@ -114,7 +114,7 @@ cat > "Alternatives/001/ProjectData" <<EOF
 </project>
 EOF
 
-$AUXIN_CLI init --logic .
+"$AUXIN_CLI" init --logic .
 print_success "Shared project created"
 
 # ------------------------------------------------------------
@@ -157,10 +157,10 @@ cat >> "Alternatives/001/ProjectData" <<EOF
 EOF
 
 oxen add .
-echo "Added guitar solo track
+oxen commit -m "Added guitar solo track
 
 BPM: 120
-Editor: $USER1" | oxen commit -F -
+Editor: $USER1"
 
 print_success "User 1 made changes and committed"
 
@@ -274,10 +274,10 @@ cat >> "Alternatives/001/ProjectData" <<EOF
 EOF
 
 oxen add .
-echo "Added synth pad track
+oxen commit -m "Added synth pad track
 
 BPM: 120
-Editor: $USER2" | oxen commit -F -
+Editor: $USER2"
 
 print_success "User 2 made changes and committed"
 
