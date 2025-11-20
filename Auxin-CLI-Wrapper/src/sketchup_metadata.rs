@@ -24,7 +24,7 @@ use serde::{Deserialize, Serialize};
 /// # Examples
 ///
 /// ```
-/// use auxin_cli::SketchUpMetadata;
+/// use auxin::SketchUpMetadata;
 ///
 /// // Create milestone commit with full metadata
 /// let commit = SketchUpMetadata::new("Final presentation model")
@@ -90,7 +90,7 @@ impl SketchUpMetadata {
     /// # Examples
     ///
     /// ```
-    /// use auxin_cli::SketchUpMetadata;
+    /// use auxin::SketchUpMetadata;
     ///
     /// // From &str
     /// let commit = SketchUpMetadata::new("Initial version");
@@ -123,7 +123,7 @@ impl SketchUpMetadata {
     /// # Examples
     ///
     /// ```
-    /// use auxin_cli::SketchUpMetadata;
+    /// use auxin::SketchUpMetadata;
     ///
     /// let commit = SketchUpMetadata::new("Architectural model")
     ///     .with_units("Inches");
@@ -145,7 +145,7 @@ impl SketchUpMetadata {
     /// # Examples
     ///
     /// ```
-    /// use auxin_cli::SketchUpMetadata;
+    /// use auxin::SketchUpMetadata;
     ///
     /// let commit = SketchUpMetadata::new("Organized model")
     ///     .with_layer_count(10);
@@ -167,7 +167,7 @@ impl SketchUpMetadata {
     /// # Examples
     ///
     /// ```
-    /// use auxin_cli::SketchUpMetadata;
+    /// use auxin::SketchUpMetadata;
     ///
     /// let commit = SketchUpMetadata::new("Component-heavy model")
     ///     .with_component_count(500);
@@ -189,7 +189,7 @@ impl SketchUpMetadata {
     /// # Examples
     ///
     /// ```
-    /// use auxin_cli::SketchUpMetadata;
+    /// use auxin::SketchUpMetadata;
     ///
     /// let commit = SketchUpMetadata::new("Model with groups")
     ///     .with_group_count(25);
@@ -211,7 +211,7 @@ impl SketchUpMetadata {
     /// # Examples
     ///
     /// ```
-    /// use auxin_cli::SketchUpMetadata;
+    /// use auxin::SketchUpMetadata;
     ///
     /// let commit = SketchUpMetadata::new("Large model")
     ///     .with_file_size(1024 * 1024 * 50); // 50 MB
@@ -234,7 +234,7 @@ impl SketchUpMetadata {
     /// # Examples
     ///
     /// ```
-    /// use auxin_cli::SketchUpMetadata;
+    /// use auxin::SketchUpMetadata;
     ///
     /// let commit = SketchUpMetadata::new("Client presentation")
     ///     .with_tag("presentation")
@@ -276,7 +276,7 @@ impl SketchUpMetadata {
     /// # Examples
     ///
     /// ```
-    /// use auxin_cli::SketchUpMetadata;
+    /// use auxin::SketchUpMetadata;
     ///
     /// // With full metadata
     /// let commit = SketchUpMetadata::new("Final model")
@@ -358,7 +358,7 @@ impl SketchUpMetadata {
     /// # Examples
     ///
     /// ```
-    /// use auxin_cli::SketchUpMetadata;
+    /// use auxin::SketchUpMetadata;
     ///
     /// // Parse formatted message
     /// let msg = "Model v3\n\nUnits: Meters\nLayers: 10\nComponents: 150";

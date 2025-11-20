@@ -16,7 +16,7 @@ use std::path::{Path, PathBuf};
 /// # Examples
 ///
 /// ```no_run
-/// use auxin_cli::LogicProject;
+/// use auxin::LogicProject;
 ///
 /// let project = LogicProject::detect("/path/to/MyProject.logicx")?;
 /// println!("Project name: {}", project.name());
@@ -71,7 +71,7 @@ impl LogicProject {
     /// # Examples
     ///
     /// ```no_run
-    /// use auxin_cli::LogicProject;
+    /// use auxin::LogicProject;
     ///
     /// // Detect with absolute path
     /// let project = LogicProject::detect("/Users/producer/MyProject.logicx")?;
@@ -277,7 +277,7 @@ impl LogicProject {
     /// # Examples
     ///
     /// ```no_run
-    /// use auxin_cli::LogicProject;
+    /// use auxin::LogicProject;
     ///
     /// let project = LogicProject::detect("/path/to/My Song.logicx")?;
     /// assert_eq!(project.name(), "My Song");
@@ -306,7 +306,7 @@ impl LogicProject {
     /// # Examples
     ///
     /// ```no_run
-    /// use auxin_cli::LogicProject;
+    /// use auxin::LogicProject;
     ///
     /// let project = LogicProject::detect("/path/to/Project.logicx")?;
     /// for path in project.tracked_paths() {
@@ -343,7 +343,7 @@ impl LogicProject {
     /// # Examples
     ///
     /// ```
-    /// use auxin_cli::LogicProject;
+    /// use auxin::LogicProject;
     ///
     /// let patterns = LogicProject::ignored_patterns();
     /// assert!(patterns.contains(&"Bounces/"));

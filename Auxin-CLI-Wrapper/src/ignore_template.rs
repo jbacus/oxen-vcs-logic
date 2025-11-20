@@ -51,7 +51,7 @@
 /// # Examples
 ///
 /// ```no_run
-/// use auxin_cli::generate_oxenignore;
+/// use auxin::generate_oxenignore;
 /// use std::fs;
 ///
 /// // Generate and write to disk
@@ -60,7 +60,7 @@
 /// ```
 ///
 /// ```
-/// use auxin_cli::generate_oxenignore;
+/// use auxin::generate_oxenignore;
 ///
 /// // Verify essential patterns are present
 /// let content = generate_oxenignore();
@@ -205,7 +205,7 @@ pub fn generate_oxenignore() -> String {
 /// # Examples
 ///
 /// ```no_run
-/// use auxin_cli::generate_sketchup_oxenignore;
+/// use auxin::generate_sketchup_oxenignore;
 /// use std::fs;
 ///
 /// // Generate and write to disk
@@ -347,7 +347,7 @@ pub fn generate_sketchup_oxenignore() -> String {
 /// # Examples
 ///
 /// ```no_run
-/// use auxin_cli::generate_blender_oxenignore;
+/// use auxin::generate_blender_oxenignore;
 /// use std::fs;
 ///
 /// // Generate and write to disk

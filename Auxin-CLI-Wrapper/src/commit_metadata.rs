@@ -24,7 +24,7 @@ use serde::{Deserialize, Serialize};
 /// # Examples
 ///
 /// ```
-/// use auxin_cli::CommitMetadata;
+/// use auxin::CommitMetadata;
 ///
 /// // Create milestone commit with full metadata
 /// let commit = CommitMetadata::new("Final mix - ready for mastering")
@@ -84,7 +84,7 @@ impl CommitMetadata {
     /// # Examples
     ///
     /// ```
-    /// use auxin_cli::CommitMetadata;
+    /// use auxin::CommitMetadata;
     ///
     /// // From &str
     /// let commit = CommitMetadata::new("Initial version");
@@ -115,7 +115,7 @@ impl CommitMetadata {
     /// # Examples
     ///
     /// ```
-    /// use auxin_cli::CommitMetadata;
+    /// use auxin::CommitMetadata;
     ///
     /// let commit = CommitMetadata::new("Uptempo mix")
     ///     .with_bpm(140.0);
@@ -137,7 +137,7 @@ impl CommitMetadata {
     /// # Examples
     ///
     /// ```
-    /// use auxin_cli::CommitMetadata;
+    /// use auxin::CommitMetadata;
     ///
     /// let commit = CommitMetadata::new("High-res recording")
     ///     .with_sample_rate(96000);
@@ -159,7 +159,7 @@ impl CommitMetadata {
     /// # Examples
     ///
     /// ```
-    /// use auxin_cli::CommitMetadata;
+    /// use auxin::CommitMetadata;
     ///
     /// let commit = CommitMetadata::new("Melody draft")
     ///     .with_key_signature("D Minor");
@@ -182,7 +182,7 @@ impl CommitMetadata {
     /// # Examples
     ///
     /// ```
-    /// use auxin_cli::CommitMetadata;
+    /// use auxin::CommitMetadata;
     ///
     /// let commit = CommitMetadata::new("Pre-master version")
     ///     .with_tag("mix")
@@ -226,7 +226,7 @@ impl CommitMetadata {
     /// # Examples
     ///
     /// ```
-    /// use auxin_cli::CommitMetadata;
+    /// use auxin::CommitMetadata;
     ///
     /// // With full metadata
     /// let commit = CommitMetadata::new("Final mix")
@@ -247,7 +247,7 @@ impl CommitMetadata {
     /// Output is guaranteed to be parseable by `parse_commit_message()`:
     ///
     /// ```
-    /// use auxin_cli::CommitMetadata;
+    /// use auxin::CommitMetadata;
     ///
     /// let original = CommitMetadata::new("Test").with_bpm(128.0);
     /// let formatted = original.format_commit_message();
@@ -310,7 +310,7 @@ impl CommitMetadata {
     /// # Examples
     ///
     /// ```
-    /// use auxin_cli::CommitMetadata;
+    /// use auxin::CommitMetadata;
     ///
     /// // Parse formatted message
     /// let msg = "Mix v3\n\nBPM: 120\nSample Rate: 48000 Hz\nKey: A Minor";
@@ -333,7 +333,7 @@ impl CommitMetadata {
     /// Invalid metadata values are silently ignored (set to None):
     ///
     /// ```
-    /// use auxin_cli::CommitMetadata;
+    /// use auxin::CommitMetadata;
     ///
     /// let msg = "Test\n\nBPM: not_a_number\nSample Rate: invalid";
     /// let parsed = CommitMetadata::parse_commit_message(msg);
@@ -348,7 +348,7 @@ impl CommitMetadata {
     /// Preserves newlines in the message portion:
     ///
     /// ```
-    /// use auxin_cli::CommitMetadata;
+    /// use auxin::CommitMetadata;
     ///
     /// let msg = "Line 1\nLine 2\nLine 3\n\nBPM: 130";
     /// let parsed = CommitMetadata::parse_commit_message(msg);

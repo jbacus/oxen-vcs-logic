@@ -17,15 +17,21 @@
 /// # Example
 ///
 /// ```no_run
-/// use auxin_cli::oxen_backend::{OxenBackend, BackendType, create_backend};
+/// # fn main() -> anyhow::Result<()> {
+/// use auxin::oxen_backend::{OxenBackend, BackendType, create_backend};
+/// use std::path::Path;
 ///
 /// // Create backend (defaults to subprocess)
 /// let backend = create_backend(BackendType::Subprocess)?;
+/// let path = Path::new(".");
+/// let files: Vec<&Path> = vec![];
 ///
 /// // Use backend-agnostic API
 /// backend.init(path)?;
 /// backend.add(path, &files)?;
 /// backend.commit(path, "Message")?;
+/// # Ok(())
+/// # }
 /// ```
 use anyhow::Result;
 use std::path::Path;
@@ -140,10 +146,13 @@ pub trait OxenBackend: Send + Sync {
 /// # Example
 ///
 /// ```no_run
-/// use auxin_cli::oxen_backend::{create_backend, BackendType};
+/// # fn main() -> anyhow::Result<()> {
+/// use auxin::oxen_backend::{create_backend, BackendType};
 ///
 /// let backend = create_backend(BackendType::Subprocess)?;
 /// println!("Using backend: {}", backend.name());
+/// # Ok(())
+/// # }
 /// ```
 pub fn create_backend(backend_type: BackendType) -> Result<Box<dyn OxenBackend>> {
     match backend_type {

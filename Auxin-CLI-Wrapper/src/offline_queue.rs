@@ -15,10 +15,11 @@
 //! # Example
 //!
 //! ```no_run
-//! use auxin_cli::offline_queue::{OfflineQueue, QueuedOperation};
+//! # fn main() -> anyhow::Result<()> {
+//! use auxin::offline_queue::{OfflineQueue, QueuedOperation};
 //! use std::path::Path;
 //!
-//! let queue = OfflineQueue::new()?;
+//! let mut queue = OfflineQueue::new()?;
 //!
 //! // Queue a lock acquisition
 //! queue.enqueue(QueuedOperation::AcquireLock {
@@ -29,7 +30,8 @@
 //!
 //! // Later, when online
 //! queue.sync_all()?;
-//! # Ok::<(), anyhow::Error>(())
+//! # Ok(())
+//! # }
 //! ```
 
 use anyhow::{anyhow, Context, Result};
