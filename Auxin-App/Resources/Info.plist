@@ -8,6 +8,8 @@
     <string>Auxin</string>
     <key>CFBundleIdentifier</key>
     <string>com.auxin.app</string>
+    <key>CFBundleIconFile</key>
+    <string>Auxin</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>

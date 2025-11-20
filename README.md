@@ -1,10 +1,17 @@
-# Auxin - Version Control for Creative Applications
+<div align="center">
+  <img src="assets/icon/icon-128.png" alt="Auxin Logo" width="128" height="128">
+  <h1>Auxin - Version Control for Creative Applications</h1>
+</div>
+
+<div align="center">
 
 [![Test Suite](https://github.com/jbacus/auxin/actions/workflows/test.yml/badge.svg)](https://github.com/jbacus/auxin/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![macOS](https://img.shields.io/badge/macOS-14.0+-blue.svg)](https://www.apple.com/macos)
 [![Rust](https://img.shields.io/badge/rust-stable-orange.svg)](https://www.rust-lang.org)
 [![Swift](https://img.shields.io/badge/swift-5.9+-orange.svg)](https://swift.org)
+
+</div>
 
 A native macOS version control system designed specifically for creative applications, leveraging [Oxen.ai](https://oxen.ai) for efficient large binary file management.
 

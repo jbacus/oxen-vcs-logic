@@ -50,6 +50,14 @@ if [ -d "Resources/Assets.xcassets" ]; then
     cp -R "Resources/Assets.xcassets" "$RESOURCES_DIR/"
 fi
 
+# Copy icon file
+echo "• Copying icon..."
+if [ -f "../assets/icon/Auxin.icns" ]; then
+    cp "../assets/icon/Auxin.icns" "$RESOURCES_DIR/"
+else
+    echo "Warning: Icon not found at ../assets/icon/Auxin.icns"
+fi
+
 echo "✅ App bundle created successfully: $APP_DIR"
 echo ""
 echo "You can now:"

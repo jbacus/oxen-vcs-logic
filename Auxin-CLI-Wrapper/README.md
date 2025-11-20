@@ -1,6 +1,8 @@
-# Auxin CLI Wrapper
-
-High-performance Rust CLI and library for Oxen VCS operations on Logic Pro projects. This component provides the core VCS functionality for the Auxin system with minimal latency and low resource usage.
+<div align="center">
+  <img src="../assets/icon/icon-128.png" alt="Auxin Logo" width="96" height="96">
+  <h1>Auxin CLI Wrapper</h1>
+  <p>High-performance Rust CLI and library for Oxen VCS operations on Logic Pro projects. This component provides the core VCS functionality for the Auxin system with minimal latency and low resource usage.</p>
+</div>
 
 ## Overview
 
