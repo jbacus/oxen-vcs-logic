@@ -647,9 +647,13 @@ extension OxenDaemonXPCService: NSXPCListenerDelegate {
 
             if !allowedIdentifiers.contains(identifier) {
                 print("XPC: Unknown bundle identifier: \(identifier)")
-                // Log but allow for now - in production, you might want to reject
-                // For full security, uncomment the following:
-                // return false
+                // Reject unknown bundle identifiers in production builds
+                #if !DEBUG
+                print("XPC: Rejecting connection from unknown identifier in production")
+                return false
+                #else
+                print("XPC: Allowing unknown identifier in DEBUG mode")
+                #endif
             }
             print("XPC: Verified connection from: \(identifier)")
         }
