@@ -26,9 +26,9 @@ export function RepositoryCard({ repo }: RepositoryCardProps) {
               {repo.description}
             </p>
           )}
-          <p className="mt-2 text-xs text-gray-500 font-mono truncate bg-gray-50 px-2 py-1 rounded inline-block">
-            {repo.path}
-          </p>
+          <div className="mt-2 text-xs text-gray-500 font-mono bg-gray-50 px-2 py-1 rounded max-w-full" title={repo.path}>
+            <p className="truncate">{repo.path}</p>
+          </div>
         </div>
       </div>
     </Link>
