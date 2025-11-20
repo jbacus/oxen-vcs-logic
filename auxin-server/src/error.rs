@@ -6,6 +6,7 @@ pub enum AppError {
     NotFound(String),
     BadRequest(String),
     Unauthorized(String),
+    Conflict(String),
     Internal(String),
     NotImplemented(String),
 }
@@ -16,6 +17,7 @@ impl fmt::Display for AppError {
             AppError::NotFound(msg) => write!(f, "Not found: {}", msg),
             AppError::BadRequest(msg) => write!(f, "Bad request: {}", msg),
             AppError::Unauthorized(msg) => write!(f, "Unauthorized: {}", msg),
+            AppError::Conflict(msg) => write!(f, "Conflict: {}", msg),
             AppError::Internal(msg) => write!(f, "Internal error: {}", msg),
             AppError::NotImplemented(msg) => write!(f, "Not implemented: {}", msg),
         }
@@ -28,6 +30,7 @@ impl ResponseError for AppError {
             AppError::NotFound(_) => StatusCode::NOT_FOUND,
             AppError::BadRequest(_) => StatusCode::BAD_REQUEST,
             AppError::Unauthorized(_) => StatusCode::UNAUTHORIZED,
+            AppError::Conflict(_) => StatusCode::CONFLICT,
             AppError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
             AppError::NotImplemented(_) => StatusCode::NOT_IMPLEMENTED,
         }
