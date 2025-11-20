@@ -6,6 +6,7 @@ use tracing::info;
 use auxin_server::api;
 use auxin_server::auth::{self, AuthService};
 use auxin_server::config::Config;
+use auxin_server::websocket::{ws_handler, WsHub};
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -36,6 +37,10 @@ async fn main() -> std::io::Result<()> {
     let auth_service = AuthService::new(config.clone());
     info!("Auth service initialized");
 
+    // Initialize WebSocket hub
+    let ws_hub = WsHub::new();
+    info!("WebSocket hub initialized");
+
     // Detect frontend static files directory
     let frontend_dir = PathBuf::from("frontend/dist");
     let serve_frontend = frontend_dir.exists();
@@ -53,6 +58,7 @@ async fn main() -> std::io::Result<()> {
         let mut app = App::new()
             .app_data(web::Data::new(config.clone()))
             .app_data(web::Data::new(auth_service.clone()))
+            .app_data(web::Data::new(ws_hub.clone()))
             .wrap(middleware::Logger::default())
             .wrap(
                 actix_cors::Cors::default()
@@ -84,6 +90,8 @@ async fn main() -> std::io::Result<()> {
             .route("/api/repos/{namespace}/{name}/locks/heartbeat", web::post().to(api::heartbeat_lock))
             .route("/api/repos/{namespace}/{name}/locks/status", web::get().to(api::lock_status))
             .route("/api/repos/{namespace}/{name}/activity", web::get().to(api::get_activity))
+            // WebSocket for real-time notifications
+            .route("/ws/repos/{namespace}/{name}", web::get().to(ws_handler))
             // Bounce audio endpoints
             .route("/api/repos/{namespace}/{name}/bounces", web::get().to(api::list_bounces))
             .route("/api/repos/{namespace}/{name}/bounces/{commit}", web::get().to(api::get_bounce))
