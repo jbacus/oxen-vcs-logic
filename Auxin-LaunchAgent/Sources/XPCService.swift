@@ -43,10 +43,12 @@ import Foundation
     /// - Parameters:
     ///   - projectPath: Path to project
     ///   - message: Optional custom commit message
+    ///   - metadata: Optional metadata dictionary (bpm, sample_rate, key_signature, etc.)
     ///   - reply: Completion handler with commit ID and error
     func commitProject(
         _ projectPath: String,
         message: String?,
+        metadata: [String: Any]?,
         withReply reply: @escaping (String?, String?) -> Void
     )
 
@@ -344,14 +346,23 @@ public class OxenDaemonXPCService: NSObject, OxenDaemonXPCProtocol {
     public func commitProject(
         _ projectPath: String,
         message: String?,
+        metadata: [String: Any]?,
         withReply reply: @escaping (String?, String?) -> Void
     ) {
         print("XPC: Manual commit for: \(projectPath)")
+        if let msg = message {
+            print("  Message: \(msg)")
+        }
+        if let meta = metadata {
+            print("  Metadata: \(meta)")
+        }
 
         Task {
             let result = await orchestrator.performCommit(
                 for: projectPath,
-                type: .manual
+                type: .manual,
+                message: message,
+                metadata: metadata
             )
 
             if result.success {

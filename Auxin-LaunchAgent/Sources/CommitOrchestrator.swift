@@ -75,7 +75,9 @@ public class CommitOrchestrator {
     @discardableResult
     public func performCommit(
         for projectPath: String,
-        type: CommitType = .autoSave
+        type: CommitType = .autoSave,
+        message: String? = nil,
+        metadata: [String: Any]? = nil
     ) async -> CommitResult {
         let startTime = Date()
         let normalizedPath = (projectPath as NSString).standardizingPath
@@ -139,17 +141,18 @@ public class CommitOrchestrator {
             )
         }
 
-        // Generate commit message based on type
-        let message = generateCommitMessage(for: type)
+        // Generate commit message based on type (use provided message or auto-generate)
+        let commitMessage = message ?? generateCommitMessage(for: type)
 
         print("\(commitTypeIcon(type)) Creating \(commitTypeName(type))...")
         print("   Project: \(projectPath)")
-        print("   Message: \(message)")
+        print("   Message: \(commitMessage)")
 
         // Execute commit via Rust CLI
         let result = await executeCommit(
             projectPath: normalizedPath,
-            message: message
+            message: commitMessage,
+            metadata: metadata
         )
 
         let duration = Date().timeIntervalSince(startTime)
@@ -228,7 +231,8 @@ public class CommitOrchestrator {
 
     private func executeCommit(
         projectPath: String,
-        message: String
+        message: String,
+        metadata: [String: Any]? = nil
     ) async -> (success: Bool, commitId: String?, message: String) {
         // First, stage all changes
         let stageResult = await runCliCommand(
@@ -240,10 +244,68 @@ public class CommitOrchestrator {
             return (false, nil, "Failed to stage changes: \(stageResult.output)")
         }
 
-        // Then commit
+        // Build commit arguments with metadata
+        var commitArgs = ["commit", "--message", message]
+
+        if let meta = metadata {
+            // Logic Pro metadata
+            if let bpm = meta["bpm"] as? Double {
+                commitArgs.append(contentsOf: ["--bpm", String(Int(bpm))])
+            }
+            if let sampleRate = meta["sample_rate"] as? Int {
+                commitArgs.append(contentsOf: ["--sample-rate", String(sampleRate)])
+            }
+            if let keySignature = meta["key_signature"] as? String {
+                commitArgs.append(contentsOf: ["--key", keySignature])
+            }
+
+            // SketchUp metadata
+            if let units = meta["units"] as? String {
+                commitArgs.append(contentsOf: ["--units", units])
+            }
+            if let layerCount = meta["layer_count"] as? Int {
+                commitArgs.append(contentsOf: ["--layers", String(layerCount)])
+            }
+            if let componentCount = meta["component_count"] as? Int {
+                commitArgs.append(contentsOf: ["--components", String(componentCount)])
+            }
+            if let groupCount = meta["group_count"] as? Int {
+                commitArgs.append(contentsOf: ["--groups", String(groupCount)])
+            }
+
+            // Blender metadata
+            if let sceneCount = meta["scene_count"] as? Int {
+                commitArgs.append(contentsOf: ["--scenes", String(sceneCount)])
+            }
+            if let objectCount = meta["object_count"] as? Int {
+                commitArgs.append(contentsOf: ["--objects", String(objectCount)])
+            }
+            if let materialCount = meta["material_count"] as? Int {
+                commitArgs.append(contentsOf: ["--materials", String(materialCount)])
+            }
+            if let renderEngine = meta["render_engine"] as? String {
+                commitArgs.append(contentsOf: ["--render-engine", renderEngine])
+            }
+            if let resolution = meta["resolution"] as? String {
+                commitArgs.append(contentsOf: ["--resolution", resolution])
+            }
+            if let fps = meta["fps"] as? Int {
+                commitArgs.append(contentsOf: ["--fps", String(fps)])
+            }
+            if let frameRange = meta["frame_range"] as? String {
+                commitArgs.append(contentsOf: ["--frame-range", frameRange])
+            }
+
+            // Common metadata
+            if let tags = meta["tags"] as? [String], !tags.isEmpty {
+                commitArgs.append(contentsOf: ["--tags", tags.joined(separator: ",")])
+            }
+        }
+
+        // Execute commit with metadata
         let commitResult = await runCliCommand(
             projectPath: projectPath,
-            arguments: ["commit", "--message", message]
+            arguments: commitArgs
         )
 
         if commitResult.success {

@@ -342,19 +342,26 @@ struct MilestoneCommitView: View {
         // Build metadata based on project type
         var metadata: [String: Any] = [:]
 
+        print("DEBUG: Building metadata for \(project.projectType)")
+        print("DEBUG: bpm='\(bpm)', sampleRate='\(sampleRate)', keySignature='\(keySignature)'")
+
         switch project.projectType {
         case .logicPro:
             if let bpmValue = Double(bpm) {
                 metadata["bpm"] = bpmValue
+                print("DEBUG: Added BPM: \(bpmValue)")
             }
             if let sampleRateValue = Int(sampleRate) {
                 metadata["sample_rate"] = sampleRateValue
+                print("DEBUG: Added sample_rate: \(sampleRateValue)")
             }
             if !keySignature.isEmpty {
                 metadata["key_signature"] = keySignature
+                print("DEBUG: Added key_signature: \(keySignature)")
             }
             if !timeSignature.isEmpty {
                 metadata["time_signature"] = timeSignature
+                print("DEBUG: Added time_signature: \(timeSignature)")
             }
 
         case .sketchup:
