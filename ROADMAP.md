@@ -23,11 +23,11 @@ Auxin solves the fundamental incompatibility between traditional VCS (like Git) 
 | **Phase 3** | GUI Application | Code Complete | 100% |
 | **Phase 4** | Team Collaboration | Complete | 95% |
 | **Phase 5** | 3D Modeling Support | Complete | 100% |
-| **Phase 6** | Network Resilience | In Progress | 70% |
+| **Phase 6** | Network Resilience | Complete | 100% |
 | **Phase 7** | Auxin Server | In Progress | 30% |
 | **Phase 8** | AI-Powered Diffing | Future | 0% |
 
-**Current Focus**: Phase 6 (Network Resilience) - CRITICAL for remote teams
+**Current Focus**: Phase 7 (Auxin Server) - Self-hosted collaboration
 
 ---
 
@@ -90,8 +90,8 @@ Louis (London, evening):
 | Feature | Status | Why Critical |
 |---------|--------|--------------|
 | **Network retry logic** | ✅ Complete | Adaptive retry with circuit breaker, exponential backoff |
-| **Offline commit queue** | Framework ready | Queue infrastructure in place, needs CLI integration |
-| **Partial push recovery** | Not started | Large sessions (2GB+) fail halfway = lost time |
+| **Offline commit queue** | ✅ Complete | Queue with auto-sync on network reconnect |
+| **Partial push recovery** | ✅ Complete | Chunked uploads with resume capability |
 | **Remote lock synchronization** | ✅ Complete | Heartbeat system keeps locks alive during sessions |
 | **Connection health monitoring** | ✅ Complete | Network quality check with latency measurement |
 
@@ -209,7 +209,7 @@ To get a working end-to-end solution for distributed teams:
 
 ## In Progress
 
-### Phase 6: Network Resilience (70%) 🚧 IN PROGRESS
+### Phase 6: Network Resilience (100%) ✅ COMPLETE
 
 **Goal**: Reliable operation on unreliable networks - REQUIRED for remote collaboration
 
@@ -230,21 +230,21 @@ To get a working end-to-end solution for distributed teams:
 - [x] Circuit breaker pattern for cascading failure prevention
 - [x] Adaptive retry policy (linear for rate limits, exponential for network)
 
-#### 6.2 Offline Mode (Week 2) 🚧 MOSTLY COMPLETE
+#### 6.2 Offline Mode (Week 2) ✅ COMPLETE
 - [x] Detect network availability before operations
 - [x] Queue commits locally when offline
 - [x] Persist queue to disk (survive app restart)
-- [ ] Auto-sync when connection restored (needs background daemon)
+- [x] Auto-sync when connection restored (NetworkMonitor in daemon)
 - [x] Status command shows pending sync count
 - [x] Manual sync trigger option (auxin queue sync)
 
-#### 6.3 Large File Handling (Week 2-3) 🚧 CORE COMPLETE
+#### 6.3 Large File Handling (Week 2-3) ✅ COMPLETE
 - [x] Chunked uploads with resume capability (ChunkedUploadManager)
 - [x] Track upload progress per-file (FileUploadState)
 - [x] Resume from last successful chunk on retry (session persistence)
 - [x] Bandwidth estimation and ETA display (moving average)
 - [x] Abort and resume later option (abort/clear_session methods)
-- [ ] CLI integration with push command (needs workflow integration)
+- [x] CLI integration with push command (auxin push with progress tracking)
 
 #### 6.4 Lock Resilience (Week 3) ✅ COMPLETE
 - [x] Heartbeat system (configurable interval, default 10 min)
@@ -265,9 +265,8 @@ To get a working end-to-end solution for distributed teams:
 - `oxen_subprocess.rs` - Enhanced error classification (RateLimited, ServerError, DnsError, SslError, Conflict)
 - `network_resilience.rs` - Circuit breaker, adaptive retry, network health monitor
 - `remote_lock.rs` - Heartbeat system, lock health status
-- `chunked_upload.rs` - Chunked upload manager with progress tracking and resume
-
-**Remaining Effort**: 1-2 weeks (offline queue CLI integration, large file chunking)
+- `chunked_upload.rs` - Chunked upload manager with progress tracking and resume (879 lines)
+- `NetworkMonitor.swift` - NWPathMonitor for connectivity detection and auto-sync
 
 ---
 
