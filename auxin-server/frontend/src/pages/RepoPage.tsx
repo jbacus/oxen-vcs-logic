@@ -113,9 +113,10 @@ export function RepoPage() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <Link
         to="/"
-        className="inline-flex items-center space-x-2 text-sm text-gray-600 hover:text-primary-600 mb-6"
+        className="inline-flex items-center space-x-2 text-sm text-gray-600 hover:text-primary-600 mb-6 transition-colors duration-200 hover:translate-x-[-2px] transition-transform"
+        aria-label="Back to repositories"
       >
-        <ArrowLeft className="w-4 h-4" />
+        <ArrowLeft className="w-4 h-4" aria-hidden="true" />
         <span>Back to repositories</span>
       </Link>
 
@@ -126,9 +127,9 @@ export function RepoPage() {
         {repo?.description && (
           <p className="mt-2 text-gray-600">{repo.description}</p>
         )}
-        <div className="mt-4 flex items-center space-x-2 bg-gray-50 border border-gray-200 rounded-lg p-3">
-          <Terminal className="w-4 h-4 text-gray-600 flex-shrink-0" />
-          <code className="text-sm font-mono text-gray-700 flex-1">
+        <div className="mt-4 flex items-center space-x-2 bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-lg p-3 shadow-sm">
+          <Terminal className="w-4 h-4 text-gray-600 flex-shrink-0" aria-hidden="true" />
+          <code className="text-sm font-mono text-gray-700 flex-1 select-all" aria-label="Clone command">
             {cloneCommand}
           </code>
           <CopyButton text={cloneCommand} />
@@ -136,20 +137,23 @@ export function RepoPage() {
       </div>
 
       <div className="border-b border-gray-200 mb-6">
-        <nav className="flex space-x-8">
+        <nav className="flex space-x-8" role="tablist" aria-label="Repository sections">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                role="tab"
+                aria-selected={activeTab === tab.id}
+                aria-controls={`${tab.id}-panel`}
+                className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm transition-all duration-200 ${
                   activeTab === tab.id
                     ? 'border-primary-600 text-primary-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
-                <Icon className="w-4 h-4" />
+                <Icon className="w-4 h-4" aria-hidden="true" />
                 <span>{tab.label}</span>
               </button>
             );
@@ -159,7 +163,7 @@ export function RepoPage() {
 
       <div>
         {activeTab === 'commits' && (
-          <div>
+          <div role="tabpanel" id="commits-panel" aria-labelledby="commits-tab">
             {commitsLoading && <Loading message="Loading commits..." />}
             {commits && (
               <CommitList
@@ -174,17 +178,19 @@ export function RepoPage() {
         )}
 
         {activeTab === 'locks' && (
-          <LockManager
-            lockInfo={lockInfo || null}
-            isLoading={lockLoading}
-            onAcquire={async (hours) => { await acquireLockMutation.mutateAsync(hours); }}
-            onRelease={async () => { await releaseLockMutation.mutateAsync(); }}
-            onHeartbeat={async () => { await heartbeatMutation.mutateAsync(); }}
-          />
+          <div role="tabpanel" id="locks-panel" aria-labelledby="locks-tab">
+            <LockManager
+              lockInfo={lockInfo || null}
+              isLoading={lockLoading}
+              onAcquire={async (hours) => { await acquireLockMutation.mutateAsync(hours); }}
+              onRelease={async () => { await releaseLockMutation.mutateAsync(); }}
+              onHeartbeat={async () => { await heartbeatMutation.mutateAsync(); }}
+            />
+          </div>
         )}
 
         {activeTab === 'metadata' && (
-          <div>
+          <div role="tabpanel" id="metadata-panel" aria-labelledby="metadata-tab">
             {!selectedCommit ? (
               <div className="card">
                 <p className="text-sm text-gray-500">

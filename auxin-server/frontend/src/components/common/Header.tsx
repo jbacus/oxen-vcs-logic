@@ -2,25 +2,30 @@ import { Link } from 'react-router-dom';
 
 export function Header() {
   return (
-    <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
+    <header className="bg-white border-b border-gray-200 sticky top-0 z-10 backdrop-blur-sm bg-white/95">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          <Link to="/" className="flex items-center space-x-3 hover:opacity-80 transition-opacity">
-            <img
-              src="/icon-96.png"
-              alt="Auxin Logo"
-              className="w-8 h-8"
-            />
+          <Link
+            to="/"
+            className="flex items-center space-x-3 hover:opacity-80 transition-all duration-200 group"
+          >
+            <div className="transform group-hover:scale-105 transition-transform duration-200">
+              <img
+                src="/icon-96.png"
+                alt="Auxin Logo"
+                className="w-8 h-8"
+              />
+            </div>
             <div>
               <h1 className="text-xl font-bold text-gray-900">Auxin Server</h1>
               <p className="text-xs text-gray-500">Logic Pro Version Control</p>
             </div>
           </Link>
 
-          <nav className="flex items-center space-x-6">
+          <nav className="flex items-center space-x-6" role="navigation" aria-label="Main navigation">
             <Link
               to="/"
-              className="text-sm font-medium text-gray-700 hover:text-primary-600 transition-colors"
+              className="text-sm font-medium text-gray-700 hover:text-primary-600 transition-colors duration-200 px-2 py-1 rounded hover:bg-gray-50"
             >
               Repositories
             </Link>
@@ -28,7 +33,8 @@ export function Header() {
               href="https://github.com/jbacus/auxin"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm font-medium text-gray-700 hover:text-primary-600 transition-colors"
+              className="text-sm font-medium text-gray-700 hover:text-primary-600 transition-colors duration-200 px-2 py-1 rounded hover:bg-gray-50"
+              aria-label="View project on GitHub"
             >
               GitHub
             </a>
