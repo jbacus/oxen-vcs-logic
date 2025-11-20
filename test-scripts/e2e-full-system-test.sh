@@ -376,7 +376,7 @@ cd "$PETE_WORKSPACE/$PROJECT_NAME"
 
 LOCK_RESULT=$(curl -s -X POST "$SERVER_URL/api/repos/pete/$PROJECT_NAME/locks/acquire" \
     -H "Content-Type: application/json" \
-    -d '{"user":"pete","reason":"Working on mix"}')
+    -d '{"user":"pete","machine_id":"pete-laptop"}')
 
 assert_contains "$LOCK_RESULT" "pete"
 log_success "Pete acquired lock"
@@ -388,12 +388,16 @@ assert_contains "$LOCK_STATUS" "pete"
 log_info "Louis attempts to acquire lock (should fail or show taken)..."
 LOUIS_LOCK=$(curl -s -X POST "$SERVER_URL/api/repos/pete/$PROJECT_NAME/locks/acquire" \
     -H "Content-Type: application/json" \
-    -d '{"user":"louis","reason":"Want to edit"}') || true
+    -d '{"user":"louis","machine_id":"louis-laptop"}') || true
 
 log_info "Louis lock response: $LOUIS_LOCK"
 
 log_info "Pete releases lock..."
-RELEASE=$(curl -s -X POST "$SERVER_URL/api/repos/pete/$PROJECT_NAME/locks/release")
+# Extract lock_id from LOCK_RESULT
+LOCK_ID=$(echo "$LOCK_RESULT" | grep -o '"lock_id":"[^"]*"' | sed 's/"lock_id":"//;s/"//')
+RELEASE=$(curl -s -X POST "$SERVER_URL/api/repos/pete/$PROJECT_NAME/locks/release" \
+    -H "Content-Type: application/json" \
+    -d "{\"lock_id\":\"$LOCK_ID\",\"user\":\"pete\",\"machine_id\":\"pete-laptop\"}")
 log_success "Pete released lock"
 
 # =============================================================================
