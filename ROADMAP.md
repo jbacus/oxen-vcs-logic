@@ -1,8 +1,66 @@
 # Auxin Roadmap
 
-**Last Updated**: 2025-11-20
+**Last Updated**: 2025-11-21
 **Vision**: The definitive version control system for professional creative applications
-**Priority**: Remote team collaboration (distributed teams, unreliable networks)
+**Priority**: Production-ready v0.3 with proven remote collaboration
+**Status**: Phases 1-6 Complete, Phase 7 at 70%
+
+---
+
+## Strategic Vision
+
+### What is Auxin?
+
+**Auxin is professional version control for creative applications**, combining:
+- ✅ **Git's power** - Full version history, branching, tagging, restore
+- ✅ **Splice's creativity focus** - Application metadata (BPM, key, layers), auto-commit
+- ✅ **Perforce's conflict prevention** - Pessimistic locking, no binary merges
+- ✅ **Local-first architecture** - Works offline, you own your data
+- ✅ **Open source** - MIT license, community-driven, transparent development
+
+### Who is Auxin For?
+
+**Primary Audience**: Solo creators and small creative teams (2-10 people)
+- Music producers working with Logic Pro (1-10GB projects)
+- 3D modelers using SketchUp for architecture (5-50GB projects)
+- Artists creating with Blender for animation
+
+**Secondary Audience**: Professional production studios
+- Teams needing collaboration without merge conflicts
+- Studios wanting self-hosted version control (data ownership)
+- Organizations tired of $900+/user/year enterprise VCS pricing
+
+### Strategic Positioning
+
+**Auxin is NOT**:
+- ❌ A Splice clone (we're open source, local-first, no subscription)
+- ❌ Git with plugins (built from ground-up for large binaries)
+- ❌ Enterprise-only (complex setup, expensive licensing)
+- ❌ Cloud-only SaaS (works completely offline)
+
+**Auxin IS**:
+- ✅ The **open-source, local-first alternative to Splice** for cost-conscious creators
+- ✅ **Git for large binaries, done right** - no bloat, no conflicts, application-aware
+- ✅ **Perforce for indie creators** - same workflow, without enterprise complexity
+- ✅ **Professional tool at indie price** (free, self-hosted, optional managed hosting)
+
+See [COMPETITIVE_POSITIONING.md](COMPETITIVE_POSITIONING.md) for detailed market analysis.
+
+### Business Model
+
+**Free Forever** (MIT License):
+- Core CLI, LaunchAgent daemon, GUI app, self-hosted Auxin Server
+- All features for solo creators and teams
+- No vendor lock-in, you own your data
+
+**Future Optional Services** (Sustainability):
+- Auxin Cloud - Managed hosting (convenience, not capability)
+- Enterprise support - SLA-backed contracts for studios
+- Training & consulting - Professional onboarding services
+
+**Commitment**: Core software stays free. We make money by making Auxin so good that users *want* to support it, not because they're forced to.
+
+See [BUSINESS_MODEL.md](BUSINESS_MODEL.md) for complete sustainability strategy.
 
 ---
 
