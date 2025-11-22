@@ -61,10 +61,10 @@ Deploys the Auxin server to Google Cloud Platform:
 
 Enables Claude AI to assist with GitHub issues and PRs.
 
-### 👀 [claude-code-review.yml](claude-code-review.yml) - Automated Code Review
-**Triggers:** PR opened/updated
-
-Provides automated code review feedback using Claude AI.
+**Usage:**
+- Comment `@claude <your request>` on any issue or PR
+- Claude will respond with code changes, reviews, or answers
+- Provides on-demand assistance without automatic triggers
 
 ## Test Organization Strategy
 
