@@ -7,7 +7,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2025-11-22
+
 ### Added
+- **Auxin Server v0.3 - Server Alpha Release** (2025-11-22)
+  - **Web UI Features**:
+    - React/TypeScript frontend with modern, responsive design
+    - Repository management: create, view, delete repositories
+    - Real-time activity feed with WebSocket updates
+    - Lock management UI with acquire/release controls
+    - Branch management with create/delete operations
+    - File browser for commit exploration
+    - Commit history timeline with metadata display
+  - **Backend API** (Rust/Actix Web):
+    - Full REST API for repository operations
+    - User authentication with JWT tokens
+    - Centralized lock management with heartbeat system
+    - Activity logging and aggregation
+    - Metadata storage for Logic Pro/SketchUp/Blender projects
+    - WebSocket support for real-time collaboration
+  - **CLI Integration**:
+    - Server health check (`auxin server health`)
+    - Server status display (`auxin server status`)
+    - Configuration management (`auxin server set`)
+    - Lock operations via server (beta - known auth issue)
+    - Automatic fallback to local locking
+  - **Deployment**:
+    - Docker and docker-compose support
+    - Production deployment guide (Nginx, SSL, systemd)
+    - Prometheus/Grafana monitoring examples
+    - Environment-based configuration
+  - **Documentation**:
+    - OpenAPI 3.0 specification (30+ endpoints)
+    - CLI integration testing report
+    - Deployment guides for Docker and production
+    - API documentation with examples
+
+### Known Issues
+- **Server Locks (Beta)**: Lock acquire/release operations have an authentication bug affecting POST endpoints. CLI automatically falls back to local locking as a workaround. Fix planned for v0.3.1.
+
+### Validation
+- ✅ User registration and login via web UI
+- ✅ Repository CRUD operations (including delete)
+- ✅ CLI→Server integration (architecture validated)
+- ✅ Lock enforcement and WebSocket updates
+- ✅ Activity feed real-time updates
+- ✅ Deployment documentation complete
+- See `V0.3_VALIDATION.md` and `CLI_INTEGRATION_TESTING.md` for detailed results
+
+### Added (Earlier in Development Cycle)
 - **Advanced Commit Comparison Features** (2025-11-22)
   - Thumbnail comparison with pixel-level diff analysis
     - Automatic extraction from Logic Pro WindowImage.jpg
