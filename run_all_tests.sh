@@ -156,10 +156,33 @@ echo -e "${GREEN}Passed: ${PASSED_SUITES}${NC}"
 echo -e "${RED}Failed: ${FAILED_SUITES}${NC}"
 echo ""
 
+# Pete & Louis feedback
 if [ $FAILED_SUITES -eq 0 ]; then
     echo -e "${GREEN}✓ All tests passed!${NC}"
+    echo ""
+    echo "    ╔════════════════════════════════════════════════════════╗"
+    echo "    ║  Pete (L) & Louis (R) say: \"Tests look good!\" 🎉      ║"
+    echo "    ╚════════════════════════════════════════════════════════╝"
+    echo "         👍                              👍"
+    echo "        ___                             ___"
+    echo "       /   \\                           /   \\"
+    echo "      | 😊  |                         | 😄  |"
+    echo "      |_____|                         |_____|"
+    echo "        | |                             | |"
+    echo ""
     exit 0
 else
     echo -e "${RED}✗ Some tests failed${NC}"
+    echo ""
+    echo "    ╔════════════════════════════════════════════════════════╗"
+    echo "    ║  Pete (L) & Louis (R) say: \"Needs some work...\" 🔧    ║"
+    echo "    ╚════════════════════════════════════════════════════════╝"
+    echo "         👎                              👎"
+    echo "        ___                             ___"
+    echo "       /   \\                           /   \\"
+    echo "      | 🤨  |                         | 😐  |"
+    echo "      |_____|                         |_____|"
+    echo "        | |                             | |"
+    echo ""
     exit 1
 fi

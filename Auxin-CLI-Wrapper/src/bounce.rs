@@ -712,6 +712,37 @@ impl BounceComparison {
         self.bounce_b.size_bytes as i64 - self.bounce_a.size_bytes as i64
     }
 
+    /// Get Pete & Louis feedback ASCII art based on null test result
+    fn get_feedback_art(cancellation_percent: f64) -> &'static str {
+        if cancellation_percent >= 80.0 {
+            // Thumbs up - great results!
+            r#"
+    ╔════════════════════════════════════════════════════════╗
+    ║  Pete (L) & Louis (R) say: "Sounds good!" 🎵          ║
+    ╚════════════════════════════════════════════════════════╝
+         👍                              👍
+        ___                             ___
+       /   \                           /   \
+      | 😊  |                         | 😄  |
+      |_____|                         |_____|
+        | |                             | |
+    "#
+        } else {
+            // Thumbs down - needs work
+            r#"
+    ╔════════════════════════════════════════════════════════╗
+    ║  Pete (L) & Louis (R) say: "Something changed..." 🎵  ║
+    ╚════════════════════════════════════════════════════════╝
+         👎                              👎
+        ___                             ___
+       /   \                           /   \
+      | 🤨  |                         | 😐  |
+      |_____|                         |_____|
+        | |                             | |
+    "#
+        }
+    }
+
     /// Format comparison as a report
     pub fn format_report(&self) -> String {
         let mut report = String::new();
@@ -793,6 +824,10 @@ impl BounceComparison {
                 report.push_str(&format!("  Difference Level: {:.2} dB\n", db));
             }
             report.push_str(&format!("  Analysis: {}\n", null_test.interpretation));
+
+            // Add Pete & Louis feedback
+            report.push_str("\n");
+            report.push_str(Self::get_feedback_art(null_test.cancellation_percent));
         }
 
         report
@@ -864,5 +899,50 @@ mod tests {
         assert_eq!(AudioFormat::Wav.mime_type(), "audio/wav");
         assert_eq!(AudioFormat::Mp3.mime_type(), "audio/mpeg");
         assert_eq!(AudioFormat::Flac.mime_type(), "audio/flac");
+    }
+
+    #[test]
+    fn test_pete_louis_feedback_thumbs_up() {
+        // Test that high cancellation (good results) shows thumbs up
+        let art = BounceComparison::get_feedback_art(95.0);
+        assert!(art.contains("👍"));
+        assert!(art.contains("Sounds good!"));
+        assert!(art.contains("😊"));
+        assert!(art.contains("😄"));
+    }
+
+    #[test]
+    fn test_pete_louis_feedback_thumbs_down() {
+        // Test that low cancellation (differences detected) shows thumbs down
+        let art = BounceComparison::get_feedback_art(50.0);
+        assert!(art.contains("👎"));
+        assert!(art.contains("Something changed"));
+        assert!(art.contains("🤨"));
+        assert!(art.contains("😐"));
+    }
+
+    #[test]
+    fn test_bounce_comparison_report_includes_feedback() {
+        // Create a mock bounce comparison with null test results
+        let bounce_a = BounceMetadata::new("abc123", "test_a.wav", AudioFormat::Wav, 1000);
+        let bounce_b = BounceMetadata::new("def456", "test_b.wav", AudioFormat::Wav, 1000);
+
+        let null_test = NullTestResult {
+            cancellation_percent: 99.5,
+            interpretation: "Identical or imperceptibly different".to_string(),
+            difference_level_db: Some(-96.0),
+        };
+
+        let comparison = BounceComparison {
+            bounce_a,
+            bounce_b,
+            null_test_result: Some(null_test),
+        };
+
+        let report = comparison.format_report();
+
+        // Check that Pete & Louis feedback is included
+        assert!(report.contains("Pete (L) & Louis (R)"));
+        assert!(report.contains("👍")); // Should show thumbs up for 99.5% cancellation
     }
 }
