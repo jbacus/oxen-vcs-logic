@@ -34,7 +34,7 @@ md5 = "0.7"            # Hashing for session file names
 
 # HTTP client for server integration
 # Using ureq for simplicity with blocking HTTP
-ureq = { version = "2.9", features = ["json"] }
+ureq = { version = "3.1", features = ["json"] }
 url = "2.5"
 
 # Visual feedback and interactivity
