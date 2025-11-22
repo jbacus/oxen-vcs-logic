@@ -9,6 +9,7 @@ pub enum AppError {
     Conflict(String),
     Internal(String),
     NotImplemented(String),
+    Database(String),
 }
 
 impl fmt::Display for AppError {
@@ -20,6 +21,7 @@ impl fmt::Display for AppError {
             AppError::Conflict(msg) => write!(f, "Conflict: {}", msg),
             AppError::Internal(msg) => write!(f, "Internal error: {}", msg),
             AppError::NotImplemented(msg) => write!(f, "Not implemented: {}", msg),
+            AppError::Database(msg) => write!(f, "Database error: {}", msg),
         }
     }
 }
@@ -33,6 +35,7 @@ impl ResponseError for AppError {
             AppError::Conflict(_) => StatusCode::CONFLICT,
             AppError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
             AppError::NotImplemented(_) => StatusCode::NOT_IMPLEMENTED,
+            AppError::Database(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
 

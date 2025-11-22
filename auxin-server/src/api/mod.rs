@@ -1,6 +1,9 @@
 mod bounce_ops;
 mod repo_ops;
 
+#[cfg(feature = "web-ui")]
+mod project_ops;
+
 use actix_web::{web, HttpResponse, Result};
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -20,6 +23,12 @@ pub use repo_ops::{
 
 pub use bounce_ops::{
     delete_bounce, get_bounce, get_bounce_audio, list_bounces, upload_bounce,
+};
+
+#[cfg(feature = "web-ui")]
+pub use project_ops::{
+    create_project, delete_project, get_project, get_project_by_namespace,
+    list_projects, update_project,
 };
 
 #[derive(Debug, Serialize, Deserialize)]

@@ -8,6 +8,12 @@ pub mod error;
 pub mod extensions;
 pub mod websocket;
 
+#[cfg(feature = "web-ui")]
+pub mod db;
+
+#[cfg(feature = "web-ui")]
+pub mod models;
+
 // Conditionally use real or mock Oxen implementation
 #[cfg(feature = "full-oxen")]
 #[path = "repo_full.rs"]
