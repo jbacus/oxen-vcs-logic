@@ -25,8 +25,17 @@ pub use bounce_ops::{
     delete_bounce, get_bounce, get_bounce_audio, list_bounces, upload_bounce,
 };
 
+// File-based collaborator management (default)
+#[cfg(not(feature = "web-ui"))]
 pub use project_ops::{
     add_collaborator, list_collaborators, remove_collaborator, update_visibility,
+};
+
+// Database-backed project CRUD (web-ui feature)
+#[cfg(feature = "web-ui")]
+pub use project_ops::{
+    create_project, delete_project, get_project, get_project_by_namespace,
+    list_projects, update_project,
 };
 
 #[derive(Debug, Serialize, Deserialize)]
