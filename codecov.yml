@@ -1,0 +1,71 @@
+codecov:
+  require_ci_to_pass: yes
+  notify:
+    wait_for_ci: yes
+
+coverage:
+  precision: 2
+  round: down
+  range: "70...100"
+
+  status:
+    project:
+      default:
+        target: 80%
+        threshold: 2%
+        if_ci_failed: error
+
+    patch:
+      default:
+        target: 70%
+        threshold: 5%
+
+  changes:
+    default:
+      against: auto
+      threshold: 1%
+
+flags:
+  rust-cli:
+    paths:
+      - Auxin-CLI-Wrapper/
+    carryforward: true
+
+  rust-server:
+    paths:
+      - auxin-server/
+    carryforward: true
+
+  swift-daemon:
+    paths:
+      - Auxin-LaunchAgent/
+    carryforward: true
+
+  swift-app:
+    paths:
+      - Auxin-App/
+    carryforward: true
+
+  frontend:
+    paths:
+      - auxin-server/frontend/
+    carryforward: true
+
+comment:
+  layout: "reach,diff,flags,tree,footer"
+  behavior: default
+  require_changes: false
+  require_base: false
+  require_head: true
+
+ignore:
+  - "**/*_test.rs"
+  - "**/tests/**"
+  - "**/test/**"
+  - "**/*.test.ts"
+  - "**/*.test.tsx"
+  - "**/*.spec.ts"
+  - "**/*.spec.tsx"
+  - "**/mock*.swift"
+  - "**/Mock*.swift"
+  - "**/*Tests.swift"

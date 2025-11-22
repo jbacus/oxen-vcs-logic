@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use tracing::{error, info};
 
 use crate::auth::{get_optional_user_id_from_request, get_user_id_from_request, AuthService};
-use crate::config::Config;
+use auxin_config::Config;
 use crate::error::{AppError, AppResult};
 use crate::project::{ProjectMetadata, Visibility};
 use crate::repo::RepositoryOps;
@@ -58,13 +58,13 @@ pub async fn list_repositories(
     auth_service: web::Data<AuthService>,
     req: actix_web::HttpRequest,
 ) -> Result<HttpResponse> {
-    info!("Listing repositories from: {}", config.sync_dir);
+    info!("Listing repositories from: {}", config.server.sync_dir);
 
     let user_id = get_optional_user_id_from_request(&req, &auth_service);
     let mut repositories = Vec::new();
 
     // Scan SYNC_DIR for repositories
-    if let Ok(entries) = fs::read_dir(&config.sync_dir) {
+    if let Ok(entries) = fs::read_dir(&config.server.sync_dir) {
         for namespace_entry in entries.flatten() {
             if let Ok(namespace_type) = namespace_entry.file_type() {
                 if namespace_type.is_dir() {
@@ -164,7 +164,7 @@ pub async fn create_repository(
     }
 
     // Build repository path
-    let repo_path = PathBuf::from(&config.sync_dir)
+    let repo_path = PathBuf::from(&config.server.sync_dir)
         .join(&namespace)
         .join(&repo_name);
 
@@ -223,7 +223,7 @@ pub async fn get_repository(
     let (namespace, repo_name) = path.into_inner();
     info!("Getting repository: {}/{}", namespace, repo_name);
 
-    let repo_path = PathBuf::from(&config.sync_dir)
+    let repo_path = PathBuf::from(&config.server.sync_dir)
         .join(&namespace)
         .join(&repo_name);
 

@@ -157,6 +157,47 @@ jobs:
           curl -f ${{ steps.service-url.outputs.url }}/health || exit 1
           echo "Health check passed!"
 
+      - name: Notify deployment success
+        if: success()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: custom
+          custom_payload: |
+            {
+              text: "✅ Auxin Server deployed to Development",
+              attachments: [{
+                color: 'good',
+                fields: [
+                  { title: 'Environment', value: 'Development', short: true },
+                  { title: 'Commit', value: '${{ github.sha }}', short: true },
+                  { title: 'URL', value: '${{ steps.service-url.outputs.url }}' },
+                  { title: 'Deployed by', value: '${{ github.actor }}', short: true }
+                ]
+              }]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Notify deployment failure
+        if: failure()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: custom
+          custom_payload: |
+            {
+              text: "❌ Auxin Server deployment to Development failed",
+              attachments: [{
+                color: 'danger',
+                fields: [
+                  { title: 'Environment', value: 'Development', short: true },
+                  { title: 'Commit', value: '${{ github.sha }}', short: true },
+                  { title: 'Workflow', value: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}' }
+                ]
+              }]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
   deploy-staging:
     name: Deploy to Staging
     needs: build-image
@@ -277,3 +318,51 @@ jobs:
             --format 'value(status.url)')
           echo "url=$URL" >> $GITHUB_OUTPUT
           echo "Deployed to: $URL"
+
+      - name: Run smoke tests
+        run: |
+          sleep 10
+          curl -f ${{ steps.service-url.outputs.url }}/health || exit 1
+          echo "Production health check passed!"
+
+      - name: Notify production deployment success
+        if: success()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: custom
+          custom_payload: |
+            {
+              text: "🚀 Auxin Server deployed to PRODUCTION",
+              attachments: [{
+                color: 'good',
+                fields: [
+                  { title: 'Environment', value: 'Production', short: true },
+                  { title: 'Commit', value: '${{ github.sha }}', short: true },
+                  { title: 'URL', value: '${{ steps.service-url.outputs.url }}' },
+                  { title: 'Deployed by', value: '${{ github.actor }}', short: true }
+                ]
+              }]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Notify production deployment failure
+        if: failure()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: custom
+          custom_payload: |
+            {
+              text: "🚨 CRITICAL: Auxin Server deployment to PRODUCTION failed",
+              attachments: [{
+                color: 'danger',
+                fields: [
+                  { title: 'Environment', value: 'Production', short: true },
+                  { title: 'Commit', value: '${{ github.sha }}', short: true },
+                  { title: 'Workflow', value: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}' },
+                  { title: 'Action Required', value: 'Immediate investigation needed' }
+                ]
+              }]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

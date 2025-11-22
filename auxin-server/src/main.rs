@@ -3,9 +3,9 @@ use actix_web::{middleware, web, App, HttpResponse, HttpServer, Result};
 use std::path::PathBuf;
 use tracing::info;
 
+use auxin_config::Config;
 use auxin_server::api;
 use auxin_server::auth::{self, AuthService};
-use auxin_server::config::Config;
 use auxin_server::websocket::{ws_handler, WsHub};
 
 #[cfg(feature = "web-ui")]
@@ -24,16 +24,16 @@ async fn main() -> std::io::Result<()> {
     info!("Starting Auxin Server (Oxen-aligned architecture)...");
 
     // Load configuration
-    let config = Config::from_env().expect("Failed to load configuration");
+    let config = Config::load().expect("Failed to load configuration");
     info!("Configuration loaded");
-    info!("SYNC_DIR: {}", config.sync_dir);
-    info!("Server will listen on {}:{}", config.host, config.port);
+    info!("SYNC_DIR: {}", config.server.sync_dir);
+    info!("Server will listen on {}:{}", config.server.host, config.server.port);
 
     // Ensure SYNC_DIR exists
-    std::fs::create_dir_all(&config.sync_dir).expect("Failed to create SYNC_DIR");
+    std::fs::create_dir_all(&config.server.sync_dir).expect("Failed to create SYNC_DIR");
 
-    let host = config.host.clone();
-    let port = config.port;
+    let host = config.server.host.clone();
+    let port = config.server.port as u16;
 
     // Initialize auth service
     let auth_service = AuthService::new(config.clone());
@@ -45,7 +45,7 @@ async fn main() -> std::io::Result<()> {
 
     // Initialize database if web-ui feature is enabled
     #[cfg(feature = "web-ui")]
-    let db_pool = if let Some(database_url) = &config.database_url {
+    let db_pool = if let Some(database_url) = &config.server.database_url {
         match db::init_database(database_url).await {
             Ok(pool) => {
                 info!("Database initialized successfully");

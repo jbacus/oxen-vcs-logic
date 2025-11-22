@@ -1,12 +1,33 @@
 use anyhow::Context;
 use auxin::{
     lock_integration, logger, progress, server_client, success, vlog, warn, AuxinServerClient,
-    BlenderProject, BounceManager, CommitMetadata, Config, LogicProject, OxenRepository,
-    OxenSubprocess, ProjectType, ServerConfig, SketchUpMetadata, SketchUpProject, ThumbnailManager,
+    BlenderProject, BounceManager, CommitMetadata, LogicProject, OxenRepository,
+    OxenSubprocess, ServerConfig, SketchUpMetadata, SketchUpProject, ThumbnailManager,
 };
+use auxin_config::Config;
 use clap::{Parser, Subcommand};
 use colored::Colorize;
 use std::path::PathBuf;
+
+#[derive(Debug, Clone, PartialEq)]
+enum ProjectType {
+    LogicPro,
+    SketchUp,
+    Blender,
+    Auto,
+}
+
+impl ProjectType {
+    fn parse(s: &str) -> Option<Self> {
+        match s.to_lowercase().as_str() {
+            "logicpro" | "logic" => Some(ProjectType::LogicPro),
+            "sketchup" | "skp" => Some(ProjectType::SketchUp),
+            "blender" | "blend" => Some(ProjectType::Blender),
+            "auto" => Some(ProjectType::Auto),
+            _ => None,
+        }
+    }
+}
 
 #[derive(Parser)]
 #[command(name = "auxin")]
@@ -2533,20 +2554,16 @@ async fn main() -> anyhow::Result<()> {
             progress::finish_success(&pb, &format!("Commit created: {}", commit_id));
 
             // Store metadata on server if configured
-            let config = Config::load().unwrap_or_default();
-            if config.server.use_server_metadata {
+            let config = auxin_config::load_config().unwrap_or_default();
+            if config.cli.use_server_metadata {
                 let server_config = ServerConfig {
-                    url: config.server.url.clone(),
-                    token: config.server.token.clone(),
-                    timeout_secs: config.server.timeout_secs,
+                    url: config.cli.url.clone(),
+                    token: if config.cli.token.is_empty() { None } else { Some(config.cli.token.clone()) },
+                    timeout_secs: config.cli.timeout_secs as u64,
                 };
 
                 if let Ok(client) = AuxinServerClient::new(server_config) {
-                    let namespace = config
-                        .server
-                        .default_namespace
-                        .clone()
-                        .unwrap_or_else(|| "default".to_string());
+                    let namespace = config.cli.default_namespace.clone();
                     let current_dir = std::env::current_dir()?;
                     let repo_name = current_dir
                         .file_name()
@@ -3433,14 +3450,14 @@ async fn main() -> anyhow::Result<()> {
             match lock_cmd {
                 LockCommands::Acquire { timeout } => {
                     // Load config to check if server locks are enabled
-                    let config = Config::load().unwrap_or_default();
+                    let config = auxin_config::load_config().unwrap_or_default();
 
-                    if config.server.use_server_locks {
+                    if config.cli.use_server_locks {
                         // Use server-based locking
                         let server_config = ServerConfig {
-                            url: config.server.url.clone(),
-                            token: config.server.token.clone(),
-                            timeout_secs: config.server.timeout_secs,
+                            url: config.cli.url.clone(),
+                            token: if config.cli.token.is_empty() { None } else { Some(config.cli.token.clone()) },
+                            timeout_secs: config.cli.timeout_secs as u64,
                         };
 
                         match AuxinServerClient::new(server_config) {
@@ -3449,11 +3466,7 @@ async fn main() -> anyhow::Result<()> {
                                 let machine_id = server_client::get_machine_id();
 
                                 // Get namespace/name from config or current directory
-                                let namespace = config
-                                    .server
-                                    .default_namespace
-                                    .clone()
-                                    .unwrap_or_else(|| "default".to_string());
+                                let namespace = config.cli.default_namespace.clone();
                                 let repo_name = current_dir
                                     .file_name()
                                     .map(|s| s.to_string_lossy().to_string())
@@ -3535,12 +3548,12 @@ async fn main() -> anyhow::Result<()> {
                     // Load config to check if server locks are enabled
                     let config = Config::load().unwrap_or_default();
 
-                    if config.server.use_server_locks {
+                    if config.cli.use_server_locks {
                         // Use server-based locking
                         let server_config = ServerConfig {
-                            url: config.server.url.clone(),
-                            token: config.server.token.clone(),
-                            timeout_secs: config.server.timeout_secs,
+                            url: config.cli.url.clone(),
+                            token: if config.cli.token.is_empty() { None } else { Some(config.cli.token.clone()) },
+                            timeout_secs: config.cli.timeout_secs as u64,
                         };
 
                         match AuxinServerClient::new(server_config) {
@@ -3549,11 +3562,7 @@ async fn main() -> anyhow::Result<()> {
                                 let machine_id = server_client::get_machine_id();
 
                                 // Get namespace/name from config or current directory
-                                let namespace = config
-                                    .server
-                                    .default_namespace
-                                    .clone()
-                                    .unwrap_or_else(|| "default".to_string());
+                                let namespace = config.cli.default_namespace.clone();
                                 let repo_name = current_dir
                                     .file_name()
                                     .map(|s| s.to_string_lossy().to_string())
@@ -3641,22 +3650,18 @@ async fn main() -> anyhow::Result<()> {
                     // Load config to check if server locks are enabled
                     let config = Config::load().unwrap_or_default();
 
-                    if config.server.use_server_locks {
+                    if config.cli.use_server_locks {
                         // Use server-based locking
                         let server_config = ServerConfig {
-                            url: config.server.url.clone(),
-                            token: config.server.token.clone(),
-                            timeout_secs: config.server.timeout_secs,
+                            url: config.cli.url.clone(),
+                            token: if config.cli.token.is_empty() { None } else { Some(config.cli.token.clone()) },
+                            timeout_secs: config.cli.timeout_secs as u64,
                         };
 
                         match AuxinServerClient::new(server_config) {
                             Ok(client) => {
                                 // Get namespace/name from config or current directory
-                                let namespace = config
-                                    .server
-                                    .default_namespace
-                                    .clone()
-                                    .unwrap_or_else(|| "default".to_string());
+                                let namespace = config.cli.default_namespace.clone();
                                 let repo_name = current_dir
                                     .file_name()
                                     .map(|s| s.to_string_lossy().to_string())
@@ -3931,10 +3936,10 @@ async fn main() -> anyhow::Result<()> {
             match server_cmd {
                 ServerCommands::Status => {
                     // Truncate URL if too long
-                    let url_display = if config.server.url.len() > 43 {
-                        format!("{}...", &config.server.url[..40])
+                    let url_display = if config.cli.url.len() > 43 {
+                        format!("{}...", &config.cli.url[..40])
                     } else {
-                        config.server.url.clone()
+                        config.cli.url.clone()
                     };
 
                     println!();
@@ -3943,19 +3948,15 @@ async fn main() -> anyhow::Result<()> {
                     println!("│  URL:        {:<43} │", url_display);
                     println!(
                         "│  Namespace:  {:<43} │",
-                        config
-                            .server
-                            .default_namespace
-                            .as_deref()
-                            .unwrap_or("(none)")
+                        config.cli.default_namespace.as_str()
                     );
                     println!(
                         "│  Timeout:    {} seconds{:<34} │",
-                        config.server.timeout_secs, ""
+                        config.cli.timeout_secs, ""
                     );
                     println!(
                         "│  Locks:      {:<43} │",
-                        if config.server.use_server_locks {
+                        if config.cli.use_server_locks {
                             "enabled"
                         } else {
                             "disabled"
@@ -3963,7 +3964,7 @@ async fn main() -> anyhow::Result<()> {
                     );
                     println!(
                         "│  Metadata:   {:<43} │",
-                        if config.server.use_server_metadata {
+                        if config.cli.use_server_metadata {
                             "enabled"
                         } else {
                             "disabled"
@@ -3973,9 +3974,9 @@ async fn main() -> anyhow::Result<()> {
 
                     // Check connection
                     let server_config = ServerConfig {
-                        url: config.server.url.clone(),
-                        token: config.server.token.clone(),
-                        timeout_secs: config.server.timeout_secs,
+                        url: config.cli.url.clone(),
+                        token: if config.cli.token.is_empty() { None } else { Some(config.cli.token.clone()) },
+                        timeout_secs: config.cli.timeout_secs as u64,
                     };
 
                     if let Ok(client) = AuxinServerClient::new(server_config) {
@@ -4000,9 +4001,9 @@ async fn main() -> anyhow::Result<()> {
                     let pb = progress::spinner("Testing server connection...");
 
                     let server_config = ServerConfig {
-                        url: config.server.url.clone(),
-                        token: config.server.token.clone(),
-                        timeout_secs: config.server.timeout_secs,
+                        url: config.cli.url.clone(),
+                        token: if config.cli.token.is_empty() { None } else { Some(config.cli.token.clone()) },
+                        timeout_secs: config.cli.timeout_secs as u64,
                     };
 
                     match AuxinServerClient::new(server_config) {
@@ -4010,14 +4011,14 @@ async fn main() -> anyhow::Result<()> {
                             Ok(true) => {
                                 progress::finish_success(&pb, "Server is healthy");
                                 println!();
-                                progress::success(&format!("Connected to {}", config.server.url));
+                                progress::success(&format!("Connected to {}", config.cli.url));
                             }
                             Ok(false) => {
                                 progress::finish_error(&pb, "Server health check failed");
                                 println!();
                                 progress::error(&format!(
                                     "Server at {} is not responding",
-                                    config.server.url
+                                    config.cli.url
                                 ));
                             }
                             Err(e) => {
@@ -4039,16 +4040,16 @@ async fn main() -> anyhow::Result<()> {
 
                     match key.as_str() {
                         "url" => {
-                            config.server.url = value.clone();
+                            config.cli.url = value.clone();
                             progress::success(&format!("Set server URL to: {}", value));
                         }
                         "namespace" => {
-                            config.server.default_namespace = Some(value.clone());
+                            config.cli.default_namespace = value.clone();
                             progress::success(&format!("Set default namespace to: {}", value));
                         }
-                        "timeout" => match value.parse::<u64>() {
+                        "timeout" => match value.parse::<i64>() {
                             Ok(timeout) => {
-                                config.server.timeout_secs = timeout;
+                                config.cli.timeout_secs = timeout;
                                 progress::success(&format!("Set timeout to: {} seconds", timeout));
                             }
                             Err(_) => {
@@ -4058,11 +4059,11 @@ async fn main() -> anyhow::Result<()> {
                         },
                         "locks" => match value.to_lowercase().as_str() {
                             "true" | "on" | "yes" | "1" => {
-                                config.server.use_server_locks = true;
+                                config.cli.use_server_locks = true;
                                 progress::success("Server locks enabled");
                             }
                             "false" | "off" | "no" | "0" => {
-                                config.server.use_server_locks = false;
+                                config.cli.use_server_locks = false;
                                 progress::success("Server locks disabled");
                             }
                             _ => {
@@ -4072,11 +4073,11 @@ async fn main() -> anyhow::Result<()> {
                         },
                         "metadata" => match value.to_lowercase().as_str() {
                             "true" | "on" | "yes" | "1" => {
-                                config.server.use_server_metadata = true;
+                                config.cli.use_server_metadata = true;
                                 progress::success("Server metadata storage enabled");
                             }
                             "false" | "off" | "no" | "0" => {
-                                config.server.use_server_metadata = false;
+                                config.cli.use_server_metadata = false;
                                 progress::success("Server metadata storage disabled");
                             }
                             _ => {

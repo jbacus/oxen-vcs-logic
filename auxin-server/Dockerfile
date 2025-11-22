@@ -61,6 +61,9 @@ COPY --from=backend-builder /build/target/release/auxin-server /app/auxin-server
 # Copy frontend from frontend builder
 COPY --from=frontend-builder /build/frontend/dist /app/frontend/dist
 
+# Copy default configuration
+COPY config.docker.toml /app/config.toml
+
 # Set ownership
 RUN chown -R auxin:auxin /app
 
@@ -74,11 +77,12 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:3000/health || exit 1
 
-# Set environment variables
-ENV SYNC_DIR=/var/oxen/data
-ENV OXEN_SERVER_PORT=3000
-ENV OXEN_SERVER_HOST=0.0.0.0
+# Set environment variables (can be overridden at runtime)
+# Using AUXIN_* prefix for consistency with unified configuration system
 ENV RUST_LOG=info
 
 # Run the server
+# Configuration loaded from /app/config.toml by default
+# Override with environment variables using AUXIN_* prefix
+# Example: AUXIN_SERVER_PORT=3000
 CMD ["/app/auxin-server"]

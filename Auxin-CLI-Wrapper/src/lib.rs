@@ -10,7 +10,6 @@ pub mod bounce;
 pub mod chunked_upload;
 pub mod collaboration;
 pub mod commit_metadata;
-pub mod config;
 pub mod conflict_detection;
 pub mod console;
 pub mod daemon_client;
@@ -53,8 +52,6 @@ pub use collaboration::{
     Activity, ActivityFeed, ActivityType, Comment, CommentManager, TeamManager, TeamMember,
 };
 pub use commit_metadata::CommitMetadata;
-pub use config::ServerConnectionConfig;
-pub use config::{Config, ProjectType};
 pub use conflict_detection::{ConflictCheckResult, ConflictDetector, ConflictRecommendation};
 pub use console::{Console, ConsoleMode, DaemonStatus, LogEntry, LogLevel, RepositoryStatus};
 pub use draft_manager::{DraftManager, DraftStats};

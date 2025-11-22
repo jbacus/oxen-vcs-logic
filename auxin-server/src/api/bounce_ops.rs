@@ -12,7 +12,7 @@ use std::io::Write;
 use std::path::PathBuf;
 use tracing::{error, info};
 
-use crate::config::Config;
+use auxin_config::Config;
 use crate::error::{AppError, AppResult};
 
 /// Supported audio formats
@@ -102,7 +102,7 @@ pub struct BounceQuery {
 
 /// Get bounces directory for a repository
 fn get_bounces_dir(config: &Config, namespace: &str, repo_name: &str) -> PathBuf {
-    PathBuf::from(&config.sync_dir)
+    PathBuf::from(&config.server.sync_dir)
         .join(namespace)
         .join(repo_name)
         .join(".auxin")

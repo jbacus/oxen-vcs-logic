@@ -10,7 +10,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 use tracing::info;
 
-use crate::config::Config;
+use auxin_config::Config;
 use crate::error::{AppError, AppResult};
 
 /// User account stored in JSON file
@@ -100,7 +100,7 @@ impl AuthService {
 
     /// Get users file path
     fn users_file_path(&self) -> PathBuf {
-        PathBuf::from(&self.config.sync_dir)
+        PathBuf::from(&self.config.server.sync_dir)
             .join(".auxin")
             .join("users.json")
     }
@@ -257,7 +257,7 @@ impl AuthService {
     /// Generate a new token for a user
     pub fn generate_token(&self, user_id: &str, username: &str) -> AppResult<String> {
         let token = format!("auxin_{}", uuid::Uuid::new_v4());
-        let expires_at = Utc::now() + Duration::hours(self.config.auth_token_expiry_hours as i64);
+        let expires_at = Utc::now() + Duration::hours(self.config.server.auth_token_expiry_hours as i64);
 
         let token_data = TokenData {
             user_id: user_id.to_string(),
@@ -474,17 +474,9 @@ mod tests {
     use tempfile::TempDir;
 
     fn test_config_with_dir(dir: &TempDir) -> Config {
-        Config {
-            sync_dir: dir.path().to_string_lossy().to_string(),
-            host: "127.0.0.1".to_string(),
-            port: 3000,
-            auth_token_secret: "test_secret".to_string(),
-            auth_token_expiry_hours: 24,
-            enable_redis_locks: false,
-            enable_web_ui: false,
-            redis_url: None,
-            database_url: None,
-        }
+        let mut config = Config::default();
+        config.server.sync_dir = dir.path().to_string_lossy().to_string();
+        config
     }
 
     #[test]
@@ -594,7 +586,7 @@ mod tests {
     fn test_cleanup_expired() {
         let temp_dir = TempDir::new().unwrap();
         let mut config = test_config_with_dir(&temp_dir);
-        config.auth_token_expiry_hours = 0; // Tokens expire immediately
+        config.server.auth_token_expiry_hours = 0; // Tokens expire immediately
 
         let auth = AuthService::new(config);
         auth.generate_token("id1", "user1").unwrap();

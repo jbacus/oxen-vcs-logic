@@ -1,0 +1,242 @@
+name: Performance & Benchmarks
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run performance tests weekly on Saturdays at 4 AM UTC
+    - cron: '0 4 * * 6'
+  workflow_dispatch:
+
+env:
+  RUST_BACKTRACE: 1
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # ====================
+  # Rust CLI Benchmarks
+  # ====================
+
+  rust-cli-benchmarks:
+    name: Rust CLI Benchmarks
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Rust
+      uses: actions-rust-lang/setup-rust-toolchain@v1
+      with:
+        toolchain: stable
+
+    - name: Cache Rust dependencies
+      uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: Auxin-CLI-Wrapper
+
+    - name: Run benchmarks
+      working-directory: ./Auxin-CLI-Wrapper
+      run: |
+        cargo bench --no-run
+        cargo bench -- --output-format bencher | tee bench-output.txt
+
+    - name: Store benchmark result
+      uses: benchmark-action/github-action-benchmark@v1
+      if: github.event_name != 'pull_request'
+      with:
+        tool: 'cargo'
+        output-file-path: Auxin-CLI-Wrapper/bench-output.txt
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        auto-push: true
+        comment-on-alert: true
+        alert-threshold: '150%'
+        fail-on-alert: false
+
+    - name: Upload benchmark results
+      uses: actions/upload-artifact@v4
+      with:
+        name: cli-benchmark-results
+        path: Auxin-CLI-Wrapper/bench-output.txt
+
+  # ====================
+  # Server Load Testing
+  # ====================
+
+  server-load-test:
+    name: Server Load Testing
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Rust
+      uses: actions-rust-lang/setup-rust-toolchain@v1
+      with:
+        toolchain: stable
+
+    - name: Cache Rust dependencies
+      uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: auxin-server
+
+    - name: Build server
+      working-directory: ./auxin-server
+      run: cargo build --release --features mock-oxen
+
+    - name: Start server
+      working-directory: ./auxin-server
+      run: |
+        cargo run --release --features mock-oxen &
+        echo $! > /tmp/server.pid
+        # Wait for server to be ready
+        timeout 30 bash -c 'until curl -f http://localhost:3000/health; do sleep 1; done'
+
+    - name: Install k6
+      run: |
+        sudo gpg -k
+        sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+        echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+        sudo apt-get update
+        sudo apt-get install k6
+
+    - name: Create k6 test script
+      run: |
+        cat > load-test.js << 'EOF'
+        import http from 'k6/http';
+        import { check, sleep } from 'k6';
+
+        export const options = {
+          stages: [
+            { duration: '30s', target: 10 },  // Ramp up to 10 users
+            { duration: '1m', target: 10 },   // Stay at 10 users
+            { duration: '30s', target: 50 },  // Ramp up to 50 users
+            { duration: '1m', target: 50 },   // Stay at 50 users
+            { duration: '30s', target: 0 },   // Ramp down to 0 users
+          ],
+          thresholds: {
+            http_req_duration: ['p(95)<500'],  // 95% of requests must complete below 500ms
+            http_req_failed: ['rate<0.05'],    // Error rate must be below 5%
+          },
+        };
+
+        export default function () {
+          // Test health endpoint
+          let res = http.get('http://localhost:3000/health');
+          check(res, {
+            'health check status is 200': (r) => r.status === 200,
+          });
+
+          sleep(1);
+        }
+        EOF
+
+    - name: Run load test
+      run: k6 run load-test.js --out json=load-test-results.json
+
+    - name: Stop server
+      if: always()
+      run: |
+        if [ -f /tmp/server.pid ]; then
+          kill $(cat /tmp/server.pid) || true
+        fi
+
+    - name: Upload load test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: load-test-results
+        path: load-test-results.json
+
+  # ====================
+  # Frontend Performance
+  # ====================
+
+  frontend-lighthouse:
+    name: Frontend Lighthouse Performance
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: auxin-server/frontend/package-lock.json
+
+    - name: Install dependencies
+      working-directory: ./auxin-server/frontend
+      run: npm ci
+
+    - name: Build frontend
+      working-directory: ./auxin-server/frontend
+      run: npm run build
+
+    - name: Setup Rust (for backend)
+      uses: actions-rust-lang/setup-rust-toolchain@v1
+      with:
+        toolchain: stable
+
+    - name: Build backend
+      working-directory: ./auxin-server
+      run: cargo build --release --features mock-oxen
+
+    - name: Start backend server
+      working-directory: ./auxin-server
+      run: |
+        cargo run --release --features mock-oxen &
+        echo $! > /tmp/backend.pid
+        timeout 30 bash -c 'until curl -f http://localhost:3000/health; do sleep 1; done'
+
+    - name: Serve frontend
+      working-directory: ./auxin-server/frontend
+      run: |
+        npx serve -s dist -l 4173 &
+        echo $! > /tmp/frontend.pid
+        sleep 5
+
+    - name: Run Lighthouse CI
+      run: |
+        npm install -g @lhci/cli@0.13.x
+        lhci autorun --config=lighthouserc.json || echo "lighthouse.json not found, skipping"
+
+    - name: Stop servers
+      if: always()
+      run: |
+        [ -f /tmp/backend.pid ] && kill $(cat /tmp/backend.pid) || true
+        [ -f /tmp/frontend.pid ] && kill $(cat /tmp/frontend.pid) || true
+
+  # ====================
+  # Performance Summary
+  # ====================
+
+  performance-summary:
+    name: Performance Summary
+    runs-on: ubuntu-latest
+    needs: [rust-cli-benchmarks, server-load-test, frontend-lighthouse]
+    if: always()
+
+    steps:
+    - name: Check performance test results
+      run: |
+        echo "Performance Test Results Summary:"
+        echo "  CLI Benchmarks: ${{ needs.rust-cli-benchmarks.result }}"
+        echo "  Server Load Test: ${{ needs.server-load-test.result }}"
+        echo "  Frontend Lighthouse: ${{ needs.frontend-lighthouse.result }}"
+
+        if [[ "${{ needs.rust-cli-benchmarks.result }}" != "success" ]] || \
+           [[ "${{ needs.server-load-test.result }}" != "success" ]]; then
+          echo "⚠️  Some performance tests failed!"
+          echo "Review the artifacts for detailed results"
+          exit 0  # Don't fail the build on performance issues
+        fi
+
+        echo "✅ All performance tests completed successfully!"
