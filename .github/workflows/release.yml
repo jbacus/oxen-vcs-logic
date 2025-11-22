@@ -1,0 +1,142 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-rust-cli:
+    name: Build Rust CLI
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            artifact-name: auxin-cli-linux
+            binary-name: auxin
+          - os: macos-latest
+            artifact-name: auxin-cli-macos
+            binary-name: auxin
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: Auxin-CLI-Wrapper
+
+      - name: Build CLI
+        working-directory: ./Auxin-CLI-Wrapper
+        run: cargo build --release
+
+      - name: Package CLI for artifact upload
+        shell: bash
+        run: |
+          mkdir -p packaged-cli
+          cp Auxin-CLI-Wrapper/target/release/${{ matrix.binary-name }} packaged-cli/
+          tar -czvf ${{ matrix.artifact-name }}.tar.gz -C packaged-cli .
+
+      - name: Upload CLI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: ${{ matrix.artifact-name }}.tar.gz
+
+  build-macos-installer:
+    name: Build macOS Installer
+    runs-on: macos-14
+    needs: build-rust-cli
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download macOS CLI artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: auxin-cli-macos
+          path: /tmp/auxin-cli-macos
+
+      - name: Unpack macOS CLI
+        run: |
+          mkdir -p Auxin-CLI-Wrapper/target/release
+          tar -xzvf /tmp/auxin-cli-macos/auxin-cli-macos.tar.gz -C Auxin-CLI-Wrapper/target/release
+
+      - name: Setup Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Select Xcode version
+        run: sudo xcode-select -s /Applications/Xcode_15.2.app/Contents/Developer
+
+      - name: Run installer build script
+        run: ./build-installer.sh --version ${{ github.ref_name }}
+
+      - name: Run DMG creation script
+        run: ./create-dmg.sh --version ${{ github.ref_name }}
+
+      - name: Upload PKG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: auxin-installer-pkg
+          path: installer-build/Auxin-${{ github.ref_name }}.pkg
+
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: auxin-installer-dmg
+          path: Auxin-${{ github.ref_name }}.dmg
+
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [build-rust-cli, build-macos-installer]
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/artifacts
+
+      - name: List downloaded artifacts
+        run: ls -R /tmp/artifacts
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            /tmp/artifacts/auxin-cli-linux/auxin-cli-linux.tar.gz
+            /tmp/artifacts/auxin-cli-macos/auxin-cli-macos.tar.gz
+            /tmp/artifacts/auxin-installer-pkg/*.pkg
+            /tmp/artifacts/auxin-installer-dmg/*.dmg
+          fail_on_unmatched_files: true
+          body: |
+            ## Auxin ${{ github.ref_name }}
+
+            This is the official release for Auxin version ${{ github.ref_name }}.
+
+            ### Installation
+
+            - **macOS Users:** Download the `Auxin-${{ github.ref_name }}.dmg` file.
+            - **Linux CLI Users:** Download the `auxin-cli-linux.tar.gz` archive.
+
+            For detailed instructions, see the [Installation Guide](https://github.com/jbacus/auxin/blob/main/INSTALL.md).
+
+            ### Changelog
+            
+            *TODO: Add changelog here.*
+          draft: false
+          prerelease: false

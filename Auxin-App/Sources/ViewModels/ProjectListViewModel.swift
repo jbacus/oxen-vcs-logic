@@ -1,19 +1,24 @@
 import Foundation
 import Combine
 
+@MainActor
 class ProjectListViewModel: ObservableObject {
     @Published var projects: [Project] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var daemonStatus: DaemonStatus?
 
-    private let xpcClient = OxenDaemonXPCClient.shared
+    private var xpcClient: AuxinXPCClient
     private var refreshTimer: Timer?
 
-    init() {
+    init(xpcClient: AuxinXPCClient = OxenDaemonXPCClient.shared) {
+        self.xpcClient = xpcClient
         startAutoRefresh()
-        loadProjects()
-        checkDaemonStatus()
+        
+        Task {
+            await loadProjects()
+            await checkDaemonStatus()
+        }
     }
 
     deinit {
@@ -22,106 +27,81 @@ class ProjectListViewModel: ObservableObject {
 
     // MARK: - Public Methods
 
-    func loadProjects() {
+    func loadProjects() async {
         isLoading = true
         errorMessage = nil
 
-        xpcClient.getMonitoredProjects { [weak self] projectPaths in
-            guard let self = self else { return }
-
-            // Convert paths to Project objects with additional metadata
-            var loadedProjects: [Project] = []
-
-            let group = DispatchGroup()
-
+        let projectPaths = await xpcClient.getMonitoredProjects()
+        
+        var loadedProjects = await withTaskGroup(of: Project?.self, returning: [Project].self) { group in
             for path in projectPaths {
-                group.enter()
-                self.loadProjectDetails(path: path) { project in
-                    if let project = project {
-                        loadedProjects.append(project)
-                    }
-                    group.leave()
+                group.addTask {
+                    return await self.loadProjectDetails(path: path)
                 }
             }
-
-            group.notify(queue: .main) {
-                self.projects = loadedProjects.sorted { $0.name < $1.name }
-                self.isLoading = false
+            
+            var projects: [Project] = []
+            for await project in group {
+                if let project = project {
+                    projects.append(project)
+                }
             }
+            return projects
         }
+        
+        loadedProjects.sort { $0.name < $1.name }
+        self.projects = loadedProjects
+        self.isLoading = false
     }
 
-    func addProject(path: String, completion: @escaping (Bool) -> Void) {
-        xpcClient.registerProject(path: path) { [weak self] success in
-            if success {
-                self?.loadProjects()
-            }
-            completion(success)
+    func addProject(path: String) async -> Bool {
+        let success = await xpcClient.registerProject(path: path)
+        if success {
+            await loadProjects()
         }
+        return success
     }
 
-    func checkDaemonStatus() {
-        xpcClient.ping { [weak self] isRunning in
-            guard let self = self else { return }
-
-            DispatchQueue.main.async {
-                self.daemonStatus = DaemonStatus(
-                    isRunning: isRunning,
-                    monitoredProjectCount: self.projects.count,
-                    lastActivity: Date()
-                )
-            }
-        }
+    func checkDaemonStatus() async {
+        let isRunning = await xpcClient.ping()
+        self.daemonStatus = DaemonStatus(
+            isRunning: isRunning,
+            monitoredProjectCount: self.projects.count,
+            lastActivity: Date()
+        )
     }
 
     // MARK: - Private Methods
 
-    private func loadProjectDetails(path: String, completion: @escaping (Project?) -> Void) {
-        let group = DispatchGroup()
+    private func loadProjectDetails(path: String) async -> Project? {
+        async let historyResult = xpcClient.getCommitHistory(path: path, limit: 1)
+        async let lockInfoResult = xpcClient.getLockInfo(for: path)
+        
+        let (commits, lockInfo) = await (historyResult, lockInfoResult)
 
-        var lastCommit: Date?
-        var commitCount = 0
-        var isLocked = false
-        var lockedBy: String?
+        let lastCommit = commits.first?["timestamp"] as? Date
+        let commitCount = commits.first?["count"] as? Int ?? 0
+        
+        let isLocked = lockInfo?["isLocked"] as? Bool ?? false
+        let lockedBy = lockInfo?["lockedBy"] as? String
 
-        // Get commit history
-        group.enter()
-        self.xpcClient.getCommitHistory(path: path, limit: 1) { commits in
-            lastCommit = commits.first?["timestamp"] as? Date
-            commitCount = commits.first?["count"] as? Int ?? 0
-            group.leave()
-        }
-
-        // Get lock status
-        group.enter()
-        self.xpcClient.getLockInfo(for: path) { lockInfo in
-            if let lockInfo = lockInfo {
-                isLocked = lockInfo["isLocked"] as? Bool ?? false
-                lockedBy = lockInfo["lockedBy"] as? String
-            }
-            group.leave()
-        }
-
-        // Create project once all data is loaded
-        group.notify(queue: .main) {
-            let project = Project(
-                path: path,
-                name: URL(fileURLWithPath: path).lastPathComponent,
-                isMonitored: true,
-                lastCommit: lastCommit,
-                commitCount: commitCount,
-                isLocked: isLocked,
-                lockedBy: lockedBy
-            )
-
-            completion(project)
-        }
+        return Project(
+            path: path,
+            name: URL(fileURLWithPath: path).lastPathComponent,
+            isMonitored: true,
+            lastCommit: lastCommit,
+            commitCount: commitCount,
+            isLocked: isLocked,
+            lockedBy: lockedBy
+        )
     }
 
     private func startAutoRefresh() {
         refreshTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
-            self?.loadProjects()
-            self?.checkDaemonStatus()
+            Task { [weak self] in
+                await self?.loadProjects()
+                await self?.checkDaemonStatus()
+            }
         }
     }
 }

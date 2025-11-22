@@ -182,24 +182,15 @@ See [CHANGELOG.md](CHANGELOG.md) for complete project history.
 
 ## Installation
 
-### Automated Installation (Recommended)
+There are several ways to install Auxin, depending on your needs.
 
-```bash
-# Clone the repository
-git clone https://github.com/YOUR_USERNAME/auxin.git
-cd auxin
+| Method | Audience | Description |
+|---|---|---|
+| 💻 **[DMG Installer](INSTALL.md#for-most-users-dmg-installer)** | **Most Users** | The standard way to install the GUI application and tools. |
+| 🍺 **[Homebrew](INSTALL.md#for-command-line-users-homebrew)** | **CLI Users** | The easiest way to install the command-line tools. |
+| 🛠️ **[From Source](INSTALL.md#for-developers-build-from-source)** | **Developers** | For those who want to build the entire project from source. |
 
-# Run the automated installer
-./install.sh
-```
-
-The installer will build all components, install binaries, configure the daemon service, and install the GUI app to `/Applications/Auxin.app`.
-
-See [Installation Guide](INSTALL.md) for detailed instructions and troubleshooting.
-
-### Manual Installation
-
-See [Installation Guide](INSTALL.md) for step-by-step manual installation instructions.
+**For detailed instructions on all installation methods, please see the [Full Installation Guide (INSTALL.md)](INSTALL.md).**
 
 ## Quick Start
 
