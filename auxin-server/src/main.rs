@@ -141,6 +141,11 @@ async fn main() -> std::io::Result<()> {
             .route("/api/repos/{namespace}/{name}/locks/heartbeat", web::post().to(api::heartbeat_lock))
             .route("/api/repos/{namespace}/{name}/locks/status", web::get().to(api::lock_status))
             .route("/api/repos/{namespace}/{name}/activity", web::get().to(api::get_activity))
+            // Project management (ownership and collaborators)
+            .route("/api/repos/{namespace}/{name}/collaborators", web::get().to(api::list_collaborators))
+            .route("/api/repos/{namespace}/{name}/collaborators", web::post().to(api::add_collaborator))
+            .route("/api/repos/{namespace}/{name}/collaborators/{user_id}", web::delete().to(api::remove_collaborator))
+            .route("/api/repos/{namespace}/{name}/visibility", web::put().to(api::update_visibility))
             // WebSocket for real-time notifications
             .route("/ws/repos/{namespace}/{name}", web::get().to(ws_handler))
             // Bounce audio endpoints
