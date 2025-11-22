@@ -38,10 +38,10 @@ struct MilestoneCommitView: View {
     @State private var successMessage: String = ""
 
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 14) {
             // Header
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 6) {
                     Image(systemName: project.iconName)
                         .foregroundColor(.accentColor)
                     Text("Create Milestone Commit")
@@ -118,7 +118,7 @@ struct MilestoneCommitView: View {
                 .keyboardShortcut(.defaultAction)
             }
         }
-        .padding(24)
+        .padding(16)
         .frame(width: 600, height: frameHeight)
         .alert("Error", isPresented: $showingError) {
             Button("OK", role: .cancel) { }

@@ -48,8 +48,8 @@ export function HomePage() {
   });
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="flex items-center justify-between mb-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Repositories</h1>
           <p className="mt-1 text-sm text-gray-600">
@@ -65,7 +65,7 @@ export function HomePage() {
         </button>
       </div>
 
-      <div className="mb-6">
+      <div className="mb-4">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" aria-hidden="true" />
           <input
@@ -110,12 +110,12 @@ export function HomePage() {
             )
           ) : (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredRepos.map((repo) => (
                   <RepositoryCard key={`${repo.namespace}/${repo.name}`} repo={repo} />
                 ))}
               </div>
-              <p className="mt-6 text-sm text-gray-500 text-center">
+              <p className="mt-4 text-sm text-gray-500 text-center">
                 Showing {filteredRepos.length} of {repos?.length ?? 0} repositories
               </p>
             </>
