@@ -68,6 +68,9 @@ export const createRepository = (
   data: CreateRepoRequest
 ) => api.post<Repository>(`/repos/${namespace}/${name}`, data);
 
+export const deleteRepository = (namespace: string, name: string) =>
+  api.delete(`/repos/${namespace}/${name}`);
+
 // Commit endpoints
 export const getCommits = (namespace: string, name: string) =>
   api.get<Commit[]>(`/repos/${namespace}/${name}/commits`);
