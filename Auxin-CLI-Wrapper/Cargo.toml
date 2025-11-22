@@ -40,7 +40,7 @@ url = "2.5"
 indicatif = "0.17"     # Progress bars and spinners
 console = "0.15"       # Terminal utilities
 dialoguer = "0.11"     # Interactive prompts
-ratatui = "0.25"       # TUI framework
+ratatui = "0.29"       # TUI framework
 crossterm = "0.27"     # Terminal control
 
 [dev-dependencies]
