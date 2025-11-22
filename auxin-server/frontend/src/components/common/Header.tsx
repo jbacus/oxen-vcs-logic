@@ -4,10 +4,10 @@ export function Header() {
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-10 backdrop-blur-sm bg-white/95">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
+        <div className="flex justify-between items-center h-14">
           <Link
             to="/"
-            className="flex items-center space-x-3 hover:opacity-80 transition-all duration-200 group"
+            className="flex items-center space-x-2 hover:opacity-80 transition-all duration-200 group"
           >
             <div className="transform group-hover:scale-105 transition-transform duration-200 bg-primary-50 p-2 rounded-lg">
               <img
@@ -22,7 +22,7 @@ export function Header() {
             </div>
           </Link>
 
-          <nav className="flex items-center space-x-6" role="navigation" aria-label="Main navigation">
+          <nav className="flex items-center space-x-4" role="navigation" aria-label="Main navigation">
             <Link
               to="/"
               className="text-sm font-medium text-gray-700 hover:text-primary-600 transition-colors duration-200 px-2 py-1 rounded hover:bg-gray-50"

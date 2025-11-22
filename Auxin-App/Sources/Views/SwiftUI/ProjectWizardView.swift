@@ -14,9 +14,9 @@ struct ProjectWizardView: View {
     @State private var successMessage: String = ""
 
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 14) {
             // Header
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text("Initialize Creative Project")
                     .font(.title2)
                     .fontWeight(.semibold)
@@ -27,9 +27,9 @@ struct ProjectWizardView: View {
                     .fixedSize(horizontal: false, vertical: true)
 
                 // Supported types
-                HStack(spacing: 16) {
+                HStack(spacing: 12) {
                     ForEach(ProjectType.allCases, id: \.self) { type in
-                        HStack(spacing: 4) {
+                        HStack(spacing: 3) {
                             Image(systemName: type.iconName)
                                 .foregroundColor(.secondary)
                             Text(".\(type.fileExtension)")
@@ -43,11 +43,11 @@ struct ProjectWizardView: View {
             .padding(.top)
 
             // Project Path Selection
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text("Project Path:")
                     .font(.headline)
 
-                HStack(spacing: 12) {
+                HStack(spacing: 8) {
                     TextField("Select a creative project...", text: $projectPath)
                         .textFieldStyle(.roundedBorder)
                         .disabled(true)
@@ -63,7 +63,7 @@ struct ProjectWizardView: View {
 
                 // Show detected project type
                 if let type = detectedType {
-                    HStack(spacing: 6) {
+                    HStack(spacing: 4) {
                         Image(systemName: type.iconName)
                             .foregroundColor(.accentColor)
                         Text("Detected: \(type.displayName)")
@@ -109,7 +109,7 @@ struct ProjectWizardView: View {
                 .keyboardShortcut(.defaultAction)
             }
         }
-        .padding(24)
+        .padding(16)
         .frame(width: 600, height: 380)
         .fileImporter(
             isPresented: $showingFilePicker,

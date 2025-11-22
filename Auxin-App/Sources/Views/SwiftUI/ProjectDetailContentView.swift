@@ -10,7 +10,7 @@ struct ProjectDetailContentView: View {
         VStack(spacing: 0) {
             // Header
             ProjectHeaderView(project: project)
-                .padding()
+                .padding(12)
                 .background(Color(nsColor: .controlBackgroundColor))
 
             Divider()
@@ -122,10 +122,10 @@ struct ProjectHeaderView: View {
     let project: Project
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
                         Image(systemName: project.iconName)
                             .foregroundColor(.accentColor)
                         Text(project.displayName)
@@ -141,7 +141,7 @@ struct ProjectHeaderView: View {
                 Spacer()
 
                 if project.isLocked {
-                    VStack(alignment: .trailing, spacing: 2) {
+                    VStack(alignment: .trailing, spacing: 1) {
                         HStack {
                             Image(systemName: "lock.fill")
                                 .foregroundColor(.orange)
@@ -154,13 +154,13 @@ struct ProjectHeaderView: View {
                                 .foregroundColor(.secondary)
                         }
                     }
-                    .padding(8)
+                    .padding(6)
                     .background(Color.orange.opacity(0.1))
                     .cornerRadius(8)
                 }
             }
 
-            HStack(spacing: 20) {
+            HStack(spacing: 12) {
                 StatView(label: "Type", value: project.projectType.displayName)
                 StatView(label: "Commits", value: "\(project.commitCount)")
                 if let lastCommit = project.lastCommit {
@@ -256,7 +256,7 @@ struct CommitRowView: View {
                 }
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 2)
     }
 
     private var placeholderThumbnail: some View {
@@ -306,7 +306,7 @@ struct MetadataView: View {
     let projectType: ProjectType
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 8) {
             switch projectType {
             case .logicPro:
                 if let bpm = metadata.bpm {

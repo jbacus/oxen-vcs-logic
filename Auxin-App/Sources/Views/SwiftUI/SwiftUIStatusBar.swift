@@ -9,7 +9,7 @@ struct SwiftUIStatusBar: View {
     var body: some View {
         HStack {
             // Daemon status
-            HStack(spacing: 4) {
+            HStack(spacing: 3) {
                 Circle()
                     .fill(daemonColor)
                     .frame(width: 8, height: 8)
@@ -24,8 +24,8 @@ struct SwiftUIStatusBar: View {
                 .font(.caption)
                 .foregroundColor(.secondary)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
         .background(Color(nsColor: .controlBackgroundColor))
         .onAppear {
             updateStatus()
