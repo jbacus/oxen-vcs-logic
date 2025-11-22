@@ -431,9 +431,33 @@ pub async fn validator(
     }
 }
 
-/// Extract authenticated username from request
+/// Extract authenticated username from request (for middleware)
 pub fn get_authenticated_user(req: &ServiceRequest) -> Option<String> {
     req.extensions().get::<String>().cloned()
+}
+
+/// Extract authenticated user ID from HTTP request
+pub fn get_user_id_from_request(req: &actix_web::HttpRequest, auth_service: &AuthService) -> AppResult<String> {
+    let token = req
+        .headers()
+        .get("Authorization")
+        .and_then(|h| h.to_str().ok())
+        .and_then(|s| s.strip_prefix("Bearer "))
+        .ok_or_else(|| AppError::Unauthorized("No authorization token".to_string()))?;
+
+    let user = auth_service.get_user_by_token(token)?;
+    Ok(user.id)
+}
+
+/// Extract optional authenticated user ID from HTTP request (for public endpoints)
+pub fn get_optional_user_id_from_request(req: &actix_web::HttpRequest, auth_service: &AuthService) -> Option<String> {
+    let token = req
+        .headers()
+        .get("Authorization")
+        .and_then(|h| h.to_str().ok())
+        .and_then(|s| s.strip_prefix("Bearer "))?;
+
+    auth_service.get_user_by_token(token).ok().map(|u| u.id)
 }
 
 #[cfg(test)]
