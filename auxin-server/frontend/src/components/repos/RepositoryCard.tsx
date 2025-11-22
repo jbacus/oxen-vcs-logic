@@ -42,8 +42,8 @@ export function RepositoryCard({ repo }: RepositoryCardProps) {
         className="card hover:shadow-md transition-all duration-200 cursor-pointer group hover:border-primary-200 block"
         aria-label={`View repository ${repo.namespace}/${repo.name}`}
       >
-        <div className="flex items-start space-x-4">
-          <div className="bg-primary-100 p-3 rounded-lg group-hover:bg-primary-200 transition-colors duration-200">
+        <div className="flex items-start space-x-3">
+          <div className="bg-primary-100 p-2 rounded-lg group-hover:bg-primary-200 transition-colors duration-200">
             <FolderGit2 className="w-6 h-6 text-primary-600 group-hover:scale-110 transition-transform duration-200" aria-hidden="true" />
           </div>
           <div className="flex-1 min-w-0">

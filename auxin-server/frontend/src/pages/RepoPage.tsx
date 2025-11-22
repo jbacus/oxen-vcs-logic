@@ -109,17 +109,17 @@ export function RepoPage() {
   ];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       <Link
         to="/"
-        className="inline-flex items-center space-x-2 text-sm text-gray-600 hover:text-primary-600 mb-6 transition-colors duration-200 hover:translate-x-[-2px] transition-transform"
+        className="inline-flex items-center space-x-2 text-sm text-gray-600 hover:text-primary-600 mb-4 transition-colors duration-200 hover:translate-x-[-2px] transition-transform"
         aria-label="Back to repositories"
       >
         <ArrowLeft className="w-4 h-4" aria-hidden="true" />
         <span>Back to repositories</span>
       </Link>
 
-      <div className="mb-8">
+      <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900">
           {namespace}/{name}
         </h1>
@@ -128,8 +128,8 @@ export function RepoPage() {
         )}
       </div>
 
-      <div className="border-b border-gray-200 mb-6">
-        <nav className="flex space-x-8" role="tablist" aria-label="Repository sections">
+      <div className="border-b border-gray-200 mb-4">
+        <nav className="flex space-x-6" role="tablist" aria-label="Repository sections">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (
