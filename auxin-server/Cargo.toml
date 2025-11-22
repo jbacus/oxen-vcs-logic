@@ -45,8 +45,8 @@ bcrypt = "0.15"
 # Optional: Redis for distributed locks
 redis = { version = "0.24", features = ["tokio-comp"], optional = true }
 
-# Optional: PostgreSQL for web UI metadata cache
-sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono", "json"], optional = true }
+# Optional: SQLite/PostgreSQL for web UI metadata cache
+sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "postgres", "sqlite", "uuid", "chrono", "json"], optional = true }
 actix-multipart = "0.7.2"
 futures = "0.3.31"
 
