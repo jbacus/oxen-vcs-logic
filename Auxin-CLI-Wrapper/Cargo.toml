@@ -21,7 +21,7 @@ clap_complete = "4.0"
 # Pin chrono to 0.4.29 to avoid conflict with arrow-arith's ChronoDateExt::quarter()
 # (chrono 0.4.30+ added Datelike::quarter() which conflicts)
 chrono = { version = "0.4.29", features = ["serde"] }
-colored = "2.0"
+colored = "3.0"
 atty = "0.2"
 log = "0.4"
 uuid = { version = "1.0", features = ["v4"] }
