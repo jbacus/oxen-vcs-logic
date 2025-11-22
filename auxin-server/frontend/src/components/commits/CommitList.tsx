@@ -57,7 +57,7 @@ export function CommitList({ commits, namespace, repoName, showBounces = true, o
 
   return (
     <>
-      <div className="space-y-3">
+      <div className="space-y-2">
         {commits.map((commit, index) => (
           <div
             key={commit.id}
@@ -74,7 +74,7 @@ export function CommitList({ commits, namespace, repoName, showBounces = true, o
             }}
             aria-label={`Commit: ${commit.message}`}
           >
-            <div className="flex items-start space-x-3">
+            <div className="flex items-start space-x-2">
               <div className="bg-gray-100 p-2 rounded-lg flex-shrink-0">
                 <GitCommit className="w-5 h-5 text-gray-600" aria-hidden="true" />
               </div>
@@ -82,7 +82,7 @@ export function CommitList({ commits, namespace, repoName, showBounces = true, o
                 <p className="text-sm font-medium text-gray-900 mb-1 leading-relaxed">
                   {commit.message}
                 </p>
-                <div className="flex items-center space-x-4 text-xs text-gray-500 flex-wrap gap-y-1">
+                <div className="flex items-center space-x-3 text-xs text-gray-500 flex-wrap gap-y-1">
                   <span className="font-mono bg-gray-50 px-2 py-0.5 rounded">{commit.id.substring(0, 8)}</span>
                   {commit.author && (
                     <span className="flex items-center space-x-1">

@@ -6,7 +6,14 @@ pub mod auth;
 pub mod config;
 pub mod error;
 pub mod extensions;
+pub mod project;
 pub mod websocket;
+
+#[cfg(feature = "web-ui")]
+pub mod db;
+
+#[cfg(feature = "web-ui")]
+pub mod models;
 
 // Conditionally use real or mock Oxen implementation
 #[cfg(feature = "full-oxen")]

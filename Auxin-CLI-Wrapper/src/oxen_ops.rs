@@ -171,6 +171,71 @@ impl OxenRepository {
         })
     }
 
+    /// Clones an existing Oxen repository from a remote URL
+    ///
+    /// This will:
+    /// 1. Verify that oxen CLI is available
+    /// 2. Clone the repository from the remote URL
+    /// 3. Return an OxenRepository instance for the cloned repository
+    ///
+    /// # Arguments
+    ///
+    /// * `remote_url` - The URL of the remote repository (can be an Auxin server URL,
+    ///                  Oxen Hub URL, or a local file:// URL)
+    /// * `destination` - The local path where the repository should be cloned
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use auxin::OxenRepository;
+    /// use std::path::Path;
+    ///
+    /// # async fn example() -> anyhow::Result<()> {
+    /// // Clone from Oxen Hub
+    /// let repo = OxenRepository::clone(
+    ///     "https://hub.oxen.ai/user/my-project",
+    ///     Path::new("./my-project")
+    /// ).await?;
+    ///
+    /// // Clone from local file path
+    /// let repo = OxenRepository::clone(
+    ///     "file:///path/to/remote/repo",
+    ///     Path::new("./local-copy")
+    /// ).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn clone(remote_url: impl AsRef<str>, destination: impl AsRef<Path>) -> Result<Self> {
+        let remote_url = remote_url.as_ref();
+        let destination = destination.as_ref();
+
+        vlog!("=== Cloning Oxen Repository ===");
+        vlog!("Remote URL: {}", remote_url);
+        vlog!("Destination: {}", destination.display());
+
+        // Verify oxen CLI is available
+        let oxen = OxenSubprocess::new();
+
+        if !oxen.is_available() {
+            return Err(anyhow::anyhow!(
+                "oxen CLI not found. Please install: pip install oxen-ai"
+            ));
+        }
+
+        // Clone the repository
+        vlog!("Step 1: Cloning repository...");
+        oxen.clone(remote_url, destination)
+            .context("Failed to clone Oxen repository")?;
+
+        info!("Cloned repository from {} to {}", remote_url, destination.display());
+        vlog!("=== Clone Complete ===");
+
+        Ok(Self {
+            path: destination.to_path_buf(),
+            oxen: OxenSubprocess::new(),
+        })
+    }
+
     /// Stages changes to the repository
     ///
     /// This wraps `oxen add`

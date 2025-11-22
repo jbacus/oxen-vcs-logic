@@ -80,7 +80,7 @@ struct ProjectRowView: View {
     let project: Project
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 2) {
             HStack {
                 Image(systemName: project.iconName)
                     .foregroundColor(.accentColor)
@@ -108,7 +108,7 @@ struct ProjectRowView: View {
                 .font(.system(size: 10))
                 .foregroundColor(.secondary)
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 2)
     }
 
     private func projectStatus(_ project: Project) -> String {

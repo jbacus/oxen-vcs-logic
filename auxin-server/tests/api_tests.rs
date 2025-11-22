@@ -46,6 +46,14 @@ async fn test_create_repository() {
     let config = test_config(&temp_dir);
     let auth_service = AuthService::new(config.clone());
 
+    // Register a user and get token
+    let user = auth_service
+        .register("testuser", "test@example.com", "password123")
+        .unwrap();
+    let token = auth_service
+        .generate_token(&user.id, &user.username)
+        .unwrap();
+
     let app = test::init_service(
         App::new()
             .app_data(web::Data::new(config.clone()))
@@ -63,6 +71,7 @@ async fn test_create_repository() {
 
     let req = test::TestRequest::post()
         .uri("/api/repos/testuser/testrepo")
+        .insert_header(("Authorization", format!("Bearer {}", token)))
         .set_json(&payload)
         .to_request();
 
@@ -169,6 +178,14 @@ async fn test_create_duplicate_repository() {
     let config = test_config(&temp_dir);
     let auth_service = AuthService::new(config.clone());
 
+    // Register a user and get token
+    let user = auth_service
+        .register("testuser", "test@example.com", "password123")
+        .unwrap();
+    let token = auth_service
+        .generate_token(&user.id, &user.username)
+        .unwrap();
+
     // Create repository manually
     let repo_path = temp_dir.path().join("testuser/testrepo");
     fs::create_dir_all(&repo_path).unwrap();
@@ -190,6 +207,7 @@ async fn test_create_duplicate_repository() {
 
     let req = test::TestRequest::post()
         .uri("/api/repos/testuser/testrepo")
+        .insert_header(("Authorization", format!("Bearer {}", token)))
         .set_json(&payload)
         .to_request();
 
@@ -202,6 +220,14 @@ async fn test_invalid_repository_name() {
     let temp_dir = TempDir::new().unwrap();
     let config = test_config(&temp_dir);
     let auth_service = AuthService::new(config.clone());
+
+    // Register a user and get token
+    let user = auth_service
+        .register("testuser", "test@example.com", "password123")
+        .unwrap();
+    let token = auth_service
+        .generate_token(&user.id, &user.username)
+        .unwrap();
 
     let app = test::init_service(
         App::new()
@@ -221,6 +247,7 @@ async fn test_invalid_repository_name() {
     // Test with path traversal in namespace
     let req = test::TestRequest::post()
         .uri("/api/repos/..%2F..%2Fetc/passwd")  // URL-encoded ../../etc
+        .insert_header(("Authorization", format!("Bearer {}", token)))
         .set_json(&payload)
         .to_request();
 
@@ -230,6 +257,7 @@ async fn test_invalid_repository_name() {
     // Test with path traversal in repo name
     let req2 = test::TestRequest::post()
         .uri("/api/repos/testuser/..%2F..%2Fetc")  // URL-encoded ../../etc
+        .insert_header(("Authorization", format!("Bearer {}", token)))
         .set_json(&payload)
         .to_request();
 
@@ -408,9 +436,21 @@ async fn test_get_activity_empty() {
     let config = test_config(&temp_dir);
     let auth_service = AuthService::new(config.clone());
 
-    // Create test repository
+    // Register a user and get token
+    let user = auth_service
+        .register("testuser", "test@example.com", "password123")
+        .unwrap();
+    let token = auth_service
+        .generate_token(&user.id, &user.username)
+        .unwrap();
+
+    // Create test repository with project metadata
     let repo_path = temp_dir.path().join("testuser/testrepo");
     fs::create_dir_all(repo_path.join(".oxen")).unwrap();
+
+    use auxin_server::project::{ProjectMetadata, Visibility};
+    let metadata = ProjectMetadata::new(user.id.clone(), "testuser".to_string(), Visibility::Public);
+    metadata.save(&repo_path).unwrap();
 
     let app = test::init_service(
         App::new()
@@ -425,6 +465,7 @@ async fn test_get_activity_empty() {
 
     let req = test::TestRequest::get()
         .uri("/api/repos/testuser/testrepo/activity")
+        .insert_header(("Authorization", format!("Bearer {}", token)))
         .to_request();
 
     let resp = test::call_service(&app, req).await;
@@ -441,10 +482,22 @@ async fn test_lock_creates_activity() {
     let auth_service = AuthService::new(config.clone());
     let ws_hub = WsHub::new();
 
-    // Create test repository
+    // Register a user and get token
+    let user = auth_service
+        .register("testuser", "test@example.com", "password123")
+        .unwrap();
+    let token = auth_service
+        .generate_token(&user.id, &user.username)
+        .unwrap();
+
+    // Create test repository with project metadata
     let repo_path = temp_dir.path().join("testuser/testrepo");
     fs::create_dir_all(repo_path.join(".oxen/locks")).unwrap();
     fs::create_dir_all(repo_path.join(".oxen/metadata")).unwrap();
+
+    use auxin_server::project::{ProjectMetadata, Visibility};
+    let metadata = ProjectMetadata::new(user.id.clone(), "testuser".to_string(), Visibility::Public);
+    metadata.save(&repo_path).unwrap();
 
     let app = test::init_service(
         App::new()
@@ -471,6 +524,7 @@ async fn test_lock_creates_activity() {
 
     let req = test::TestRequest::post()
         .uri("/api/repos/testuser/testrepo/locks/acquire")
+        .insert_header(("Authorization", format!("Bearer {}", token)))
         .set_json(&lock_payload)
         .to_request();
 
@@ -480,6 +534,7 @@ async fn test_lock_creates_activity() {
     // Check activity was created
     let req = test::TestRequest::get()
         .uri("/api/repos/testuser/testrepo/activity")
+        .insert_header(("Authorization", format!("Bearer {}", token)))
         .to_request();
 
     let resp = test::call_service(&app, req).await;

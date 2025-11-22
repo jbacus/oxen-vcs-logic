@@ -2,9 +2,11 @@ use actix_web::{web, HttpResponse};
 use serde::{Deserialize, Serialize};
 use tracing::info;
 
+use crate::auth::{get_optional_user_id_from_request, get_user_id_from_request, AuthService};
 use crate::config::Config;
 use crate::error::{AppError, AppResult};
 use crate::extensions::{get_activities, log_activity, ActivityType, LogicProMetadata};
+use crate::project::ProjectAuth;
 use crate::repo::RepositoryOps;
 use crate::websocket::WsHub;
 use std::path::PathBuf;
@@ -58,6 +60,8 @@ pub async fn get_commits(
     config: web::Data<Config>,
     path: web::Path<(String, String)>,
     query: web::Query<CommitQuery>,
+    auth_service: web::Data<AuthService>,
+    req: actix_web::HttpRequest,
 ) -> AppResult<HttpResponse> {
     let (namespace, repo_name) = path.into_inner();
     info!("Getting commits for: {}/{}", namespace, repo_name);
@@ -65,6 +69,10 @@ pub async fn get_commits(
     let repo_path = PathBuf::from(&config.sync_dir)
         .join(&namespace)
         .join(&repo_name);
+
+    // Check read access
+    let user_id = get_optional_user_id_from_request(&req, &auth_service);
+    ProjectAuth::require_read(&repo_path, user_id.as_deref())?;
 
     let repo = RepositoryOps::open(&repo_path)?;
     let commits = repo.log(query.limit)?;
@@ -86,8 +94,10 @@ pub struct ActivityQuery {
 pub async fn push_repository(
     config: web::Data<Config>,
     path: web::Path<(String, String)>,
-    req: web::Json<PushRequest>,
+    body: web::Json<PushRequest>,
     ws_hub: web::Data<WsHub>,
+    auth_service: web::Data<AuthService>,
+    http_req: actix_web::HttpRequest,
 ) -> AppResult<HttpResponse> {
     let (namespace, repo_name) = path.into_inner();
     info!("Pushing repository: {}/{}", namespace, repo_name);
@@ -96,19 +106,23 @@ pub async fn push_repository(
         .join(&namespace)
         .join(&repo_name);
 
-    let repo = RepositoryOps::open(&repo_path)?;
-    let branch = req.branch.clone().unwrap_or_else(|| "main".to_string());
+    // Check write access
+    let user_id = get_user_id_from_request(&http_req, &auth_service)?;
+    ProjectAuth::require_write(&repo_path, &user_id)?;
 
-    repo.push(&req.remote, &branch)?;
+    let repo = RepositoryOps::open(&repo_path)?;
+    let branch = body.branch.clone().unwrap_or_else(|| "main".to_string());
+
+    repo.push(&body.remote, &branch)?;
 
     // Log activity
     log_activity(
         &repo_path,
         ActivityType::Push,
-        "system",
-        &format!("Pushed to {} (branch: {})", req.remote, branch),
+        &user_id,
+        &format!("Pushed to {} (branch: {})", body.remote, branch),
         Some(serde_json::json!({
-            "remote": req.remote,
+            "remote": body.remote,
             "branch": branch
         })),
     )?;
@@ -119,14 +133,14 @@ pub async fn push_repository(
             &namespace,
             &repo_name,
             "push",
-            &format!("Pushed to {} (branch: {})", req.remote, branch),
-            "system",
+            &format!("Pushed to {} (branch: {})", body.remote, branch),
+            &user_id,
         )
         .await;
 
     Ok(HttpResponse::Ok().json(serde_json::json!({
         "status": "success",
-        "message": format!("Pushed to {} (branch: {})", req.remote, branch)
+        "message": format!("Pushed to {} (branch: {})", body.remote, branch)
     })))
 }
 
@@ -134,7 +148,9 @@ pub async fn push_repository(
 pub async fn pull_repository(
     config: web::Data<Config>,
     path: web::Path<(String, String)>,
-    req: web::Json<PullRequest>,
+    body: web::Json<PullRequest>,
+    auth_service: web::Data<AuthService>,
+    req: actix_web::HttpRequest,
 ) -> AppResult<HttpResponse> {
     let (namespace, repo_name) = path.into_inner();
     info!("Pulling repository: {}/{}", namespace, repo_name);
@@ -143,26 +159,30 @@ pub async fn pull_repository(
         .join(&namespace)
         .join(&repo_name);
 
-    let repo = RepositoryOps::open(&repo_path)?;
-    let branch = req.branch.clone().unwrap_or_else(|| "main".to_string());
+    // Check write access
+    let user_id = get_user_id_from_request(&req, &auth_service)?;
+    ProjectAuth::require_write(&repo_path, &user_id)?;
 
-    repo.pull(&req.remote, &branch)?;
+    let repo = RepositoryOps::open(&repo_path)?;
+    let branch = body.branch.clone().unwrap_or_else(|| "main".to_string());
+
+    repo.pull(&body.remote, &branch)?;
 
     // Log activity
     log_activity(
         &repo_path,
         ActivityType::Pull,
-        "system",
-        &format!("Pulled from {} (branch: {})", req.remote, branch),
+        &user_id,
+        &format!("Pulled from {} (branch: {})", body.remote, branch),
         Some(serde_json::json!({
-            "remote": req.remote,
+            "remote": body.remote,
             "branch": branch
         })),
     )?;
 
     Ok(HttpResponse::Ok().json(serde_json::json!({
         "status": "success",
-        "message": format!("Pulled from {} (branch: {})", req.remote, branch)
+        "message": format!("Pulled from {} (branch: {})", body.remote, branch)
     })))
 }
 
@@ -170,6 +190,8 @@ pub async fn pull_repository(
 pub async fn list_branches(
     config: web::Data<Config>,
     path: web::Path<(String, String)>,
+    auth_service: web::Data<AuthService>,
+    req: actix_web::HttpRequest,
 ) -> AppResult<HttpResponse> {
     let (namespace, repo_name) = path.into_inner();
     info!("Listing branches for: {}/{}", namespace, repo_name);
@@ -177,6 +199,10 @@ pub async fn list_branches(
     let repo_path = PathBuf::from(&config.sync_dir)
         .join(&namespace)
         .join(&repo_name);
+
+    // Check read access
+    let user_id = get_optional_user_id_from_request(&req, &auth_service);
+    ProjectAuth::require_read(&repo_path, user_id.as_deref())?;
 
     let repo = RepositoryOps::open(&repo_path)?;
     let branches = repo.list_branches()?;
@@ -188,21 +214,27 @@ pub async fn list_branches(
 pub async fn create_branch(
     config: web::Data<Config>,
     path: web::Path<(String, String)>,
-    req: web::Json<CreateBranchRequest>,
+    body: web::Json<CreateBranchRequest>,
+    auth_service: web::Data<AuthService>,
+    req: actix_web::HttpRequest,
 ) -> AppResult<HttpResponse> {
     let (namespace, repo_name) = path.into_inner();
-    info!("Creating branch '{}' for: {}/{}", req.branch_name, namespace, repo_name);
+    info!("Creating branch '{}' for: {}/{}", body.branch_name, namespace, repo_name);
 
     let repo_path = PathBuf::from(&config.sync_dir)
         .join(&namespace)
         .join(&repo_name);
 
+    // Check write access
+    let user_id = get_user_id_from_request(&req, &auth_service)?;
+    ProjectAuth::require_write(&repo_path, &user_id)?;
+
     let repo = RepositoryOps::open(&repo_path)?;
-    repo.create_branch(&req.branch_name)?;
+    repo.create_branch(&body.branch_name)?;
 
     Ok(HttpResponse::Created().json(serde_json::json!({
         "status": "success",
-        "branch": req.branch_name
+        "branch": body.branch_name
     })))
 }
 
@@ -211,6 +243,8 @@ pub async fn restore_commit(
     config: web::Data<Config>,
     path: web::Path<(String, String, String)>,
     ws_hub: web::Data<WsHub>,
+    auth_service: web::Data<AuthService>,
+    req: actix_web::HttpRequest,
 ) -> AppResult<HttpResponse> {
     let (namespace, repo_name, commit_id) = path.into_inner();
     info!("Restoring to commit {} in: {}/{}", commit_id, namespace, repo_name);
@@ -218,6 +252,10 @@ pub async fn restore_commit(
     let repo_path = PathBuf::from(&config.sync_dir)
         .join(&namespace)
         .join(&repo_name);
+
+    // Check write access
+    let user_id = get_user_id_from_request(&req, &auth_service)?;
+    ProjectAuth::require_write(&repo_path, &user_id)?;
 
     let repo = RepositoryOps::open(&repo_path)?;
 
@@ -228,7 +266,7 @@ pub async fn restore_commit(
     log_activity(
         &repo_path,
         ActivityType::Restore,
-        "system",
+        &user_id,
         &format!("Restored to commit {}", &commit_id[..8]),
         Some(serde_json::json!({
             "commit_id": commit_id
@@ -239,7 +277,7 @@ pub async fn restore_commit(
     use crate::websocket::WsMessage;
     ws_hub.broadcast(&format!("{}/{}", namespace, repo_name), WsMessage::Activity {
         activity_type: "restore".to_string(),
-        user: "system".to_string(),
+        user: user_id.clone(),
         message: format!("Restored to commit {}", &commit_id[..8]),
         timestamp: chrono::Utc::now().to_rfc3339(),
     }).await?;
@@ -255,6 +293,8 @@ pub async fn restore_commit(
 pub async fn get_metadata(
     config: web::Data<Config>,
     path: web::Path<(String, String, String)>,
+    auth_service: web::Data<AuthService>,
+    req: actix_web::HttpRequest,
 ) -> AppResult<HttpResponse> {
     let (namespace, repo_name, commit_id) = path.into_inner();
     info!("Getting metadata for commit {} in: {}/{}", commit_id, namespace, repo_name);
@@ -262,6 +302,10 @@ pub async fn get_metadata(
     let repo_path = PathBuf::from(&config.sync_dir)
         .join(&namespace)
         .join(&repo_name);
+
+    // Check read access
+    let user_id = get_optional_user_id_from_request(&req, &auth_service);
+    ProjectAuth::require_read(&repo_path, user_id.as_deref())?;
 
     let repo = RepositoryOps::open(&repo_path)?;
     let metadata = repo.get_metadata(&commit_id)?;
@@ -279,6 +323,8 @@ pub async fn store_metadata(
     config: web::Data<Config>,
     path: web::Path<(String, String, String)>,
     metadata: web::Json<LogicProMetadata>,
+    auth_service: web::Data<AuthService>,
+    req: actix_web::HttpRequest,
 ) -> AppResult<HttpResponse> {
     let (namespace, repo_name, commit_id) = path.into_inner();
     info!("Storing metadata for commit {} in: {}/{}", commit_id, namespace, repo_name);
@@ -286,6 +332,10 @@ pub async fn store_metadata(
     let repo_path = PathBuf::from(&config.sync_dir)
         .join(&namespace)
         .join(&repo_name);
+
+    // Check write access
+    let user_id = get_user_id_from_request(&req, &auth_service)?;
+    ProjectAuth::require_write(&repo_path, &user_id)?;
 
     let repo = RepositoryOps::open(&repo_path)?;
     repo.store_metadata(&commit_id, &metadata)?;
@@ -300,8 +350,10 @@ pub async fn store_metadata(
 pub async fn acquire_lock(
     config: web::Data<Config>,
     path: web::Path<(String, String)>,
-    req: web::Json<LockRequest>,
+    body: web::Json<LockRequest>,
     ws_hub: web::Data<WsHub>,
+    auth_service: web::Data<AuthService>,
+    http_req: actix_web::HttpRequest,
 ) -> AppResult<HttpResponse> {
     let (namespace, repo_name) = path.into_inner();
     info!("Acquiring lock for: {}/{}", namespace, repo_name);
@@ -310,26 +362,30 @@ pub async fn acquire_lock(
         .join(&namespace)
         .join(&repo_name);
 
+    // Check write access
+    let user_id = get_user_id_from_request(&http_req, &auth_service)?;
+    ProjectAuth::require_write(&repo_path, &user_id)?;
+
     let repo = RepositoryOps::open(&repo_path)?;
-    let timeout = req.timeout_hours.unwrap_or(24);
-    let lock = repo.acquire_lock(&req.user, &req.machine_id, timeout)?;
+    let timeout = body.timeout_hours.unwrap_or(24);
+    let lock = repo.acquire_lock(&body.user, &body.machine_id, timeout)?;
 
     // Log activity
     log_activity(
         &repo_path,
         ActivityType::LockAcquired,
-        &req.user,
+        &body.user,
         &format!("Acquired lock for {} hours", timeout),
         Some(serde_json::json!({
             "lock_id": lock.lock_id,
-            "machine_id": req.machine_id,
+            "machine_id": body.machine_id,
             "timeout_hours": timeout
         })),
     )?;
 
     // Broadcast to WebSocket subscribers
     let _ = ws_hub
-        .broadcast_lock_acquired(&namespace, &repo_name, &req.user, &lock.lock_id)
+        .broadcast_lock_acquired(&namespace, &repo_name, &body.user, &lock.lock_id)
         .await;
 
     Ok(HttpResponse::Ok().json(lock))
@@ -339,8 +395,10 @@ pub async fn acquire_lock(
 pub async fn release_lock(
     config: web::Data<Config>,
     path: web::Path<(String, String)>,
-    req: web::Json<ReleaseLockRequest>,
+    body: web::Json<ReleaseLockRequest>,
     ws_hub: web::Data<WsHub>,
+    auth_service: web::Data<AuthService>,
+    http_req: actix_web::HttpRequest,
 ) -> AppResult<HttpResponse> {
     let (namespace, repo_name) = path.into_inner();
     info!("Releasing lock for: {}/{}", namespace, repo_name);
@@ -348,6 +406,10 @@ pub async fn release_lock(
     let repo_path = PathBuf::from(&config.sync_dir)
         .join(&namespace)
         .join(&repo_name);
+
+    // Check write access
+    let user_id = get_user_id_from_request(&http_req, &auth_service)?;
+    ProjectAuth::require_write(&repo_path, &user_id)?;
 
     let repo = RepositoryOps::open(&repo_path)?;
 
@@ -358,7 +420,7 @@ pub async fn release_lock(
         .map(|l| l.user.clone())
         .unwrap_or_else(|| "unknown".to_string());
 
-    repo.release_lock(&req.lock_id)?;
+    repo.release_lock(&body.lock_id)?;
 
     // Log activity
     log_activity(
@@ -367,13 +429,13 @@ pub async fn release_lock(
         &user,
         "Released lock",
         Some(serde_json::json!({
-            "lock_id": req.lock_id
+            "lock_id": body.lock_id
         })),
     )?;
 
     // Broadcast to WebSocket subscribers
     let _ = ws_hub
-        .broadcast_lock_released(&namespace, &repo_name, &req.lock_id)
+        .broadcast_lock_released(&namespace, &repo_name, &body.lock_id)
         .await;
 
     Ok(HttpResponse::Ok().json(serde_json::json!({
@@ -386,7 +448,9 @@ pub async fn release_lock(
 pub async fn heartbeat_lock(
     config: web::Data<Config>,
     path: web::Path<(String, String)>,
-    req: web::Json<HeartbeatRequest>,
+    body: web::Json<HeartbeatRequest>,
+    auth_service: web::Data<AuthService>,
+    req: actix_web::HttpRequest,
 ) -> AppResult<HttpResponse> {
     let (namespace, repo_name) = path.into_inner();
     info!("Heartbeat for lock in: {}/{}", namespace, repo_name);
@@ -395,8 +459,12 @@ pub async fn heartbeat_lock(
         .join(&namespace)
         .join(&repo_name);
 
+    // Check write access
+    let user_id = get_user_id_from_request(&req, &auth_service)?;
+    ProjectAuth::require_write(&repo_path, &user_id)?;
+
     let repo = RepositoryOps::open(&repo_path)?;
-    let lock = repo.heartbeat_lock(&req.lock_id)?;
+    let lock = repo.heartbeat_lock(&body.lock_id)?;
 
     Ok(HttpResponse::Ok().json(lock))
 }
@@ -405,6 +473,8 @@ pub async fn heartbeat_lock(
 pub async fn lock_status(
     config: web::Data<Config>,
     path: web::Path<(String, String)>,
+    auth_service: web::Data<AuthService>,
+    req: actix_web::HttpRequest,
 ) -> AppResult<HttpResponse> {
     let (namespace, repo_name) = path.into_inner();
     info!("Getting lock status for: {}/{}", namespace, repo_name);
@@ -412,6 +482,10 @@ pub async fn lock_status(
     let repo_path = PathBuf::from(&config.sync_dir)
         .join(&namespace)
         .join(&repo_name);
+
+    // Check read access
+    let user_id = get_optional_user_id_from_request(&req, &auth_service);
+    ProjectAuth::require_read(&repo_path, user_id.as_deref())?;
 
     let repo = RepositoryOps::open(&repo_path)?;
     let status = repo.lock_status()?;
@@ -432,6 +506,8 @@ pub async fn get_activity(
     config: web::Data<Config>,
     path: web::Path<(String, String)>,
     query: web::Query<ActivityQuery>,
+    auth_service: web::Data<AuthService>,
+    req: actix_web::HttpRequest,
 ) -> AppResult<HttpResponse> {
     let (namespace, repo_name) = path.into_inner();
     info!("Getting activity for: {}/{}", namespace, repo_name);
@@ -439,6 +515,10 @@ pub async fn get_activity(
     let repo_path = PathBuf::from(&config.sync_dir)
         .join(&namespace)
         .join(&repo_name);
+
+    // Check read access
+    let user_id = get_optional_user_id_from_request(&req, &auth_service);
+    ProjectAuth::require_read(&repo_path, user_id.as_deref())?;
 
     let limit = query.limit.unwrap_or(50);
     let activities = get_activities(&repo_path, limit)?;
@@ -450,10 +530,22 @@ pub async fn get_activity(
 pub async fn clone_repository(
     config: web::Data<Config>,
     path: web::Path<(String, String)>,
-    req: web::Json<CloneRequest>,
+    body: web::Json<CloneRequest>,
+    auth_service: web::Data<AuthService>,
+    req: actix_web::HttpRequest,
 ) -> AppResult<HttpResponse> {
     let (namespace, repo_name) = path.into_inner();
     info!("Cloning repository to: {}/{}", namespace, repo_name);
+
+    // Require authentication
+    let user_id = get_user_id_from_request(&req, &auth_service)?;
+    let user = auth_service.get_user_by_token(
+        req.headers()
+            .get("Authorization")
+            .and_then(|h| h.to_str().ok())
+            .and_then(|s| s.strip_prefix("Bearer "))
+            .ok_or_else(|| AppError::Unauthorized("No authorization token".to_string()))?
+    )?;
 
     // Validate namespace (prevent path traversal)
     if namespace.is_empty() || namespace.contains("..") || namespace.contains('/') {
@@ -466,7 +558,7 @@ pub async fn clone_repository(
     }
 
     // Validate URL
-    if req.remote_url.is_empty() {
+    if body.remote_url.is_empty() {
         return Err(AppError::BadRequest("Remote URL is required".to_string()));
     }
 
@@ -483,16 +575,22 @@ pub async fn clone_repository(
     }
 
     // Clone the repository
-    let _repo = RepositoryOps::clone(&req.remote_url, &dest_path)?;
+    let _repo = RepositoryOps::clone(&body.remote_url, &dest_path)?;
 
-    info!("Repository cloned successfully: {}/{}", namespace, repo_name);
+    // Create project metadata (cloned repo defaults to public)
+    use crate::project::{ProjectMetadata, Visibility};
+    let metadata = ProjectMetadata::new(user_id, user.username.clone(), Visibility::Public);
+    metadata.save(&dest_path)?;
+
+    info!("Repository cloned successfully: {}/{} (owner: {})", namespace, repo_name, user.username);
 
     Ok(HttpResponse::Created().json(serde_json::json!({
         "status": "success",
         "namespace": namespace,
         "name": repo_name,
         "path": dest_path.to_string_lossy(),
-        "remote_url": req.remote_url
+        "remote_url": body.remote_url,
+        "owner": user.username
     })))
 }
 
@@ -500,6 +598,8 @@ pub async fn clone_repository(
 pub async fn delete_branch(
     config: web::Data<Config>,
     path: web::Path<(String, String, String)>,
+    auth_service: web::Data<AuthService>,
+    req: actix_web::HttpRequest,
 ) -> AppResult<HttpResponse> {
     let (namespace, repo_name, branch_name) = path.into_inner();
     info!("Deleting branch '{}' from: {}/{}", branch_name, namespace, repo_name);
@@ -507,6 +607,10 @@ pub async fn delete_branch(
     let repo_path = PathBuf::from(&config.sync_dir)
         .join(&namespace)
         .join(&repo_name);
+
+    // Check write access
+    let user_id = get_user_id_from_request(&req, &auth_service)?;
+    ProjectAuth::require_write(&repo_path, &user_id)?;
 
     let repo = RepositoryOps::open(&repo_path)?;
     repo.delete_branch(&branch_name)?;
@@ -521,6 +625,8 @@ pub async fn delete_branch(
 pub async fn get_status(
     config: web::Data<Config>,
     path: web::Path<(String, String)>,
+    auth_service: web::Data<AuthService>,
+    req: actix_web::HttpRequest,
 ) -> AppResult<HttpResponse> {
     let (namespace, repo_name) = path.into_inner();
     info!("Getting status for: {}/{}", namespace, repo_name);
@@ -528,6 +634,10 @@ pub async fn get_status(
     let repo_path = PathBuf::from(&config.sync_dir)
         .join(&namespace)
         .join(&repo_name);
+
+    // Check read access
+    let user_id = get_optional_user_id_from_request(&req, &auth_service);
+    ProjectAuth::require_read(&repo_path, user_id.as_deref())?;
 
     let repo = RepositoryOps::open(&repo_path)?;
     let status = repo.status()?;
@@ -542,6 +652,8 @@ pub async fn fetch_repository(
     config: web::Data<Config>,
     path: web::Path<(String, String)>,
     query: web::Query<FetchQuery>,
+    auth_service: web::Data<AuthService>,
+    req: actix_web::HttpRequest,
 ) -> AppResult<HttpResponse> {
     let (namespace, repo_name) = path.into_inner();
     let remote = query.remote.clone().unwrap_or_else(|| "origin".to_string());
@@ -550,6 +662,10 @@ pub async fn fetch_repository(
     let repo_path = PathBuf::from(&config.sync_dir)
         .join(&namespace)
         .join(&repo_name);
+
+    // Check write access (fetch can modify local refs)
+    let user_id = get_user_id_from_request(&req, &auth_service)?;
+    ProjectAuth::require_write(&repo_path, &user_id)?;
 
     let repo = RepositoryOps::open(&repo_path)?;
     repo.fetch(&remote)?;

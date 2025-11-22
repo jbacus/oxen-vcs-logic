@@ -1,7 +1,7 @@
 use anyhow::Context;
 use clap::{Parser, Subcommand};
 use colored::Colorize;
-use auxin::{lock_integration, logger, progress, success, vlog, warn, BlenderProject, CommitMetadata, Config, OxenRepository, ProjectType, SketchUpMetadata, SketchUpProject, AuxinServerClient, ServerConfig, server_client, BounceManager};
+use auxin::{lock_integration, logger, progress, success, vlog, warn, BlenderProject, CommitMetadata, Config, OxenRepository, OxenSubprocess, ProjectType, SketchUpMetadata, SketchUpProject, AuxinServerClient, ServerConfig, server_client, BounceManager};
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -748,6 +748,58 @@ EXAMPLES:
         /// Legacy flag for backward compatibility
         #[arg(long, hide = true)]
         logic: bool,
+    },
+
+    /// Clone an existing Auxin project from a remote repository
+    #[command(long_about = "Clone an existing Auxin project from a remote repository
+
+USAGE:
+    auxin clone <REMOTE_URL> <DESTINATION>
+
+DESCRIPTION:
+    Clones an Auxin project from a remote repository to your local machine.
+    Similar to 'git clone', this downloads the entire project history and
+    creates a working copy at the specified destination.
+
+    Supported remote types:
+      • Oxen Hub URLs (https://hub.oxen.ai/user/project)
+      • Local file paths (file:///path/to/repo)
+      • Auxin server URLs (http://server:3000/namespace/repo)
+
+    The clone operation will:
+      • Download all project files and history
+      • Set up the local repository structure
+      • Configure the remote connection
+      • Check out the default branch (usually 'main')
+
+    For Logic Pro projects:
+      • Clones the .logicx bundle with all project data
+      • Includes all alternatives, resources, and metadata
+      • Preserves commit history with BPM, sample rate, etc.
+
+    For SketchUp projects:
+      • Clones the .skp file and associated assets
+      • Includes textures, components, and metadata
+      • Preserves commit history with units, layers, etc.
+
+EXAMPLES:
+    # Clone from Oxen Hub
+    auxin clone https://hub.oxen.ai/username/my-project MyProject.logicx
+
+    # Clone from local file path
+    auxin clone file:///Volumes/Shared/MyProject.logicx LocalCopy.logicx
+
+    # Clone a SketchUp project
+    auxin clone https://hub.oxen.ai/architect/building MyBuilding.skp
+
+    # Clone to current directory (uses repo name)
+    auxin clone https://hub.oxen.ai/user/project .")]
+    Clone {
+        #[arg(value_name = "REMOTE_URL", help = "URL of the remote repository to clone")]
+        remote_url: String,
+
+        #[arg(value_name = "DESTINATION", help = "Local path where the project will be cloned")]
+        destination: PathBuf,
     },
 
     /// Stage changes to be committed
@@ -2149,6 +2201,90 @@ async fn main() -> anyhow::Result<()> {
                     );
                 }
             }
+            Ok(())
+        }
+
+        Commands::Clone { remote_url, destination } => {
+            vlog!("Starting clone operation");
+            vlog!("Remote URL: {}", remote_url);
+            vlog!("Destination: {}", destination.display());
+
+            // Check if oxen is available
+            let oxen = OxenSubprocess::new();
+            if !oxen.is_available() {
+                progress::error("oxen CLI not found. Please install: pip install oxen-ai");
+                std::process::exit(1);
+            }
+
+            // Show progress
+            let pb = progress::spinner(&format!("Cloning from {}...", remote_url));
+
+            // Perform the clone
+            match OxenRepository::clone(&remote_url, &destination).await {
+                Ok(_repo) => {
+                    progress::finish_success(&pb, "Repository cloned successfully");
+                    println!();
+                    progress::success(&format!("Project cloned to: {}", destination.display()));
+                    progress::success("All history and files downloaded");
+                    println!();
+
+                    // Detect project type and give relevant next steps
+                    let extension = destination.extension().and_then(|e| e.to_str()).unwrap_or("");
+                    match extension {
+                        "logicx" => {
+                            progress::info("Logic Pro project cloned successfully!");
+                            println!("  • Open in Logic Pro: {}", destination.display());
+                            println!("  • View history: cd {} && auxin log", destination.display());
+                            println!("  • Create commits: auxin commit -m \"Your message\" --bpm 120");
+                        }
+                        "skp" => {
+                            progress::info("SketchUp project cloned successfully!");
+                            println!("  • Open in SketchUp: {}", destination.display());
+                            println!("  • View history: cd {} && auxin log", destination.display());
+                            println!("  • Create commits: auxin commit -m \"Your message\" --units Inches");
+                        }
+                        "blend" => {
+                            progress::info("Blender project cloned successfully!");
+                            println!("  • Open in Blender: {}", destination.display());
+                            println!("  • View history: cd {} && auxin log", destination.display());
+                            println!("  • Create commits: auxin commit -m \"Your message\"");
+                        }
+                        _ => {
+                            progress::info("Project cloned successfully!");
+                            println!("  • Navigate to: cd {}", destination.display());
+                            println!("  • View history: auxin log");
+                            println!("  • Make changes and commit: auxin commit -m \"Your message\"");
+                        }
+                    }
+                }
+                Err(e) => {
+                    progress::finish_error(&pb, "Clone failed");
+                    progress::error(&format!("Failed to clone repository: {}", e));
+
+                    // Provide helpful error messages based on error type
+                    if e.to_string().contains("already exists") {
+                        println!();
+                        progress::info("The destination directory already exists.");
+                        println!("  • Choose a different destination, or");
+                        println!("  • Remove the existing directory and try again");
+                    } else if e.to_string().contains("Network") || e.to_string().contains("timed out") {
+                        println!();
+                        progress::info("Network error occurred.");
+                        println!("  • Check your internet connection");
+                        println!("  • Verify the remote URL is correct");
+                        println!("  • Try again in a few moments");
+                    } else if e.to_string().contains("not found") || e.to_string().contains("404") {
+                        println!();
+                        progress::info("Repository not found.");
+                        println!("  • Verify the remote URL is correct");
+                        println!("  • Check if you have access to the repository");
+                        println!("  • For private repos, make sure you're authenticated");
+                    }
+
+                    std::process::exit(1);
+                }
+            }
+
             Ok(())
         }
 

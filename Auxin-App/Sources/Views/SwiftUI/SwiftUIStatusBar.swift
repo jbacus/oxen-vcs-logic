@@ -72,8 +72,8 @@ struct SwiftUIStatusBar: View {
                     .foregroundColor(.secondary)
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
         .background(Color(nsColor: .controlBackgroundColor))
         .onAppear {
             updateStatus()

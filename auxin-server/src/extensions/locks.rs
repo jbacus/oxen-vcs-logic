@@ -134,7 +134,189 @@ impl FileLock {
         let content = serde_json::to_string_pretty(self)
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
 
+        // Ensure directory exists
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+
         fs::write(path, content)?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_acquire_lock() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_path = temp_dir.path();
+
+        let lock = FileLock::acquire(repo_path, "user1", "machine1", 1).unwrap();
+
+        assert_eq!(lock.user, "user1");
+        assert_eq!(lock.machine_id, "machine1");
+        assert!(!lock.is_expired());
+    }
+
+    #[test]
+    fn test_acquire_lock_twice_fails() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_path = temp_dir.path();
+
+        FileLock::acquire(repo_path, "user1", "machine1", 1).unwrap();
+
+        // Try to acquire again
+        let result = FileLock::acquire(repo_path, "user2", "machine2", 1);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().kind(), std::io::ErrorKind::AlreadyExists);
+    }
+
+    #[test]
+    fn test_release_lock() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_path = temp_dir.path();
+
+        let lock = FileLock::acquire(repo_path, "user1", "machine1", 1).unwrap();
+        FileLock::release(repo_path, &lock.lock_id).unwrap();
+
+        // Lock should be released, can acquire again
+        let lock2 = FileLock::acquire(repo_path, "user2", "machine2", 1).unwrap();
+        assert_eq!(lock2.user, "user2");
+    }
+
+    #[test]
+    fn test_release_wrong_lock_id_fails() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_path = temp_dir.path();
+
+        FileLock::acquire(repo_path, "user1", "machine1", 1).unwrap();
+
+        // Try to release with wrong lock ID
+        let result = FileLock::release(repo_path, "wrong_id");
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().kind(), std::io::ErrorKind::PermissionDenied);
+    }
+
+    #[test]
+    fn test_release_nonexistent_lock() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_path = temp_dir.path();
+
+        // Releasing non-existent lock should succeed
+        let result = FileLock::release(repo_path, "any_id");
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_heartbeat() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_path = temp_dir.path();
+
+        let lock = FileLock::acquire(repo_path, "user1", "machine1", 1).unwrap();
+        let old_heartbeat = lock.last_heartbeat;
+
+        // Sleep briefly to ensure timestamp changes
+        std::thread::sleep(std::time::Duration::from_millis(10));
+
+        let updated = FileLock::heartbeat(repo_path, &lock.lock_id).unwrap();
+        assert!(updated.last_heartbeat > old_heartbeat);
+    }
+
+    #[test]
+    fn test_heartbeat_wrong_lock_id_fails() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_path = temp_dir.path();
+
+        FileLock::acquire(repo_path, "user1", "machine1", 1).unwrap();
+
+        let result = FileLock::heartbeat(repo_path, "wrong_id");
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().kind(), std::io::ErrorKind::PermissionDenied);
+    }
+
+    #[test]
+    fn test_heartbeat_nonexistent_lock_fails() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_path = temp_dir.path();
+
+        let result = FileLock::heartbeat(repo_path, "any_id");
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().kind(), std::io::ErrorKind::NotFound);
+    }
+
+    #[test]
+    fn test_lock_status() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_path = temp_dir.path();
+
+        // No lock initially
+        let status = FileLock::status(repo_path).unwrap();
+        assert!(status.is_none());
+
+        // Acquire lock
+        let lock = FileLock::acquire(repo_path, "user1", "machine1", 1).unwrap();
+
+        // Check status
+        let status = FileLock::status(repo_path).unwrap();
+        assert!(status.is_some());
+        assert_eq!(status.unwrap().lock_id, lock.lock_id);
+
+        // Release lock
+        FileLock::release(repo_path, &lock.lock_id).unwrap();
+
+        // Status should be None again
+        let status = FileLock::status(repo_path).unwrap();
+        assert!(status.is_none());
+    }
+
+    #[test]
+    fn test_expired_lock_is_removed() {
+        let temp_dir = TempDir::new().unwrap();
+        let repo_path = temp_dir.path();
+        let lock_path = repo_path.join(".oxen/locks/project.lock");
+
+        // Create an expired lock manually
+        let now = Utc::now();
+        let expired_lock = FileLock {
+            lock_id: uuid::Uuid::new_v4().to_string(),
+            user: "user1".to_string(),
+            machine_id: "machine1".to_string(),
+            acquired_at: now - Duration::hours(2),
+            expires_at: now - Duration::hours(1), // Expired 1 hour ago
+            last_heartbeat: now - Duration::hours(1),
+        };
+
+        expired_lock.write_to_file(&lock_path).unwrap();
+
+        // Status check should remove expired lock
+        let status = FileLock::status(repo_path).unwrap();
+        assert!(status.is_none());
+
+        // Should be able to acquire new lock
+        let lock = FileLock::acquire(repo_path, "user2", "machine2", 1).unwrap();
+        assert_eq!(lock.user, "user2");
+    }
+
+    #[test]
+    fn test_lock_serialization() {
+        let now = Utc::now();
+        let lock = FileLock {
+            lock_id: "test-id".to_string(),
+            user: "testuser".to_string(),
+            machine_id: "test-machine".to_string(),
+            acquired_at: now,
+            expires_at: now + Duration::hours(1),
+            last_heartbeat: now,
+        };
+
+        let json = serde_json::to_string(&lock).unwrap();
+        let deserialized: FileLock = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(lock.lock_id, deserialized.lock_id);
+        assert_eq!(lock.user, deserialized.user);
+        assert_eq!(lock.machine_id, deserialized.machine_id);
     }
 }

@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, GitBranch, Terminal } from 'lucide-react';
+import { ArrowLeft, GitBranch, Terminal, Download } from 'lucide-react';
 import { CommitList } from '@/components/commits/CommitList';
 import { MetadataViewer } from '@/components/metadata/MetadataViewer';
 import { LockManager } from '@/components/locks/LockManager';
+import { CloneInstructions } from '@/components/repos/CloneInstructions';
 import { Loading } from '@/components/common/Loading';
 import { ErrorMessage } from '@/components/common/ErrorMessage';
-import { CopyButton } from '@/components/common/CopyButton';
 import {
   getRepository,
   getCommits,
@@ -18,11 +18,11 @@ import {
   getMetadata,
 } from '@/services/api';
 
-type TabType = 'commits' | 'locks' | 'metadata';
+type TabType = 'commits' | 'locks' | 'metadata' | 'clone';
 
 export function RepoPage() {
   const { namespace, name } = useParams<{ namespace: string; name: string }>();
-  const [activeTab, setActiveTab] = useState<TabType>('commits');
+  const [activeTab, setActiveTab] = useState<TabType>('clone');
   const [selectedCommit, setSelectedCommit] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
@@ -89,8 +89,6 @@ export function RepoPage() {
     mutationFn: () => heartbeatLock(namespace, name),
   });
 
-  const cloneCommand = `oxen clone http://localhost:3000/${namespace}/${name}`;
-
   if (repoLoading) {
     return <Loading message="Loading repository..." />;
   }
@@ -104,40 +102,34 @@ export function RepoPage() {
   }
 
   const tabs: { id: TabType; label: string; icon: any }[] = [
+    { id: 'clone', label: 'Clone', icon: Download },
     { id: 'commits', label: 'Commits', icon: GitBranch },
     { id: 'locks', label: 'Locks', icon: Terminal },
     { id: 'metadata', label: 'Metadata', icon: Terminal },
   ];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       <Link
         to="/"
-        className="inline-flex items-center space-x-2 text-sm text-gray-600 hover:text-primary-600 mb-6 transition-colors duration-200 hover:translate-x-[-2px] transition-transform"
+        className="inline-flex items-center space-x-2 text-sm text-gray-600 hover:text-primary-600 mb-4 transition-colors duration-200 hover:translate-x-[-2px] transition-transform"
         aria-label="Back to repositories"
       >
         <ArrowLeft className="w-4 h-4" aria-hidden="true" />
         <span>Back to repositories</span>
       </Link>
 
-      <div className="mb-8">
+      <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900">
           {namespace}/{name}
         </h1>
         {repo?.description && (
           <p className="mt-2 text-gray-600">{repo.description}</p>
         )}
-        <div className="mt-4 flex items-center space-x-2 bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-lg p-3 shadow-sm">
-          <Terminal className="w-4 h-4 text-gray-600 flex-shrink-0" aria-hidden="true" />
-          <code className="text-sm font-mono text-gray-700 flex-1 select-all" aria-label="Clone command">
-            {cloneCommand}
-          </code>
-          <CopyButton text={cloneCommand} />
-        </div>
       </div>
 
-      <div className="border-b border-gray-200 mb-6">
-        <nav className="flex space-x-8" role="tablist" aria-label="Repository sections">
+      <div className="border-b border-gray-200 mb-4">
+        <nav className="flex space-x-6" role="tablist" aria-label="Repository sections">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (
@@ -162,6 +154,16 @@ export function RepoPage() {
       </div>
 
       <div>
+        {activeTab === 'clone' && (
+          <div role="tabpanel" id="clone-panel" aria-labelledby="clone-tab">
+            <CloneInstructions
+              namespace={namespace}
+              name={name}
+              serverUrl={window.location.origin}
+            />
+          </div>
+        )}
+
         {activeTab === 'commits' && (
           <div role="tabpanel" id="commits-panel" aria-labelledby="commits-tab">
             {commitsLoading && <Loading message="Loading commits..." />}

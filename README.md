@@ -43,6 +43,27 @@ Auxin solves these problems by combining Oxen's block-level deduplication with c
 - References the **AUX In** jack found on audio equipment—the universal input that connects everything
 - Named after the **plant growth hormone** that directs growth and development, just as Auxin helps creative projects grow and evolve
 
+## Why Choose Auxin?
+
+### Comparison with Alternatives
+
+| Feature | **Auxin** | Splice | Git-LFS | Perforce | Manual Backups |
+|---------|-----------|--------|---------|----------|----------------|
+| **Works Offline** | ✅ | ❌ | ✅ | ✅ | ✅ |
+| **Open Source** | ✅ | ❌ | ✅ | ❌ | N/A |
+| **Cost** | Free | $96-240/year | Free | $900+/user/yr | Free |
+| **Storage Efficiency** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐ |
+| **Prevents Conflicts** | ✅ Locks | ❌ | ❌ | ✅ | ❌ |
+| **Application Metadata** | ✅ | ✅ | ❌ | ❌ | ❌ |
+| **Auto-commit** | ✅ | ✅ | ❌ | ❌ | ❌ |
+| **Learning Curve** | Low | Low | High | Very High | None |
+| **Self-Hosted** | ✅ | ❌ | ✅ | ✅ | N/A |
+| **macOS Native** | ✅ | ✅ | ❌ | ❌ | N/A |
+
+**Auxin's Unique Position**: Professional-grade version control combining Git's power, Splice's creative focus, and Perforce's conflict prevention—without subscriptions, vendor lock-in, or complexity.
+
+See [COMPETITIVE_POSITIONING.md](COMPETITIVE_POSITIONING.md) for detailed comparison.
+
 ## Supported Applications
 
 - **Logic Pro** (.logicx) - Audio production with BPM, sample rate, key signature metadata
@@ -388,6 +409,38 @@ See [Documentation Index](docs/INDEX.md) for a complete map of all documentation
 - [Contributing](docs/developer/contributing.md) - Code style, testing, PR process
 - [Testing Strategy](docs/developer/testing.md) - Comprehensive testing approach
 - [Extensibility](docs/developer/extensibility.md) - Adding support for new applications
+
+### Project Strategy
+- [Competitive Positioning](COMPETITIVE_POSITIONING.md) - How Auxin compares to alternatives
+- [Business Model](BUSINESS_MODEL.md) - Sustainability strategy and pricing
+
+## Project Sustainability
+
+**Auxin is free and open source (MIT license), and will remain so forever.**
+
+### Our Commitment
+- ✅ Core software (CLI, daemon, GUI, self-hosted server) is **free forever**
+- ✅ **No features** will move from free to paid
+- ✅ **No vendor lock-in** - you own your data, can self-host indefinitely
+- ✅ **Open development** - transparent roadmap, public issues, community-driven
+
+### Future Sustainability
+To ensure long-term development and maintenance, we plan to offer **optional paid services**:
+- **Auxin Cloud** (future) - Managed hosting for convenience (like GitHub vs self-hosted Git)
+- **Enterprise support** - SLA-backed support contracts for studios
+- **Training & consulting** - Professional onboarding services
+
+**Self-hosting will always be free and fully-featured.** Paid services only offer convenience, not capabilities.
+
+See [BUSINESS_MODEL.md](BUSINESS_MODEL.md) for our complete sustainability strategy.
+
+### Support the Project
+If Auxin has helped you, consider supporting development:
+- ⭐ **Star this repository** to increase visibility
+- 💬 **Share** with fellow creators who need version control
+- 🐛 **Report bugs** and suggest features via Issues
+- 🔧 **Contribute** code, documentation, or tutorials
+- 💰 **Sponsor** via [GitHub Sponsors](https://github.com/sponsors/jbacus) (coming soon)
 
 ## License
 

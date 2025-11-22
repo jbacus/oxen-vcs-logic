@@ -8,6 +8,9 @@ use auxin_server::auth::{self, AuthService};
 use auxin_server::config::Config;
 use auxin_server::websocket::{ws_handler, WsHub};
 
+#[cfg(feature = "web-ui")]
+use auxin_server::db;
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     // Initialize tracing
@@ -41,6 +44,27 @@ async fn main() -> std::io::Result<()> {
     let ws_hub = WsHub::new();
     info!("WebSocket hub initialized");
 
+    // Initialize database if web-ui feature is enabled
+    #[cfg(feature = "web-ui")]
+    let db_pool = if let Some(database_url) = &config.database_url {
+        match db::init_database(database_url).await {
+            Ok(pool) => {
+                info!("Database initialized successfully");
+                Some(pool)
+            }
+            Err(e) => {
+                info!("Failed to initialize database: {}. Project CRUD endpoints will not be available.", e);
+                None
+            }
+        }
+    } else {
+        info!("No DATABASE_URL configured. Project CRUD endpoints will not be available.");
+        None
+    };
+
+    #[cfg(not(feature = "web-ui"))]
+    let db_pool: Option<()> = None;
+
     // Detect frontend static files directory
     let frontend_dir = PathBuf::from("frontend/dist");
     let serve_frontend = frontend_dir.exists();
@@ -58,7 +82,15 @@ async fn main() -> std::io::Result<()> {
         let mut app = App::new()
             .app_data(web::Data::new(config.clone()))
             .app_data(web::Data::new(auth_service.clone()))
-            .app_data(web::Data::new(ws_hub.clone()))
+            .app_data(web::Data::new(ws_hub.clone()));
+
+        // Add database pool if available
+        #[cfg(feature = "web-ui")]
+        if let Some(ref pool) = db_pool {
+            app = app.app_data(web::Data::new(pool.clone()));
+        }
+
+        let mut app = app
             .wrap(middleware::Logger::default())
             .wrap(
                 actix_cors::Cors::default()
@@ -71,7 +103,21 @@ async fn main() -> std::io::Result<()> {
             .route("/api/auth/register", web::post().to(auth::register))
             .route("/api/auth/login", web::post().to(auth::login))
             .route("/api/auth/logout", web::post().to(auth::logout))
-            .route("/api/auth/me", web::get().to(auth::me))
+            .route("/api/auth/me", web::get().to(auth::me));
+
+        // Project CRUD endpoints (requires web-ui feature and database)
+        #[cfg(feature = "web-ui")]
+        if db_pool.is_some() {
+            app = app
+                .route("/api/projects", web::post().to(api::create_project))
+                .route("/api/projects", web::get().to(api::list_projects))
+                .route("/api/projects/{id}", web::get().to(api::get_project))
+                .route("/api/projects/{namespace}/{name}", web::get().to(api::get_project_by_namespace))
+                .route("/api/projects/{id}", web::put().to(api::update_project))
+                .route("/api/projects/{id}", web::delete().to(api::delete_project));
+        }
+
+        let mut app = app
             // Public endpoints
             .route("/api/repos", web::get().to(api::list_repositories))
             .route("/api/repos/{namespace}/{name}", web::get().to(api::get_repository))
@@ -95,6 +141,11 @@ async fn main() -> std::io::Result<()> {
             .route("/api/repos/{namespace}/{name}/locks/heartbeat", web::post().to(api::heartbeat_lock))
             .route("/api/repos/{namespace}/{name}/locks/status", web::get().to(api::lock_status))
             .route("/api/repos/{namespace}/{name}/activity", web::get().to(api::get_activity))
+            // Project management (ownership and collaborators)
+            .route("/api/repos/{namespace}/{name}/collaborators", web::get().to(api::list_collaborators))
+            .route("/api/repos/{namespace}/{name}/collaborators", web::post().to(api::add_collaborator))
+            .route("/api/repos/{namespace}/{name}/collaborators/{user_id}", web::delete().to(api::remove_collaborator))
+            .route("/api/repos/{namespace}/{name}/visibility", web::put().to(api::update_visibility))
             // WebSocket for real-time notifications
             .route("/ws/repos/{namespace}/{name}", web::get().to(ws_handler))
             // Bounce audio endpoints
