@@ -2,7 +2,7 @@
 
 **For**: AI assistants (Claude Code, Copilot, etc.)
 **Purpose**: Provide essential context for code generation and project assistance
-**Last Updated**: 2025-11-19
+**Last Updated**: 2025-11-22
 
 ---
 
