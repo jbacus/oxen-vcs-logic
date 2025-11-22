@@ -1,0 +1,964 @@
+openapi: 3.0.3
+info:
+  title: Auxin Server API
+  description: |
+    Auxin Server is a version control system for creative applications,
+    providing Git-like capabilities optimized for large binary files
+    (Logic Pro projects, SketchUp models, etc.).
+
+    Built on Oxen.ai infrastructure with extensions for:
+    - Pessimistic locking for binary file collaboration
+    - Application-specific metadata (BPM, sample rate, key, tags)
+    - Real-time WebSocket notifications
+    - Activity feed tracking
+
+    ## Authentication
+
+    Most endpoints require authentication via Bearer token in the Authorization header:
+    ```
+    Authorization: Bearer <token>
+    ```
+
+    Obtain a token by calling `/api/auth/login` or `/api/auth/register`.
+
+    ## WebSocket Support
+
+    Real-time updates are available via WebSocket connection to `/ws`.
+    Subscribe to repository channels to receive notifications about:
+    - Commits and pushes
+    - Lock acquisitions and releases
+    - Activity feed updates
+
+  version: 0.3.0
+  contact:
+    name: Auxin Project
+    url: https://github.com/jbacus/auxin
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:3000
+    description: Local development server
+  - url: https://auxin.example.com
+    description: Production server
+
+tags:
+  - name: Authentication
+    description: User registration and authentication
+  - name: Repositories
+    description: Repository management and VCS operations
+  - name: Branches
+    description: Branch management
+  - name: Commits
+    description: Commit history and metadata
+  - name: Locks
+    description: Pessimistic locking for collaboration
+  - name: Activity
+    description: Activity feed and audit logs
+  - name: Projects
+    description: Project CRUD operations (requires web-ui feature)
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Returns server health status
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Server is healthy
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: OK
+
+  /api/auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Register new user
+      description: Create a new user account
+      operationId: register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - email
+                - password
+              properties:
+                username:
+                  type: string
+                  minLength: 3
+                  example: musicproducer
+                email:
+                  type: string
+                  format: email
+                  example: user@example.com
+                password:
+                  type: string
+                  minLength: 8
+                  example: securePassword123
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  username:
+                    type: string
+                  email:
+                    type: string
+                  token:
+                    type: string
+                    description: Authentication token for subsequent requests
+        '400':
+          description: Bad request (validation errors)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: User already exists
+
+  /api/auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Login
+      description: Authenticate and receive access token
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: Invalid credentials
+
+  /api/auth/logout:
+    post:
+      tags:
+        - Authentication
+      summary: Logout
+      description: Invalidate current session token
+      operationId: logout
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Logged out successfully
+        '401':
+          description: Unauthorized
+
+  /api/auth/me:
+    get:
+      tags:
+        - Authentication
+      summary: Get current user
+      description: Retrieve information about the authenticated user
+      operationId: getCurrentUser
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: Unauthorized
+
+  /api/repos:
+    get:
+      tags:
+        - Repositories
+      summary: List repositories
+      description: List all repositories accessible to the user
+      operationId: listRepositories
+      parameters:
+        - name: namespace
+          in: query
+          description: Filter by namespace
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of repositories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Repository'
+
+  /api/repos/{namespace}/{name}:
+    get:
+      tags:
+        - Repositories
+      summary: Get repository
+      description: Get repository details
+      operationId: getRepository
+      parameters:
+        - $ref: '#/components/parameters/namespace'
+        - $ref: '#/components/parameters/repoName'
+      responses:
+        '200':
+          description: Repository details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Repository'
+        '404':
+          description: Repository not found
+
+    post:
+      tags:
+        - Repositories
+      summary: Create repository
+      description: Initialize a new repository
+      operationId: createRepository
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/namespace'
+        - $ref: '#/components/parameters/repoName'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                description:
+                  type: string
+                  example: My Logic Pro project
+                visibility:
+                  type: string
+                  enum: [public, private]
+                  default: private
+      responses:
+        '201':
+          description: Repository created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Repository'
+        '401':
+          description: Unauthorized
+        '409':
+          description: Repository already exists
+
+  /api/repos/{namespace}/{name}/clone:
+    post:
+      tags:
+        - Repositories
+      summary: Clone repository
+      description: Clone a repository from a remote URL
+      operationId: cloneRepository
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/namespace'
+        - $ref: '#/components/parameters/repoName'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - remote_url
+              properties:
+                remote_url:
+                  type: string
+                  format: uri
+                  example: https://hub.oxen.ai/username/repository
+      responses:
+        '201':
+          description: Repository cloned successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  namespace:
+                    type: string
+                  name:
+                    type: string
+                  remote_url:
+                    type: string
+                  owner:
+                    type: string
+        '400':
+          description: Invalid remote URL or repository already exists
+        '401':
+          description: Unauthorized
+
+  /api/repos/{namespace}/{name}/push:
+    post:
+      tags:
+        - Repositories
+      summary: Push to remote
+      description: Push commits to a remote repository
+      operationId: pushRepository
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/namespace'
+        - $ref: '#/components/parameters/repoName'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - remote
+              properties:
+                remote:
+                  type: string
+                  example: origin
+                branch:
+                  type: string
+                  example: main
+      responses:
+        '200':
+          description: Push successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  message:
+                    type: string
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden (no write access)
+
+  /api/repos/{namespace}/{name}/pull:
+    post:
+      tags:
+        - Repositories
+      summary: Pull from remote
+      description: Pull commits from a remote repository
+      operationId: pullRepository
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/namespace'
+        - $ref: '#/components/parameters/repoName'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - remote
+              properties:
+                remote:
+                  type: string
+                  example: origin
+                branch:
+                  type: string
+                  example: main
+      responses:
+        '200':
+          description: Pull successful
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden (no write access)
+
+  /api/repos/{namespace}/{name}/fetch:
+    post:
+      tags:
+        - Repositories
+      summary: Fetch from remote
+      description: Fetch refs and objects from remote
+      operationId: fetchRepository
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/namespace'
+        - $ref: '#/components/parameters/repoName'
+        - name: remote
+          in: query
+          schema:
+            type: string
+            default: origin
+      responses:
+        '200':
+          description: Fetch successful
+        '401':
+          description: Unauthorized
+
+  /api/repos/{namespace}/{name}/status:
+    get:
+      tags:
+        - Repositories
+      summary: Get repository status
+      description: Get working directory status
+      operationId: getStatus
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/namespace'
+        - $ref: '#/components/parameters/repoName'
+      responses:
+        '200':
+          description: Repository status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+
+  /api/repos/{namespace}/{name}/branches:
+    get:
+      tags:
+        - Branches
+      summary: List branches
+      description: List all branches in the repository
+      operationId: listBranches
+      parameters:
+        - $ref: '#/components/parameters/namespace'
+        - $ref: '#/components/parameters/repoName'
+      responses:
+        '200':
+          description: List of branches
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                example: [main, feature-1, experiment]
+
+    post:
+      tags:
+        - Branches
+      summary: Create branch
+      description: Create a new branch
+      operationId: createBranch
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/namespace'
+        - $ref: '#/components/parameters/repoName'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - branch_name
+              properties:
+                branch_name:
+                  type: string
+                  example: feature-new-sound
+      responses:
+        '201':
+          description: Branch created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  branch:
+                    type: string
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+
+  /api/repos/{namespace}/{name}/branches/{branch}:
+    delete:
+      tags:
+        - Branches
+      summary: Delete branch
+      description: Delete a branch
+      operationId: deleteBranch
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/namespace'
+        - $ref: '#/components/parameters/repoName'
+        - name: branch
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Branch deleted
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Branch not found
+
+  /api/repos/{namespace}/{name}/commits:
+    get:
+      tags:
+        - Commits
+      summary: Get commit history
+      description: List commits with optional pagination
+      operationId: getCommits
+      parameters:
+        - $ref: '#/components/parameters/namespace'
+        - $ref: '#/components/parameters/repoName'
+        - name: limit
+          in: query
+          description: Maximum number of commits to return
+          schema:
+            type: integer
+            default: 50
+            maximum: 100
+      responses:
+        '200':
+          description: List of commits
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Commit'
+
+  /api/repos/{namespace}/{name}/commits/{commit}/restore:
+    post:
+      tags:
+        - Commits
+      summary: Restore commit
+      description: Rollback/restore to a specific commit
+      operationId: restoreCommit
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/namespace'
+        - $ref: '#/components/parameters/repoName'
+        - name: commit
+          in: path
+          required: true
+          description: Commit ID to restore
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Restore successful
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Commit not found
+
+  /api/repos/{namespace}/{name}/metadata/{commit}:
+    get:
+      tags:
+        - Commits
+      summary: Get commit metadata
+      description: Retrieve application-specific metadata (BPM, key, tags, etc.)
+      operationId: getMetadata
+      parameters:
+        - $ref: '#/components/parameters/namespace'
+        - $ref: '#/components/parameters/repoName'
+        - name: commit
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Commit metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogicProMetadata'
+        '404':
+          description: Metadata not found
+
+    post:
+      tags:
+        - Commits
+      summary: Store commit metadata
+      description: Store application-specific metadata for a commit
+      operationId: storeMetadata
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/namespace'
+        - $ref: '#/components/parameters/repoName'
+        - name: commit
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogicProMetadata'
+      responses:
+        '201':
+          description: Metadata stored
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+
+  /api/repos/{namespace}/{name}/locks/acquire:
+    post:
+      tags:
+        - Locks
+      summary: Acquire lock
+      description: Acquire a pessimistic lock on the repository
+      operationId: acquireLock
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/namespace'
+        - $ref: '#/components/parameters/repoName'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - user
+                - machine_id
+              properties:
+                user:
+                  type: string
+                machine_id:
+                  type: string
+                timeout_hours:
+                  type: integer
+                  default: 24
+      responses:
+        '200':
+          description: Lock acquired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lock'
+        '401':
+          description: Unauthorized
+        '409':
+          description: Lock already held by another user
+
+  /api/repos/{namespace}/{name}/locks/release:
+    post:
+      tags:
+        - Locks
+      summary: Release lock
+      description: Release a held lock
+      operationId: releaseLock
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/namespace'
+        - $ref: '#/components/parameters/repoName'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - lock_id
+              properties:
+                lock_id:
+                  type: string
+      responses:
+        '200':
+          description: Lock released
+        '401':
+          description: Unauthorized
+        '404':
+          description: Lock not found
+
+  /api/repos/{namespace}/{name}/locks/heartbeat:
+    post:
+      tags:
+        - Locks
+      summary: Lock heartbeat
+      description: Renew/refresh a lock to prevent expiration
+      operationId: heartbeatLock
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/namespace'
+        - $ref: '#/components/parameters/repoName'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - lock_id
+              properties:
+                lock_id:
+                  type: string
+      responses:
+        '200':
+          description: Heartbeat successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lock'
+        '401':
+          description: Unauthorized
+        '404':
+          description: Lock not found or expired
+
+  /api/repos/{namespace}/{name}/locks/status:
+    get:
+      tags:
+        - Locks
+      summary: Get lock status
+      description: Check if repository is locked
+      operationId: lockStatus
+      parameters:
+        - $ref: '#/components/parameters/namespace'
+        - $ref: '#/components/parameters/repoName'
+      responses:
+        '200':
+          description: Lock status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  locked:
+                    type: boolean
+                  lock:
+                    $ref: '#/components/schemas/Lock'
+
+  /api/repos/{namespace}/{name}/activity:
+    get:
+      tags:
+        - Activity
+      summary: Get activity feed
+      description: Retrieve activity log for repository
+      operationId: getActivity
+      parameters:
+        - $ref: '#/components/parameters/namespace'
+        - $ref: '#/components/parameters/repoName'
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 100
+      responses:
+        '200':
+          description: Activity feed
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Activity'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    namespace:
+      name: namespace
+      in: path
+      required: true
+      description: Repository namespace (username or organization)
+      schema:
+        type: string
+        example: musicproducer
+
+    repoName:
+      name: name
+      in: path
+      required: true
+      description: Repository name
+      schema:
+        type: string
+        example: my-album
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        created_at:
+          type: string
+          format: date-time
+
+    Repository:
+      type: object
+      properties:
+        namespace:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        visibility:
+          type: string
+          enum: [public, private]
+        owner:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        last_commit:
+          type: string
+        locked:
+          type: boolean
+
+    Commit:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Commit SHA
+        message:
+          type: string
+        author:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        metadata:
+          $ref: '#/components/schemas/LogicProMetadata'
+
+    LogicProMetadata:
+      type: object
+      description: Logic Pro project metadata
+      properties:
+        bpm:
+          type: number
+          format: float
+          example: 120.0
+        sample_rate:
+          type: integer
+          example: 44100
+        key:
+          type: string
+          example: C Major
+        time_signature:
+          type: string
+          example: 4/4
+        tags:
+          type: array
+          items:
+            type: string
+          example: [rock, upbeat, demo]
+        track_count:
+          type: integer
+        plugin_count:
+          type: integer
+
+    Lock:
+      type: object
+      properties:
+        lock_id:
+          type: string
+        user:
+          type: string
+        machine_id:
+          type: string
+        acquired_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+        timeout_hours:
+          type: integer
+
+    Activity:
+      type: object
+      properties:
+        id:
+          type: string
+        activity_type:
+          type: string
+          enum: [commit, push, pull, lock_acquired, lock_released, restore]
+        user:
+          type: string
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        details:
+          type: object

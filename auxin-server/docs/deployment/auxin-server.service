@@ -1,0 +1,45 @@
+[Unit]
+Description=Auxin Server - Version Control for Creative Applications
+Documentation=https://github.com/jbacus/auxin
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=auxin
+Group=auxin
+WorkingDirectory=/opt/auxin/auxin-server
+
+# Environment
+Environment="RUST_LOG=info,auxin_server=info"
+Environment="AUXIN_SERVER_AUTH_TOKEN_SECRET=REPLACE_WITH_SECRET"
+EnvironmentFile=-/etc/auxin/env
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/oxen/data /var/log/auxin
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+# Execution
+ExecStart=/opt/auxin/target/release/auxin-server
+ExecReload=/bin/kill -HUP $MAINPID
+
+# Restart policy
+Restart=always
+RestartSec=10
+StartLimitBurst=3
+StartLimitIntervalSec=60
+
+# Output
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=auxin-server
+
+[Install]
+WantedBy=multi-user.target
