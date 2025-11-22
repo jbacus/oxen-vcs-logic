@@ -165,6 +165,12 @@ import Foundation
         _ hours: Int,
         withReply reply: @escaping (Bool) -> Void
     )
+
+    /// Restart the daemon
+    /// - Parameter reply: Completion handler with success status and error message
+    func restartDaemon(
+        withReply reply: @escaping (Bool, String?) -> Void
+    )
 }
 
 // MARK: - XPC Service Implementation
@@ -394,10 +400,85 @@ public class OxenDaemonXPCService: NSObject, OxenDaemonXPCProtocol {
         limit: Int,
         withReply reply: @escaping ([[String: Any]]) -> Void
     ) {
-        // This would call the Rust CLI to get commit history
-        // For now, return empty array as placeholder
         print("XPC: Get commit history for: \(projectPath) (limit: \(limit))")
-        reply([])
+
+        Task {
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/usr/local/bin/auxin")
+            process.currentDirectoryURL = URL(fileURLWithPath: projectPath)
+            process.arguments = ["log", "--limit", "\(limit)", "--format", "json"]
+
+            let pipe = Pipe()
+            process.standardOutput = pipe
+            process.standardError = Pipe()
+
+            do {
+                try process.run()
+                process.waitUntilExit()
+
+                let data = pipe.fileHandleForReading.readDataToEndOfFile()
+
+                if process.terminationStatus == 0, let output = String(data: data, encoding: .utf8), !output.isEmpty {
+                    // Parse JSON output from CLI
+                    if let jsonData = output.data(using: .utf8),
+                       let commits = try? JSONSerialization.jsonObject(with: jsonData) as? [[String: Any]] {
+                        reply(commits)
+                    } else {
+                        // Fallback: parse text format
+                        let commits = self.parseCommitLog(output: output, limit: limit)
+                        reply(commits)
+                    }
+                } else {
+                    reply([])
+                }
+            } catch {
+                print("XPC: Failed to get commit history: \(error)")
+                reply([])
+            }
+        }
+    }
+
+    private func parseCommitLog(output: String, limit: Int) -> [[String: Any]] {
+        var commits: [[String: Any]] = []
+        let lines = output.components(separatedBy: "\n")
+
+        var currentCommit: [String: Any]?
+
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+
+            // Look for commit hash line (starts with ●)
+            if trimmed.hasPrefix("●") {
+                // Save previous commit if exists
+                if let commit = currentCommit {
+                    commits.append(commit)
+                }
+
+                // Parse new commit: "● 595c2e9 - now"
+                let parts = trimmed.dropFirst(2).components(separatedBy: " - ")
+                if let hash = parts.first?.trimmingCharacters(in: .whitespaces) {
+                    currentCommit = [
+                        "hash": hash,
+                        "timestamp": Date(), // CLI shows "now", use current date
+                        "author": "Unknown",
+                        "message": ""
+                    ]
+                }
+            } else if !trimmed.isEmpty && !trimmed.hasPrefix("│") && !trimmed.hasPrefix("┌") && !trimmed.hasPrefix("└") && !trimmed.hasPrefix("ℹ") && currentCommit != nil {
+                // This is the commit message
+                if var commit = currentCommit {
+                    commit["message"] = trimmed
+                    currentCommit = commit
+                }
+            }
+        }
+
+        // Don't forget the last commit
+        if let commit = currentCommit {
+            commits.append(commit)
+        }
+
+        return Array(commits.prefix(limit))
     }
 
     public func restoreProject(
@@ -546,6 +627,25 @@ public class OxenDaemonXPCService: NSObject, OxenDaemonXPCProtocol {
 
         // This will apply to newly acquired locks
         reply(true)
+    }
+
+    // MARK: - Daemon Control
+
+    public func restartDaemon(
+        withReply reply: @escaping (Bool, String?) -> Void
+    ) {
+        print("XPC: Restart daemon requested")
+
+        // Acknowledge the request immediately
+        reply(true, nil)
+
+        // Use a background thread to exit after ensuring reply is delivered
+        DispatchQueue.global(qos: .background).async {
+            Thread.sleep(forTimeInterval: 0.5)
+            print("XPC: Exiting daemon for restart - launchd will restart us automatically")
+            // Clean exit - launchd's KeepAlive will automatically restart the daemon
+            exit(0)
+        }
     }
 
     // MARK: - Helpers

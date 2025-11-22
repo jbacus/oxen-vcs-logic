@@ -7,7 +7,7 @@ struct ProjectListContentView: View {
     @State private var showingDeleteAlert = false
 
     var body: some View {
-        List(projects, id: \.path, selection: $selectedProject) { project in
+        List(projects, selection: $selectedProject) { project in
             ProjectRowView(project: project)
                 .tag(project)
                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {

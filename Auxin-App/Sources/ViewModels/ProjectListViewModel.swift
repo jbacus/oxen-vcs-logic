@@ -105,7 +105,6 @@ class ProjectListViewModel: ObservableObject {
         // Create project once all data is loaded
         group.notify(queue: .main) {
             let project = Project(
-                id: UUID(),
                 path: path,
                 name: URL(fileURLWithPath: path).lastPathComponent,
                 isMonitored: true,

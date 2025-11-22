@@ -154,6 +154,142 @@ impl LogicProject {
         })
     }
 
+    /// Detects if a .logicx path is part of a Logic Pro workspace folder structure.
+    ///
+    /// Logic Pro creates workspace folders when using "Create folder for project" option.
+    /// This creates a parent folder containing the .logicx bundle plus external assets:
+    ///
+    /// ```text
+    /// Ellie_Dixon/                    ← Workspace folder
+    ///   ├── Ellie_Dixon.logicx       ← Logic project bundle
+    ///   ├── Audio Files/
+    ///   ├── Samples/
+    ///   ├── Alchemy Samples/
+    ///   └── Impulse Responses/
+    /// ```
+    ///
+    /// This function detects this pattern and returns the workspace folder path when found.
+    ///
+    /// # Arguments
+    ///
+    /// * `logicx_path` - Path to a .logicx file (can be relative or absolute)
+    ///
+    /// # Returns
+    ///
+    /// * `Some(PathBuf)` - Path to workspace folder if pattern is detected
+    /// * `None` - If this is not a workspace structure (standalone .logicx)
+    ///
+    /// # Detection Logic
+    ///
+    /// Returns workspace folder if ALL conditions are met:
+    /// 1. .logicx path has a parent directory
+    /// 2. Parent folder name matches .logicx name (minus extension)
+    /// 3. At least one typical asset folder exists ("Audio Files", "Samples", etc.)
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::path::PathBuf;
+    /// # use anyhow::Result;
+    /// # use auxin::logic_project::LogicProject;
+    ///
+    /// // Workspace structure - returns parent folder
+    /// let path = PathBuf::from("/Users/me/Projects/MySong/MySong.logicx");
+    /// if let Some(workspace) = LogicProject::detect_workspace_folder(&path) {
+    ///     assert_eq!(workspace, PathBuf::from("/Users/me/Projects/MySong"));
+    /// }
+    ///
+    /// // Standalone .logicx - returns None
+    /// let path = PathBuf::from("/Users/me/MySong.logicx");
+    /// assert_eq!(LogicProject::detect_workspace_folder(&path), None);
+    /// # Ok::<(), anyhow::Error>(())
+    /// ```
+    pub fn detect_workspace_folder(logicx_path: impl AsRef<Path>) -> Option<PathBuf> {
+        let logicx_path = logicx_path.as_ref();
+
+        vlog!("=== Logic Pro Workspace Detection ===");
+        vlog!("Checking if .logicx is part of a workspace: {}", logicx_path.display());
+
+        // Canonicalize the path to get absolute path
+        let canonical_logicx = match std::fs::canonicalize(logicx_path) {
+            Ok(p) => p,
+            Err(e) => {
+                vlog!("Cannot canonicalize path: {}", e);
+                return None;
+            }
+        };
+
+        vlog!("Canonical .logicx path: {}", canonical_logicx.display());
+
+        // Check if this is actually a .logicx directory
+        if canonical_logicx.extension().and_then(|e| e.to_str()) != Some("logicx") {
+            vlog!("Not a .logicx file");
+            return None;
+        }
+
+        // Get parent directory
+        let parent = match canonical_logicx.parent() {
+            Some(p) => p,
+            None => {
+                vlog!("No parent directory");
+                return None;
+            }
+        };
+
+        vlog!("Parent directory: {}", parent.display());
+
+        // Get .logicx file name without extension
+        let logicx_stem = canonical_logicx
+            .file_stem()
+            .and_then(|s| s.to_str())?;
+
+        vlog!("Logic project name: {}", logicx_stem);
+
+        // Get parent folder name
+        let parent_name = parent
+            .file_name()
+            .and_then(|s| s.to_str())?;
+
+        vlog!("Parent folder name: {}", parent_name);
+
+        // Check if parent folder name matches .logicx name
+        if parent_name != logicx_stem {
+            vlog!("Parent folder name doesn't match .logicx name");
+            return None;
+        }
+
+        vlog!("✓ Parent folder name matches .logicx name");
+
+        // Check for typical Logic Pro workspace asset folders
+        let asset_folders = [
+            "Audio Files",
+            "Samples",
+            "Alchemy Samples",
+            "Impulse Responses",
+            "Media",
+        ];
+
+        let mut found_asset_folders = Vec::new();
+        for folder_name in &asset_folders {
+            let folder_path = parent.join(folder_name);
+            if folder_path.exists() && folder_path.is_dir() {
+                found_asset_folders.push(*folder_name);
+                vlog!("✓ Found asset folder: {}", folder_name);
+            }
+        }
+
+        // If we found at least one asset folder, this is likely a workspace
+        if !found_asset_folders.is_empty() {
+            vlog!("=== Workspace Detected ===");
+            vlog!("Found {} asset folders: {:?}", found_asset_folders.len(), found_asset_folders);
+            vlog!("Using workspace folder as repository root: {}", parent.display());
+            Some(parent.to_path_buf())
+        } else {
+            vlog!("No asset folders found, treating as standalone .logicx");
+            None
+        }
+    }
+
     /// Finds the ProjectData file within a Logic Pro project directory.
     ///
     /// Searches for the ProjectData file in priority order:

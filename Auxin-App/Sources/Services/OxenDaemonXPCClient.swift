@@ -3,7 +3,7 @@ import Foundation
 // MARK: - XPC Protocol (must match server definition)
 
 /// Protocol for communication between UI app and background daemon
-@objc protocol OxenDaemonXPCProtocol {
+@objc public protocol OxenDaemonXPCProtocol {
     func initializeProject(_ projectPath: String, withReply reply: @escaping (Bool, String?) -> Void)
     func registerProject(_ projectPath: String, withReply reply: @escaping (Bool, String?) -> Void)
     func unregisterProject(_ projectPath: String, withReply reply: @escaping (Bool, String?) -> Void)
@@ -22,6 +22,7 @@ import Foundation
     func getConfiguration(withReply reply: @escaping ([String: Any]) -> Void)
     func setDebounceTime(_ seconds: Int, withReply reply: @escaping (Bool) -> Void)
     func setLockTimeout(_ hours: Int, withReply reply: @escaping (Bool) -> Void)
+    func restartDaemon(withReply reply: @escaping (Bool, String?) -> Void)
 }
 
 // MARK: - XPC Client
@@ -34,9 +35,22 @@ class OxenDaemonXPCClient {
     private let serviceName = "com.auxin.daemon.xpc"
 
     init() {
+        NSLog("[XPC Client] Initializing connection to service: \(serviceName)")
+
         connection = NSXPCConnection(machServiceName: serviceName, options: [])
         connection.remoteObjectInterface = NSXPCInterface(with: OxenDaemonXPCProtocol.self)
+
+        // Add connection state handlers
+        connection.interruptionHandler = {
+            NSLog("[XPC Client] ⚠️  Connection interrupted!")
+        }
+
+        connection.invalidationHandler = {
+            NSLog("[XPC Client] ❌ Connection invalidated!")
+        }
+
         connection.resume()
+        NSLog("[XPC Client] ✅ Connection resumed, ready to connect")
     }
 
     deinit {
@@ -44,9 +58,19 @@ class OxenDaemonXPCClient {
     }
 
     private func getProxy() -> OxenDaemonXPCProtocol? {
-        return connection.remoteObjectProxyWithErrorHandler { error in
-            print("XPC Error: \(error)")
+        NSLog("[XPC Client] getProxy() called")
+
+        let proxy = connection.remoteObjectProxyWithErrorHandler { error in
+            NSLog("[XPC Client] ❌ XPC Error: \(error)")
         } as? OxenDaemonXPCProtocol
+
+        if proxy != nil {
+            NSLog("[XPC Client] ✅ Successfully got proxy object")
+        } else {
+            NSLog("[XPC Client] ❌ Failed to cast proxy to OxenDaemonXPCProtocol")
+        }
+
+        return proxy
     }
 
     // MARK: - Public API
@@ -101,11 +125,17 @@ class OxenDaemonXPCClient {
     }
 
     func getMonitoredProjects(completion: @escaping ([String]) -> Void) {
+        NSLog("[XPC Client] getMonitoredProjects() called")
+
         guard let proxy = getProxy() else {
+            NSLog("[XPC Client] ❌ getMonitoredProjects failed - no proxy")
             completion([])
             return
         }
+
+        NSLog("[XPC Client] Calling proxy.getMonitoredProjects...")
         proxy.getMonitoredProjects(withReply: { projects in
+            NSLog("[XPC Client] ✅ Got \(projects.count) monitored projects from daemon")
             completion(projects)
         })
     }
@@ -249,6 +279,51 @@ class OxenDaemonXPCClient {
         }
         proxy.setLockTimeout(hours, withReply: { success in
             completion(success)
+        })
+    }
+
+    // MARK: - Daemon Control
+
+    func restartDaemon(completion: @escaping (Bool, String?) -> Void) {
+        print("DEBUG: XPC Client - restartDaemon called")
+
+        // Log to file
+        let log1 = "[\(Date())] XPC Client - restartDaemon called\n"
+        if let handle = FileHandle(forWritingAtPath: "/tmp/auxin-restart-button.log") {
+            handle.seekToEndOfFile()
+            handle.write(log1.data(using: .utf8)!)
+            handle.closeFile()
+        }
+
+        guard let proxy = getProxy() else {
+            print("DEBUG: XPC Client - Failed to get proxy")
+            let log2 = "[\(Date())] XPC Client - FAILED to get proxy\n"
+            if let handle = FileHandle(forWritingAtPath: "/tmp/auxin-restart-button.log") {
+                handle.seekToEndOfFile()
+                handle.write(log2.data(using: .utf8)!)
+                handle.closeFile()
+            }
+            completion(false, "Failed to connect to daemon")
+            return
+        }
+
+        print("DEBUG: XPC Client - Got proxy, calling restartDaemon on proxy")
+        let log3 = "[\(Date())] XPC Client - Got proxy, calling restartDaemon on proxy\n"
+        if let handle = FileHandle(forWritingAtPath: "/tmp/auxin-restart-button.log") {
+            handle.seekToEndOfFile()
+            handle.write(log3.data(using: .utf8)!)
+            handle.closeFile()
+        }
+
+        proxy.restartDaemon(withReply: { success, error in
+            print("DEBUG: XPC Client - Got reply: success=\(success), error=\(error ?? "nil")")
+            let log4 = "[\(Date())] XPC Client - Got reply: success=\(success), error=\(error ?? "nil")\n"
+            if let handle = FileHandle(forWritingAtPath: "/tmp/auxin-restart-button.log") {
+                handle.seekToEndOfFile()
+                handle.write(log4.data(using: .utf8)!)
+                handle.closeFile()
+            }
+            completion(success, error)
         })
     }
 }

@@ -1,10 +1,17 @@
 import SwiftUI
+import Foundation
 
 struct ProjectDetailContentView: View {
     let project: Project
     @State private var commits: [CommitInfo] = []
     @State private var isLoading = false
     @State private var showingMilestoneCommit = false
+
+    init(project: Project) {
+        self.project = project
+        print("✅ ProjectDetailContentView.init() called for: \(project.path)")
+        NSLog("✅ ProjectDetailContentView.init() called for: %@", project.path)
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -53,25 +60,44 @@ struct ProjectDetailContentView: View {
             MilestoneCommitView(project: project)
         }
         .onAppear {
+            let log = "[ProjectDetailContentView] onAppear: \(project.path)\n"
+            try? log.appendToFile(at: "/tmp/auxin-app-debug.log")
+            loadCommits()
+        }
+        .onChange(of: project.path) { oldPath, newPath in
+            let log = "[ProjectDetailContentView] onChange: \(oldPath) -> \(newPath)\n"
+            try? log.appendToFile(at: "/tmp/auxin-app-debug.log")
             loadCommits()
         }
     }
 
     private func loadCommits() {
+        let log = "[ProjectDetailContentView] loadCommits: \(project.path)\n"
+        try? log.appendToFile(at: "/tmp/auxin-app-debug.log")
         isLoading = true
 
         OxenDaemonXPCClient.shared.getCommitHistory(path: project.path, limit: 50) { commitData in
+            let log2 = "[ProjectDetailContentView] Got \(commitData.count) commits from XPC\n"
+            try? log2.appendToFile(at: "/tmp/auxin-app-debug.log")
+            print("DEBUG ProjectDetailContentView: Got \(commitData.count) commits from XPC for \(project.path)")
+            if !commitData.isEmpty {
+                print("DEBUG ProjectDetailContentView: First commit data: \(commitData[0])")
+            }
             DispatchQueue.main.async {
                 // Parse commit history from XPC response
                 var loadedCommits: [CommitInfo] = []
 
                 for commit in commitData {
-                    guard let id = commit["id"] as? String,
-                          let message = commit["message"] as? String,
-                          let timestamp = commit["timestamp"] as? Date,
-                          let author = commit["author"] as? String else {
+                    // Try both "id" and "hash" keys for backwards compatibility
+                    guard let id = (commit["id"] as? String) ?? (commit["hash"] as? String),
+                          let message = commit["message"] as? String else {
+                        print("ProjectDetailContentView: Skipping commit - missing id or message: \(commit)")
                         continue
                     }
+
+                    // Timestamp and author are optional - use defaults if not present
+                    let timestamp = commit["timestamp"] as? Date ?? Date()
+                    let author = commit["author"] as? String ?? "Unknown"
 
                     // Parse metadata if available
                     var metadata: CommitMetadata? = nil
@@ -106,6 +132,10 @@ struct ProjectDetailContentView: View {
                     ))
                 }
 
+                let log3 = "[ProjectDetailContentView] Parsed \(loadedCommits.count) commits\n"
+                try? log3.appendToFile(at: "/tmp/auxin-app-debug.log")
+                print("DEBUG ProjectDetailContentView: Parsed \(loadedCommits.count) commits successfully")
+                print("DEBUG ProjectDetailContentView: Setting commits array and isLoading=false")
                 commits = loadedCommits
                 isLoading = false
             }

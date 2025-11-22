@@ -95,7 +95,7 @@ public enum ProjectType: String, Codable, CaseIterable {
 }
 
 struct Project: Identifiable, Codable, Hashable {
-    let id: UUID
+    let id: String  // Stable identifier - use path
     let path: String
     let name: String
     let projectType: ProjectType
@@ -119,8 +119,7 @@ struct Project: Identifiable, Codable, Hashable {
     }
 
     /// Initialize with auto-detected project type
-    init(id: UUID = UUID(),
-         path: String,
+    init(path: String,
          name: String? = nil,
          projectType: ProjectType? = nil,
          isMonitored: Bool = false,
@@ -128,7 +127,7 @@ struct Project: Identifiable, Codable, Hashable {
          commitCount: Int = 0,
          isLocked: Bool = false,
          lockedBy: String? = nil) {
-        self.id = id
+        self.id = path  // Use path as stable identifier
         self.path = path
         self.name = name ?? URL(fileURLWithPath: path).lastPathComponent
         self.projectType = projectType ?? ProjectType.detect(from: path) ?? .logicPro

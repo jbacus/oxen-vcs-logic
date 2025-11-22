@@ -24,12 +24,16 @@ class ProjectDetailViewModel: ObservableObject {
             guard let self = self else { return }
 
             let commits = rawCommits.compactMap { dict -> CommitInfo? in
-                guard let id = dict["hash"] as? String,
-                      let message = dict["message"] as? String,
-                      let timestamp = dict["timestamp"] as? Date,
-                      let author = dict["author"] as? String else {
+                // Try both "id" and "hash" keys for backwards compatibility
+                guard let id = (dict["id"] as? String) ?? (dict["hash"] as? String),
+                      let message = dict["message"] as? String else {
+                    print("ProjectDetailVM: Skipping commit - missing id or message: \(dict)")
                     return nil
                 }
+
+                // Timestamp and author are optional - use defaults if not present
+                let timestamp = dict["timestamp"] as? Date ?? Date()
+                let author = dict["author"] as? String ?? "Unknown"
 
                 let metadata: CommitMetadata?
                 if let metaDict = dict["metadata"] as? [String: Any] {

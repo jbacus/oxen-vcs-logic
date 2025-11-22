@@ -781,15 +781,97 @@ impl OxenSubprocess {
         Ok(())
     }
 
-    /// Add all files to staging
+    /// Add all files to staging with progress feedback
     pub fn add_all(&self, repo_path: &Path) -> Result<()> {
         vlog!("Adding all files to staging");
 
-        self.run_command(&["add", "."], Some(repo_path), None)?;
-        self.invalidate_cache(repo_path);
+        // Scan directory to get list of files to add (don't use oxen status since HEAD may not exist yet)
+        info!("Scanning project files...");
+        let files = self.scan_directory_for_files(repo_path)?;
 
-        info!("Added all files to staging");
+        let total_files = files.len();
+        if total_files == 0 {
+            info!("No files to add");
+            return Ok(());
+        }
+
+        info!("Found {} file(s) to add to repository", total_files);
+
+        // Add files in batches to avoid command line length limits
+        let batch_size = self.config.batch_size;
+        let total_batches = total_files.div_ceil(batch_size);
+
+        vlog!("Adding {} files in {} batches", total_files, total_batches);
+
+        for (batch_num, chunk) in files.chunks(batch_size).enumerate() {
+            vlog!("Processing batch {}/{}", batch_num + 1, total_batches);
+
+            // Show files being added in this batch
+            for file in chunk {
+                // Display relative path
+                let rel_path = file.strip_prefix(repo_path).unwrap_or(file);
+                info!("  Adding: {}", rel_path.display());
+            }
+
+            // Convert to relative paths for oxen command
+            let file_args: Vec<String> = chunk
+                .iter()
+                .map(|f| {
+                    f.strip_prefix(repo_path)
+                        .unwrap_or(f)
+                        .to_string_lossy()
+                        .to_string()
+                })
+                .collect();
+
+            let mut args = vec!["add"];
+            for file in &file_args {
+                args.push(file);
+            }
+
+            self.run_command(&args, Some(repo_path), None)?;
+        }
+
+        self.invalidate_cache(repo_path);
+        info!("Successfully added all {} file(s) to staging", total_files);
         Ok(())
+    }
+
+    /// Scan directory for files to add (excluding .oxen directory)
+    fn scan_directory_for_files(&self, repo_path: &Path) -> Result<Vec<PathBuf>> {
+        use std::fs;
+
+        let mut files = Vec::new();
+        let mut dirs_to_scan = vec![repo_path.to_path_buf()];
+
+        while let Some(dir) = dirs_to_scan.pop() {
+            let entries = fs::read_dir(&dir)
+                .with_context(|| format!("Failed to read directory: {}", dir.display()))?;
+
+            for entry in entries {
+                let entry = entry.context("Failed to read directory entry")?;
+                let path = entry.path();
+
+                // Skip .oxen directory
+                if path.file_name().and_then(|n| n.to_str()) == Some(".oxen") {
+                    continue;
+                }
+
+                let metadata = entry.metadata()
+                    .with_context(|| format!("Failed to get metadata for: {}", path.display()))?;
+
+                if metadata.is_dir() {
+                    // Add directory and recurse into it
+                    files.push(path.clone());
+                    dirs_to_scan.push(path);
+                } else {
+                    // Add file
+                    files.push(path);
+                }
+            }
+        }
+
+        Ok(files)
     }
 
     /// Create a commit

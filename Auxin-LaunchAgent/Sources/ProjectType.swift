@@ -128,7 +128,7 @@ public enum ProjectType: String, Codable, CaseIterable {
     public var cliArgument: String {
         switch self {
         case .logicPro:
-            return "--type logicpro"
+            return "--logic"
         case .sketchup:
             return "--type sketchup"
         case .blender:

@@ -10,8 +10,10 @@ struct ProjectWizardView: View {
     @State private var showingFilePicker = false
     @State private var showingError = false
     @State private var showingSuccess = false
+    @State private var showingReinitConfirmation = false
     @State private var errorMessage: String = ""
     @State private var successMessage: String = ""
+    @State private var reinitMessage: String = ""
 
     var body: some View {
         VStack(spacing: 20) {
@@ -130,6 +132,14 @@ struct ProjectWizardView: View {
         } message: {
             Text(successMessage)
         }
+        .alert("Re-Initialize Project", isPresented: $showingReinitConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Continue", role: .destructive) {
+                performReinitialize()
+            }
+        } message: {
+            Text(reinitMessage)
+        }
     }
 
     // MARK: - Actions
@@ -196,10 +206,54 @@ struct ProjectWizardView: View {
                     NotificationCenter.default.post(name: .refreshProjects, object: nil)
                 } else {
                     let errorMsg = error ?? "Unknown error occurred"
-                    errorMessage = "Failed to initialize project:\n\n\(errorMsg)\n\nMake sure the auxin CLI tool is installed at /usr/local/bin/auxin"
-                    showingError = true
+
+                    // Check if this is a re-initialization required error
+                    if let range = errorMsg.range(of: "REINIT_REQUIRED:") {
+                        // Extract the message after "REINIT_REQUIRED:"
+                        let message = String(errorMsg[range.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
+                        reinitMessage = message
+                        showingReinitConfirmation = true
+                    } else {
+                        errorMessage = "Failed to initialize project:\n\n\(errorMsg)\n\nMake sure the auxin CLI tool is installed at /usr/local/bin/auxin"
+                        showingError = true
+                    }
                 }
             }
+        }
+    }
+
+    private func performReinitialize() {
+        guard !projectPath.isEmpty else { return }
+
+        // Determine the correct path to the .oxen directory
+        // It might be in the workspace folder for Logic projects
+        var oxenPath = projectPath
+
+        // For Logic Pro projects, check if there's a workspace folder
+        if let detectedType = detectedType, detectedType == .logicPro {
+            let url = URL(fileURLWithPath: projectPath)
+            let parent = url.deletingLastPathComponent()
+            let logicxName = url.deletingPathExtension().lastPathComponent
+            let parentName = parent.lastPathComponent
+
+            // If parent folder matches .logicx name, use parent
+            if parentName == logicxName {
+                oxenPath = parent.path
+            }
+        }
+
+        let oxenDir = "\(oxenPath)/.oxen"
+
+        // Delete the .oxen directory
+        do {
+            if FileManager.default.fileExists(atPath: oxenDir) {
+                try FileManager.default.removeItem(atPath: oxenDir)
+            }
+
+            // Retry initialization
+            initializeProject()
+        } catch {
+            showError("Failed to remove existing repository:\n\n\(error.localizedDescription)")
         }
     }
 

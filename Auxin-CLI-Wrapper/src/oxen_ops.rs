@@ -56,8 +56,22 @@ impl OxenRepository {
         info!("Detected Logic Pro project: {}", logic_project.name());
         vlog!("Project name: {}", logic_project.name());
 
+        // Check if this is part of a workspace folder structure
+        vlog!("Step 1a: Checking for Logic Pro workspace structure...");
+        let repo_path = if let Some(workspace) = LogicProject::detect_workspace_folder(path) {
+            info!("Detected Logic Pro workspace folder");
+            info!("  Workspace: {}", workspace.display());
+            info!("  Logic project: {}", path.display());
+            info!("Repository will be initialized at workspace level to capture external assets");
+            vlog!("Using workspace folder as repository root: {}", workspace.display());
+            workspace
+        } else {
+            vlog!("No workspace detected, using .logicx as repository root");
+            path.to_path_buf()
+        };
+
         // Initialize Oxen repository using subprocess
-        vlog!("Step 2: Initializing Oxen repository...");
+        vlog!("Step 2: Initializing Oxen repository at: {}", repo_path.display());
         let oxen = OxenSubprocess::new();
 
         if !oxen.is_available() {
@@ -66,14 +80,22 @@ impl OxenRepository {
             ));
         }
 
-        oxen.init(path)
+        // Check if repository already exists
+        let oxen_dir = repo_path.join(".oxen");
+        if oxen_dir.exists() {
+            return Err(anyhow::anyhow!(
+                "REINIT_REQUIRED: There was a problem initializing this project, likely because there is already a partial initialization in place. Continuing will re-initialize the repo, and all previously existing version history will be lost forever."
+            ));
+        }
+
+        oxen.init(&repo_path)
             .context("Failed to initialize Oxen repository")?;
 
-        info!("Initialized Oxen repository at: {}", path.display());
+        info!("Initialized Oxen repository at: {}", repo_path.display());
 
         // Create .oxenignore file
         vlog!("Step 3: Creating .oxenignore file...");
-        let ignore_path = path.join(".oxenignore");
+        let ignore_path = repo_path.join(".oxenignore");
         vlog!("Ignore file path: {}", ignore_path.display());
 
         let ignore_content = generate_oxenignore();
@@ -87,7 +109,7 @@ impl OxenRepository {
 
         // Create repository instance
         let repo_instance = Self {
-            path: path.to_path_buf(),
+            path: repo_path.clone(),
             oxen: OxenSubprocess::new(),
         };
 
@@ -96,17 +118,17 @@ impl OxenRepository {
         vlog!("Staging .oxenignore file...");
 
         let ignore_file = Path::new(".oxenignore");
-        repo_instance.oxen.add(path, &[ignore_file])
+        repo_instance.oxen.add(&repo_path, &[ignore_file])
             .context("Failed to stage .oxenignore")?;
 
         // Stage all project files for initial commit
         vlog!("Staging all project files...");
-        repo_instance.oxen.add_all(path)
+        repo_instance.oxen.add_all(&repo_path)
             .context("Failed to stage project files")?;
 
         vlog!("Creating initial commit...");
         let initial_commit_msg = "Initial commit\n\nInitialized Oxen repository for Logic Pro project with .oxenignore template.";
-        repo_instance.oxen.commit(path, initial_commit_msg)
+        repo_instance.oxen.commit(&repo_path, initial_commit_msg)
             .context("Failed to create initial commit")?;
 
         info!("Created initial commit");
@@ -115,7 +137,7 @@ impl OxenRepository {
         vlog!("Step 5: Initializing draft branch workflow...");
         info!("Initializing draft branch workflow...");
 
-        let draft_manager = DraftManager::new(path).context("Failed to create draft manager")?;
+        let draft_manager = DraftManager::new(&repo_path).context("Failed to create draft manager")?;
 
         draft_manager
             .initialize()

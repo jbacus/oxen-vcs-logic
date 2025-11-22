@@ -909,7 +909,10 @@ EXAMPLES:
     auxin log --since \"2025-01-01\"
 
     # Combine filters
-    auxin log --bpm 120 --tag vocals --limit 10")]
+    auxin log --bpm 120 --tag vocals --limit 10
+
+    # Output as JSON
+    auxin log --format json --limit 5")]
     Log {
         #[arg(short, long, help = "Maximum number of commits to display")]
         limit: Option<usize>,
@@ -925,6 +928,9 @@ EXAMPLES:
 
         #[arg(long, help = "Show commits since date (YYYY-MM-DD)")]
         since: Option<String>,
+
+        #[arg(long, help = "Output format (text or json)", value_parser = ["text", "json"], default_value = "text")]
+        format: String,
     },
 
     /// Restore project to a previous commit
@@ -2363,12 +2369,18 @@ async fn main() -> anyhow::Result<()> {
             Ok(())
         }
 
-        Commands::Log { limit, bpm, tag, key, since } => {
+        Commands::Log { limit, bpm, tag, key, since, format } => {
             let repo = OxenRepository::new(".");
 
             let mut commits = repo.get_history(None).await?;
 
             if commits.is_empty() {
+                // If JSON format, return empty array
+                if format == "json" {
+                    println!("[]");
+                    return Ok(());
+                }
+
                 println!();
                 progress::info("No commits yet");
                 println!();
@@ -2419,7 +2431,14 @@ async fn main() -> anyhow::Result<()> {
                 commits.truncate(lim);
             }
 
-            // Show results
+            // If JSON format requested, output JSON and return
+            if format == "json" {
+                let json = serde_json::to_string_pretty(&commits)?;
+                println!("{}", json);
+                return Ok(());
+            }
+
+            // Show results (text format)
             println!();
             println!("┌─ Commit History ────────────────────────────────────────┐");
             if !filters_applied.is_empty() {
