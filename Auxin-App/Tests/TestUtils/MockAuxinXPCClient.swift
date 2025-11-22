@@ -7,6 +7,14 @@ class MockAuxinXPCClient: AuxinXPCClient {
     var commitHistory: [[String: Any]] = []
     var lockInfo: [String: Any]? = nil
     var pingResult: Bool = true
+    var commitResult: Bool = true
+    var restoreResult: Bool = true
+
+    var lastCommitPath: String?
+    var lastCommitMessage: String?
+    var lastCommitMetadata: [String: Any]?
+    var lastRestorePath: String?
+    var lastRestoreCommitHash: String?
 
     var shouldThrowError = false
 
@@ -44,5 +52,24 @@ class MockAuxinXPCClient: AuxinXPCClient {
             return false
         }
         return pingResult
+    }
+
+    func commitProject(path: String, message: String?, metadata: [String: Any]?) async -> Bool {
+        if shouldThrowError {
+            return false
+        }
+        lastCommitPath = path
+        lastCommitMessage = message
+        lastCommitMetadata = metadata
+        return commitResult
+    }
+
+    func restoreProject(path: String, commitHash: String) async -> Bool {
+        if shouldThrowError {
+            return false
+        }
+        lastRestorePath = path
+        lastRestoreCommitHash = commitHash
+        return restoreResult
     }
 }

@@ -8,6 +8,8 @@ protocol AuxinXPCClient {
     func getCommitHistory(path: String, limit: Int) async -> [[String: Any]]
     func getLockInfo(for path: String) async -> [String: Any]?
     func ping() async -> Bool
+    func commitProject(path: String, message: String?, metadata: [String: Any]?) async -> Bool
+    func restoreProject(path: String, commitHash: String) async -> Bool
 }
 
 /// An extension to provide an async interface to the callback-based XPC client.
@@ -48,6 +50,22 @@ extension OxenDaemonXPCClient: AuxinXPCClient {
         return await withCheckedContinuation { continuation in
             ping { isRunning in
                 continuation.resume(returning: isRunning)
+            }
+        }
+    }
+
+    func commitProject(path: String, message: String?, metadata: [String: Any]?) async -> Bool {
+        return await withCheckedContinuation { continuation in
+            commitProject(path: path, message: message, metadata: metadata) { success in
+                continuation.resume(returning: success)
+            }
+        }
+    }
+
+    func restoreProject(path: String, commitHash: String) async -> Bool {
+        return await withCheckedContinuation { continuation in
+            restoreProject(path: path, commitHash: commitHash) { success in
+                continuation.resume(returning: success)
             }
         }
     }
