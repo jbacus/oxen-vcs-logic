@@ -62,8 +62,6 @@ Auxin solves these problems by combining Oxen's block-level deduplication with c
 
 **Auxin's Unique Position**: Professional-grade version control combining Git's power, Splice's creative focus, and Perforce's conflict prevention—without subscriptions, vendor lock-in, or complexity.
 
-See [COMPETITIVE_POSITIONING.md](COMPETITIVE_POSITIONING.md) for detailed comparison.
-
 ## Supported Applications
 
 - **Logic Pro** (.logicx) - Audio production with BPM, sample rate, key signature metadata
@@ -103,7 +101,7 @@ Professional-grade tools for comparing commits visually and sonically:
 - Single command shows complete picture of commit differences
 - Helpful for A/B testing mixes and tracking project evolution
 
-See [DIFF_FEATURES_IMPLEMENTATION.md](DIFF_FEATURES_IMPLEMENTATION.md) for complete documentation.
+See [CLI Reference](docs/user/cli-reference.md) for complete command documentation.
 
 ### 🎨 3D Modeling Support (November 18, 2025)
 
@@ -401,32 +399,36 @@ auxin/
 
 ## Documentation
 
-See [Documentation Index](docs/INDEX.md) for a complete map of all documentation.
+### 📖 Complete Guides
 
-### Project Overview
-- [Roadmap](ROADMAP.md) - Project vision, phases, and progress
-- [Feature Status](FEATURE_STATUS.md) - Component completeness and test coverage
-- [Changelog](CHANGELOG.md) - Version history
+**For Users** (Music Producers, 3D Modelers, Architects):
+- **[USER_GUIDE.md](USER_GUIDE.md)** - Complete user guide with installation, quick start, workflows, and troubleshooting
 
-### User Guides
-- [Getting Started](docs/user/getting-started.md) - 5-minute quick start
-- [For Musicians](docs/user/for-musicians.md) - Complete guide for music producers
+**For Developers** (Contributors, Deployers, DevOps):
+- **[DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md)** - Development setup, architecture, contributing, deployment, and operations
+
+### Quick Reference
+
+**Getting Started**:
+- [Installation Guide](INSTALL.md) - DMG installer, Homebrew, or build from source
+- [Quick Start](docs/user/getting-started.md) - 5-minute tutorial
+
+**Application-Specific**:
+- [For Musicians](docs/user/for-musicians.md) - Logic Pro workflows
 - [For Modelers](docs/user/for-modelers.md) - SketchUp and Blender workflows
-- [CLI Reference](docs/user/cli-reference.md) - Command line examples
-- [Cloud Sharing](docs/user/cloud-sharing.md) - Team collaboration guide
-- [Installation](INSTALL.md) - Complete installation instructions
-- [Troubleshooting](docs/user/troubleshooting.md) - Common issues and solutions
+- [CLI Reference](docs/user/cli-reference.md) - Complete command examples
 
-### Developer Documentation
-- [Development Setup](docs/developer/development-setup.md) - Environment configuration
-- [Architecture](docs/developer/architecture.md) - System design and patterns
-- [Contributing](docs/developer/contributing.md) - Code style, testing, PR process
-- [Testing Strategy](docs/developer/testing.md) - Comprehensive testing approach
-- [Extensibility](docs/developer/extensibility.md) - Adding support for new applications
+**Development**:
+- [Architecture](docs/developer/architecture.md) - System design
+- [Contributing](docs/developer/contributing.md) - Code style and PR process
+- [Extensibility](docs/developer/extensibility.md) - Adding new application support
+- [CI/CD Guide](.github/CI_CD_GUIDE.md) - GitHub Actions workflows
 
-### Project Strategy
-- [Competitive Positioning](COMPETITIVE_POSITIONING.md) - How Auxin compares to alternatives
-- [Business Model](BUSINESS_MODEL.md) - Sustainability strategy and pricing
+**Project Overview**:
+- [Roadmap](ROADMAP.md) - Project vision and phase timeline
+- [Feature Status](FEATURE_STATUS.md) - Implementation status and test coverage
+- [Changelog](CHANGELOG.md) - Version history
+- [Next Steps](NEXT_STEPS.md) - Current sprint tasks
 
 ## Project Sustainability
 
@@ -445,8 +447,6 @@ To ensure long-term development and maintenance, we plan to offer **optional pai
 - **Training & consulting** - Professional onboarding services
 
 **Self-hosting will always be free and fully-featured.** Paid services only offer convenience, not capabilities.
-
-See [BUSINESS_MODEL.md](BUSINESS_MODEL.md) for our complete sustainability strategy.
 
 ### Support the Project
 If Auxin has helped you, consider supporting development:

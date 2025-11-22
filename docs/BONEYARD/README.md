@@ -1,6 +1,6 @@
 # BONEYARD - Archived Documentation
 
-**Last Updated**: 2025-11-20
+**Last Updated**: 2025-11-22
 **Purpose**: Historical reference for deprecated or superseded documentation
 
 ---
@@ -21,9 +21,11 @@ These files are kept for:
 
 ## Archived Files
 
-### Superseded by Reorganization (November 2025)
+### Superseded by Consolidation (November 2025)
 
-These files were replaced when documentation was restructured into `user/`, `developer/`, and `system/` directories:
+**Phase 1** (Nov 20): Documentation restructured into `user/`, `developer/`, and `system/` directories
+
+**Phase 2** (Nov 22): Further consolidation into two master guides: `USER_GUIDE.md` and `DEVELOPER_GUIDE.md`
 
 | Old File | Replaced By | Notes |
 |----------|-------------|-------|
@@ -36,6 +38,33 @@ These files were replaced when documentation was restructured into `user/`, `dev
 | `EXTENSIBILITY.md` | `developer/extensibility.md` | Adding new applications |
 | `SKETCHUP_EXAMPLES.md` | `user/for-modelers.md` | SketchUp-specific guide |
 | `SKETCHUP_CONFIGURATION.md` | `user/for-modelers.md` | SketchUp setup |
+
+#### Recently Archived (November 22, 2025)
+
+Narrow/scattered docs consolidated into `USER_GUIDE.md` and `DEVELOPER_GUIDE.md`:
+
+**Root-level planning docs** → `BONEYARD/root/`:
+- `BUSINESS_MODEL.md`, `COMPETITIVE_POSITIONING.md`, `CAPABILITY_ASSESSMENT.md`
+- `GAP_ANALYSIS_2025-11-20.md`, `MISSING_FEATURES_ANALYSIS.md`
+- `V0.3_RELEASE_PLAN.md`, `DEMO_SCRIPT.md`
+- `CODE_QUALITY_MAINTENANCE_PLAN.md` (→ CI/CD Guide)
+- `DIFF_FEATURES_IMPLEMENTATION.md`, `INSTALLER.md`
+- `THUMBNAIL_BOUNCE_FEATURE_SUMMARY.md`, `THUMBNAIL_BOUNCE_QUICKSTART.md`
+
+**Server docs** → `BONEYARD/auxin-server/`:
+- `DEPLOYMENT.md`, `QUICKSTART.md`, `INSTALL.md` (→ DEVELOPER_GUIDE.md deployment section)
+- `FRONTEND_SETUP.md`, `TESTING.md` (→ DEVELOPER_GUIDE.md)
+- `BUILD_MACOS_26.md`, `STATUS.md`, `RELEASE_NOTES.md`, `MANUAL_TEST_RESULTS.md`
+
+**GitHub CI docs** → `BONEYARD/github/`:
+- `CI_SETUP.md`, `TESTING_STRATEGY.md` (→ `.github/CI_CD_GUIDE.md`)
+
+**Component docs** → `BONEYARD/components/`:
+- `Auxin-App/BUILD_AND_TEST.md`, `APP_BUNDLE.md`, `UI_IMPLEMENTATION_SUMMARY.md`
+- `Auxin-CLI-Wrapper/USAGE.md`, `CLI_HELP.md`, `VERBOSE_MODE.md`
+
+**Production docs** → `BONEYARD/production/`:
+- `PRODUCTION_QUICKSTART.md`, `PRODUCTION_SIGNING.md` (→ DEVELOPER_GUIDE.md)
 
 ### Future Features (Phase 8+)
 
@@ -105,11 +134,20 @@ These files may contain:
 - Old project names (Oxen-VCS instead of Auxin)
 - Incorrect directory structures
 
-**Always use the active documentation** in:
-- `docs/user/` - User guides
-- `docs/developer/` - Developer guides
-- `docs/system/` - AI assistant context
+**Always use the active documentation**:
+
+**For Users**:
+- **[USER_GUIDE.md](../../USER_GUIDE.md)** - Complete user guide
+- `docs/user/` - Detailed topic guides
+
+**For Developers**:
+- **[DEVELOPER_GUIDE.md](../../DEVELOPER_GUIDE.md)** - Development & deployment
+- `docs/developer/` - Technical reference
+- `.github/CI_CD_GUIDE.md` - CI/CD workflows
+
+**For AI Assistants**:
+- `docs/system/CLAUDE.md` - System prompt
 
 ---
 
-*Last Updated: 2025-11-20*
+*Last Updated: 2025-11-22*
