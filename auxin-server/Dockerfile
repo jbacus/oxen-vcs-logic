@@ -1,7 +1,7 @@
 # Multi-stage Dockerfile for Auxin Server
 
 # Stage 1: Build the Rust backend
-FROM rust:1.75-slim as backend-builder
+FROM rust:1.91-slim as backend-builder
 
 WORKDIR /build
 
