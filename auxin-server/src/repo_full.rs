@@ -4,46 +4,46 @@ use tracing::{debug, info};
 use crate::error::{AppError, AppResult};
 use crate::extensions::{FileLock, LogicProMetadata};
 
-// Import liboxen modules
-use liboxen::error::OxenError;
-use liboxen::model::{Branch, Commit, LocalRepository};
-use liboxen::repositories;
+// Import auxin-oxen subprocess module
+use auxin_oxen::{OxenSubprocess, CommitInfo as OxenCommitInfo};
 
-/// Repository operations wrapper using liboxen 0.38+
+/// Repository operations wrapper using OxenSubprocess
 pub struct RepositoryOps {
-    repo: LocalRepository,
+    repo_path: PathBuf,
+    oxen: OxenSubprocess,
 }
 
 impl RepositoryOps {
     /// Open an existing repository
     pub fn open(repo_path: impl AsRef<Path>) -> AppResult<Self> {
-        let repo_path = repo_path.as_ref();
+        let repo_path = repo_path.as_ref().to_path_buf();
 
         // Verify .oxen directory exists
         if !repo_path.join(".oxen").exists() {
             return Err(AppError::NotFound("Repository not found".to_string()));
         }
 
-        // Load repository
-        let repo = LocalRepository::from_dir(repo_path)
-            .map_err(|e| AppError::Internal(format!("Failed to open repository: {}", e)))?;
-
-        Ok(Self { repo })
+        Ok(Self {
+            repo_path,
+            oxen: OxenSubprocess::new(),
+        })
     }
 
     /// Initialize a new repository
     pub fn init(repo_path: impl AsRef<Path>) -> AppResult<Self> {
-        let repo_path = repo_path.as_ref();
+        let repo_path = repo_path.as_ref().to_path_buf();
 
         info!("Initializing repository at: {:?}", repo_path);
 
         // Create directory if it doesn't exist
-        std::fs::create_dir_all(repo_path).map_err(|e| {
+        std::fs::create_dir_all(&repo_path).map_err(|e| {
             AppError::Internal(format!("Failed to create repository directory: {}", e))
         })?;
 
-        // Initialize using liboxen
-        let repo = repositories::init(repo_path)
+        let oxen = OxenSubprocess::new();
+
+        // Initialize using oxen subprocess
+        oxen.init(&repo_path)
             .map_err(|e| AppError::Internal(format!("Failed to initialize repository: {}", e)))?;
 
         // Create Auxin extension directories
@@ -56,27 +56,22 @@ impl RepositoryOps {
             .map_err(|e| AppError::Internal(format!("Failed to create locks directory: {}", e)))?;
 
         info!("Repository initialized successfully");
-        Ok(Self { repo })
+        Ok(Self { repo_path, oxen })
     }
 
     /// Add files to the staging area
     pub fn add(&self, paths: &[impl AsRef<Path>]) -> AppResult<()> {
-        // Note: liboxen 0.38's add is async, but we're in a sync context
-        // We need to spawn a runtime to handle this
-        let runtime = tokio::runtime::Runtime::new()
-            .map_err(|e| AppError::Internal(format!("Failed to create runtime: {}", e)))?;
-
         for path in paths {
             let full_path = if path.as_ref().is_absolute() {
                 path.as_ref().to_path_buf()
             } else {
-                self.repo.path.join(path)
+                self.repo_path.join(path)
             };
 
             debug!("Adding file: {:?}", full_path);
 
-            runtime
-                .block_on(repositories::add(&self.repo, &full_path))
+            self.oxen
+                .add(&self.repo_path, &[full_path])
                 .map_err(|e| {
                     AppError::Internal(format!("Failed to add file {:?}: {}", path.as_ref(), e))
                 })?;
@@ -89,10 +84,11 @@ impl RepositoryOps {
     pub fn commit(&self, message: &str) -> AppResult<String> {
         info!("Creating commit: {}", message);
 
-        let commit = repositories::commit(&self.repo, message)
+        let commit_id = self
+            .oxen
+            .commit(&self.repo_path, message)
             .map_err(|e| AppError::Internal(format!("Failed to create commit: {}", e)))?;
 
-        let commit_id = commit.id.clone();
         info!("Commit created: {}", commit_id);
 
         Ok(commit_id)
@@ -100,7 +96,9 @@ impl RepositoryOps {
 
     /// Get commit history
     pub fn log(&self, limit: Option<usize>) -> AppResult<Vec<CommitInfo>> {
-        let commits = repositories::commits::list(&self.repo)
+        let commits = self
+            .oxen
+            .log(&self.repo_path)
             .map_err(|e| AppError::Internal(format!("Failed to get commit history: {}", e)))?;
 
         let mut result: Vec<CommitInfo> = commits
@@ -108,8 +106,8 @@ impl RepositoryOps {
             .map(|c| CommitInfo {
                 id: c.id,
                 message: c.message,
-                author: c.author.name,
-                timestamp: c.timestamp.to_rfc3339(),
+                author: c.author,
+                timestamp: c.timestamp,
             })
             .collect();
 
@@ -124,7 +122,8 @@ impl RepositoryOps {
     pub fn push(&self, remote: &str, branch: &str) -> AppResult<()> {
         info!("Pushing to remote: {} (branch: {})", remote, branch);
 
-        repositories::push(&self.repo, remote, branch)
+        self.oxen
+            .push(&self.repo_path, remote, Some(branch))
             .map_err(|e| AppError::Internal(format!("Failed to push: {}", e)))?;
 
         info!("Push completed successfully");
@@ -135,7 +134,8 @@ impl RepositoryOps {
     pub fn pull(&self, remote: &str, branch: &str) -> AppResult<()> {
         info!("Pulling from remote: {} (branch: {})", remote, branch);
 
-        repositories::pull(&self.repo, remote, branch)
+        self.oxen
+            .pull(&self.repo_path, remote, Some(branch))
             .map_err(|e| AppError::Internal(format!("Failed to pull: {}", e)))?;
 
         info!("Pull completed successfully");
@@ -144,31 +144,39 @@ impl RepositoryOps {
 
     /// Clone a remote repository
     pub fn clone(remote_url: &str, dest_path: impl AsRef<Path>) -> AppResult<Self> {
-        let dest_path = dest_path.as_ref();
+        let dest_path = dest_path.as_ref().to_path_buf();
 
         info!(
             "Cloning repository from: {} to: {:?}",
             remote_url, dest_path
         );
 
-        let repo = repositories::clone(remote_url, dest_path)
+        let oxen = OxenSubprocess::new();
+        oxen.clone(remote_url, &dest_path)
             .map_err(|e| AppError::Internal(format!("Failed to clone repository: {}", e)))?;
 
         info!("Clone completed successfully");
-        Ok(Self { repo })
+        Ok(Self {
+            repo_path: dest_path,
+            oxen,
+        })
     }
 
     /// Get current branch name
     pub fn current_branch(&self) -> AppResult<String> {
-        let branch = repositories::branches::current_branch(&self.repo)
+        let branch = self
+            .oxen
+            .current_branch(&self.repo_path)
             .map_err(|e| AppError::Internal(format!("Failed to get current branch: {}", e)))?;
 
-        Ok(branch.map(|b| b.name).unwrap_or_else(|| "main".to_string()))
+        Ok(branch.unwrap_or_else(|| "main".to_string()))
     }
 
     /// List all branches
     pub fn list_branches(&self) -> AppResult<Vec<String>> {
-        let branches = repositories::branches::list(&self.repo)
+        let branches = self
+            .oxen
+            .list_branches(&self.repo_path)
             .map_err(|e| AppError::Internal(format!("Failed to list branches: {}", e)))?;
 
         Ok(branches.into_iter().map(|b| b.name).collect())
@@ -178,7 +186,8 @@ impl RepositoryOps {
     pub fn create_branch(&self, branch_name: &str) -> AppResult<()> {
         info!("Creating branch: {}", branch_name);
 
-        repositories::branches::create_from_head(&self.repo, branch_name)
+        self.oxen
+            .create_branch(&self.repo_path, branch_name, None)
             .map_err(|e| AppError::Internal(format!("Failed to create branch: {}", e)))?;
 
         Ok(())
@@ -188,7 +197,8 @@ impl RepositoryOps {
     pub fn checkout(&self, branch_name: &str) -> AppResult<()> {
         info!("Checking out branch: {}", branch_name);
 
-        repositories::checkout(&self.repo, branch_name)
+        self.oxen
+            .checkout(&self.repo_path, branch_name)
             .map_err(|e| AppError::Internal(format!("Failed to checkout branch: {}", e)))?;
 
         Ok(())
@@ -196,7 +206,7 @@ impl RepositoryOps {
 
     /// Get repository path
     pub fn path(&self) -> &Path {
-        &self.repo.path
+        &self.repo_path
     }
 
     // Auxin Extensions
@@ -204,8 +214,7 @@ impl RepositoryOps {
     /// Store Logic Pro metadata for a commit
     pub fn store_metadata(&self, commit_id: &str, metadata: &LogicProMetadata) -> AppResult<()> {
         let metadata_path = self
-            .repo
-            .path
+            .repo_path
             .join(".oxen")
             .join("metadata")
             .join(format!("{}.json", commit_id));
@@ -223,8 +232,7 @@ impl RepositoryOps {
     /// Retrieve Logic Pro metadata for a commit
     pub fn get_metadata(&self, commit_id: &str) -> AppResult<Option<LogicProMetadata>> {
         let metadata_path = self
-            .repo
-            .path
+            .repo_path
             .join(".oxen")
             .join("metadata")
             .join(format!("{}.json", commit_id));
@@ -249,7 +257,7 @@ impl RepositoryOps {
         machine_id: &str,
         timeout_hours: u64,
     ) -> AppResult<FileLock> {
-        FileLock::acquire(&self.repo.path, user, machine_id, timeout_hours).map_err(|e| {
+        FileLock::acquire(&self.repo_path, user, machine_id, timeout_hours).map_err(|e| {
             if e.kind() == std::io::ErrorKind::AlreadyExists {
                 AppError::Conflict(e.to_string())
             } else {
@@ -260,7 +268,7 @@ impl RepositoryOps {
 
     /// Release lock for this repository
     pub fn release_lock(&self, lock_id: &str) -> AppResult<()> {
-        FileLock::release(&self.repo.path, lock_id).map_err(|e| {
+        FileLock::release(&self.repo_path, lock_id).map_err(|e| {
             if e.kind() == std::io::ErrorKind::PermissionDenied {
                 AppError::Unauthorized(e.to_string())
             } else {
@@ -271,7 +279,7 @@ impl RepositoryOps {
 
     /// Update lock heartbeat
     pub fn heartbeat_lock(&self, lock_id: &str) -> AppResult<FileLock> {
-        FileLock::heartbeat(&self.repo.path, lock_id).map_err(|e| {
+        FileLock::heartbeat(&self.repo_path, lock_id).map_err(|e| {
             if e.kind() == std::io::ErrorKind::PermissionDenied {
                 AppError::Unauthorized(e.to_string())
             } else {
@@ -282,7 +290,7 @@ impl RepositoryOps {
 
     /// Get lock status
     pub fn lock_status(&self) -> AppResult<Option<FileLock>> {
-        FileLock::status(&self.repo.path)
+        FileLock::status(&self.repo_path)
             .map_err(|e| AppError::Internal(format!("Failed to get lock status: {}", e)))
     }
 }

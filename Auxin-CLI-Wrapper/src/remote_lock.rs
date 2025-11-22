@@ -70,7 +70,7 @@ use std::time::Duration as StdDuration;
 use uuid::Uuid;
 
 use crate::network_resilience::RetryPolicy;
-use crate::oxen_subprocess::OxenSubprocess;
+use crate::OxenSubprocess;
 
 // ========== Audit Logging ==========
 

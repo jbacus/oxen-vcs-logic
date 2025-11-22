@@ -2,6 +2,13 @@
 // When liboxen crate is officially published, implement OxenBackend trait
 // for FFIBackend in oxen_backend.rs
 
+// Re-export logger macros from auxin-oxen
+pub use auxin_oxen::{error, info, success, vlog, warn};
+
+// Re-export auxin-oxen modules for backwards compatibility
+pub use auxin_oxen::logger;
+pub use auxin_oxen as oxen_subprocess_crate;
+
 pub mod auth;
 pub mod backup_recovery;
 pub mod blender_metadata;
@@ -17,7 +24,6 @@ pub mod draft_manager;
 pub mod hooks;
 pub mod ignore_template;
 pub mod lock_integration;
-pub mod logger;
 pub mod logic_parser;
 pub mod logic_project;
 pub mod metadata_diff;
@@ -26,7 +32,6 @@ pub mod offline_queue;
 pub mod operation_history;
 pub mod oxen_backend;
 pub mod oxen_ops;
-pub mod oxen_subprocess;
 pub mod progress;
 pub mod remote_lock;
 pub mod search;
@@ -78,9 +83,10 @@ pub use oxen_backend::{
     create_backend, create_default_backend, BackendType, OxenBackend, SubprocessBackend,
 };
 pub use oxen_ops::OxenRepository;
-pub use oxen_subprocess::{
-    BranchInfo, CommitInfo as SubprocessCommitInfo, OxenConfig, OxenError, OxenSubprocess,
-    StatusInfo,
+// Re-export types from auxin-oxen crate
+pub use auxin_oxen::{
+    BranchInfo, CommitInfo, CommitInfo as SubprocessCommitInfo, OxenConfig, OxenError,
+    OxenSubprocess, StatusInfo,
 };
 pub use remote_lock::{RemoteLock, RemoteLockManager};
 pub use server_client::{

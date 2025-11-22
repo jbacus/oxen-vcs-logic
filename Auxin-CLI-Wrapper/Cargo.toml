@@ -8,6 +8,7 @@ description = "Version control for Logic Pro projects, powered by Oxen.ai"
 
 [dependencies]
 auxin-config = { path = "../auxin-config" }
+auxin-oxen = { path = "../auxin-oxen" }
 # Direct liboxen FFI integration (optional feature)
 liboxen = { version = "0.38", optional = true }
 serde = { version = "1.0", features = ["derive"] }

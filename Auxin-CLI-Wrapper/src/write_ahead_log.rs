@@ -526,7 +526,7 @@ impl WalRecoveryManager {
             } => {
                 // Check if commit was actually created
                 // If repo has uncommitted changes, the commit failed
-                let oxen = crate::oxen_subprocess::OxenSubprocess::new();
+                let oxen = crate::OxenSubprocess::new();
                 let status = oxen.status(repo_path)?;
 
                 if status.staged.is_empty() && status.modified.is_empty() {
@@ -548,7 +548,7 @@ impl WalRecoveryManager {
                 branch,
             } => {
                 // Check if local is ahead of remote
-                let oxen = crate::oxen_subprocess::OxenSubprocess::new();
+                let oxen = crate::OxenSubprocess::new();
                 // For now, just mark as needing manual check
                 println!(
                     "  {} Push to {}/{} needs manual verification",

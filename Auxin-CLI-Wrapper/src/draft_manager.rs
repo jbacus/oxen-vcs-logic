@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use std::path::{Path, PathBuf};
 
 use crate::commit_metadata::CommitMetadata;
-use crate::oxen_subprocess::OxenSubprocess;
+use crate::OxenSubprocess;
 
 /// Manages the draft branch workflow for Logic Pro projects
 ///

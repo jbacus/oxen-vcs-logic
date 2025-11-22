@@ -8,6 +8,7 @@ license = "MIT"
 
 [dependencies]
 auxin-config = { path = "../auxin-config" }
+auxin-oxen = { path = "../auxin-oxen" }
 # Web framework (matching Oxen)
 actix-web = "4"
 actix-rt = "2"

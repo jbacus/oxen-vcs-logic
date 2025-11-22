@@ -31,7 +31,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::Path;
 
-use crate::oxen_subprocess::{CommitInfo, OxenSubprocess};
+use crate::{CommitInfo, OxenSubprocess};
 
 /// A project activity entry (commit, lock, comment, etc.)
 #[derive(Debug, Clone, Serialize, Deserialize)]

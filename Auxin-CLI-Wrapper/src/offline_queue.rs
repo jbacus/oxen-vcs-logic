@@ -43,7 +43,7 @@ use std::path::{Path, PathBuf};
 use uuid::Uuid;
 
 use crate::network_resilience::{check_connectivity, ConnectivityState};
-use crate::oxen_subprocess::OxenSubprocess;
+use crate::OxenSubprocess;
 use crate::remote_lock::RemoteLockManager;
 
 /// Default queue directory

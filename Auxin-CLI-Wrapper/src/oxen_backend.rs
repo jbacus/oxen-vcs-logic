@@ -44,8 +44,8 @@ use liboxen::{
     repositories,
 };
 
-// Re-export common types
-pub use crate::oxen_subprocess::{BranchInfo, CommitInfo, StatusInfo};
+// Re-export common types from auxin-oxen crate
+pub use auxin_oxen::{BranchInfo, CommitInfo, StatusInfo};
 
 /// Backend implementation type
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -152,7 +152,7 @@ pub trait OxenBackend: Send + Sync {
 pub fn create_backend(backend_type: BackendType) -> Result<Box<dyn OxenBackend>> {
     match backend_type {
         BackendType::Subprocess => {
-            let subprocess = crate::oxen_subprocess::OxenSubprocess::new();
+            let subprocess = auxin_oxen::OxenSubprocess::new();
             Ok(Box::new(SubprocessBackend::new(subprocess)))
         }
         BackendType::FFI => {
@@ -180,18 +180,18 @@ pub fn create_default_backend() -> Result<Box<dyn OxenBackend>> {
 
 /// Wrapper that implements OxenBackend for OxenSubprocess
 pub struct SubprocessBackend {
-    inner: crate::oxen_subprocess::OxenSubprocess,
+    inner: auxin_oxen::OxenSubprocess,
 }
 
 impl SubprocessBackend {
     /// Create a new subprocess backend
-    pub fn new(subprocess: crate::oxen_subprocess::OxenSubprocess) -> Self {
+    pub fn new(subprocess: auxin_oxen::OxenSubprocess) -> Self {
         Self { inner: subprocess }
     }
 
     /// Create with default settings
     pub fn with_defaults() -> Self {
-        Self::new(crate::oxen_subprocess::OxenSubprocess::new())
+        Self::new(auxin_oxen::OxenSubprocess::new())
     }
 }
 

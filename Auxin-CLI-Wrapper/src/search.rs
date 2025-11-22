@@ -29,7 +29,7 @@
 /// let engine = SearchEngine::new();
 /// let results = engine.search(&commits, &query);
 /// ```
-use crate::oxen_subprocess::CommitInfo;
+use crate::CommitInfo;
 use crate::CommitMetadata;
 use serde::{Deserialize, Serialize};
 

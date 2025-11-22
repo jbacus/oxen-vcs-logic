@@ -1,4 +1,4 @@
-use crate::oxen_subprocess::OxenSubprocess;
+use crate::OxenSubprocess;
 use crate::remote_lock::RemoteLockManager;
 use anyhow::Result;
 use std::path::Path;

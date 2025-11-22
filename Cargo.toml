@@ -3,6 +3,7 @@ members = [
     "Auxin-CLI-Wrapper",
     "auxin-server",
     "auxin-config",
+    "auxin-oxen",
 ]
 
 [workspace.dependencies]

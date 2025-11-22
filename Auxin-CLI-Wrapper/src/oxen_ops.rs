@@ -6,7 +6,7 @@ use crate::commit_metadata::CommitMetadata;
 use crate::draft_manager::DraftManager;
 use crate::ignore_template::generate_oxenignore;
 use crate::logic_project::LogicProject;
-use crate::oxen_subprocess::OxenSubprocess;
+use crate::OxenSubprocess;
 use crate::{info, vlog};
 
 /// High-level wrapper for Oxen repository operations
@@ -306,7 +306,7 @@ impl OxenRepository {
     pub async fn get_history(
         &self,
         limit: Option<usize>,
-    ) -> Result<Vec<crate::oxen_subprocess::CommitInfo>> {
+    ) -> Result<Vec<crate::CommitInfo>> {
         let commits = self
             .oxen
             .log(&self.path, limit)
@@ -375,7 +375,7 @@ impl OxenRepository {
     }
 
     /// Gets the status of the repository
-    pub async fn status(&self) -> Result<crate::oxen_subprocess::StatusInfo> {
+    pub async fn status(&self) -> Result<crate::StatusInfo> {
         let status = self
             .oxen
             .status(&self.path)
