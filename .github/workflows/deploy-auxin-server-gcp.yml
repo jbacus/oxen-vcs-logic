@@ -31,9 +31,24 @@ env:
   SERVICE_NAME: auxin-server
 
 jobs:
-  build-and-test:
-    name: Build and Test
+  # ====================
+  # Run Tests
+  # ====================
+  # Tests are defined in .github/workflows/test.yml
+  # We just trigger that workflow and wait for it to complete
+
+  run-tests:
+    name: Run Tests
+    uses: ./.github/workflows/test.yml
+
+  # ====================
+  # Build Docker Image
+  # ====================
+
+  build-image:
+    name: Build Docker Image
     runs-on: ubuntu-latest
+    needs: run-tests
 
     steps:
       - name: Checkout code
@@ -43,24 +58,11 @@ jobs:
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: stable
-          components: rustfmt, clippy
 
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: auxin-server
-
-      - name: Check Rust formatting
-        run: cargo fmt --check
-        working-directory: auxin-server
-
-      - name: Run Clippy
-        run: cargo clippy --all-targets --all-features -- -D warnings
-        working-directory: auxin-server
-
-      - name: Run Rust tests
-        run: cargo test --features mock-oxen
-        working-directory: auxin-server
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -73,21 +75,20 @@ jobs:
         run: npm ci
         working-directory: auxin-server/frontend
 
-      - name: Run frontend linting
-        run: npm run lint
-        working-directory: auxin-server/frontend
-
-      - name: Run frontend tests
-        run: npm run test:unit
-        working-directory: auxin-server/frontend
-
       - name: Build frontend
         run: npm run build
         working-directory: auxin-server/frontend
 
+      - name: Build Docker image (test)
+        run: |
+          docker build \
+            -t auxin-server:test \
+            -f auxin-server/Dockerfile \
+            auxin-server
+
   deploy-dev:
     name: Deploy to Development
-    needs: build-and-test
+    needs: build-image
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     environment: dev
@@ -158,7 +159,7 @@ jobs:
 
   deploy-staging:
     name: Deploy to Staging
-    needs: build-and-test
+    needs: build-image
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/heads/release/') && github.event_name == 'push'
     environment: staging
@@ -214,7 +215,7 @@ jobs:
 
   deploy-prod:
     name: Deploy to Production
-    needs: build-and-test
+    needs: build-image
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'prod'
     environment: prod
