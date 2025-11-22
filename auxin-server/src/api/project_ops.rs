@@ -11,7 +11,7 @@ mod collab_management {
     use std::path::PathBuf;
 
     use crate::auth::{get_user_id_from_request, AuthService};
-    use crate::config::Config;
+    use auxin_config::Config;
     use crate::error::AppError;
     use crate::project::{ProjectAuth, ProjectMetadata, Visibility};
 
@@ -44,7 +44,7 @@ mod collab_management {
         // Get authenticated user
         let user_id = get_user_id_from_request(&req, &auth_service)?;
 
-        let repo_path = PathBuf::from(&config.sync_dir)
+        let repo_path = PathBuf::from(&config.server.sync_dir)
             .join(&namespace)
             .join(&repo_name);
 
@@ -90,7 +90,7 @@ mod collab_management {
         // Get authenticated user
         let user_id = get_user_id_from_request(&req, &auth_service)?;
 
-        let repo_path = PathBuf::from(&config.sync_dir)
+        let repo_path = PathBuf::from(&config.server.sync_dir)
             .join(&namespace)
             .join(&repo_name);
 
@@ -132,7 +132,7 @@ mod collab_management {
         // Get authenticated user (optional)
         let user_id = crate::auth::get_optional_user_id_from_request(&req, &auth_service);
 
-        let repo_path = PathBuf::from(&config.sync_dir)
+        let repo_path = PathBuf::from(&config.server.sync_dir)
             .join(&namespace)
             .join(&repo_name);
 
@@ -175,7 +175,7 @@ mod collab_management {
         // Get authenticated user
         let user_id = get_user_id_from_request(&req, &auth_service)?;
 
-        let repo_path = PathBuf::from(&config.sync_dir)
+        let repo_path = PathBuf::from(&config.server.sync_dir)
             .join(&namespace)
             .join(&repo_name);
 

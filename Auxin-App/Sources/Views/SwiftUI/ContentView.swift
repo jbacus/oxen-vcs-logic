@@ -66,7 +66,9 @@ struct ContentView: View {
                 }
 
                 Button(action: {
-                    viewModel.loadProjects()
+                    Task {
+                        await viewModel.loadProjects()
+                    }
                 }) {
                     Label("Refresh", systemImage: "arrow.clockwise")
                 }
@@ -81,7 +83,9 @@ struct ContentView: View {
             ProjectWizardView()
         }
         .onAppear {
-            viewModel.loadProjects()
+            Task {
+                await viewModel.loadProjects()
+            }
         }
         .onChange(of: selectedProject) { oldValue, newValue in
             let log = "[ContentView] selectedProject changed from '\(oldValue?.path ?? "nil")' to '\(newValue?.path ?? "nil")'\n"
@@ -103,7 +107,9 @@ struct ContentView: View {
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .refreshProjects)) { _ in
-            viewModel.loadProjects()
+            Task {
+                await viewModel.loadProjects()
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: .showMergeHelper)) { _ in
             if selectedProject != nil {

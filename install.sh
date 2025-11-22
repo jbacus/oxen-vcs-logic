@@ -216,14 +216,23 @@ install_app() {
 
     print_info "Installing Auxin.app to /Applications..."
 
+    # Check if we need sudo
+    local USE_SUDO=""
+    if [ -d "$APP_DEST" ] && [ ! -w "$APP_DEST" ]; then
+        USE_SUDO="sudo"
+    fi
+
     # Remove existing installation if present
     if [ -d "$APP_DEST" ]; then
         print_info "Removing existing installation..."
-        rm -rf "$APP_DEST"
+        $USE_SUDO rm -rf "$APP_DEST"
     fi
 
-    # Copy app bundle to Applications
-    cp -R "$APP_SOURCE" "$APP_DEST"
+    # Copy app bundle to Applications (may need sudo if /Applications is not writable)
+    if [ ! -w "/Applications" ]; then
+        USE_SUDO="sudo"
+    fi
+    $USE_SUDO cp -R "$APP_SOURCE" "$APP_DEST"
 
     if [ -d "$APP_DEST" ]; then
         print_success "App installed: $APP_DEST"
@@ -236,6 +245,92 @@ install_app() {
         return 1
     fi
 
+    echo ""
+}
+
+# Function to generate and install shell completions
+generate_completions() {
+    print_header "Generating Shell Completions"
+    
+    local COMPLETIONS_DIR="$PROJECT_ROOT/Auxin-CLI-Wrapper/completions"
+    mkdir -p "$COMPLETIONS_DIR"
+
+    print_info "Generating completions for bash, zsh, fish..."
+    "$INSTALL_DIR/auxin" completions bash > "$COMPLETIONS_DIR/auxin.bash"
+    "$INSTALL_DIR/auxin" completions zsh > "$COMPLETIONS_DIR/_auxin"
+    "$INSTALL_DIR/auxin" completions fish > "$COMPLETIONS_DIR/auxin.fish"
+    
+    print_success "Shell completions generated in $COMPLETIONS_DIR"
+    echo ""
+}
+
+install_completions() {
+    print_header "Installing Shell Completions"
+    
+    local USER_SHELL=$(basename "$SHELL")
+    print_info "Detected shell: $USER_SHELL"
+
+    case "$USER_SHELL" in
+        bash)
+            local COMPLETION_DIR
+            if [ -d "/usr/local/etc/bash_completion.d" ]; then
+                COMPLETION_DIR="/usr/local/etc/bash_completion.d"
+            elif [ -d "/opt/homebrew/etc/bash_completion.d" ]; then
+                COMPLETION_DIR="/opt/homebrew/etc/bash_completion.d"
+            else
+                COMPLETION_DIR="$HOME/.local/share/bash-completion/completions"
+                mkdir -p "$COMPLETION_DIR"
+            fi
+            cp "$PROJECT_ROOT/Auxin-CLI-Wrapper/completions/auxin.bash" "$COMPLETION_DIR/auxin"
+            print_success "Bash completion installed to $COMPLETION_DIR"
+            print_info "Restart your shell or run: source $COMPLETION_DIR/auxin"
+            ;;
+        zsh)
+            local COMPLETION_DIR="$HOME/.zsh/completions"
+            mkdir -p "$COMPLETION_DIR"
+            cp "$PROJECT_ROOT/Auxin-CLI-Wrapper/completions/_auxin" "$COMPLETION_DIR/"
+            print_success "Zsh completion installed to $COMPLETION_DIR"
+            if ! grep -q "fpath=($COMPLETION_DIR" "$HOME/.zshrc" 2>/dev/null; then
+                print_warning "To enable completions, add the following to your ~/.zshrc file:"
+                echo '  fpath=(~/.zsh/completions $fpath)'
+                echo '  autoload -Uz compinit && compinit'
+            fi
+            ;;
+        fish)
+            local COMPLETION_DIR="$HOME/.config/fish/completions"
+            mkdir -p "$COMPLETION_DIR"
+            cp "$PROJECT_ROOT/Auxin-CLI-Wrapper/completions/auxin.fish" "$COMPLETION_DIR/"
+            print_success "Fish completion installed to $COMPLETION_DIR"
+            ;;
+        *)
+            print_warning "Shell $USER_SHELL not recognized. Skipping completion installation."
+            print_info "Manual installation instructions are in: Auxin-CLI-Wrapper/completions/README.md"
+            ;;
+    esac
+    echo ""
+}
+
+# Function to create default config
+create_default_config() {
+    print_header "Creating Default CLI Configuration"
+    
+    local CONFIG_DIR="$HOME/.config/auxin"
+    local CONFIG_FILE="$CONFIG_DIR/config.toml"
+    local EXAMPLE_CONFIG="$PROJECT_ROOT/Auxin-CLI-Wrapper/config.toml.example"
+
+    if [ ! -f "$EXAMPLE_CONFIG" ]; then
+        print_warning "Example config not found at $EXAMPLE_CONFIG, skipping."
+        return
+    fi
+
+    mkdir -p "$CONFIG_DIR"
+
+    if [ -f "$CONFIG_FILE" ]; then
+        print_warning "Config file already exists at $CONFIG_FILE. Skipping creation."
+    else
+        cp "$EXAMPLE_CONFIG" "$CONFIG_FILE"
+        print_success "Default config file created at $CONFIG_FILE"
+    fi
     echo ""
 }
 
@@ -516,6 +611,10 @@ main() {
     if [ "$skip_app" = false ]; then
         install_app
     fi
+
+    generate_completions
+    install_completions
+    create_default_config
 
     install_plist
     register_service

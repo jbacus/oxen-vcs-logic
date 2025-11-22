@@ -9,14 +9,23 @@ services:
     ports:
       - "3000:3000"
     volumes:
+      # Data volume
       - auxin-data:/var/oxen/data
-      - ./frontend/dist:/app/frontend/dist:ro
+      # Optional: Mount custom config file (uncomment to override defaults)
+      # - ./config.toml:/app/config.toml:ro
+      # Optional: Mount frontend for development
+      # - ./frontend/dist:/app/frontend/dist:ro
     environment:
-      - SYNC_DIR=/var/oxen/data
-      - OXEN_SERVER_PORT=3000
-      - OXEN_SERVER_HOST=0.0.0.0
+      # Logging (not part of unified config)
       - RUST_LOG=info,auxin_server=debug
-      - ENABLE_REDIS_LOCKS=false
+
+      # Optional: Override config.toml values using AUXIN_* prefix
+      # Examples (uncomment to use):
+      # - AUXIN_SERVER_PORT=3000
+      # - AUXIN_SERVER_HOST=0.0.0.0
+      # - AUXIN_SERVER_AUTH_TOKEN_SECRET=your_secret_here
+      # - AUXIN_SERVER_ENABLE_REDIS_LOCKS=true
+      # - AUXIN_SERVER_REDIS_URL=redis://redis:6379
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/health"]

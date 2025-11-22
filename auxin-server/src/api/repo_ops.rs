@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use tracing::info;
 
 use crate::auth::{get_optional_user_id_from_request, get_user_id_from_request, AuthService};
-use crate::config::Config;
+use auxin_config::Config;
 use crate::error::{AppError, AppResult};
 use crate::extensions::{get_activities, log_activity, ActivityType, LogicProMetadata};
 use crate::project::ProjectAuth;
@@ -66,7 +66,7 @@ pub async fn get_commits(
     let (namespace, repo_name) = path.into_inner();
     info!("Getting commits for: {}/{}", namespace, repo_name);
 
-    let repo_path = PathBuf::from(&config.sync_dir)
+    let repo_path = PathBuf::from(&config.server.sync_dir)
         .join(&namespace)
         .join(&repo_name);
 
@@ -102,7 +102,7 @@ pub async fn push_repository(
     let (namespace, repo_name) = path.into_inner();
     info!("Pushing repository: {}/{}", namespace, repo_name);
 
-    let repo_path = PathBuf::from(&config.sync_dir)
+    let repo_path = PathBuf::from(&config.server.sync_dir)
         .join(&namespace)
         .join(&repo_name);
 
@@ -155,7 +155,7 @@ pub async fn pull_repository(
     let (namespace, repo_name) = path.into_inner();
     info!("Pulling repository: {}/{}", namespace, repo_name);
 
-    let repo_path = PathBuf::from(&config.sync_dir)
+    let repo_path = PathBuf::from(&config.server.sync_dir)
         .join(&namespace)
         .join(&repo_name);
 
@@ -196,7 +196,7 @@ pub async fn list_branches(
     let (namespace, repo_name) = path.into_inner();
     info!("Listing branches for: {}/{}", namespace, repo_name);
 
-    let repo_path = PathBuf::from(&config.sync_dir)
+    let repo_path = PathBuf::from(&config.server.sync_dir)
         .join(&namespace)
         .join(&repo_name);
 
@@ -224,7 +224,7 @@ pub async fn create_branch(
         body.branch_name, namespace, repo_name
     );
 
-    let repo_path = PathBuf::from(&config.sync_dir)
+    let repo_path = PathBuf::from(&config.server.sync_dir)
         .join(&namespace)
         .join(&repo_name);
 
@@ -255,7 +255,7 @@ pub async fn restore_commit(
         commit_id, namespace, repo_name
     );
 
-    let repo_path = PathBuf::from(&config.sync_dir)
+    let repo_path = PathBuf::from(&config.server.sync_dir)
         .join(&namespace)
         .join(&repo_name);
 
@@ -313,7 +313,7 @@ pub async fn get_metadata(
         commit_id, namespace, repo_name
     );
 
-    let repo_path = PathBuf::from(&config.sync_dir)
+    let repo_path = PathBuf::from(&config.server.sync_dir)
         .join(&namespace)
         .join(&repo_name);
 
@@ -346,7 +346,7 @@ pub async fn store_metadata(
         commit_id, namespace, repo_name
     );
 
-    let repo_path = PathBuf::from(&config.sync_dir)
+    let repo_path = PathBuf::from(&config.server.sync_dir)
         .join(&namespace)
         .join(&repo_name);
 
@@ -375,7 +375,7 @@ pub async fn acquire_lock(
     let (namespace, repo_name) = path.into_inner();
     info!("Acquiring lock for: {}/{}", namespace, repo_name);
 
-    let repo_path = PathBuf::from(&config.sync_dir)
+    let repo_path = PathBuf::from(&config.server.sync_dir)
         .join(&namespace)
         .join(&repo_name);
 
@@ -420,7 +420,7 @@ pub async fn release_lock(
     let (namespace, repo_name) = path.into_inner();
     info!("Releasing lock for: {}/{}", namespace, repo_name);
 
-    let repo_path = PathBuf::from(&config.sync_dir)
+    let repo_path = PathBuf::from(&config.server.sync_dir)
         .join(&namespace)
         .join(&repo_name);
 
@@ -472,7 +472,7 @@ pub async fn heartbeat_lock(
     let (namespace, repo_name) = path.into_inner();
     info!("Heartbeat for lock in: {}/{}", namespace, repo_name);
 
-    let repo_path = PathBuf::from(&config.sync_dir)
+    let repo_path = PathBuf::from(&config.server.sync_dir)
         .join(&namespace)
         .join(&repo_name);
 
@@ -496,7 +496,7 @@ pub async fn lock_status(
     let (namespace, repo_name) = path.into_inner();
     info!("Getting lock status for: {}/{}", namespace, repo_name);
 
-    let repo_path = PathBuf::from(&config.sync_dir)
+    let repo_path = PathBuf::from(&config.server.sync_dir)
         .join(&namespace)
         .join(&repo_name);
 
@@ -529,7 +529,7 @@ pub async fn get_activity(
     let (namespace, repo_name) = path.into_inner();
     info!("Getting activity for: {}/{}", namespace, repo_name);
 
-    let repo_path = PathBuf::from(&config.sync_dir)
+    let repo_path = PathBuf::from(&config.server.sync_dir)
         .join(&namespace)
         .join(&repo_name);
 
@@ -580,7 +580,7 @@ pub async fn clone_repository(
     }
 
     // Build destination path
-    let dest_path = PathBuf::from(&config.sync_dir)
+    let dest_path = PathBuf::from(&config.server.sync_dir)
         .join(&namespace)
         .join(&repo_name);
 
@@ -627,7 +627,7 @@ pub async fn delete_branch(
         branch_name, namespace, repo_name
     );
 
-    let repo_path = PathBuf::from(&config.sync_dir)
+    let repo_path = PathBuf::from(&config.server.sync_dir)
         .join(&namespace)
         .join(&repo_name);
 
@@ -654,7 +654,7 @@ pub async fn get_status(
     let (namespace, repo_name) = path.into_inner();
     info!("Getting status for: {}/{}", namespace, repo_name);
 
-    let repo_path = PathBuf::from(&config.sync_dir)
+    let repo_path = PathBuf::from(&config.server.sync_dir)
         .join(&namespace)
         .join(&repo_name);
 
@@ -682,7 +682,7 @@ pub async fn fetch_repository(
     let remote = query.remote.clone().unwrap_or_else(|| "origin".to_string());
     info!("Fetching {} for: {}/{}", remote, namespace, repo_name);
 
-    let repo_path = PathBuf::from(&config.sync_dir)
+    let repo_path = PathBuf::from(&config.server.sync_dir)
         .join(&namespace)
         .join(&repo_name);
 

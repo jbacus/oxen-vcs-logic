@@ -1,0 +1,121 @@
+version: 2
+updates:
+  # Rust dependencies for CLI
+  - package-ecosystem: "cargo"
+    directory: "/Auxin-CLI-Wrapper"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "jbacus"
+    labels:
+      - "dependencies"
+      - "rust"
+    commit-message:
+      prefix: "deps(cli)"
+
+  # Rust dependencies for server
+  - package-ecosystem: "cargo"
+    directory: "/auxin-server"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "jbacus"
+    labels:
+      - "dependencies"
+      - "rust"
+    commit-message:
+      prefix: "deps(server)"
+
+  # Rust dependencies for auxin-config
+  - package-ecosystem: "cargo"
+    directory: "/auxin-config"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    reviewers:
+      - "jbacus"
+    labels:
+      - "dependencies"
+      - "rust"
+    commit-message:
+      prefix: "deps(config)"
+
+  # Swift dependencies for LaunchAgent
+  - package-ecosystem: "swift"
+    directory: "/Auxin-LaunchAgent"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "jbacus"
+    labels:
+      - "dependencies"
+      - "swift"
+    commit-message:
+      prefix: "deps(daemon)"
+
+  # Swift dependencies for App
+  - package-ecosystem: "swift"
+    directory: "/Auxin-App"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "jbacus"
+    labels:
+      - "dependencies"
+      - "swift"
+    commit-message:
+      prefix: "deps(app)"
+
+  # npm dependencies for frontend
+  - package-ecosystem: "npm"
+    directory: "/auxin-server/frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "jbacus"
+    labels:
+      - "dependencies"
+      - "frontend"
+    commit-message:
+      prefix: "deps(frontend)"
+    versioning-strategy: increase
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "jbacus"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "ci"
+
+  # Docker dependencies
+  - package-ecosystem: "docker"
+    directory: "/auxin-server"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    reviewers:
+      - "jbacus"
+    labels:
+      - "dependencies"
+      - "docker"
+    commit-message:
+      prefix: "deps(docker)"

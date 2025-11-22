@@ -1,19 +1,19 @@
-# Auxin CLI Configuration File
-# This file contains default settings for the Auxin command-line interface.
+# Auxin Configuration File
+# This file contains default settings for all Auxin components (CLI and Server).
 # Copy this file to ~/.auxin/config.toml to customize your settings.
 #
 # Configuration precedence (highest to lowest):
-#   1. Environment variables (AUXIN_*)
+#   1. Environment variables (AUXIN_* for CLI, specific vars for Server)
 #   2. Project config (.auxin/config.toml)
 #   3. User config (~/.auxin/config.toml)
 #   4. Built-in defaults
 
 # ============================================================================
-# Default Settings
+# Default Settings (CLI & Server)
 # ============================================================================
 [defaults]
 # Enable verbose output by default
-# Can be overridden with: --verbose or -v flag
+# Can be overridden with: --verbose or -v flag (CLI)
 # Environment variable: AUXIN_VERBOSE=true
 verbose = false
 
@@ -25,7 +25,7 @@ verbose = false
 color = "auto"
 
 # ============================================================================
-# Lock Operations
+# Lock Operations (CLI & Server)
 # ============================================================================
 [lock]
 # Default lock timeout in hours
@@ -42,7 +42,7 @@ auto_renew = false
 renew_before_minutes = 30
 
 # ============================================================================
-# Network Operations
+# Network Operations (CLI & Server)
 # ============================================================================
 [network]
 # Maximum number of retry attempts for network operations
@@ -67,7 +67,7 @@ connectivity_check_interval_s = 30
 connectivity_check_timeout_s = 5
 
 # ============================================================================
-# Offline Queue
+# Offline Queue (CLI)
 # ============================================================================
 [queue]
 # Automatically sync pending queue when network becomes available
@@ -89,7 +89,7 @@ max_entries = 1000
 cleanup_after_days = 7
 
 # ============================================================================
-# User Interface
+# User Interface (CLI)
 # ============================================================================
 [ui]
 # Show progress bars and spinners for long operations
@@ -105,15 +105,118 @@ emoji = true
 terminal_width = 0
 
 # ============================================================================
+# Project Type (CLI)
+# ============================================================================
+[project]
+# Default project type for new repositories
+# Can be: "auto", "logicpro", "sketchup", "blender"
+# Environment variable: AUXIN_PROJECT_TYPE=auto
+project_type = "auto"
+
+# ============================================================================
+# CLI Server Connection Settings
+# ============================================================================
+[cli]
+# URL of the Auxin server to connect to
+# Environment variable: AUXIN_SERVER_URL=http://localhost:3000
+url = "http://localhost:3000"
+
+# Authentication token for the Auxin server
+# Environment variable: AUXIN_SERVER_TOKEN=your_token_here
+token = ""
+
+# Request timeout for server operations in seconds
+# Environment variable: AUXIN_SERVER_TIMEOUT_SECS=30
+timeout_secs = 30
+
+# Whether to use the Auxin server for lock management
+# If false, local Git-based locking will be used
+# Environment variable: AUXIN_USE_SERVER_LOCKS=true
+use_server_locks = true
+
+# Whether to use the Auxin server for metadata storage
+# If false, metadata will be stored locally in .oxen/metadata
+# Environment variable: AUXIN_USE_SERVER_METADATA=true
+use_server_metadata = true
+
+# Default namespace for repositories on the Auxin server
+# Environment variable: AUXIN_DEFAULT_NAMESPACE=community
+default_namespace = "community"
+
+# ============================================================================
+# Auxin Server Settings
+# ============================================================================
+[server]
+# Directory where Auxin server stores repository data
+# Environment variable: SYNC_DIR=/var/oxen/data
+sync_dir = "/var/oxen/data"
+
+# Host address for the Auxin server to bind to
+# Environment variable: OXEN_SERVER_HOST=0.0.0.0
+host = "0.0.0.0"
+
+# Port for the Auxin server to listen on
+# Environment variable: OXEN_SERVER_PORT=3000
+port = 3000
+
+# Secret key for signing authentication tokens
+# IMPORTANT: Change this in production!
+# Environment variable: AUTH_TOKEN_SECRET=dev_secret_change_in_production
+auth_token_secret = "dev_secret_change_in_production"
+
+# Expiry time for authentication tokens in hours
+# Environment variable: AUTH_TOKEN_EXPIRY_HOURS=24
+auth_token_expiry_hours = 24
+
+# Enable Redis for distributed lock management
+# Requires a running Redis instance (REDIS_URL must be set)
+# Environment variable: ENABLE_REDIS_LOCKS=false
+enable_redis_locks = false
+
+# Enable the web UI (frontend) for the Auxin server
+# Requires building the frontend assets
+# Environment variable: ENABLE_WEB_UI=false
+enable_web_ui = false
+
+# URL for Redis server (e.g., "redis://127.0.0.1/")
+# Required if enable_redis_locks is true
+# Environment variable: REDIS_URL=redis://127.0.0.1/
+redis_url = ""
+
+# URL for the database (e.g., "sqlite://data.db")
+# Required if web UI is enabled for project CRUD operations
+# Environment variable: DATABASE_URL=sqlite://data.db
+database_url = ""
+
+# ============================================================================
 # Environment Variables Reference
 # ============================================================================
 # You can also set these environment variables to override config:
 #
+#   CLI Specific:
 #   AUXIN_VERBOSE=true             Enable verbose output
 #   AUXIN_COLOR=always|never|auto  Color mode
 #   AUXIN_LOCK_TIMEOUT=4           Lock timeout in hours
 #   AUXIN_MAX_RETRIES=5            Network retry count
 #   AUXIN_QUEUE_DIR=~/custom/path  Queue storage directory
+#   AUXIN_PROJECT_TYPE=logicpro    Default project type
+#   AUXIN_SERVER_URL=http://localhost:3000  Auxin server URL
+#   AUXIN_SERVER_TOKEN=your_token  Auth token for Auxin server
+#   AUXIN_SERVER_TIMEOUT_SECS=30   Timeout for server requests
+#   AUXIN_USE_SERVER_LOCKS=true    Enable server-side locks
+#   AUXIN_USE_SERVER_METADATA=true Enable server-side metadata
+#   AUXIN_DEFAULT_NAMESPACE=community Default namespace
+#
+#   Server Specific:
+#   SYNC_DIR=/var/oxen/data        Directory for repository data
+#   OXEN_SERVER_HOST=0.0.0.0       Server bind host
+#   OXEN_SERVER_PORT=3000          Server listen port
+#   AUTH_TOKEN_SECRET=secret       Auth token secret
+#   AUTH_TOKEN_EXPIRY_HOURS=24     Auth token expiry
+#   ENABLE_REDIS_LOCKS=true        Enable Redis locks
+#   ENABLE_WEB_UI=true             Enable web UI
+#   REDIS_URL=redis://127.0.0.1/   Redis connection URL
+#   DATABASE_URL=sqlite://data.db  Database connection URL
 #
 # Environment variables have highest priority and override all config files.
 

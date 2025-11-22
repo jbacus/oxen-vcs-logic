@@ -7,6 +7,7 @@ description = "Self-hosted repository server for Auxin using liboxen (Oxen-align
 license = "MIT"
 
 [dependencies]
+auxin-config = { path = "../auxin-config" }
 # Web framework (matching Oxen)
 actix-web = "4"
 actix-rt = "2"

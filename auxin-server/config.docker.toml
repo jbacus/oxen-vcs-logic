@@ -1,0 +1,44 @@
+# Auxin Server Configuration for Docker
+# This file is used when running auxin-server in a Docker container
+#
+# To customize, copy this to config.toml and modify as needed:
+#   cp config.docker.toml config.toml
+#
+# This file can also be mounted into the container at runtime:
+#   docker-compose up
+#
+# Environment variables with AUXIN_* prefix will override these values
+
+[defaults]
+verbose = false
+color = "auto"
+
+[server]
+# Data directory (mounted volume)
+sync_dir = "/var/oxen/data"
+
+# Network settings
+host = "0.0.0.0"
+port = 3000
+
+# Authentication
+# IMPORTANT: Override this in production using environment variable
+auth_token_secret = "dev_secret_change_in_production"
+auth_token_expiry_hours = 24
+
+# Optional features
+enable_redis_locks = false
+enable_web_ui = false
+
+# Optional: Redis URL (only if enable_redis_locks = true)
+redis_url = "redis://redis:6379"
+
+# Optional: Database URL (only if enable_web_ui = true)
+database_url = "postgres://auxin:password@postgres:5432/auxin"
+
+[network]
+max_retries = 5
+initial_backoff_ms = 1000
+max_backoff_ms = 15000
+connectivity_check_interval_s = 30
+connectivity_check_timeout_s = 5

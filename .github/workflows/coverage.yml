@@ -1,0 +1,240 @@
+name: Code Coverage
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  RUST_BACKTRACE: 1
+  CARGO_TERM_COLOR: always
+
+# Cancel in-progress runs when a new workflow is triggered
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ====================
+  # Rust CLI Coverage
+  # ====================
+
+  rust-cli-coverage:
+    name: Rust CLI Coverage
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Rust
+      uses: actions-rust-lang/setup-rust-toolchain@v1
+      with:
+        toolchain: stable
+        components: llvm-tools-preview
+
+    - name: Install cargo-llvm-cov
+      run: cargo install cargo-llvm-cov
+
+    - name: Cache Rust dependencies
+      uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: Auxin-CLI-Wrapper
+
+    - name: Generate coverage
+      working-directory: ./Auxin-CLI-Wrapper
+      run: cargo llvm-cov --lib --lcov --output-path lcov.info
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: ./Auxin-CLI-Wrapper/lcov.info
+        flags: rust-cli
+        name: rust-cli-coverage
+        fail_ci_if_error: false
+
+  # ====================
+  # Rust Server Coverage
+  # ====================
+
+  rust-server-coverage:
+    name: Rust Server Coverage
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Rust
+      uses: actions-rust-lang/setup-rust-toolchain@v1
+      with:
+        toolchain: stable
+        components: llvm-tools-preview
+
+    - name: Install cargo-llvm-cov
+      run: cargo install cargo-llvm-cov
+
+    - name: Cache Rust dependencies
+      uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: auxin-server
+
+    - name: Generate coverage
+      working-directory: ./auxin-server
+      run: cargo llvm-cov --features mock-oxen --lcov --output-path lcov.info
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: ./auxin-server/lcov.info
+        flags: rust-server
+        name: rust-server-coverage
+        fail_ci_if_error: false
+
+  # ====================
+  # Swift LaunchAgent Coverage
+  # ====================
+
+  swift-launchagent-coverage:
+    name: Swift LaunchAgent Coverage
+    runs-on: macos-14
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Select Xcode version
+      run: sudo xcode-select -s /Applications/Xcode_15.2.app/Contents/Developer
+
+    - name: Run tests with coverage
+      working-directory: ./Auxin-LaunchAgent
+      run: swift test --enable-code-coverage
+
+    - name: Convert coverage to lcov
+      working-directory: ./Auxin-LaunchAgent
+      run: |
+        xcrun llvm-cov export \
+          -format=lcov \
+          -instr-profile .build/debug/codecov/default.profdata \
+          .build/debug/*.xctest/Contents/MacOS/* \
+          > lcov.info
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: ./Auxin-LaunchAgent/lcov.info
+        flags: swift-daemon
+        name: swift-launchagent-coverage
+        fail_ci_if_error: false
+
+  # ====================
+  # Swift App Coverage
+  # ====================
+
+  swift-app-coverage:
+    name: Swift App Coverage
+    runs-on: macos-14
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Select Xcode version
+      run: sudo xcode-select -s /Applications/Xcode_15.2.app/Contents/Developer
+
+    - name: Run tests with coverage
+      working-directory: ./Auxin-App
+      run: swift test --enable-code-coverage
+
+    - name: Convert coverage to lcov
+      working-directory: ./Auxin-App
+      run: |
+        xcrun llvm-cov export \
+          -format=lcov \
+          -instr-profile .build/debug/codecov/default.profdata \
+          .build/debug/*.xctest/Contents/MacOS/* \
+          > lcov.info
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: ./Auxin-App/lcov.info
+        flags: swift-app
+        name: swift-app-coverage
+        fail_ci_if_error: false
+
+  # ====================
+  # Frontend Coverage
+  # ====================
+
+  frontend-coverage:
+    name: Frontend Coverage
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: auxin-server/frontend/package-lock.json
+
+    - name: Install dependencies
+      working-directory: ./auxin-server/frontend
+      run: npm ci
+
+    - name: Run tests with coverage
+      working-directory: ./auxin-server/frontend
+      run: npm run test:coverage
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: ./auxin-server/frontend/coverage/lcov.info
+        flags: frontend
+        name: frontend-coverage
+        fail_ci_if_error: false
+
+  # ====================
+  # Coverage Summary
+  # ====================
+
+  coverage-summary:
+    name: Coverage Summary
+    runs-on: ubuntu-latest
+    needs: [rust-cli-coverage, rust-server-coverage, swift-launchagent-coverage, swift-app-coverage, frontend-coverage]
+    if: always()
+
+    steps:
+    - name: Check coverage results
+      run: |
+        echo "Coverage Results Summary:"
+        echo "  Rust CLI: ${{ needs.rust-cli-coverage.result }}"
+        echo "  Rust Server: ${{ needs.rust-server-coverage.result }}"
+        echo "  Swift LaunchAgent: ${{ needs.swift-launchagent-coverage.result }}"
+        echo "  Swift App: ${{ needs.swift-app-coverage.result }}"
+        echo "  Frontend: ${{ needs.frontend-coverage.result }}"
+        echo ""
+        echo "📊 View detailed coverage reports at:"
+        echo "   https://codecov.io/gh/${{ github.repository }}"
+
+        if [[ "${{ needs.rust-cli-coverage.result }}" != "success" ]] || \
+           [[ "${{ needs.rust-server-coverage.result }}" != "success" ]] || \
+           [[ "${{ needs.swift-launchagent-coverage.result }}" != "success" ]] || \
+           [[ "${{ needs.swift-app-coverage.result }}" != "success" ]] || \
+           [[ "${{ needs.frontend-coverage.result }}" != "success" ]]; then
+          echo "⚠️  Some coverage jobs failed!"
+          exit 1
+        fi
+
+        echo "✅ All coverage jobs completed successfully!"

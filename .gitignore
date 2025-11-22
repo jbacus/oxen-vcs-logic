@@ -70,3 +70,4 @@ docs/.build/
 # Logs
 *.log
 logs/
+installer-build/
