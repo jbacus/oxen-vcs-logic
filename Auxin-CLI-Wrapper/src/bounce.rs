@@ -447,7 +447,126 @@ impl BounceManager {
         Ok(BounceComparison {
             bounce_a,
             bounce_b,
+            null_test_result: None,
         })
+    }
+
+    /// Compare bounces with null test analysis
+    pub fn compare_bounces_with_null_test(
+        &self,
+        commit_a: &str,
+        commit_b: &str,
+    ) -> Result<BounceComparison> {
+        let mut comparison = self.compare_bounces(commit_a, commit_b)?;
+
+        // Perform null test
+        let path_a = self.get_bounce_path(commit_a)?
+            .ok_or_else(|| anyhow!("No bounce file for commit {}", commit_a))?;
+        let path_b = self.get_bounce_path(commit_b)?
+            .ok_or_else(|| anyhow!("No bounce file for commit {}", commit_b))?;
+
+        comparison.null_test_result = Some(self.null_test(&path_a, &path_b)?);
+
+        Ok(comparison)
+    }
+
+    /// Perform null test on two audio files
+    ///
+    /// The null test is the industry standard for comparing audio:
+    /// 1. Phase-invert one file
+    /// 2. Mix both files together
+    /// 3. Measure what's left
+    ///
+    /// If files are identical: complete silence (100% cancellation)
+    /// If different: remaining signal shows what changed
+    fn null_test(&self, path_a: &Path, path_b: &Path) -> Result<NullTestResult> {
+        // Try using ffmpeg for null test
+        let output = Command::new("ffmpeg")
+            .args(&[
+                "-i", path_a.to_str().unwrap(),
+                "-i", path_b.to_str().unwrap(),
+                "-filter_complex",
+                "[0:a]aformat=sample_fmts=fltp:sample_rates=48000,volume=1.0[a0];\
+                 [1:a]aformat=sample_fmts=fltp:sample_rates=48000,aeval=val(0)*-1:c=same[a1];\
+                 [a0][a1]amix=inputs=2:duration=longest,astats=metadata=1:reset=1[aout]",
+                "-map", "[aout]",
+                "-f", "null",
+                "-"
+            ])
+            .stderr(std::process::Stdio::piped())
+            .output();
+
+        match output {
+            Ok(result) => {
+                let stderr = String::from_utf8_lossy(&result.stderr);
+
+                // Parse RMS level from ffmpeg output
+                // Look for "RMS level dB:" in the stats
+                let mut rms_db: Option<f64> = None;
+
+                for line in stderr.lines() {
+                    if line.contains("RMS level dB:") {
+                        if let Some(value_str) = line.split(':').nth(1) {
+                            if let Ok(val) = value_str.trim().parse::<f64>() {
+                                rms_db = Some(val);
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // Calculate cancellation percentage
+                // If RMS is very low (e.g., -96 dB), files are nearly identical
+                // Reference: -96 dB ≈ 99.998% cancellation
+                let cancellation_percent = if let Some(db) = rms_db {
+                    if db < -96.0 {
+                        100.0
+                    } else if db > -6.0 {
+                        // Very different
+                        0.0
+                    } else {
+                        // Map -96dB to 100%, -6dB to 0%
+                        ((db + 96.0) / 90.0) * 100.0
+                    }
+                } else {
+                    // Fallback: compare file sizes
+                    let size_a = fs::metadata(path_a)?.len() as f64;
+                    let size_b = fs::metadata(path_b)?.len() as f64;
+                    let size_diff = ((size_a - size_b).abs() / size_a.max(size_b)) * 100.0;
+                    100.0 - size_diff
+                };
+
+                let interpretation = match cancellation_percent {
+                    p if p >= 99.9 => "Identical or imperceptibly different".to_string(),
+                    p if p >= 95.0 => "Nearly identical - very subtle differences".to_string(),
+                    p if p >= 80.0 => "Similar with minor differences".to_string(),
+                    p if p >= 50.0 => "Moderately different".to_string(),
+                    p if p >= 20.0 => "Significantly different".to_string(),
+                    _ => "Completely different mixes".to_string(),
+                };
+
+                Ok(NullTestResult {
+                    cancellation_percent,
+                    interpretation,
+                    difference_level_db: rms_db,
+                })
+            }
+            Err(_) => {
+                // ffmpeg not available - use simple size-based comparison
+                let size_a = fs::metadata(path_a)?.len() as f64;
+                let size_b = fs::metadata(path_b)?.len() as f64;
+                let size_diff = ((size_a - size_b).abs() / size_a.max(size_b)) * 100.0;
+                let cancellation = 100.0 - size_diff;
+
+                Ok(NullTestResult {
+                    cancellation_percent: cancellation,
+                    interpretation: format!(
+                        "Estimated based on file size (ffmpeg not available)"
+                    ),
+                    difference_level_db: None,
+                })
+            }
+        }
     }
 
     /// Play a bounce using the system audio player
@@ -549,6 +668,22 @@ struct AudioInfo {
 pub struct BounceComparison {
     pub bounce_a: BounceMetadata,
     pub bounce_b: BounceMetadata,
+    /// Null test result (percentage cancellation) if performed
+    pub null_test_result: Option<NullTestResult>,
+}
+
+/// Results from a null test audio comparison
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NullTestResult {
+    /// Percentage of audio that cancels out (0.0-100.0)
+    /// Higher = more similar (100% = identical)
+    pub cancellation_percent: f64,
+
+    /// Interpretation of the result
+    pub interpretation: String,
+
+    /// RMS level of the difference signal in dB
+    pub difference_level_db: Option<f64>,
 }
 
 impl BounceComparison {
@@ -611,6 +746,16 @@ impl BounceComparison {
                 self.bounce_a.sample_rate.map(|s| s.to_string()).unwrap_or_else(|| "unknown".to_string())));
             report.push_str(&format!("  B: {} Hz\n",
                 self.bounce_b.sample_rate.map(|s| s.to_string()).unwrap_or_else(|| "unknown".to_string())));
+        }
+
+        // Null test results
+        if let Some(null_test) = &self.null_test_result {
+            report.push_str("\nNull Test (Phase Cancellation):\n");
+            report.push_str(&format!("  Cancellation: {:.1}%\n", null_test.cancellation_percent));
+            if let Some(db) = null_test.difference_level_db {
+                report.push_str(&format!("  Difference Level: {:.2} dB\n", db));
+            }
+            report.push_str(&format!("  Analysis: {}\n", null_test.interpretation));
         }
 
         report

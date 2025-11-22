@@ -8,6 +8,7 @@ use anyhow::{anyhow, Context, Result};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 /// Metadata about a thumbnail image
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -29,6 +30,28 @@ pub struct ThumbnailMetadata {
 
     /// Height in pixels (if known)
     pub height: Option<u32>,
+}
+
+/// Visual difference analysis between two thumbnails
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ThumbnailDiff {
+    /// Commit A identifier
+    pub commit_a: String,
+
+    /// Commit B identifier
+    pub commit_b: String,
+
+    /// Estimated pixel difference percentage (0.0 - 100.0)
+    pub difference_percent: f64,
+
+    /// File size difference in bytes (B - A)
+    pub size_diff_bytes: i64,
+
+    /// Dimension difference (if different sizes)
+    pub dimension_diff: Option<String>,
+
+    /// Change description
+    pub description: String,
 }
 
 impl ThumbnailMetadata {
@@ -269,6 +292,91 @@ impl ThumbnailManager {
         }
 
         Ok(())
+    }
+
+    /// Compare two thumbnails and generate diff
+    pub fn compare_thumbnails(
+        &self,
+        commit_a: &str,
+        commit_b: &str,
+    ) -> Result<ThumbnailDiff> {
+        let meta_a = self.get_thumbnail(commit_a)?
+            .ok_or_else(|| anyhow!("No thumbnail for commit {}", commit_a))?;
+        let meta_b = self.get_thumbnail(commit_b)?
+            .ok_or_else(|| anyhow!("No thumbnail for commit {}", commit_b))?;
+
+        let path_a = self.get_thumbnail_path(commit_a)?
+            .ok_or_else(|| anyhow!("No thumbnail image for commit {}", commit_a))?;
+        let path_b = self.get_thumbnail_path(commit_b)?
+            .ok_or_else(|| anyhow!("No thumbnail image for commit {}", commit_b))?;
+
+        // Calculate size difference
+        let size_diff_bytes = meta_b.size_bytes as i64 - meta_a.size_bytes as i64;
+
+        // Check dimension differences
+        let dimension_diff = match (&meta_a.width, &meta_a.height, &meta_b.width, &meta_b.height) {
+            (Some(w1), Some(h1), Some(w2), Some(h2)) if w1 != w2 || h1 != h2 => {
+                Some(format!("{}x{} → {}x{}", w1, h1, w2, h2))
+            }
+            _ => None,
+        };
+
+        // Use ImageMagick compare if available for pixel-level diff
+        let difference_percent = self.calculate_image_difference(&path_a, &path_b)
+            .unwrap_or_else(|_| {
+                // Fallback: estimate based on file size
+                if size_diff_bytes == 0 {
+                    0.0
+                } else {
+                    let max_size = meta_a.size_bytes.max(meta_b.size_bytes) as f64;
+                    (size_diff_bytes.abs() as f64 / max_size) * 100.0
+                }
+            });
+
+        let description = format!(
+            "Visual difference: {:.1}%, Size: {} bytes",
+            difference_percent,
+            if size_diff_bytes > 0 { "+" } else { "" }.to_string() + &size_diff_bytes.to_string()
+        );
+
+        Ok(ThumbnailDiff {
+            commit_a: commit_a.to_string(),
+            commit_b: commit_b.to_string(),
+            difference_percent,
+            size_diff_bytes,
+            dimension_diff,
+            description,
+        })
+    }
+
+    /// Calculate pixel-level image difference using ImageMagick compare
+    fn calculate_image_difference(&self, path_a: &Path, path_b: &Path) -> Result<f64> {
+        // Try using ImageMagick's compare command
+        let output = Command::new("compare")
+            .args(&[
+                "-metric", "RMSE",
+                path_a.to_str().unwrap(),
+                path_b.to_str().unwrap(),
+                "null:"
+            ])
+            .output();
+
+        match output {
+            Ok(result) => {
+                let stderr = String::from_utf8_lossy(&result.stderr);
+                // Parse output like "1234.56 (0.0189)"
+                if let Some(pct_str) = stderr.split('(').nth(1) {
+                    if let Some(pct) = pct_str.trim_end_matches(')').parse::<f64>().ok() {
+                        return Ok(pct * 100.0); // Convert to percentage
+                    }
+                }
+                Err(anyhow!("Could not parse compare output"))
+            }
+            Err(_) => {
+                // ImageMagick not available, use simpler method
+                Err(anyhow!("ImageMagick compare not available"))
+            }
+        }
     }
 
     /// Save thumbnail metadata to JSON file

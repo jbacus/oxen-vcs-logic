@@ -571,7 +571,7 @@ EXAMPLES:
     #[command(long_about = "Compare two bounces
 
 USAGE:
-    auxin bounce compare <COMMIT_A> <COMMIT_B>
+    auxin bounce compare <COMMIT_A> <COMMIT_B> [--null-test]
 
 DESCRIPTION:
     Compares two bounces side-by-side, showing differences in:
@@ -579,18 +579,30 @@ DESCRIPTION:
       • File size
       • Format
       • Sample rate and bit depth
+      • Null test (with --null-test flag)
 
-    Useful for A/B testing different mixes or comparing project evolution.
+    The null test is the industry standard for comparing audio mixes.
+    It phase-inverts one file and sums it with the other. If identical,
+    they completely cancel out (silence). The result shows:
+      • Cancellation percentage (100% = identical)
+      • RMS level of the difference in dB
+      • Interpretation (identical, similar, different, etc.)
 
 EXAMPLES:
-    # Compare two commits
-    auxin bounce compare abc123 def456")]
+    # Basic comparison
+    auxin bounce compare abc123 def456
+
+    # Compare with null test
+    auxin bounce compare abc123 def456 --null-test")]
     Compare {
         #[arg(value_name = "COMMIT_A", help = "First commit ID")]
         commit_a: String,
 
         #[arg(value_name = "COMMIT_B", help = "Second commit ID")]
         commit_b: String,
+
+        #[arg(long, help = "Perform null test (phase cancellation analysis)")]
+        null_test: bool,
     },
 
     /// Add multiple bounce files at once
@@ -2818,6 +2830,54 @@ async fn main() -> anyhow::Result<()> {
                 }
             }
 
+            // Add thumbnail comparison
+            let current_dir = std::env::current_dir()?;
+            let thumbnail_mgr = ThumbnailManager::new(&current_dir);
+
+            if let Ok(Some(_)) = thumbnail_mgr.get_thumbnail(&commit_a_info.id) {
+                if let Ok(Some(_)) = thumbnail_mgr.get_thumbnail(&commit_b_info.id) {
+                    println!();
+                    println!("{}", "Visual Changes:".bright_cyan());
+                    match thumbnail_mgr.compare_thumbnails(&commit_a_info.id, &commit_b_info.id) {
+                        Ok(diff) => {
+                            println!("  Difference: {:.1}%", diff.difference_percent);
+                            if let Some(dim_diff) = &diff.dimension_diff {
+                                println!("  Dimensions: {}", dim_diff);
+                            }
+                            println!("  Size change: {} bytes",
+                                if diff.size_diff_bytes > 0 { "+" } else { "" }.to_string() + &diff.size_diff_bytes.to_string());
+                        }
+                        Err(_) => {}
+                    }
+                }
+            }
+
+            // Add bounce comparison
+            let bounce_mgr = BounceManager::new(&current_dir);
+
+            if let Ok(Some(_)) = bounce_mgr.get_bounce(&commit_a_info.id) {
+                if let Ok(Some(_)) = bounce_mgr.get_bounce(&commit_b_info.id) {
+                    println!();
+                    println!("{}", "Audio Changes:".bright_cyan());
+                    match bounce_mgr.compare_bounces(&commit_a_info.id, &commit_b_info.id) {
+                        Ok(comparison) => {
+                            if let Some(duration_diff) = comparison.duration_diff() {
+                                println!("  Duration: {}{:.2}s",
+                                    if duration_diff >= 0.0 { "+" } else { "" },
+                                    duration_diff);
+                            }
+                            println!("  Size: {} bytes",
+                                if comparison.size_diff() > 0 { "+" } else { "" }.to_string() + &comparison.size_diff().to_string());
+                            println!("  {} For detailed audio comparison, use: auxin bounce compare {} {} --null-test",
+                                "💡".bright_yellow(),
+                                &commit_a_info.id[..8],
+                                &commit_b_info.id[..8]);
+                        }
+                        Err(_) => {}
+                    }
+                }
+            }
+
             Ok(())
         }
 
@@ -3796,14 +3856,21 @@ async fn main() -> anyhow::Result<()> {
                     }
                 }
 
-                BounceCommands::Compare { commit_a, commit_b } => {
+                BounceCommands::Compare { commit_a, commit_b, null_test } => {
                     let pb = progress::spinner(&format!(
-                        "Comparing {} and {}...",
+                        "Comparing {} and {}{}...",
                         &commit_a[..8.min(commit_a.len())],
-                        &commit_b[..8.min(commit_b.len())]
+                        &commit_b[..8.min(commit_b.len())],
+                        if null_test { " (with null test)" } else { "" }
                     ));
 
-                    match manager.compare_bounces(&commit_a, &commit_b) {
+                    let result = if null_test {
+                        manager.compare_bounces_with_null_test(&commit_a, &commit_b)
+                    } else {
+                        manager.compare_bounces(&commit_a, &commit_b)
+                    };
+
+                    match result {
                         Ok(comparison) => {
                             progress::finish_success(&pb, "Comparison complete");
                             println!("\n{}", comparison.format_report());

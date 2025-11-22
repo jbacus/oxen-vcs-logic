@@ -58,8 +58,8 @@ pub use sketchup_metadata::SketchUpMetadata;
 pub use sketchup_project::SketchUpProject;
 pub use blender_metadata::BlenderMetadata;
 pub use blender_project::BlenderProject;
-pub use bounce::{AudioFormat, BounceComparison, BounceFilter, BounceManager, BounceMetadata};
-pub use thumbnail::{ThumbnailManager, ThumbnailMetadata};
+pub use bounce::{AudioFormat, BounceComparison, BounceFilter, BounceManager, BounceMetadata, NullTestResult};
+pub use thumbnail::{ThumbnailManager, ThumbnailMetadata, ThumbnailDiff};
 pub use chunked_upload::{
     ChunkedUploadManager, UploadConfig, UploadProgress, UploadResult, UploadSession,
     UploadSessionInfo, UploadStatus,
