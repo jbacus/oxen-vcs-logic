@@ -43,7 +43,7 @@ class MockXPCService: NSObject, OxenDaemonXPCProtocol {
         reply(["/test/project1.logicx", "/test/project2.logicx"])
     }
 
-    func commitProject(_ projectPath: String, message: String?, withReply reply: @escaping (String?, String?) -> Void) {
+    func commitProject(_ projectPath: String, message: String?, metadata: [String : Any]?, withReply reply: @escaping (String?, String?) -> Void) {
         commitProjectCalled = true
         lastProjectPath = projectPath
         lastMessage = message
@@ -148,6 +148,14 @@ class MockXPCService: NSObject, OxenDaemonXPCProtocol {
         withReply reply: @escaping (Bool) -> Void
     ) {
         reply(true)
+    }
+
+    // MARK: - Daemon Management Methods
+
+    func restartDaemon(
+        withReply reply: @escaping (Bool, String?) -> Void
+    ) {
+        reply(true, nil)
     }
 }
 
@@ -267,7 +275,7 @@ final class XPCServiceTests: XCTestCase {
     func testCommitProject() {
         let expectation = XCTestExpectation(description: "Commit should complete")
 
-        mockService.commitProject("/test/project.logicx", message: "Test commit") { commitId, error in
+        mockService.commitProject("/test/project.logicx", message: "Test commit", metadata: nil) { commitId, error in
             XCTAssertEqual(commitId, "abc123", "Should return commit ID")
             XCTAssertNil(error, "Should have no error")
             expectation.fulfill()
@@ -281,7 +289,7 @@ final class XPCServiceTests: XCTestCase {
     func testCommitProjectWithNilMessage() {
         let expectation = XCTestExpectation(description: "Commit with nil message")
 
-        mockService.commitProject("/test/project.logicx", message: nil) { commitId, error in
+        mockService.commitProject("/test/project.logicx", message: nil, metadata: nil) { commitId, error in
             XCTAssertNotNil(commitId, "Should still return commit ID")
             expectation.fulfill()
         }
@@ -293,7 +301,7 @@ final class XPCServiceTests: XCTestCase {
     func testCommitProjectWithEmptyMessage() {
         let expectation = XCTestExpectation(description: "Commit with empty message")
 
-        mockService.commitProject("/test/project.logicx", message: "") { commitId, error in
+        mockService.commitProject("/test/project.logicx", message: "", metadata: nil) { commitId, error in
             expectation.fulfill()
         }
 
@@ -478,7 +486,7 @@ final class XPCServiceTests: XCTestCase {
             registerExpectation.fulfill()
         }
 
-        mockService.commitProject(projectPath, message: "Initial commit") { commitId, error in
+        mockService.commitProject(projectPath, message: "Initial commit", metadata: nil) { commitId, error in
             XCTAssertNotNil(commitId, "Should return commit ID")
             XCTAssertNil(error, "Should have no error")
             commitExpectation.fulfill()
@@ -516,7 +524,7 @@ final class XPCServiceTests: XCTestCase {
         mockService.initializeProject(invalidPath) { _, _ in completionCount += 1 }
         mockService.registerProject(invalidPath) { _, _ in completionCount += 1 }
         mockService.unregisterProject(invalidPath) { _, _ in completionCount += 1 }
-        mockService.commitProject(invalidPath, message: nil) { _, _ in completionCount += 1 }
+        mockService.commitProject(invalidPath, message: nil, metadata: nil) { _, _ in completionCount += 1 }
         mockService.restoreProject(invalidPath, toCommit: "abc") { _, _ in completionCount += 1 }
         mockService.pauseMonitoring(for: invalidPath) { _ in completionCount += 1 }
         mockService.resumeMonitoring(for: invalidPath) { _ in completionCount += 1 }

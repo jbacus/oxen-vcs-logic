@@ -1,5 +1,5 @@
 import XCTest
-@testable import auxin_daemon
+@testable import Auxin_LaunchAgent
 
 @available(macOS 10.14, *)
 final class NetworkMonitorTests: XCTestCase {
