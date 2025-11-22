@@ -21,7 +21,7 @@ COPY src ./src
 RUN cargo build --release --features mock-oxen
 
 # Stage 2: Build the frontend
-FROM node:20-alpine as frontend-builder
+FROM node:25-alpine as frontend-builder
 
 WORKDIR /build/frontend
 
