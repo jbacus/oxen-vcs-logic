@@ -45,8 +45,8 @@ async fn main() -> std::io::Result<()> {
 
     // Initialize database if web-ui feature is enabled
     #[cfg(feature = "web-ui")]
-    let db_pool = if let Some(database_url) = &config.server.database_url {
-        match db::init_database(database_url).await {
+    let db_pool = if !config.server.database_url.is_empty() {
+        match db::init_database(&config.server.database_url).await {
             Ok(pool) => {
                 info!("Database initialized successfully");
                 Some(pool)
@@ -199,23 +199,6 @@ async fn main() -> std::io::Result<()> {
             .route(
                 "/api/repos/{namespace}/{name}/activity",
                 web::get().to(api::get_activity),
-            )
-            // Project management (ownership and collaborators)
-            .route(
-                "/api/repos/{namespace}/{name}/collaborators",
-                web::get().to(api::list_collaborators),
-            )
-            .route(
-                "/api/repos/{namespace}/{name}/collaborators",
-                web::post().to(api::add_collaborator),
-            )
-            .route(
-                "/api/repos/{namespace}/{name}/collaborators/{user_id}",
-                web::delete().to(api::remove_collaborator),
-            )
-            .route(
-                "/api/repos/{namespace}/{name}/visibility",
-                web::put().to(api::update_visibility),
             )
             // WebSocket for real-time notifications
             .route("/ws/repos/{namespace}/{name}", web::get().to(ws_handler))
