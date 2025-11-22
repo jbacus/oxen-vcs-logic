@@ -1,5 +1,6 @@
 import AppKit
 
+@MainActor
 class MilestoneCommitWindow {
     private let window: NSWindow
     private let viewModel: ProjectDetailViewModel

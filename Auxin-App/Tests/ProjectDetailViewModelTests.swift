@@ -14,8 +14,8 @@ final class ProjectDetailViewModelTests: XCTestCase {
         testProject = Project(
             path: "/Users/test/TestProject.logicx",
             projectType: .logicPro,
-            commitCount: 0,
             lastCommit: nil,
+            commitCount: 0,
             isLocked: false,
             lockedBy: nil
         )

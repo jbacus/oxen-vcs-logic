@@ -1,6 +1,7 @@
 import AppKit
 
 /// Helper window for FCP XML merge workflow
+@MainActor
 class MergeHelperWindow {
     private let window: NSWindow
     private let project: Project

@@ -1,5 +1,6 @@
 import AppKit
 
+@MainActor
 class RollbackWindow: NSObject {
     private let window: NSWindow
     private let viewModel: ProjectDetailViewModel
