@@ -193,32 +193,110 @@ struct StatView: View {
 struct CommitRowView: View {
     let commit: CommitInfo
     let project: Project
+    @State private var isPlayingBounce = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text(commit.message)
-                    .font(.body)
-                    .fontWeight(.medium)
-
-                Spacer()
-
-                Button("Rollback") {
-                    // TODO: Rollback to this commit
+        HStack(alignment: .top, spacing: 12) {
+            // Thumbnail
+            if let metadata = commit.metadata,
+               let thumbnailPath = metadata.thumbnailPath {
+                let fullPath = project.path + "/.auxin/thumbnails/" + thumbnailPath
+                if let nsImage = NSImage(contentsOfFile: fullPath) {
+                    Image(nsImage: nsImage)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 80, height: 60)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 6)
+                                .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
+                        )
+                } else {
+                    placeholderThumbnail
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
+            } else {
+                placeholderThumbnail
             }
 
-            Text(commit.timestamp.formatted())
-                .font(.caption)
-                .foregroundColor(.secondary)
+            // Commit details
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text(commit.message)
+                        .font(.body)
+                        .fontWeight(.medium)
 
-            if let metadata = commit.metadata {
-                MetadataView(metadata: metadata, projectType: project.projectType)
+                    Spacer()
+
+                    // Bounce playback button
+                    if let metadata = commit.metadata,
+                       let bouncePath = metadata.bouncePath {
+                        Button(action: {
+                            playBounce(bouncePath: bouncePath)
+                        }) {
+                            Image(systemName: isPlayingBounce ? "waveform.circle.fill" : "waveform.circle")
+                                .foregroundColor(.blue)
+                        }
+                        .buttonStyle(.plain)
+                        .help("Play audio bounce")
+                    }
+
+                    Button("Rollback") {
+                        // TODO: Rollback to this commit
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+
+                Text(commit.timestamp.formatted())
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+
+                if let metadata = commit.metadata {
+                    MetadataView(metadata: metadata, projectType: project.projectType)
+                }
             }
         }
         .padding(.vertical, 4)
+    }
+
+    private var placeholderThumbnail: some View {
+        RoundedRectangle(cornerRadius: 6)
+            .fill(Color.secondary.opacity(0.2))
+            .frame(width: 80, height: 60)
+            .overlay(
+                Image(systemName: project.iconName)
+                    .foregroundColor(.secondary)
+            )
+    }
+
+    private func playBounce(bouncePath: String) {
+        let fullPath = project.path + "/.auxin/bounces/" + bouncePath
+        let url = URL(fileURLWithPath: fullPath)
+
+        guard FileManager.default.fileExists(atPath: fullPath) else {
+            print("Bounce file not found: \(fullPath)")
+            return
+        }
+
+        // Use afplay to play the audio file in the background
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/usr/bin/afplay")
+        task.arguments = [fullPath]
+
+        isPlayingBounce = true
+
+        task.terminationHandler = { _ in
+            DispatchQueue.main.async {
+                self.isPlayingBounce = false
+            }
+        }
+
+        do {
+            try task.run()
+        } catch {
+            print("Failed to play bounce: \(error)")
+            isPlayingBounce = false
+        }
     }
 }
 

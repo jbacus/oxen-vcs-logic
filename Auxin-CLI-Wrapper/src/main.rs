@@ -1,7 +1,7 @@
 use anyhow::Context;
 use clap::{Parser, Subcommand};
 use colored::Colorize;
-use auxin::{lock_integration, logger, progress, success, vlog, warn, BlenderProject, CommitMetadata, Config, OxenRepository, ProjectType, SketchUpMetadata, SketchUpProject, AuxinServerClient, ServerConfig, server_client, BounceManager};
+use auxin::{lock_integration, logger, progress, success, vlog, warn, BlenderProject, CommitMetadata, Config, LogicProject, OxenRepository, ProjectType, SketchUpMetadata, SketchUpProject, AuxinServerClient, ServerConfig, server_client, BounceManager, ThumbnailManager};
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -2337,6 +2337,35 @@ async fn main() -> anyhow::Result<()> {
             // Show common metadata
             if let Some(ref tags_val) = tags {
                 println!("  Tags: {}", tags_val);
+            }
+
+            // Extract thumbnail for Logic Pro projects
+            if has_logic_metadata {
+                let current_dir = std::env::current_dir()?;
+                let thumbnail_manager = ThumbnailManager::new(&current_dir);
+
+                // Try to detect Logic Pro project and extract thumbnail
+                if let Ok(logic_project) = LogicProject::detect(&current_dir) {
+                    let pb = progress::spinner("Extracting project thumbnail...");
+                    match thumbnail_manager.extract_logic_thumbnail(&commit_id, &logic_project.path) {
+                        Ok(thumb_metadata) => {
+                            progress::finish_success(&pb, "Thumbnail extracted");
+                            if let Some(width) = thumb_metadata.width {
+                                if let Some(height) = thumb_metadata.height {
+                                    println!("  Thumbnail: {}x{} ({})", width, height, thumb_metadata.format);
+                                } else {
+                                    println!("  Thumbnail: {}", thumb_metadata.format);
+                                }
+                            } else {
+                                println!("  Thumbnail: {}", thumb_metadata.format);
+                            }
+                        }
+                        Err(e) => {
+                            // Don't fail the commit if thumbnail extraction fails
+                            vlog!("Could not extract thumbnail: {}", e);
+                        }
+                    }
+                }
             }
 
             // Process bounce file if provided

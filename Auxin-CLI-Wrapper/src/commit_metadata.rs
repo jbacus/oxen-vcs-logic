@@ -66,6 +66,14 @@ pub struct CommitMetadata {
     /// Unix timestamp (auto-set by daemon, not user-provided)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub timestamp: Option<i64>,
+
+    /// Path to thumbnail image relative to .auxin/thumbnails/
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub thumbnail_path: Option<String>,
+
+    /// Path to bounce audio file relative to .auxin/bounces/
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bounce_path: Option<String>,
 }
 
 impl CommitMetadata {
@@ -101,6 +109,8 @@ impl CommitMetadata {
             key_signature: None,
             tags: Vec::new(),
             timestamp: None,
+            thumbnail_path: None,
+            bounce_path: None,
         }
     }
 
@@ -194,6 +204,30 @@ impl CommitMetadata {
     /// ```
     pub fn with_tag(mut self, tag: impl Into<String>) -> Self {
         self.tags.push(tag.into());
+        self
+    }
+
+    /// Sets the thumbnail path
+    ///
+    /// Builder pattern method that consumes and returns self.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - Path to thumbnail file relative to .auxin/thumbnails/
+    pub fn with_thumbnail(mut self, path: impl Into<String>) -> Self {
+        self.thumbnail_path = Some(path.into());
+        self
+    }
+
+    /// Sets the bounce path
+    ///
+    /// Builder pattern method that consumes and returns self.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - Path to bounce file relative to .auxin/bounces/
+    pub fn with_bounce(mut self, path: impl Into<String>) -> Self {
+        self.bounce_path = Some(path.into());
         self
     }
 
