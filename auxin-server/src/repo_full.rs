@@ -200,6 +200,36 @@ impl RepositoryOps {
         Ok(())
     }
 
+    /// Delete a branch
+    pub fn delete_branch(&self, branch_name: &str) -> AppResult<()> {
+        info!("Deleting branch: {}", branch_name);
+
+        self.oxen
+            .delete_branch(&self.repo_path, branch_name)
+            .map_err(|e| AppError::Internal(format!("Failed to delete branch: {}", e)))?;
+
+        Ok(())
+    }
+
+    /// Get repository status
+    pub fn status(&self) -> AppResult<auxin_oxen::StatusInfo> {
+        self.oxen
+            .status(&self.repo_path)
+            .map_err(|e| AppError::Internal(format!("Failed to get status: {}", e)))
+    }
+
+    /// Fetch from remote
+    pub fn fetch(&self, remote: Option<&str>) -> AppResult<()> {
+        info!("Fetching from remote");
+
+        self.oxen
+            .fetch(&self.repo_path, remote)
+            .map_err(|e| AppError::Internal(format!("Failed to fetch: {}", e)))?;
+
+        info!("Fetch completed successfully");
+        Ok(())
+    }
+
     /// Get repository path
     pub fn path(&self) -> &Path {
         &self.repo_path

@@ -19,6 +19,6 @@ pub mod models;
 #[path = "repo_full.rs"]
 pub mod repo;
 
-#[cfg(feature = "mock-oxen")]
+#[cfg(not(feature = "full-oxen"))]
 #[path = "repo_mock.rs"]
 pub mod repo;

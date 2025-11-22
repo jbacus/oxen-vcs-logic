@@ -1384,21 +1384,21 @@ impl OxenSubprocess {
         let stdout = String::from_utf8_lossy(&output.stdout).to_string();
         let stderr = String::from_utf8_lossy(&output.stderr).to_string();
 
-        // Check for categorized errors
-        if let Some(oxen_error) = OxenError::classify(&stdout, &stderr) {
-            error!("Command failed: oxen {}", args.join(" "));
-            if !stderr.is_empty() {
-                error!("stderr: {}", stderr);
-            }
-            if !stdout.is_empty() && self.verbose {
-                error!("stdout: {}", stdout);
-            }
-
-            return Err(anyhow!(oxen_error));
-        }
-
-        // Also check exit code
+        // Check exit code FIRST - if command succeeded, don't try to parse errors from output
         if !output.status.success() {
+            // Command failed - try to classify the error
+            if let Some(oxen_error) = OxenError::classify(&stdout, &stderr) {
+                error!("Command failed: oxen {}", args.join(" "));
+                if !stderr.is_empty() {
+                    error!("stderr: {}", stderr);
+                }
+                if !stdout.is_empty() && self.verbose {
+                    error!("stdout: {}", stdout);
+                }
+                return Err(anyhow!(oxen_error));
+            }
+
+            // Generic error if we couldn't classify it
             error!("Command failed: oxen {}", args.join(" "));
             error!("stderr: {}", stderr);
             return Err(anyhow!(
@@ -1621,7 +1621,7 @@ pub struct CommitInfo {
 }
 
 /// Repository status information
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct StatusInfo {
     /// Modified files
     pub modified: Vec<PathBuf>,
@@ -1632,7 +1632,7 @@ pub struct StatusInfo {
 }
 
 /// Branch information
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BranchInfo {
     /// Branch name
     pub name: String,
