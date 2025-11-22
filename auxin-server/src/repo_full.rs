@@ -71,7 +71,7 @@ impl RepositoryOps {
             debug!("Adding file: {:?}", full_path);
 
             self.oxen
-                .add(&self.repo_path, &[full_path])
+                .add(&self.repo_path, &[full_path.as_path()])
                 .map_err(|e| {
                     AppError::Internal(format!("Failed to add file {:?}: {}", path.as_ref(), e))
                 })?;
@@ -84,36 +84,32 @@ impl RepositoryOps {
     pub fn commit(&self, message: &str) -> AppResult<String> {
         info!("Creating commit: {}", message);
 
-        let commit_id = self
+        let commit_info = self
             .oxen
             .commit(&self.repo_path, message)
             .map_err(|e| AppError::Internal(format!("Failed to create commit: {}", e)))?;
 
-        info!("Commit created: {}", commit_id);
+        info!("Commit created: {}", commit_info.id);
 
-        Ok(commit_id)
+        Ok(commit_info.id)
     }
 
     /// Get commit history
     pub fn log(&self, limit: Option<usize>) -> AppResult<Vec<CommitInfo>> {
         let commits = self
             .oxen
-            .log(&self.repo_path)
+            .log(&self.repo_path, limit)
             .map_err(|e| AppError::Internal(format!("Failed to get commit history: {}", e)))?;
 
-        let mut result: Vec<CommitInfo> = commits
+        let result: Vec<CommitInfo> = commits
             .into_iter()
             .map(|c| CommitInfo {
                 id: c.id,
                 message: c.message,
-                author: c.author,
-                timestamp: c.timestamp,
+                author: "unknown".to_string(), // Oxen subprocess doesn't provide author yet
+                timestamp: chrono::Utc::now().to_rfc3339(), // Placeholder timestamp
             })
             .collect();
-
-        if let Some(limit) = limit {
-            result.truncate(limit);
-        }
 
         Ok(result)
     }
@@ -123,7 +119,7 @@ impl RepositoryOps {
         info!("Pushing to remote: {} (branch: {})", remote, branch);
 
         self.oxen
-            .push(&self.repo_path, remote, Some(branch))
+            .push(&self.repo_path, Some(remote), Some(branch))
             .map_err(|e| AppError::Internal(format!("Failed to push: {}", e)))?;
 
         info!("Push completed successfully");
@@ -131,11 +127,11 @@ impl RepositoryOps {
     }
 
     /// Pull from remote repository
-    pub fn pull(&self, remote: &str, branch: &str) -> AppResult<()> {
-        info!("Pulling from remote: {} (branch: {})", remote, branch);
+    pub fn pull(&self, _remote: &str, _branch: &str) -> AppResult<()> {
+        info!("Pulling from remote");
 
         self.oxen
-            .pull(&self.repo_path, remote, Some(branch))
+            .pull(&self.repo_path)
             .map_err(|e| AppError::Internal(format!("Failed to pull: {}", e)))?;
 
         info!("Pull completed successfully");
@@ -169,7 +165,7 @@ impl RepositoryOps {
             .current_branch(&self.repo_path)
             .map_err(|e| AppError::Internal(format!("Failed to get current branch: {}", e)))?;
 
-        Ok(branch.unwrap_or_else(|| "main".to_string()))
+        Ok(branch)
     }
 
     /// List all branches
@@ -187,7 +183,7 @@ impl RepositoryOps {
         info!("Creating branch: {}", branch_name);
 
         self.oxen
-            .create_branch(&self.repo_path, branch_name, None)
+            .create_branch(&self.repo_path, branch_name)
             .map_err(|e| AppError::Internal(format!("Failed to create branch: {}", e)))?;
 
         Ok(())

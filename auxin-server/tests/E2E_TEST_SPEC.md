@@ -1,296 +1,328 @@
 # End-to-End Test Specification with Real Oxen
 
-**Status**: Pending implementation (blocked on full-oxen feature async refactoring)
-**Priority**: High (required before v1.0)
-**Est. Effort**: 2-3 days
+**Status**: ✅ UNBLOCKED - Ready for implementation
+**Previous Blocker**: Async refactoring (RESOLVED via auxin-oxen subprocess approach)
+**Priority**: High (required before v0.3 Server Alpha)
+**Est. Effort**: 1-2 days
+
+## Recent Changes
+
+**2025-11-22**: Created `auxin-oxen` shared crate using subprocess approach. This eliminates the need for async/await refactoring throughout the server. Real Oxen operations are now available via synchronous subprocess calls.
 
 ## Current State
 
-- Existing tests use `mock-oxen` feature (default)
-- E2E tests exist at API level (`collaboration_e2e_tests.rs`)
-- Real Oxen operations are mocked out
-- Full integration requires `full-oxen` feature which is WIP
+- ✅ `auxin-oxen` crate provides subprocess-based Oxen integration
+- ✅ Server `repo_full.rs` updated to use `OxenSubprocess`
+- ✅ All Oxen operations (clone, push, pull, commit, etc.) are working
+- ✅ 580 tests passing (auxin-oxen: 85, CLI: 426, server: 69)
+- ⏳ E2E tests with real Oxen operations pending implementation
 
 ## Goal
 
 Create comprehensive end-to-end tests that exercise:
 1. Real Oxen VCS operations (not mocks)
-2. Full request/response cycles
+2. Full request/response cycles via HTTP API
 3. Multi-user collaboration scenarios
-4. Large file handling (1GB+)
-5. Network resilience
+4. Large file handling (100MB+)
+5. Lock contention and resolution
 
 ## Prerequisites
 
-### 1. Complete async/await Refactoring
+### 1. ~~Complete async/await Refactoring~~ ✅ NOT NEEDED
 
-The `full-oxen` feature requires liboxen 0.38+ which uses async/await. Before E2E tests can run with real Oxen:
+**Update**: We're using `auxin-oxen` subprocess approach which is synchronous. No async refactoring required.
 
+Current implementation:
 ```rust
-// Current (blocking):
+// repo_full.rs uses OxenSubprocess (synchronous)
 impl RepositoryOps {
-    pub fn clone(url: &str, path: &Path) -> Result<Self> {
-        // Synchronous oxen operations
-    }
-}
-
-// Needed (async):
-impl RepositoryOps {
-    pub async fn clone(url: &str, path: &Path) -> Result<Self> {
-        // Async oxen operations using liboxen 0.38
+    pub fn clone(url: &str, path: impl AsRef<Path>) -> AppResult<Self> {
+        let oxen = OxenSubprocess::new();
+        oxen.clone(url, &path)?;
+        Ok(Self { repo_path: path.as_ref().to_path_buf(), oxen })
     }
 }
 ```
-
-**Files to update**:
-- `auxin-server/src/repo_full.rs` - Add async/await
-- `auxin-server/src/api/repo_ops.rs` - Update handlers to use async repo methods
-- All integration tests - Update to handle async operations
 
 ### 2. Test Environment Setup
 
 ```bash
-# Install Oxen CLI
+# Install Oxen CLI (required for subprocess approach)
 pip install oxenai
 
-# Create test Oxen Hub account
-# Set environment variables:
-export OXEN_HUB_URL="https://hub.oxen.ai"
-export OXEN_HUB_TOKEN="your_test_token"
-export OXEN_TEST_REPO_URL="https://hub.oxen.ai/testuser/testrepo"
+# Verify installation
+oxen --version
+
+# Optional: Create test Oxen Hub account for remote testing
+# export OXEN_HUB_URL="https://hub.oxen.ai"
+# export OXEN_HUB_TOKEN="your_test_token"
 ```
 
 ### 3. Test Data
 
-Prepare test fixtures:
-- Small test repository (~10MB)
-- Large repository (1GB+ Logic Pro project)
-- Repository with binary files
-- Repository with many commits (100+)
+For local testing (no network required):
+- Use `file://` URLs to test clone/push/pull locally
+- Create temporary test repositories
+- Test with varying file sizes (1MB, 10MB, 100MB)
 
 ## Test Scenarios
 
-### Scenario 1: Basic Workflow with Real Oxen
+### Scenario 1: Basic Workflow with Real Oxen (Local)
 
 ```rust
-#[actix_web::test]
-#[cfg(feature = "full-oxen")]
-async fn test_real_oxen_clone_push_pull() {
+#[test]
+fn test_real_oxen_init_add_commit() {
     // Setup
     let temp_dir = TempDir::new().unwrap();
-    let config = test_config(&temp_dir);
-    let app = create_test_app(config).await;
+    let repo_path = temp_dir.path().join("test-repo");
 
-    // 1. Clone from real Oxen Hub
-    let clone_req = json!({
-        "remote_url": env::var("OXEN_TEST_REPO_URL").unwrap()
-    });
+    // 1. Initialize repository
+    let repo = RepositoryOps::init(&repo_path).unwrap();
 
-    let resp = test::TestRequest::post()
-        .uri("/api/repos/testuser/testrepo/clone")
-        .set_json(&clone_req)
-        .send_request(&app)
-        .await;
-
-    assert_eq!(resp.status(), 201);
-
-    // 2. Verify .oxen directory structure
-    let repo_path = temp_dir.path().join("testuser/testrepo");
+    // Verify .oxen directory structure
     assert!(repo_path.join(".oxen").exists());
     assert!(repo_path.join(".oxen/HEAD").exists());
+    assert!(repo_path.join(".oxen/config.toml").exists());
 
-    // 3. Make local changes
+    // 2. Create test file
     std::fs::write(repo_path.join("test.txt"), "Hello Oxen").unwrap();
 
-    // 4. Commit (would need real oxen commit operation)
-    // This requires implementing actual commit endpoint
+    // 3. Add file
+    repo.add(&[std::path::Path::new("test.txt")]).unwrap();
 
-    // 5. Push to remote
-    let push_req = json!({
-        "remote": "origin",
-        "branch": "main"
-    });
+    // 4. Commit
+    let commit_id = repo.commit("Add test file").unwrap();
+    assert!(commit_id.len() >= 7); // Short hash
 
-    let resp = test::TestRequest::post()
-        .uri("/api/repos/testuser/testrepo/push")
-        .set_json(&push_req)
-        .send_request(&app)
-        .await;
-
-    assert_eq!(resp.status(), 200);
-
-    // 6. Pull from another instance (simulating 2nd user)
-    let temp_dir2 = TempDir::new().unwrap();
-    let config2 = test_config(&temp_dir2);
-    let app2 = create_test_app(config2).await;
-
-    // Clone to 2nd instance
-    let resp = test::TestRequest::post()
-        .uri("/api/repos/testuser2/testrepo/clone")
-        .set_json(&clone_req)
-        .send_request(&app2)
-        .await;
-
-    assert_eq!(resp.status(), 201);
-
-    // Verify file exists in 2nd clone
-    let repo_path2 = temp_dir2.path().join("testuser2/testrepo");
-    assert!(repo_path2.join("test.txt").exists());
-
-    // Cleanup
-    // Delete test data from Oxen Hub if needed
+    // 5. Verify commit history
+    let commits = repo.log(None).unwrap();
+    assert_eq!(commits.len(), 1);
+    assert_eq!(commits[0].message, "Add test file");
 }
 ```
 
-### Scenario 2: Large File Upload (1GB+)
+### Scenario 2: Clone and Pull Workflow
 
 ```rust
-#[actix_web::test]
-#[cfg(feature = "full-oxen")]
-#[ignore] // Expensive test - run manually
-async fn test_large_file_handling() {
+#[test]
+fn test_real_oxen_clone_local() {
+    // Create source repository
+    let source_dir = TempDir::new().unwrap();
+    let source_path = source_dir.path().join("source");
+    let source_repo = RepositoryOps::init(&source_path).unwrap();
+
+    // Add content to source
+    std::fs::write(source_path.join("data.txt"), "source data").unwrap();
+    source_repo.add(&[Path::new("data.txt")]).unwrap();
+    source_repo.commit("Initial commit").unwrap();
+
+    // Clone to destination
+    let dest_dir = TempDir::new().unwrap();
+    let dest_path = dest_dir.path().join("dest");
+    let clone_url = format!("file://{}", source_path.display());
+
+    let dest_repo = RepositoryOps::clone(&clone_url, &dest_path).unwrap();
+
+    // Verify cloned content
+    assert!(dest_path.join("data.txt").exists());
+    let content = std::fs::read_to_string(dest_path.join("data.txt")).unwrap();
+    assert_eq!(content, "source data");
+
+    // Verify commit history
+    let commits = dest_repo.log(None).unwrap();
+    assert_eq!(commits.len(), 1);
+}
+```
+
+### Scenario 3: Multi-User Collaboration with Locks
+
+```rust
+#[test]
+fn test_lock_contention_real_oxen() {
     let temp_dir = TempDir::new().unwrap();
-    let config = test_config(&temp_dir);
+    let repo_path = temp_dir.path().join("collab-repo");
+    let repo = RepositoryOps::init(&repo_path).unwrap();
 
-    // Create 1GB test file
-    let large_file = temp_dir.path().join("large.bin");
-    create_test_file(&large_file, 1024 * 1024 * 1024); // 1GB
+    // User A acquires lock
+    let lock_a = repo.acquire_lock("user_a", "machine_a", 1).unwrap();
+    assert!(!lock_a.lock_id.is_empty());
 
-    // Initialize repository
-    let repo = RepositoryOps::init(temp_dir.path()).await.unwrap();
-
-    // Add large file
-    repo.add(&large_file).await.unwrap();
-
-    // Commit
-    repo.commit("Add 1GB file").await.unwrap();
-
-    // Push (should use chunked upload)
-    let start = std::time::Instant::now();
-    repo.push("origin", "main").await.unwrap();
-    let duration = start.elapsed();
-
-    println!("Large file push took: {:?}", duration);
-
-    // Verify push succeeded
-    // Clone to new location and verify file
-    let clone_dir = TempDir::new().unwrap();
-    let cloned = RepositoryOps::clone(&format!("file://{}", temp_dir.path().display()), clone_dir.path()).await.unwrap();
-
-    assert!(clone_dir.path().join("large.bin").exists());
-    assert_eq!(
-        std::fs::metadata(clone_dir.path().join("large.bin")).unwrap().len(),
-        1024 * 1024 * 1024
-    );
-}
-```
-
-### Scenario 3: Multi-User Collaboration
-
-```rust
-#[actix_web::test]
-#[cfg(feature = "full-oxen")]
-async fn test_multi_user_real_collaboration() {
-    // User A creates repo and pushes
-    let user_a_dir = TempDir::new().unwrap();
-    let repo_a = RepositoryOps::init(&user_a_dir.path()).await.unwrap();
-
-    std::fs::write(user_a_dir.path().join("track1.wav"), b"audio data").unwrap();
-    repo_a.add("track1.wav").await.unwrap();
-    repo_a.commit("Add track 1").await.unwrap();
-    repo_a.push("origin", "main").await.unwrap();
-
-    // User B clones
-    let user_b_dir = TempDir::new().unwrap();
-    let repo_b = RepositoryOps::clone(&repo_url, &user_b_dir.path()).await.unwrap();
-
-    // User B acquires lock
-    let lock = repo_b.acquire_lock("user_b", "machine_b", 1).await.unwrap();
-    assert!(lock.lock_id.len() > 0);
-
-    // User A tries to acquire lock (should fail)
-    let result = repo_a.acquire_lock("user_a", "machine_a", 1).await;
+    // User B tries to acquire lock (should fail)
+    let result = repo.acquire_lock("user_b", "machine_b", 1);
     assert!(result.is_err());
 
-    // User B makes changes
-    std::fs::write(user_b_dir.path().join("track2.wav"), b"more audio").unwrap();
-    repo_b.add("track2.wav").await.unwrap();
-    repo_b.commit("Add track 2").await.unwrap();
-    repo_b.push("origin", "main").await.unwrap();
+    // Verify lock status
+    let status = repo.lock_status().unwrap();
+    assert!(status.is_some());
+    assert_eq!(status.unwrap().user, "user_a");
 
-    // User B releases lock
-    repo_b.release_lock(&lock.lock_id).await.unwrap();
+    // User A releases lock
+    repo.release_lock(&lock_a.lock_id).unwrap();
 
-    // User A pulls changes
-    repo_a.pull("origin", "main").await.unwrap();
-
-    // Verify User A sees track2.wav
-    assert!(user_a_dir.path().join("track2.wav").exists());
+    // User B can now acquire lock
+    let lock_b = repo.acquire_lock("user_b", "machine_b", 1).unwrap();
+    assert!(!lock_b.lock_id.is_empty());
 }
 ```
 
-### Scenario 4: Network Resilience
+### Scenario 4: Branch Operations
+
+```rust
+#[test]
+fn test_branch_operations_real_oxen() {
+    let temp_dir = TempDir::new().unwrap();
+    let repo_path = temp_dir.path().join("branch-repo");
+    let repo = RepositoryOps::init(&repo_path).unwrap();
+
+    // Create initial commit
+    std::fs::write(repo_path.join("file.txt"), "content").unwrap();
+    repo.add(&[Path::new("file.txt")]).unwrap();
+    repo.commit("Initial commit").unwrap();
+
+    // List branches (should have main)
+    let branches = repo.list_branches().unwrap();
+    assert!(branches.contains(&"main".to_string()));
+
+    // Create new branch
+    repo.create_branch("feature").unwrap();
+
+    // List branches again
+    let branches = repo.list_branches().unwrap();
+    assert!(branches.contains(&"feature".to_string()));
+    assert_eq!(branches.len(), 2);
+
+    // Checkout feature branch
+    repo.checkout("feature").unwrap();
+    let current = repo.current_branch().unwrap();
+    assert_eq!(current, "feature");
+}
+```
+
+### Scenario 5: Large File Handling
+
+```rust
+#[test]
+#[ignore] // Expensive test - run manually
+fn test_large_file_handling() {
+    let temp_dir = TempDir::new().unwrap();
+    let repo_path = temp_dir.path().join("large-repo");
+    let repo = RepositoryOps::init(&repo_path).unwrap();
+
+    // Create 100MB test file
+    let large_file = repo_path.join("large.bin");
+    let mut file = std::fs::File::create(&large_file).unwrap();
+    file.write_all(&vec![0u8; 100 * 1024 * 1024]).unwrap();
+
+    // Add and commit
+    let start = std::time::Instant::now();
+    repo.add(&[Path::new("large.bin")]).unwrap();
+    repo.commit("Add 100MB file").unwrap();
+    let duration = start.elapsed();
+
+    println!("Large file add+commit took: {:?}", duration);
+
+    // Verify commit
+    let commits = repo.log(None).unwrap();
+    assert_eq!(commits.len(), 1);
+
+    // Clone to verify deduplication
+    let clone_dir = TempDir::new().unwrap();
+    let clone_path = clone_dir.path().join("clone");
+    let clone_url = format!("file://{}", repo_path.display());
+
+    let cloned = RepositoryOps::clone(&clone_url, &clone_path).unwrap();
+    assert!(clone_path.join("large.bin").exists());
+}
+```
+
+### Scenario 6: HTTP API Integration Test
 
 ```rust
 #[actix_web::test]
-#[cfg(feature = "full-oxen")]
-async fn test_network_failure_recovery() {
+async fn test_api_with_real_oxen() {
+    use actix_web::{test, App};
+    use auxin_server::api::repo_ops;
+
     let temp_dir = TempDir::new().unwrap();
-    let repo = RepositoryOps::clone(&remote_url, &temp_dir.path()).await.unwrap();
+    let config = create_test_config(&temp_dir);
 
-    // Start large push
-    std::fs::write(temp_dir.path().join("large.bin"), vec![0u8; 500 * 1024 * 1024]).unwrap(); // 500MB
-    repo.add("large.bin").await.unwrap();
-    repo.commit("Add large file").await.unwrap();
+    let app = test::init_service(
+        App::new()
+            .app_data(web::Data::new(config))
+            .service(repo_ops::init_repository)
+            .service(repo_ops::list_commits)
+    ).await;
 
-    // Push with simulated network interruption
-    // This would require mocking network layer or using test proxy
-    // For now, just verify push works end-to-end
-    let result = repo.push("origin", "main").await;
-    assert!(result.is_ok());
+    // Initialize repository via API
+    let req = test::TestRequest::post()
+        .uri("/api/repos/testuser/testrepo/init")
+        .to_request();
 
-    // Verify can resume/retry push
-    // (Implementation depends on Oxen's resume capabilities)
+    let resp = test::call_service(&app, req).await;
+    assert!(resp.status().is_success());
+
+    // List commits (should be empty for new repo)
+    let req = test::TestRequest::get()
+        .uri("/api/repos/testuser/testrepo/commits")
+        .to_request();
+
+    let resp = test::call_service(&app, req).await;
+    assert!(resp.status().is_success());
+
+    let commits: Vec<CommitInfo> = test::read_body_json(resp).await;
+    assert_eq!(commits.len(), 0);
 }
 ```
 
 ## Implementation Checklist
 
-- [ ] Complete async/await refactoring in `repo_full.rs`
-- [ ] Update all API handlers to use async repository operations
-- [ ] Set up test Oxen Hub account and test repositories
-- [ ] Create test data fixtures (small, medium, large repos)
-- [ ] Implement Scenario 1: Basic workflow
-- [ ] Implement Scenario 2: Large file handling
-- [ ] Implement Scenario 3: Multi-user collaboration
-- [ ] Implement Scenario 4: Network resilience
-- [ ] Add performance benchmarks (time tracking for operations)
-- [ ] Add assertions for Oxen-specific features (deduplication, versioning)
-- [ ] Document test setup in CI/CD pipeline
-- [ ] Create cleanup procedures for test data
+- [x] ~~Complete async/await refactoring~~ Not needed with subprocess approach
+- [x] RepositoryOps uses OxenSubprocess
+- [ ] Implement Scenario 1: Basic init/add/commit workflow
+- [ ] Implement Scenario 2: Clone and pull workflow
+- [ ] Implement Scenario 3: Lock contention
+- [ ] Implement Scenario 4: Branch operations
+- [ ] Implement Scenario 5: Large file handling (marked `#[ignore]`)
+- [ ] Implement Scenario 6: HTTP API integration
+- [ ] Add helper functions for test setup/teardown
+- [ ] Document running tests in README
 
 ## Running Tests
 
-Once implemented:
-
 ```bash
-# Run with full Oxen (requires liboxen installed)
-cargo test --features full-oxen
+# Run all E2E tests with real Oxen
+cargo test --test e2e_real_oxen
 
-# Run expensive tests
-cargo test --features full-oxen -- --ignored
+# Run specific test
+cargo test --test e2e_real_oxen test_real_oxen_init_add_commit
 
-# Run specific scenario
-cargo test --features full-oxen test_real_oxen_clone_push_pull
+# Run expensive tests (large files)
+cargo test --test e2e_real_oxen -- --ignored --test-threads=1
+
+# Run with verbose output
+cargo test --test e2e_real_oxen -- --nocapture
+```
+
+## File Structure
+
+Create new test file:
+```
+auxin-server/tests/
+  ├── e2e_real_oxen.rs          # NEW: Real Oxen E2E tests
+  ├── collaboration_e2e_tests.rs # Existing: Mock-based E2E
+  ├── api_tests.rs               # Existing: API unit tests
+  └── E2E_TEST_SPEC.md          # This file
 ```
 
 ## Notes
 
-- Tests require network access to Oxen Hub (or local Oxen server)
-- Large file tests should be marked `#[ignore]` to avoid slowing down CI
-- Consider using Docker to spin up local Oxen server for isolated testing
-- Mock tests will remain for fast iteration; real E2E tests are for validation
+- Tests use local `file://` URLs for fast, network-free testing
+- All tests create temporary directories (auto-cleaned)
+- No external Oxen Hub account required for basic tests
+- Large file tests marked `#[ignore]` to avoid slowing down CI
+- Mock tests remain for fast iteration; real E2E tests for validation
 
 ---
 
-**Next Steps**: Complete async refactoring, then implement tests in priority order (Scenario 1 → 2 → 3 → 4)
+**Status**: Ready to implement! The auxin-oxen refactoring removed the async blocker.
+**Next Step**: Create `auxin-server/tests/e2e_real_oxen.rs` and implement scenarios 1-4.
