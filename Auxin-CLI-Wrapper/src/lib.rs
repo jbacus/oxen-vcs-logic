@@ -24,6 +24,7 @@ pub mod sketchup_metadata;
 pub mod blender_project;
 pub mod blender_metadata;
 pub mod bounce;
+pub mod thumbnail;
 pub mod chunked_upload;
 pub mod network_resilience;
 pub mod offline_queue;
@@ -57,7 +58,8 @@ pub use sketchup_metadata::SketchUpMetadata;
 pub use sketchup_project::SketchUpProject;
 pub use blender_metadata::BlenderMetadata;
 pub use blender_project::BlenderProject;
-pub use bounce::{AudioFormat, BounceComparison, BounceFilter, BounceManager, BounceMetadata};
+pub use bounce::{AudioFormat, BounceComparison, BounceFilter, BounceManager, BounceMetadata, NullTestResult};
+pub use thumbnail::{ThumbnailManager, ThumbnailMetadata, ThumbnailDiff};
 pub use chunked_upload::{
     ChunkedUploadManager, UploadConfig, UploadProgress, UploadResult, UploadSession,
     UploadSessionInfo, UploadStatus,
