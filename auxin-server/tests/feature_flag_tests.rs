@@ -25,8 +25,8 @@ fn test_mock_feature_is_active() {
 #[test]
 fn test_auxin_features_available() {
     // Verify Auxin-specific features are available regardless of feature flag
-    use auxin_server::repo::RepositoryOps;
     use auxin_server::extensions::LogicProMetadata;
+    use auxin_server::repo::RepositoryOps;
     use tempfile::TempDir;
 
     let temp_dir = TempDir::new().unwrap();

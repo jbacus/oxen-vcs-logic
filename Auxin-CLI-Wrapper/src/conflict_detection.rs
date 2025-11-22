@@ -1,6 +1,6 @@
-use anyhow::Result;
 use crate::oxen_subprocess::OxenSubprocess;
 use crate::remote_lock::RemoteLockManager;
+use anyhow::Result;
 use std::path::Path;
 
 /// Represents the result of a conflict check
@@ -66,7 +66,11 @@ impl ConflictDetector {
     }
 
     /// Check for conflicts before pulling
-    pub fn check_before_pull(&self, repo_path: &Path, _branch: &str) -> Result<ConflictCheckResult> {
+    pub fn check_before_pull(
+        &self,
+        repo_path: &Path,
+        _branch: &str,
+    ) -> Result<ConflictCheckResult> {
         // Note: Full divergence checking requires fetch, which needs raw command access
         // For now, we provide basic conflict detection based on lock status
         // TODO: Add public fetch method to OxenSubprocess for full conflict detection
@@ -92,7 +96,11 @@ impl ConflictDetector {
     }
 
     /// Check for conflicts before pushing
-    pub fn check_before_push(&self, repo_path: &Path, _branch: &str) -> Result<ConflictCheckResult> {
+    pub fn check_before_push(
+        &self,
+        repo_path: &Path,
+        _branch: &str,
+    ) -> Result<ConflictCheckResult> {
         // Note: Full divergence checking requires fetch, which needs raw command access
         // For now, we provide basic conflict detection based on lock status
         // TODO: Add public fetch method to OxenSubprocess for full conflict detection
@@ -195,7 +203,10 @@ mod tests {
         assert!(result.has_conflicts);
         assert_eq!(result.local_ahead, 3);
         assert_eq!(result.remote_ahead, 2);
-        assert_eq!(result.recommendation, ConflictRecommendation::ManualMergeRequired);
+        assert_eq!(
+            result.recommendation,
+            ConflictRecommendation::ManualMergeRequired
+        );
     }
 
     #[test]
@@ -217,6 +228,9 @@ mod tests {
     #[test]
     fn test_conflict_recommendation_variants() {
         assert_eq!(ConflictRecommendation::Safe, ConflictRecommendation::Safe);
-        assert_ne!(ConflictRecommendation::Safe, ConflictRecommendation::AcquireLock);
+        assert_ne!(
+            ConflictRecommendation::Safe,
+            ConflictRecommendation::AcquireLock
+        );
     }
 }

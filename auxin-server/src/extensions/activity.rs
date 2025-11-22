@@ -99,10 +99,7 @@ impl ActivityLog {
 
     /// Get activities by user
     pub fn by_user(&self, user: &str) -> Vec<&Activity> {
-        self.activities
-            .iter()
-            .filter(|a| a.user == user)
-            .collect()
+        self.activities.iter().filter(|a| a.user == user).collect()
     }
 }
 

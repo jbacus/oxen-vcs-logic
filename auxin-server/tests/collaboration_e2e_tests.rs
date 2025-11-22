@@ -12,7 +12,6 @@
 /// 6. Activity feed tracking
 /// 7. Lock handoff between users
 /// 8. WebSocket notifications
-
 use actix_web::{test, web, App};
 use serde_json::json;
 use std::thread;
@@ -23,7 +22,7 @@ use auxin_server::{
     api,
     auth::{self, AuthService},
     config::Config,
-    websocket::WsHub
+    websocket::WsHub,
 };
 
 /// Helper to create test config with temp directory
@@ -62,23 +61,60 @@ async fn test_end_to_end_remote_collaboration() {
             .route("/api/auth/me", web::get().to(auth::me))
             // Repository endpoints
             .route("/api/repos", web::get().to(api::list_repositories))
-            .route("/api/repos/{namespace}/{name}", web::get().to(api::get_repository))
-            .route("/api/repos/{namespace}/{name}", web::post().to(api::create_repository))
+            .route(
+                "/api/repos/{namespace}/{name}",
+                web::get().to(api::get_repository),
+            )
+            .route(
+                "/api/repos/{namespace}/{name}",
+                web::post().to(api::create_repository),
+            )
             // Collaborator endpoints
-            .route("/api/repos/{namespace}/{name}/collaborators", web::get().to(api::list_collaborators))
-            .route("/api/repos/{namespace}/{name}/collaborators", web::post().to(api::add_collaborator))
-            .route("/api/repos/{namespace}/{name}/collaborators/{user_id}", web::delete().to(api::remove_collaborator))
+            .route(
+                "/api/repos/{namespace}/{name}/collaborators",
+                web::get().to(api::list_collaborators),
+            )
+            .route(
+                "/api/repos/{namespace}/{name}/collaborators",
+                web::post().to(api::add_collaborator),
+            )
+            .route(
+                "/api/repos/{namespace}/{name}/collaborators/{user_id}",
+                web::delete().to(api::remove_collaborator),
+            )
             // Lock endpoints
-            .route("/api/repos/{namespace}/{name}/locks/acquire", web::post().to(api::acquire_lock))
-            .route("/api/repos/{namespace}/{name}/locks/release", web::post().to(api::release_lock))
-            .route("/api/repos/{namespace}/{name}/locks/heartbeat", web::post().to(api::heartbeat_lock))
-            .route("/api/repos/{namespace}/{name}/locks/status", web::get().to(api::lock_status))
+            .route(
+                "/api/repos/{namespace}/{name}/locks/acquire",
+                web::post().to(api::acquire_lock),
+            )
+            .route(
+                "/api/repos/{namespace}/{name}/locks/release",
+                web::post().to(api::release_lock),
+            )
+            .route(
+                "/api/repos/{namespace}/{name}/locks/heartbeat",
+                web::post().to(api::heartbeat_lock),
+            )
+            .route(
+                "/api/repos/{namespace}/{name}/locks/status",
+                web::get().to(api::lock_status),
+            )
             // Activity endpoint
-            .route("/api/repos/{namespace}/{name}/activity", web::get().to(api::get_activity))
+            .route(
+                "/api/repos/{namespace}/{name}/activity",
+                web::get().to(api::get_activity),
+            )
             // Metadata endpoint
-            .route("/api/repos/{namespace}/{name}/metadata/{commit}", web::post().to(api::store_metadata))
-            .route("/api/repos/{namespace}/{name}/metadata/{commit}", web::get().to(api::get_metadata))
-    ).await;
+            .route(
+                "/api/repos/{namespace}/{name}/metadata/{commit}",
+                web::post().to(api::store_metadata),
+            )
+            .route(
+                "/api/repos/{namespace}/{name}/metadata/{commit}",
+                web::get().to(api::get_metadata),
+            ),
+    )
+    .await;
 
     // ═══════════════════════════════════════════════════════════
     // Step 1: User Registration (Pete in Colorado)
@@ -155,9 +191,18 @@ async fn test_end_to_end_remote_collaboration() {
 
     // Verify .oxen structure exists
     let repo_path = temp_dir.path().join("pete_colorado/summer-album");
-    assert!(repo_path.join(".oxen").exists(), ".oxen directory should exist");
-    assert!(repo_path.join(".oxen/locks").exists(), "locks directory should exist");
-    assert!(repo_path.join(".oxen/metadata").exists(), "metadata directory should exist");
+    assert!(
+        repo_path.join(".oxen").exists(),
+        ".oxen directory should exist"
+    );
+    assert!(
+        repo_path.join(".oxen/locks").exists(),
+        "locks directory should exist"
+    );
+    assert!(
+        repo_path.join(".oxen/metadata").exists(),
+        "metadata directory should exist"
+    );
 
     // ═══════════════════════════════════════════════════════════
     // Step 3.5: Pete adds Louis as a collaborator
@@ -224,7 +269,11 @@ async fn test_end_to_end_remote_collaboration() {
         .to_request();
 
     let resp = test::call_service(&app, req).await;
-    assert_eq!(resp.status(), 409, "Louis should NOT be able to acquire lock (already held)");
+    assert_eq!(
+        resp.status(),
+        409,
+        "Louis should NOT be able to acquire lock (already held)"
+    );
 
     println!("   ✓ Lock acquisition blocked (as expected)");
     println!("   Reason: Pete currently holds the lock\n");
@@ -416,10 +465,14 @@ async fn test_end_to_end_remote_collaboration() {
     println!("     Total events: {}", activities.len());
 
     // We should have at least 4 lock events: 2 acquires + 2 releases
-    assert!(activities.len() >= 4, "Should have at least 4 activity events");
+    assert!(
+        activities.len() >= 4,
+        "Should have at least 4 activity events"
+    );
 
     for (i, activity) in activities.iter().enumerate() {
-        println!("     {}. [{}] {} by {}",
+        println!(
+            "     {}. [{}] {} by {}",
             i + 1,
             activity["activity_type"],
             activity["message"],
@@ -429,12 +482,17 @@ async fn test_end_to_end_remote_collaboration() {
     println!();
 
     // Verify we have lock events from both users
-    let lock_acquired_events: Vec<&serde_json::Value> = activities.iter()
+    let lock_acquired_events: Vec<&serde_json::Value> = activities
+        .iter()
         .filter(|a| a["activity_type"] == "lock_acquired")
         .collect();
 
-    assert!(lock_acquired_events.iter().any(|a| a["user"] == "pete_colorado"));
-    assert!(lock_acquired_events.iter().any(|a| a["user"] == "louis_london"));
+    assert!(lock_acquired_events
+        .iter()
+        .any(|a| a["user"] == "pete_colorado"));
+    assert!(lock_acquired_events
+        .iter()
+        .any(|a| a["user"] == "louis_london"));
 
     // ═══════════════════════════════════════════════════════════
     // Step 14: Verify metadata persistence
@@ -494,7 +552,8 @@ async fn test_concurrent_lock_requests() {
     std::fs::create_dir_all(repo_path.join(".oxen/metadata")).unwrap();
 
     use auxin_server::project::{ProjectMetadata, Visibility};
-    let metadata = ProjectMetadata::new(user.id.clone(), "testuser".to_string(), Visibility::Public);
+    let metadata =
+        ProjectMetadata::new(user.id.clone(), "testuser".to_string(), Visibility::Public);
     metadata.save(&repo_path).unwrap();
 
     let app = test::init_service(
@@ -502,9 +561,16 @@ async fn test_concurrent_lock_requests() {
             .app_data(web::Data::new(config.clone()))
             .app_data(web::Data::new(auth_service.clone()))
             .app_data(web::Data::new(ws_hub.clone()))
-            .route("/api/repos/{namespace}/{name}/locks/acquire", web::post().to(api::acquire_lock))
-            .route("/api/repos/{namespace}/{name}/locks/status", web::get().to(api::lock_status))
-    ).await;
+            .route(
+                "/api/repos/{namespace}/{name}/locks/acquire",
+                web::post().to(api::acquire_lock),
+            )
+            .route(
+                "/api/repos/{namespace}/{name}/locks/status",
+                web::get().to(api::lock_status),
+            ),
+    )
+    .await;
 
     // First lock acquisition
     let lock_request = json!({
@@ -563,7 +629,8 @@ async fn test_lock_expiration() {
     std::fs::create_dir_all(repo_path.join(".oxen/metadata")).unwrap();
 
     use auxin_server::project::{ProjectMetadata, Visibility};
-    let metadata = ProjectMetadata::new(user.id.clone(), "testuser".to_string(), Visibility::Public);
+    let metadata =
+        ProjectMetadata::new(user.id.clone(), "testuser".to_string(), Visibility::Public);
     metadata.save(&repo_path).unwrap();
 
     let app = test::init_service(
@@ -571,9 +638,16 @@ async fn test_lock_expiration() {
             .app_data(web::Data::new(config.clone()))
             .app_data(web::Data::new(auth_service.clone()))
             .app_data(web::Data::new(ws_hub.clone()))
-            .route("/api/repos/{namespace}/{name}/locks/acquire", web::post().to(api::acquire_lock))
-            .route("/api/repos/{namespace}/{name}/locks/status", web::get().to(api::lock_status))
-    ).await;
+            .route(
+                "/api/repos/{namespace}/{name}/locks/acquire",
+                web::post().to(api::acquire_lock),
+            )
+            .route(
+                "/api/repos/{namespace}/{name}/locks/status",
+                web::get().to(api::lock_status),
+            ),
+    )
+    .await;
 
     // Acquire lock with very short timeout (simulates expiration)
     let lock_request = json!({

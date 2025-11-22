@@ -37,7 +37,6 @@
 /// # Ok(())
 /// # }
 /// ```
-
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -52,10 +51,7 @@ const WAL_ENTRY_MAX_AGE_HOURS: i64 = 24;
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum WalOperation {
     /// Commit operation
-    Commit {
-        repo_path: PathBuf,
-        message: String,
-    },
+    Commit { repo_path: PathBuf, message: String },
     /// Push operation
     Push {
         repo_path: PathBuf,
@@ -69,10 +65,7 @@ pub enum WalOperation {
         timeout_hours: u32,
     },
     /// Lock release operation
-    LockRelease {
-        repo_path: PathBuf,
-        lock_id: String,
-    },
+    LockRelease { repo_path: PathBuf, lock_id: String },
     /// File staging operation
     StageFiles {
         repo_path: PathBuf,
@@ -149,11 +142,24 @@ impl WalEntry {
             WalOperation::Commit { repo_path, message } => {
                 format!("Commit '{}' in {}", message, repo_path.display())
             }
-            WalOperation::Push { repo_path, remote, branch } => {
+            WalOperation::Push {
+                repo_path,
+                remote,
+                branch,
+            } => {
                 format!("Push {} to {}/{}", repo_path.display(), remote, branch)
             }
-            WalOperation::LockAcquire { repo_path, user_id, timeout_hours } => {
-                format!("Lock {} by {} for {}h", repo_path.display(), user_id, timeout_hours)
+            WalOperation::LockAcquire {
+                repo_path,
+                user_id,
+                timeout_hours,
+            } => {
+                format!(
+                    "Lock {} by {} for {}h",
+                    repo_path.display(),
+                    user_id,
+                    timeout_hours
+                )
             }
             WalOperation::LockRelease { repo_path, lock_id } => {
                 format!("Release lock {} in {}", lock_id, repo_path.display())
@@ -196,15 +202,14 @@ impl WriteAheadLog {
             return Ok(Vec::new());
         }
 
-        let contents = fs::read_to_string(&self.wal_file)
-            .context("Failed to read WAL file")?;
+        let contents = fs::read_to_string(&self.wal_file).context("Failed to read WAL file")?;
 
         if contents.trim().is_empty() {
             return Ok(Vec::new());
         }
 
-        let entries: Vec<WalEntry> = serde_json::from_str(&contents)
-            .context("Failed to parse WAL entries")?;
+        let entries: Vec<WalEntry> =
+            serde_json::from_str(&contents).context("Failed to parse WAL entries")?;
 
         Ok(entries)
     }
@@ -220,10 +225,8 @@ impl WriteAheadLog {
 
         // Write atomically using temp file
         let temp_file = self.wal_file.with_extension("tmp");
-        fs::write(&temp_file, &json)
-            .context("Failed to write WAL temp file")?;
-        fs::rename(&temp_file, &self.wal_file)
-            .context("Failed to rename WAL file")?;
+        fs::write(&temp_file, &json).context("Failed to write WAL temp file")?;
+        fs::rename(&temp_file, &self.wal_file).context("Failed to rename WAL file")?;
 
         Ok(())
     }
@@ -330,9 +333,7 @@ impl WriteAheadLog {
         let original_count = entries.len();
 
         // Keep incomplete entries and recent completed/failed entries
-        entries.retain(|e| {
-            e.is_incomplete() || !e.is_stale()
-        });
+        entries.retain(|e| e.is_incomplete() || !e.is_stale());
 
         let removed = original_count - entries.len();
         self.save_entries(&entries)?;
@@ -353,11 +354,26 @@ impl WriteAheadLog {
         let entries = self.load_entries()?;
 
         let total = entries.len();
-        let pending = entries.iter().filter(|e| matches!(e.status, WalStatus::Pending)).count();
-        let in_progress = entries.iter().filter(|e| matches!(e.status, WalStatus::InProgress)).count();
-        let completed = entries.iter().filter(|e| matches!(e.status, WalStatus::Completed)).count();
-        let failed = entries.iter().filter(|e| matches!(e.status, WalStatus::Failed(_))).count();
-        let recovered = entries.iter().filter(|e| matches!(e.status, WalStatus::Recovered)).count();
+        let pending = entries
+            .iter()
+            .filter(|e| matches!(e.status, WalStatus::Pending))
+            .count();
+        let in_progress = entries
+            .iter()
+            .filter(|e| matches!(e.status, WalStatus::InProgress))
+            .count();
+        let completed = entries
+            .iter()
+            .filter(|e| matches!(e.status, WalStatus::Completed))
+            .count();
+        let failed = entries
+            .iter()
+            .filter(|e| matches!(e.status, WalStatus::Failed(_)))
+            .count();
+        let recovered = entries
+            .iter()
+            .filter(|e| matches!(e.status, WalStatus::Recovered))
+            .count();
 
         Ok(WalStats {
             total,
@@ -376,7 +392,10 @@ impl WriteAheadLog {
         let stats = self.get_stats()?;
         let incomplete = self.get_incomplete_entries()?;
 
-        println!("\n{}", "┌─ Write-Ahead Log Status ─────────────────────┐".bright_blue());
+        println!(
+            "\n{}",
+            "┌─ Write-Ahead Log Status ─────────────────────┐".bright_blue()
+        );
         println!("│ Total entries: {}", stats.total);
         println!("│ Pending: {}", stats.pending);
         println!("│ In progress: {}", stats.in_progress);
@@ -392,7 +411,10 @@ impl WriteAheadLog {
             }
         }
 
-        println!("{}\n", "└──────────────────────────────────────────────┘".bright_blue());
+        println!(
+            "{}\n",
+            "└──────────────────────────────────────────────┘".bright_blue()
+        );
 
         Ok(())
     }
@@ -461,7 +483,8 @@ impl WalRecoveryManager {
         for entry in incomplete {
             if entry.recovery_attempts >= self.max_recovery_attempts {
                 // Too many attempts, mark as failed
-                self.wal.mark_failed(&entry.id, "Max recovery attempts exceeded")?;
+                self.wal
+                    .mark_failed(&entry.id, "Max recovery attempts exceeded")?;
                 report.skipped += 1;
                 continue;
             }
@@ -490,10 +513,17 @@ impl WalRecoveryManager {
     fn recover_entry(&self, entry: &WalEntry) -> Result<bool> {
         use colored::Colorize;
 
-        println!("{} Attempting to recover: {}", "⚠".yellow(), entry.description());
+        println!(
+            "{} Attempting to recover: {}",
+            "⚠".yellow(),
+            entry.description()
+        );
 
         match &entry.operation {
-            WalOperation::Commit { repo_path, message: _ } => {
+            WalOperation::Commit {
+                repo_path,
+                message: _,
+            } => {
                 // Check if commit was actually created
                 // If repo has uncommitted changes, the commit failed
                 let oxen = crate::oxen_subprocess::OxenSubprocess::new();
@@ -505,19 +535,35 @@ impl WalRecoveryManager {
                     Ok(true)
                 } else {
                     // There are still changes, commit may have failed
-                    println!("  {} Found uncommitted changes, commit may have failed", "!".yellow());
+                    println!(
+                        "  {} Found uncommitted changes, commit may have failed",
+                        "!".yellow()
+                    );
                     Ok(false)
                 }
             }
-            WalOperation::Push { repo_path, remote, branch } => {
+            WalOperation::Push {
+                repo_path,
+                remote,
+                branch,
+            } => {
                 // Check if local is ahead of remote
                 let oxen = crate::oxen_subprocess::OxenSubprocess::new();
                 // For now, just mark as needing manual check
-                println!("  {} Push to {}/{} needs manual verification", "!".yellow(), remote, branch);
+                println!(
+                    "  {} Push to {}/{} needs manual verification",
+                    "!".yellow(),
+                    remote,
+                    branch
+                );
                 let _ = repo_path; // Suppress unused warning
                 Ok(false)
             }
-            WalOperation::LockAcquire { repo_path, user_id: _, timeout_hours: _ } => {
+            WalOperation::LockAcquire {
+                repo_path,
+                user_id: _,
+                timeout_hours: _,
+            } => {
                 // Check if lock was actually acquired
                 let manager = crate::remote_lock::RemoteLockManager::new();
                 if let Some(lock) = manager.get_lock(repo_path)? {
@@ -529,7 +575,10 @@ impl WalRecoveryManager {
                 println!("  {} Lock was not acquired", "✗".red());
                 Ok(false)
             }
-            WalOperation::LockRelease { repo_path, lock_id: _ } => {
+            WalOperation::LockRelease {
+                repo_path,
+                lock_id: _,
+            } => {
                 // Check if lock still exists
                 let manager = crate::remote_lock::RemoteLockManager::new();
                 if manager.get_lock(repo_path)?.is_none() {
@@ -539,7 +588,10 @@ impl WalRecoveryManager {
                 println!("  {} Lock still exists", "!".yellow());
                 Ok(false)
             }
-            WalOperation::StageFiles { repo_path: _, files: _ } => {
+            WalOperation::StageFiles {
+                repo_path: _,
+                files: _,
+            } => {
                 // Staging can be re-run safely
                 println!("  {} Stage operation can be safely re-run", "i".blue());
                 Ok(false)
@@ -579,10 +631,12 @@ mod tests {
     fn test_wal_log_intent() {
         let (wal, _temp) = create_test_wal();
 
-        let entry_id = wal.log_intent(WalOperation::Commit {
-            repo_path: PathBuf::from("/test/repo"),
-            message: "Test commit".to_string(),
-        }).unwrap();
+        let entry_id = wal
+            .log_intent(WalOperation::Commit {
+                repo_path: PathBuf::from("/test/repo"),
+                message: "Test commit".to_string(),
+            })
+            .unwrap();
 
         assert!(!entry_id.is_empty());
 
@@ -594,10 +648,12 @@ mod tests {
     fn test_wal_mark_in_progress() {
         let (wal, _temp) = create_test_wal();
 
-        let entry_id = wal.log_intent(WalOperation::Commit {
-            repo_path: PathBuf::from("/test/repo"),
-            message: "Test".to_string(),
-        }).unwrap();
+        let entry_id = wal
+            .log_intent(WalOperation::Commit {
+                repo_path: PathBuf::from("/test/repo"),
+                message: "Test".to_string(),
+            })
+            .unwrap();
 
         wal.mark_in_progress(&entry_id).unwrap();
 
@@ -609,11 +665,13 @@ mod tests {
     fn test_wal_mark_completed() {
         let (wal, _temp) = create_test_wal();
 
-        let entry_id = wal.log_intent(WalOperation::Push {
-            repo_path: PathBuf::from("/test/repo"),
-            remote: "origin".to_string(),
-            branch: "main".to_string(),
-        }).unwrap();
+        let entry_id = wal
+            .log_intent(WalOperation::Push {
+                repo_path: PathBuf::from("/test/repo"),
+                remote: "origin".to_string(),
+                branch: "main".to_string(),
+            })
+            .unwrap();
 
         wal.mark_completed(&entry_id).unwrap();
 
@@ -625,11 +683,13 @@ mod tests {
     fn test_wal_mark_failed() {
         let (wal, _temp) = create_test_wal();
 
-        let entry_id = wal.log_intent(WalOperation::LockAcquire {
-            repo_path: PathBuf::from("/test/repo"),
-            user_id: "user@host".to_string(),
-            timeout_hours: 4,
-        }).unwrap();
+        let entry_id = wal
+            .log_intent(WalOperation::LockAcquire {
+                repo_path: PathBuf::from("/test/repo"),
+                user_id: "user@host".to_string(),
+                timeout_hours: 4,
+            })
+            .unwrap();
 
         wal.mark_failed(&entry_id, "Network error").unwrap();
 
@@ -642,15 +702,19 @@ mod tests {
         let (wal, _temp) = create_test_wal();
 
         // Create some entries with different statuses
-        let id1 = wal.log_intent(WalOperation::Commit {
-            repo_path: PathBuf::from("/test/repo"),
-            message: "Test 1".to_string(),
-        }).unwrap();
+        let id1 = wal
+            .log_intent(WalOperation::Commit {
+                repo_path: PathBuf::from("/test/repo"),
+                message: "Test 1".to_string(),
+            })
+            .unwrap();
 
-        let id2 = wal.log_intent(WalOperation::Commit {
-            repo_path: PathBuf::from("/test/repo"),
-            message: "Test 2".to_string(),
-        }).unwrap();
+        let id2 = wal
+            .log_intent(WalOperation::Commit {
+                repo_path: PathBuf::from("/test/repo"),
+                message: "Test 2".to_string(),
+            })
+            .unwrap();
 
         wal.mark_completed(&id1).unwrap();
         // id2 stays pending
@@ -669,7 +733,8 @@ mod tests {
         wal.log_intent(WalOperation::Commit {
             repo_path: PathBuf::from("/test/repo"),
             message: "Test".to_string(),
-        }).unwrap();
+        })
+        .unwrap();
 
         assert!(wal.needs_recovery().unwrap());
     }
@@ -678,16 +743,20 @@ mod tests {
     fn test_wal_stats() {
         let (wal, _temp) = create_test_wal();
 
-        let id1 = wal.log_intent(WalOperation::Commit {
-            repo_path: PathBuf::from("/test/repo"),
-            message: "Test 1".to_string(),
-        }).unwrap();
+        let id1 = wal
+            .log_intent(WalOperation::Commit {
+                repo_path: PathBuf::from("/test/repo"),
+                message: "Test 1".to_string(),
+            })
+            .unwrap();
 
-        let id2 = wal.log_intent(WalOperation::Push {
-            repo_path: PathBuf::from("/test/repo"),
-            remote: "origin".to_string(),
-            branch: "main".to_string(),
-        }).unwrap();
+        let id2 = wal
+            .log_intent(WalOperation::Push {
+                repo_path: PathBuf::from("/test/repo"),
+                remote: "origin".to_string(),
+                branch: "main".to_string(),
+            })
+            .unwrap();
 
         wal.mark_completed(&id1).unwrap();
         wal.mark_failed(&id2, "Error").unwrap();
@@ -706,7 +775,8 @@ mod tests {
         wal.log_intent(WalOperation::Commit {
             repo_path: PathBuf::from("/test/repo"),
             message: "Test".to_string(),
-        }).unwrap();
+        })
+        .unwrap();
 
         wal.clear().unwrap();
 
@@ -749,10 +819,12 @@ mod tests {
     fn test_wal_recovery_attempts() {
         let (wal, _temp) = create_test_wal();
 
-        let entry_id = wal.log_intent(WalOperation::Commit {
-            repo_path: PathBuf::from("/test/repo"),
-            message: "Test".to_string(),
-        }).unwrap();
+        let entry_id = wal
+            .log_intent(WalOperation::Commit {
+                repo_path: PathBuf::from("/test/repo"),
+                message: "Test".to_string(),
+            })
+            .unwrap();
 
         let attempts = wal.increment_recovery_attempts(&entry_id).unwrap();
         assert_eq!(attempts, 1);

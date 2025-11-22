@@ -13,8 +13,8 @@ mod common;
 #[cfg(test)]
 mod tests {
     use auxin::{
-        RetryPolicy, CircuitBreaker, NetworkHealthMonitor, NetworkQuality,
-        RetryableError, ErrorKind, OfflineQueue, ChunkedUploadManager, UploadConfig,
+        ChunkedUploadManager, CircuitBreaker, ErrorKind, NetworkHealthMonitor, NetworkQuality,
+        OfflineQueue, RetryPolicy, RetryableError, UploadConfig,
     };
     use std::time::{Duration, Instant};
     use tempfile::TempDir;
@@ -261,11 +261,7 @@ mod tests {
         let mut queue = OfflineQueue::new_with_path(temp_dir.path());
         queue.init().unwrap();
 
-        let result = queue.add_commit(
-            temp_dir.path(),
-            "Test commit message",
-            None,
-        );
+        let result = queue.add_commit(temp_dir.path(), "Test commit message", None);
 
         assert!(result.is_ok());
         assert_eq!(queue.pending_count(), 1);
@@ -278,11 +274,9 @@ mod tests {
         queue.init().unwrap();
 
         for i in 0..5 {
-            queue.add_commit(
-                temp_dir.path(),
-                &format!("Commit {}", i),
-                None,
-            ).unwrap();
+            queue
+                .add_commit(temp_dir.path(), &format!("Commit {}", i), None)
+                .unwrap();
         }
 
         assert_eq!(queue.pending_count(), 5);
@@ -322,7 +316,9 @@ mod tests {
         {
             let mut queue = OfflineQueue::new_with_path(temp_dir.path());
             queue.init().unwrap();
-            queue.add_commit(temp_dir.path(), "Persistent", None).unwrap();
+            queue
+                .add_commit(temp_dir.path(), "Persistent", None)
+                .unwrap();
         }
 
         // Create new queue instance and verify persistence
@@ -339,7 +335,9 @@ mod tests {
         let mut queue = OfflineQueue::new_with_path(temp_dir.path());
         queue.init().unwrap();
 
-        queue.add_commit(temp_dir.path(), "To process", None).unwrap();
+        queue
+            .add_commit(temp_dir.path(), "To process", None)
+            .unwrap();
 
         // Process the item (mark as done)
         let pending = queue.list_pending().unwrap();
@@ -357,7 +355,9 @@ mod tests {
 
         // Add up to limit - note: set_max_size is a stub so this won't actually limit
         for i in 0..3 {
-            assert!(queue.add_commit(temp_dir.path(), &format!("Commit {}", i), None).is_ok());
+            assert!(queue
+                .add_commit(temp_dir.path(), &format!("Commit {}", i), None)
+                .is_ok());
         }
 
         // With stub implementation, this will succeed
@@ -398,11 +398,7 @@ mod tests {
         let mut manager = ChunkedUploadManager::new(config).unwrap();
 
         // Get or create a session
-        let session = manager.get_or_create_session(
-            temp_dir.path(),
-            "origin",
-            "main"
-        );
+        let session = manager.get_or_create_session(temp_dir.path(), "origin", "main");
         assert!(session.is_ok());
     }
 
@@ -452,7 +448,9 @@ mod tests {
         let mut manager = ChunkedUploadManager::new(config).unwrap();
 
         // Create a session first
-        manager.get_or_create_session(temp_dir.path(), "origin", "main").unwrap();
+        manager
+            .get_or_create_session(temp_dir.path(), "origin", "main")
+            .unwrap();
 
         // Abort should work
         let result = manager.abort(temp_dir.path());
@@ -510,7 +508,9 @@ mod tests {
         queue.init().unwrap();
 
         // Add items to queue
-        queue.add_commit(temp_dir.path(), "Offline commit", None).unwrap();
+        queue
+            .add_commit(temp_dir.path(), "Offline commit", None)
+            .unwrap();
 
         // Check network before syncing
         let quality = monitor.get_quality();

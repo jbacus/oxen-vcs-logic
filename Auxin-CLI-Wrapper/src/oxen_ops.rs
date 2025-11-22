@@ -63,7 +63,10 @@ impl OxenRepository {
             info!("  Workspace: {}", workspace.display());
             info!("  Logic project: {}", path.display());
             info!("Repository will be initialized at workspace level to capture external assets");
-            vlog!("Using workspace folder as repository root: {}", workspace.display());
+            vlog!(
+                "Using workspace folder as repository root: {}",
+                workspace.display()
+            );
             workspace
         } else {
             vlog!("No workspace detected, using .logicx as repository root");
@@ -71,7 +74,10 @@ impl OxenRepository {
         };
 
         // Initialize Oxen repository using subprocess
-        vlog!("Step 2: Initializing Oxen repository at: {}", repo_path.display());
+        vlog!(
+            "Step 2: Initializing Oxen repository at: {}",
+            repo_path.display()
+        );
         let oxen = OxenSubprocess::new();
 
         if !oxen.is_available() {
@@ -118,17 +124,23 @@ impl OxenRepository {
         vlog!("Staging .oxenignore file...");
 
         let ignore_file = Path::new(".oxenignore");
-        repo_instance.oxen.add(&repo_path, &[ignore_file])
+        repo_instance
+            .oxen
+            .add(&repo_path, &[ignore_file])
             .context("Failed to stage .oxenignore")?;
 
         // Stage all project files for initial commit
         vlog!("Staging all project files...");
-        repo_instance.oxen.add_all(&repo_path)
+        repo_instance
+            .oxen
+            .add_all(&repo_path)
             .context("Failed to stage project files")?;
 
         vlog!("Creating initial commit...");
         let initial_commit_msg = "Initial commit\n\nInitialized Oxen repository for Logic Pro project with .oxenignore template.";
-        repo_instance.oxen.commit(&repo_path, initial_commit_msg)
+        repo_instance
+            .oxen
+            .commit(&repo_path, initial_commit_msg)
             .context("Failed to create initial commit")?;
 
         info!("Created initial commit");
@@ -137,7 +149,8 @@ impl OxenRepository {
         vlog!("Step 5: Initializing draft branch workflow...");
         info!("Initializing draft branch workflow...");
 
-        let draft_manager = DraftManager::new(&repo_path).context("Failed to create draft manager")?;
+        let draft_manager =
+            DraftManager::new(&repo_path).context("Failed to create draft manager")?;
 
         draft_manager
             .initialize()
@@ -227,7 +240,11 @@ impl OxenRepository {
         oxen.clone(remote_url, destination)
             .context("Failed to clone Oxen repository")?;
 
-        info!("Cloned repository from {} to {}", remote_url, destination.display());
+        info!(
+            "Cloned repository from {} to {}",
+            remote_url,
+            destination.display()
+        );
         vlog!("=== Clone Complete ===");
 
         Ok(Self {
@@ -371,9 +388,11 @@ impl OxenRepository {
     pub async fn has_changes(&self) -> Result<bool> {
         let status = self.status().await?;
 
-        Ok(!status.staged.is_empty()
-            || !status.untracked.is_empty()
-            || !status.modified.is_empty())
+        Ok(
+            !status.staged.is_empty()
+                || !status.untracked.is_empty()
+                || !status.modified.is_empty(),
+        )
     }
 
     /// Get the draft manager for this repository

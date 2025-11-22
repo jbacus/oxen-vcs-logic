@@ -73,21 +73,13 @@ pub enum QueuedOperation {
     },
 
     /// Push commits to remote
-    PushCommits {
-        repo_path: String,
-        branch: String,
-    },
+    PushCommits { repo_path: String, branch: String },
 
     /// Pull commits from remote
-    PullCommits {
-        repo_path: String,
-        branch: String,
-    },
+    PullCommits { repo_path: String, branch: String },
 
     /// Sync comments
-    SyncComments {
-        repo_path: String,
-    },
+    SyncComments { repo_path: String },
 }
 
 impl QueuedOperation {
@@ -103,10 +95,16 @@ impl QueuedOperation {
             QueuedOperation::RenewLock { project_path, .. } => {
                 format!("Renew lock for {}", project_path)
             }
-            QueuedOperation::PushCommits { repo_path: _, branch } => {
+            QueuedOperation::PushCommits {
+                repo_path: _,
+                branch,
+            } => {
                 format!("Push {} to remote", branch)
             }
-            QueuedOperation::PullCommits { repo_path: _, branch } => {
+            QueuedOperation::PullCommits {
+                repo_path: _,
+                branch,
+            } => {
                 format!("Pull {} from remote", branch)
             }
             QueuedOperation::SyncComments { repo_path } => {
@@ -198,8 +196,7 @@ pub struct OfflineQueue {
 impl OfflineQueue {
     /// Create a new offline queue with default directory
     pub fn new() -> Result<Self> {
-        let home = dirs::home_dir()
-            .ok_or_else(|| anyhow!("Could not determine home directory"))?;
+        let home = dirs::home_dir().ok_or_else(|| anyhow!("Could not determine home directory"))?;
         let queue_dir = home.join(DEFAULT_QUEUE_DIR);
 
         Self::with_dir(queue_dir)
@@ -209,8 +206,7 @@ impl OfflineQueue {
     pub fn with_dir(queue_dir: PathBuf) -> Result<Self> {
         // Create directory if it doesn't exist
         if !queue_dir.exists() {
-            fs::create_dir_all(&queue_dir)
-                .context("Failed to create queue directory")?;
+            fs::create_dir_all(&queue_dir).context("Failed to create queue directory")?;
         }
 
         let mut queue = Self {
@@ -241,11 +237,18 @@ impl OfflineQueue {
     }
 
     /// Enqueue an operation with priority
-    pub fn enqueue_with_priority(&mut self, operation: QueuedOperation, priority: i32) -> Result<String> {
+    pub fn enqueue_with_priority(
+        &mut self,
+        operation: QueuedOperation,
+        priority: i32,
+    ) -> Result<String> {
         let entry = QueueEntry::with_priority(operation, priority);
         let id = entry.id.clone();
 
-        crate::info!("Queuing high-priority operation: {}", entry.operation.description());
+        crate::info!(
+            "Queuing high-priority operation: {}",
+            entry.operation.description()
+        );
 
         self.save_entry(&entry)?;
         self.entries.push(entry);
@@ -255,16 +258,12 @@ impl OfflineQueue {
 
     /// Get all pending (non-completed) entries
     pub fn pending(&self) -> Vec<&QueueEntry> {
-        self.entries.iter()
-            .filter(|e| !e.completed)
-            .collect()
+        self.entries.iter().filter(|e| !e.completed).collect()
     }
 
     /// Get all completed entries
     pub fn completed(&self) -> Vec<&QueueEntry> {
-        self.entries.iter()
-            .filter(|e| e.completed)
-            .collect()
+        self.entries.iter().filter(|e| e.completed).collect()
     }
 
     /// Get entry by ID
@@ -280,8 +279,7 @@ impl OfflineQueue {
         // Remove from disk
         let entry_file = self.entry_file_path(id);
         if entry_file.exists() {
-            fs::remove_file(&entry_file)
-                .context("Failed to remove queue entry file")?;
+            fs::remove_file(&entry_file).context("Failed to remove queue entry file")?;
         }
 
         Ok(())
@@ -289,10 +287,7 @@ impl OfflineQueue {
 
     /// Clear all completed entries
     pub fn clear_completed(&mut self) -> Result<()> {
-        let completed_ids: Vec<String> = self.completed()
-            .iter()
-            .map(|e| e.id.clone())
-            .collect();
+        let completed_ids: Vec<String> = self.completed().iter().map(|e| e.id.clone()).collect();
 
         for id in completed_ids {
             self.remove(&id)?;
@@ -317,11 +312,7 @@ impl OfflineQueue {
         }
 
         let mut report = SyncReport::new();
-        let pending: Vec<QueueEntry> = self.pending()
-            .iter()
-            .cloned()
-            .cloned()
-            .collect();
+        let pending: Vec<QueueEntry> = self.pending().iter().cloned().cloned().collect();
 
         // Sort by priority (highest first)
         let mut sorted = pending;
@@ -352,12 +343,18 @@ impl OfflineQueue {
                 }
                 Err(e) => {
                     let error_msg = e.to_string();
-                    crate::error!("✗ Failed: {} - {}", entry.operation.description(), error_msg);
+                    crate::error!(
+                        "✗ Failed: {} - {}",
+                        entry.operation.description(),
+                        error_msg
+                    );
                     report.failed.push((entry.id.clone(), error_msg.clone()));
 
                     // Mark as failed and clone for saving
                     let entry_to_save = {
-                        if let Some(queue_entry) = self.entries.iter_mut().find(|e| e.id == entry.id) {
+                        if let Some(queue_entry) =
+                            self.entries.iter_mut().find(|e| e.id == entry.id)
+                        {
                             queue_entry.mark_failed(error_msg);
                             Some(queue_entry.clone())
                         } else {
@@ -373,81 +370,104 @@ impl OfflineQueue {
             }
         }
 
-        crate::info!("Sync complete: {} succeeded, {} failed",
-            report.succeeded.len(), report.failed.len());
+        crate::info!(
+            "Sync complete: {} succeeded, {} failed",
+            report.succeeded.len(),
+            report.failed.len()
+        );
 
         Ok(report)
     }
 
     /// Execute a single queue entry
     fn execute_entry(&self, entry: &QueueEntry) -> Result<()> {
-        crate::vlog!("Executing queued operation: {}", entry.operation.description());
+        crate::vlog!(
+            "Executing queued operation: {}",
+            entry.operation.description()
+        );
 
         match &entry.operation {
-            QueuedOperation::AcquireLock { project_path, user_id, timeout_hours } => {
+            QueuedOperation::AcquireLock {
+                project_path,
+                user_id,
+                timeout_hours,
+            } => {
                 let lock_manager = RemoteLockManager::new();
                 let project_path_buf = PathBuf::from(project_path);
 
-                lock_manager.acquire_lock(&project_path_buf, user_id, *timeout_hours)
-                    .with_context(|| format!(
-                        "Failed to acquire lock for {} (user: {}, timeout: {}h)",
-                        project_path, user_id, timeout_hours
-                    ))?;
+                lock_manager
+                    .acquire_lock(&project_path_buf, user_id, *timeout_hours)
+                    .with_context(|| {
+                        format!(
+                            "Failed to acquire lock for {} (user: {}, timeout: {}h)",
+                            project_path, user_id, timeout_hours
+                        )
+                    })?;
 
                 crate::vlog!("Lock acquired for {}", project_path);
                 Ok(())
             }
 
-            QueuedOperation::ReleaseLock { project_path, lock_id } => {
+            QueuedOperation::ReleaseLock {
+                project_path,
+                lock_id,
+            } => {
                 let lock_manager = RemoteLockManager::new();
                 let project_path_buf = PathBuf::from(project_path);
 
-                lock_manager.release_lock(&project_path_buf, lock_id)
-                    .with_context(|| format!(
-                        "Failed to release lock {} for {}",
-                        lock_id, project_path
-                    ))?;
+                lock_manager
+                    .release_lock(&project_path_buf, lock_id)
+                    .with_context(|| {
+                        format!("Failed to release lock {} for {}", lock_id, project_path)
+                    })?;
 
                 crate::vlog!("Lock released for {}", project_path);
                 Ok(())
             }
 
-            QueuedOperation::RenewLock { project_path, lock_id, additional_hours } => {
+            QueuedOperation::RenewLock {
+                project_path,
+                lock_id,
+                additional_hours,
+            } => {
                 let lock_manager = RemoteLockManager::new();
                 let project_path_buf = PathBuf::from(project_path);
 
-                lock_manager.renew_lock(&project_path_buf, lock_id, *additional_hours)
-                    .with_context(|| format!(
-                        "Failed to renew lock {} for {} (+{}h)",
-                        lock_id, project_path, additional_hours
-                    ))?;
+                lock_manager
+                    .renew_lock(&project_path_buf, lock_id, *additional_hours)
+                    .with_context(|| {
+                        format!(
+                            "Failed to renew lock {} for {} (+{}h)",
+                            lock_id, project_path, additional_hours
+                        )
+                    })?;
 
                 crate::vlog!("Lock renewed for {} (+{}h)", project_path, additional_hours);
                 Ok(())
             }
 
-            QueuedOperation::PushCommits { repo_path: _, branch } => {
+            QueuedOperation::PushCommits {
+                repo_path: _,
+                branch,
+            } => {
                 let oxen = OxenSubprocess::new();
-                let cwd = std::env::current_dir()
-                    .context("Failed to get current directory")?;
+                let cwd = std::env::current_dir().context("Failed to get current directory")?;
 
                 oxen.push(&cwd, None, Some(branch))
-                    .with_context(|| format!(
-                        "Failed to push commits for branch {}",
-                        branch
-                    ))?;
+                    .with_context(|| format!("Failed to push commits for branch {}", branch))?;
 
                 crate::vlog!("Pushed commits for branch {}", branch);
                 Ok(())
             }
 
-            QueuedOperation::PullCommits { repo_path: _, branch: _ } => {
+            QueuedOperation::PullCommits {
+                repo_path: _,
+                branch: _,
+            } => {
                 let oxen = OxenSubprocess::new();
-                let cwd = std::env::current_dir()
-                    .context("Failed to get current directory")?;
+                let cwd = std::env::current_dir().context("Failed to get current directory")?;
 
-                oxen.pull(&cwd)
-                    .with_context(|| "Failed to pull commits")?;
+                oxen.pull(&cwd).with_context(|| "Failed to pull commits")?;
 
                 crate::vlog!("Pulled commits from remote");
                 Ok(())
@@ -469,11 +489,10 @@ impl OfflineQueue {
     /// Save an entry to disk
     fn save_entry(&self, entry: &QueueEntry) -> Result<()> {
         let file_path = self.entry_file_path(&entry.id);
-        let json = serde_json::to_string_pretty(entry)
-            .context("Failed to serialize queue entry")?;
+        let json =
+            serde_json::to_string_pretty(entry).context("Failed to serialize queue entry")?;
 
-        fs::write(&file_path, json)
-            .context("Failed to write queue entry to disk")?;
+        fs::write(&file_path, json).context("Failed to write queue entry to disk")?;
 
         Ok(())
     }
@@ -484,8 +503,7 @@ impl OfflineQueue {
             return Ok(());
         }
 
-        let entries = fs::read_dir(&self.queue_dir)
-            .context("Failed to read queue directory")?;
+        let entries = fs::read_dir(&self.queue_dir).context("Failed to read queue directory")?;
 
         for entry in entries {
             let entry = entry.context("Failed to read directory entry")?;
@@ -513,11 +531,10 @@ impl OfflineQueue {
 
     /// Load a single entry from disk
     fn load_entry(&self, path: &Path) -> Result<QueueEntry> {
-        let json = fs::read_to_string(path)
-            .context("Failed to read queue entry file")?;
+        let json = fs::read_to_string(path).context("Failed to read queue entry file")?;
 
-        let entry: QueueEntry = serde_json::from_str(&json)
-            .context("Failed to deserialize queue entry")?;
+        let entry: QueueEntry =
+            serde_json::from_str(&json).context("Failed to deserialize queue entry")?;
 
         Ok(entry)
     }
@@ -526,7 +543,9 @@ impl OfflineQueue {
     pub fn stats(&self) -> QueueStats {
         let pending_count = self.pending().len();
         let completed_count = self.completed().len();
-        let failed_count = self.entries.iter()
+        let failed_count = self
+            .entries
+            .iter()
             .filter(|e| e.last_error.is_some() && !e.completed)
             .count();
 
@@ -554,14 +573,18 @@ impl OfflineQueue {
     /// Initialize the queue (creates directory if needed)
     pub fn init(&mut self) -> Result<()> {
         if !self.queue_dir.exists() {
-            fs::create_dir_all(&self.queue_dir)
-                .context("Failed to create queue directory")?;
+            fs::create_dir_all(&self.queue_dir).context("Failed to create queue directory")?;
         }
         self.load_all()
     }
 
     /// Add a commit operation to the queue
-    pub fn add_commit(&mut self, repo_path: &Path, message: &str, branch: Option<&str>) -> Result<String> {
+    pub fn add_commit(
+        &mut self,
+        repo_path: &Path,
+        message: &str,
+        branch: Option<&str>,
+    ) -> Result<String> {
         let op = QueuedOperation::PushCommits {
             repo_path: repo_path.to_string_lossy().to_string(),
             branch: branch.unwrap_or("main").to_string(),
@@ -587,7 +610,9 @@ impl OfflineQueue {
 
     /// List all pending entries
     pub fn list_pending(&self) -> Result<Vec<QueueEntry>> {
-        Ok(self.entries.iter()
+        Ok(self
+            .entries
+            .iter()
             .filter(|e| !e.completed)
             .cloned()
             .collect())
@@ -745,23 +770,27 @@ mod tests {
         let mut queue = OfflineQueue::with_dir(temp_dir.path().to_path_buf()).unwrap();
 
         // Add low priority
-        queue.enqueue_with_priority(
-            QueuedOperation::PullCommits {
-                repo_path: "test".to_string(),
-                branch: "main".to_string(),
-            },
-            1,
-        ).unwrap();
+        queue
+            .enqueue_with_priority(
+                QueuedOperation::PullCommits {
+                    repo_path: "test".to_string(),
+                    branch: "main".to_string(),
+                },
+                1,
+            )
+            .unwrap();
 
         // Add high priority
-        queue.enqueue_with_priority(
-            QueuedOperation::AcquireLock {
-                project_path: "test.logicx".to_string(),
-                user_id: "user".to_string(),
-                timeout_hours: 4,
-            },
-            10,
-        ).unwrap();
+        queue
+            .enqueue_with_priority(
+                QueuedOperation::AcquireLock {
+                    project_path: "test.logicx".to_string(),
+                    user_id: "user".to_string(),
+                    timeout_hours: 4,
+                },
+                10,
+            )
+            .unwrap();
 
         let pending = queue.pending();
         assert_eq!(pending.len(), 2);
@@ -796,15 +825,19 @@ mod tests {
         let mut queue = OfflineQueue::with_dir(temp_dir.path().to_path_buf()).unwrap();
 
         // Add some entries
-        queue.enqueue(QueuedOperation::PushCommits {
-            repo_path: "test".to_string(),
-            branch: "main".to_string(),
-        }).unwrap();
+        queue
+            .enqueue(QueuedOperation::PushCommits {
+                repo_path: "test".to_string(),
+                branch: "main".to_string(),
+            })
+            .unwrap();
 
-        queue.enqueue(QueuedOperation::PullCommits {
-            repo_path: "test".to_string(),
-            branch: "main".to_string(),
-        }).unwrap();
+        queue
+            .enqueue(QueuedOperation::PullCommits {
+                repo_path: "test".to_string(),
+                branch: "main".to_string(),
+            })
+            .unwrap();
 
         // Mark one as completed
         queue.entries[0].mark_completed();
@@ -826,15 +859,19 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let mut queue = OfflineQueue::with_dir(temp_dir.path().to_path_buf()).unwrap();
 
-        queue.enqueue(QueuedOperation::PushCommits {
-            repo_path: "test".to_string(),
-            branch: "main".to_string(),
-        }).unwrap();
+        queue
+            .enqueue(QueuedOperation::PushCommits {
+                repo_path: "test".to_string(),
+                branch: "main".to_string(),
+            })
+            .unwrap();
 
-        queue.enqueue(QueuedOperation::PullCommits {
-            repo_path: "test".to_string(),
-            branch: "main".to_string(),
-        }).unwrap();
+        queue
+            .enqueue(QueuedOperation::PullCommits {
+                repo_path: "test".to_string(),
+                branch: "main".to_string(),
+            })
+            .unwrap();
 
         queue.entries[0].mark_completed();
         queue.entries[1].mark_failed("Test error".to_string());

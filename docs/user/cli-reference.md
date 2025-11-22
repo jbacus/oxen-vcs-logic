@@ -741,6 +741,109 @@ auxin compare abc123f def456g --format json
 
 ---
 
+### 🎨 Scenario 19b: Visual Comparison with Thumbnails
+
+**Problem:** You want to see how the arrangement changed visually between two mixes.
+
+**Solution:** Use thumbnail comparison to detect visual changes:
+
+```bash
+# Compare screenshots between commits
+auxin compare abc123f def456g
+```
+
+**What you'll see:**
+```
+┌─ Comparing abc123f → def456g ─────────────┐
+
+Metadata:
+  BPM: 120 → 128  (+8)
+  Key: A Minor → C Major  (changed)
+
+Visual Changes:
+  Difference: 12.1%
+  Dimensions: 1920x1080 → 1920x1080
+  Size change: +1024 bytes
+
+  💡 Visual changes detected - arrangement may have been modified
+```
+
+**How it works:**
+- Extracts Logic Pro's WindowImage.jpg screenshot
+- Compares pixel-level differences using ImageMagick
+- Falls back to size comparison if ImageMagick unavailable
+
+**Why:** Instantly see if tracks were added, removed, or rearranged!
+
+---
+
+### 🎵 Scenario 19c: Audio Comparison with Null Test
+
+**Problem:** You want to objectively compare two mixes to see exactly what changed sonically.
+
+**Solution:** Use the industry-standard null test:
+
+```bash
+# Export bounces with your commits
+auxin commit -m "Mix A - bright" --bounce mix-a.wav
+
+# ... make changes ...
+
+auxin commit -m "Mix B - warm" --bounce mix-b.wav
+
+# Compare with null test
+auxin bounce compare abc123f def456g --null-test
+```
+
+**What you'll see:**
+```
+Bounce A: mix-a.wav (commit abc123f)
+Bounce B: mix-b.wav (commit def456g)
+
+Duration:
+  A: 3:45.00
+  B: 3:45.00
+  Diff: 0.00s
+
+File Size:
+  A: 45.2 MB
+  B: 46.1 MB
+  Diff: +0.9 MB
+
+Null Test (Phase Cancellation):
+  Cancellation: 78.5%
+  Difference Level: -18.23 dB
+  Analysis: Similar with minor differences
+
+  💡 Interpretation: EQ changes clearly audible,
+     but arrangement and dynamics unchanged
+```
+
+**What is a Null Test?**
+1. Phase-inverts one audio file
+2. Mixes it with the other file
+3. Measures what remains (the difference)
+
+**Results:**
+- **100% cancellation** = Files are identical
+- **<100% cancellation** = Shows exactly what changed
+
+**Interpretation Scale:**
+- 99.9%+ = Identical or imperceptibly different
+- 95-99% = Nearly identical - very subtle differences
+- 80-95% = Similar with minor differences (typical EQ/compression)
+- 50-80% = Moderately different
+- 20-50% = Significantly different
+- <20% = Completely different mixes
+
+**Why:** Professional mix engineers use this to objectively measure differences!
+
+**Requirements:**
+- FFmpeg installed (brew install ffmpeg) for accurate null test
+- Falls back to size comparison if FFmpeg unavailable
+
+---
+
 ### 🔎 Scenario 20: Find All High-Tempo Dance Tracks
 
 **Problem:** You have 100+ commits and need to find all tracks between 128-140 BPM in E Minor.
@@ -950,7 +1053,8 @@ q:Quit  i:Commit  l:Log  d:Diff  s:Search  k:Hooks  ?:Help
 │  auxin restore <id>        Go back to version     │
 │                                                          │
 │  Advanced (Week 3):                                      │
-│  auxin compare <a> <b>     Semantic diff          │
+│  auxin compare <a> <b>     Metadata & visual diff │
+│  auxin bounce compare      Audio null test        │
 │  auxin search "bpm:120"    Smart search           │
 │  auxin hooks install <h>   Workflow automation    │
 │  auxin console             Interactive TUI        │

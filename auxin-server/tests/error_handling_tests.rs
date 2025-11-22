@@ -42,8 +42,8 @@ fn test_internal_error() {
 
 #[test]
 fn test_error_status_codes() {
-    use actix_web::ResponseError;
     use actix_web::http::StatusCode;
+    use actix_web::ResponseError;
 
     assert_eq!(
         AppError::NotFound("test".to_string()).status_code(),
@@ -79,5 +79,8 @@ fn test_error_response_format() {
     let response = error.error_response();
 
     // Verify response has correct status
-    assert_eq!(response.status(), actix_web::http::StatusCode::NOT_IMPLEMENTED);
+    assert_eq!(
+        response.status(),
+        actix_web::http::StatusCode::NOT_IMPLEMENTED
+    );
 }

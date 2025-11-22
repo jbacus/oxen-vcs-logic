@@ -278,12 +278,7 @@ mod tests {
         let hub = WsHub::new();
 
         // Should not error even if no subscribers
-        let result = hub
-            .broadcast(
-                "nonexistent/repo",
-                WsMessage::Ping,
-            )
-            .await;
+        let result = hub.broadcast("nonexistent/repo", WsMessage::Ping).await;
 
         assert!(result.is_ok());
     }

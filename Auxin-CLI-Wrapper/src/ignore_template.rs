@@ -251,7 +251,8 @@ pub fn generate_sketchup_oxenignore() -> String {
     content.push_str("# ===================================\n");
     content.push_str("# Backup and Temporary Files\n");
     content.push_str("# ===================================\n");
-    content.push_str("# SketchUp automatically creates backup files that should not be versioned\n\n");
+    content
+        .push_str("# SketchUp automatically creates backup files that should not be versioned\n\n");
     content.push_str("*.skb\n");
     content.push_str("*~.skp\n");
     content.push_str("*.tmp\n");
@@ -754,7 +755,10 @@ mod tests {
         let first = generate_sketchup_oxenignore();
         let second = generate_sketchup_oxenignore();
 
-        assert_eq!(first, second, "generate_sketchup_oxenignore should be deterministic");
+        assert_eq!(
+            first, second,
+            "generate_sketchup_oxenignore should be deterministic"
+        );
     }
 
     #[test]
@@ -868,7 +872,10 @@ mod tests {
         let first = generate_blender_oxenignore();
         let second = generate_blender_oxenignore();
 
-        assert_eq!(first, second, "generate_blender_oxenignore should be deterministic");
+        assert_eq!(
+            first, second,
+            "generate_blender_oxenignore should be deterministic"
+        );
     }
 
     #[test]

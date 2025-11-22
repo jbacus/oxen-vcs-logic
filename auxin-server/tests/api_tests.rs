@@ -4,7 +4,12 @@ use std::fs;
 use tempfile::TempDir;
 
 // Import server modules
-use auxin_server::{api, auth::{self, AuthService}, config::Config, websocket::WsHub};
+use auxin_server::{
+    api,
+    auth::{self, AuthService},
+    config::Config,
+    websocket::WsHub,
+};
 
 fn test_config(temp_dir: &TempDir) -> Config {
     Config {
@@ -246,23 +251,31 @@ async fn test_invalid_repository_name() {
 
     // Test with path traversal in namespace
     let req = test::TestRequest::post()
-        .uri("/api/repos/..%2F..%2Fetc/passwd")  // URL-encoded ../../etc
+        .uri("/api/repos/..%2F..%2Fetc/passwd") // URL-encoded ../../etc
         .insert_header(("Authorization", format!("Bearer {}", token)))
         .set_json(&payload)
         .to_request();
 
     let resp = test::call_service(&app, req).await;
-    assert_eq!(resp.status(), 400, "Should reject path traversal in namespace");
+    assert_eq!(
+        resp.status(),
+        400,
+        "Should reject path traversal in namespace"
+    );
 
     // Test with path traversal in repo name
     let req2 = test::TestRequest::post()
-        .uri("/api/repos/testuser/..%2F..%2Fetc")  // URL-encoded ../../etc
+        .uri("/api/repos/testuser/..%2F..%2Fetc") // URL-encoded ../../etc
         .insert_header(("Authorization", format!("Bearer {}", token)))
         .set_json(&payload)
         .to_request();
 
     let resp2 = test::call_service(&app, req2).await;
-    assert_eq!(resp2.status(), 400, "Should reject path traversal in repo name");
+    assert_eq!(
+        resp2.status(),
+        400,
+        "Should reject path traversal in repo name"
+    );
 }
 
 // Auth endpoint tests
@@ -420,9 +433,7 @@ async fn test_auth_me_no_token() {
     )
     .await;
 
-    let req = test::TestRequest::get()
-        .uri("/api/auth/me")
-        .to_request();
+    let req = test::TestRequest::get().uri("/api/auth/me").to_request();
 
     let resp = test::call_service(&app, req).await;
     assert_eq!(resp.status(), 401);
@@ -449,7 +460,8 @@ async fn test_get_activity_empty() {
     fs::create_dir_all(repo_path.join(".oxen")).unwrap();
 
     use auxin_server::project::{ProjectMetadata, Visibility};
-    let metadata = ProjectMetadata::new(user.id.clone(), "testuser".to_string(), Visibility::Public);
+    let metadata =
+        ProjectMetadata::new(user.id.clone(), "testuser".to_string(), Visibility::Public);
     metadata.save(&repo_path).unwrap();
 
     let app = test::init_service(
@@ -496,7 +508,8 @@ async fn test_lock_creates_activity() {
     fs::create_dir_all(repo_path.join(".oxen/metadata")).unwrap();
 
     use auxin_server::project::{ProjectMetadata, Visibility};
-    let metadata = ProjectMetadata::new(user.id.clone(), "testuser".to_string(), Visibility::Public);
+    let metadata =
+        ProjectMetadata::new(user.id.clone(), "testuser".to_string(), Visibility::Public);
     metadata.save(&repo_path).unwrap();
 
     let app = test::init_service(

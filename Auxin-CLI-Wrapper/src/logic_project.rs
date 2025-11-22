@@ -208,7 +208,10 @@ impl LogicProject {
         let logicx_path = logicx_path.as_ref();
 
         vlog!("=== Logic Pro Workspace Detection ===");
-        vlog!("Checking if .logicx is part of a workspace: {}", logicx_path.display());
+        vlog!(
+            "Checking if .logicx is part of a workspace: {}",
+            logicx_path.display()
+        );
 
         // Canonicalize the path to get absolute path
         let canonical_logicx = match std::fs::canonicalize(logicx_path) {
@@ -239,16 +242,12 @@ impl LogicProject {
         vlog!("Parent directory: {}", parent.display());
 
         // Get .logicx file name without extension
-        let logicx_stem = canonical_logicx
-            .file_stem()
-            .and_then(|s| s.to_str())?;
+        let logicx_stem = canonical_logicx.file_stem().and_then(|s| s.to_str())?;
 
         vlog!("Logic project name: {}", logicx_stem);
 
         // Get parent folder name
-        let parent_name = parent
-            .file_name()
-            .and_then(|s| s.to_str())?;
+        let parent_name = parent.file_name().and_then(|s| s.to_str())?;
 
         vlog!("Parent folder name: {}", parent_name);
 
@@ -281,8 +280,15 @@ impl LogicProject {
         // If we found at least one asset folder, this is likely a workspace
         if !found_asset_folders.is_empty() {
             vlog!("=== Workspace Detected ===");
-            vlog!("Found {} asset folders: {:?}", found_asset_folders.len(), found_asset_folders);
-            vlog!("Using workspace folder as repository root: {}", parent.display());
+            vlog!(
+                "Found {} asset folders: {:?}",
+                found_asset_folders.len(),
+                found_asset_folders
+            );
+            vlog!(
+                "Using workspace folder as repository root: {}",
+                parent.display()
+            );
             Some(parent.to_path_buf())
         } else {
             vlog!("No asset folders found, treating as standalone .logicx");

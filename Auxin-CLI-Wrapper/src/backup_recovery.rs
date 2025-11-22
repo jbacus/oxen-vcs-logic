@@ -109,22 +109,18 @@ impl BackupRecoveryManager {
 
     /// Get path to snapshot metadata file
     fn snapshot_metadata_path(&self, snapshot_id: &str) -> PathBuf {
-        self.snapshots_dir
-            .join(snapshot_id)
-            .join("snapshot.json")
+        self.snapshots_dir.join(snapshot_id).join("snapshot.json")
     }
 
     /// Create a backup snapshot
     pub fn create_snapshot(&self, snapshot: Snapshot) -> Result<Snapshot> {
         let snapshot_dir = self.snapshots_dir.join(&snapshot.id);
-        fs::create_dir_all(&snapshot_dir)
-            .context("Failed to create snapshot directory")?;
+        fs::create_dir_all(&snapshot_dir).context("Failed to create snapshot directory")?;
 
         // Save snapshot metadata
         let metadata_path = self.snapshot_metadata_path(&snapshot.id);
         let json = serde_json::to_string_pretty(&snapshot)?;
-        fs::write(&metadata_path, json)
-            .context("Failed to write snapshot metadata")?;
+        fs::write(&metadata_path, json).context("Failed to write snapshot metadata")?;
 
         crate::vlog!(
             "Created snapshot {} for {}",
@@ -146,11 +142,11 @@ impl BackupRecoveryManager {
             return Err(anyhow!("Snapshot {} not found", snapshot_id));
         }
 
-        let contents = fs::read_to_string(&metadata_path)
-            .context("Failed to read snapshot metadata")?;
+        let contents =
+            fs::read_to_string(&metadata_path).context("Failed to read snapshot metadata")?;
 
-        let snapshot: Snapshot = serde_json::from_str(&contents)
-            .context("Failed to parse snapshot metadata")?;
+        let snapshot: Snapshot =
+            serde_json::from_str(&contents).context("Failed to parse snapshot metadata")?;
 
         Ok(snapshot)
     }
@@ -198,8 +194,7 @@ impl BackupRecoveryManager {
             return Err(anyhow!("Snapshot {} not found", snapshot_id));
         }
 
-        fs::remove_dir_all(&snapshot_dir)
-            .context("Failed to delete snapshot directory")?;
+        fs::remove_dir_all(&snapshot_dir).context("Failed to delete snapshot directory")?;
 
         crate::vlog!("Deleted snapshot {}", snapshot_id);
 
@@ -233,8 +228,7 @@ impl BackupRecoveryManager {
         snapshot_type: SnapshotType,
         description: impl Into<String>,
     ) -> Result<Snapshot> {
-        let snapshot = Snapshot::new(snapshot_type, repo_path)
-            .with_description(description);
+        let snapshot = Snapshot::new(snapshot_type, repo_path).with_description(description);
 
         self.create_snapshot(snapshot)
     }
@@ -258,10 +252,7 @@ impl BackupRecoveryManager {
                 "1. Reset repository to commit {}",
                 commit_id.bright_yellow()
             ));
-            instructions.push(format!(
-                "   cd {}",
-                snapshot.repo_path.display()
-            ));
+            instructions.push(format!("   cd {}", snapshot.repo_path.display()));
             instructions.push("   oxen log  # Find commit".to_string());
             instructions.push(format!("   oxen checkout {}", commit_id));
         } else {
@@ -269,7 +260,10 @@ impl BackupRecoveryManager {
         }
 
         instructions.push(String::new());
-        instructions.push(format!("{}", "⚠ WARNING: Restoring will lose uncommitted changes!".yellow()));
+        instructions.push(format!(
+            "{}",
+            "⚠ WARNING: Restoring will lose uncommitted changes!".yellow()
+        ));
 
         Ok(instructions)
     }
@@ -289,7 +283,10 @@ impl BackupRecoveryManager {
             &snapshots
         };
 
-        println!("\n{}", "┌─ Backup Snapshots ──────────────────────────────────────┐".bright_blue());
+        println!(
+            "\n{}",
+            "┌─ Backup Snapshots ──────────────────────────────────────┐".bright_blue()
+        );
 
         for snapshot in to_display {
             let icon = match snapshot.snapshot_type {
@@ -319,11 +316,17 @@ impl BackupRecoveryManager {
                 println!("│   Commit: {}", commit_id[..8].bright_yellow());
             }
 
-            println!("│   Path: {}", snapshot.repo_path.display().to_string().bright_black());
+            println!(
+                "│   Path: {}",
+                snapshot.repo_path.display().to_string().bright_black()
+            );
         }
 
         println!("│");
-        println!("{}", "└──────────────────────────────────────────────────────────┘".bright_blue());
+        println!(
+            "{}",
+            "└──────────────────────────────────────────────────────────┘".bright_blue()
+        );
 
         if let Some(limit) = limit {
             if snapshots.len() > limit {
@@ -410,7 +413,10 @@ impl RecoveryHelper {
             _ => vec!["Unknown scenario".to_string()],
         };
 
-        println!("\n{}", "┌─ Recovery Guide ────────────────────────────────────────┐".bright_blue());
+        println!(
+            "\n{}",
+            "┌─ Recovery Guide ────────────────────────────────────────┐".bright_blue()
+        );
         for step in steps {
             if step.is_empty() {
                 println!("│");
@@ -418,7 +424,10 @@ impl RecoveryHelper {
                 println!("│ {}", step);
             }
         }
-        println!("{}\n", "└──────────────────────────────────────────────────────────┘".bright_blue());
+        println!(
+            "{}\n",
+            "└──────────────────────────────────────────────────────────┘".bright_blue()
+        );
     }
 }
 
@@ -447,10 +456,7 @@ mod tests {
     #[test]
     fn test_backup_recovery_manager_creation() {
         let manager = BackupRecoveryManager::new();
-        assert!(manager
-            .snapshots_dir
-            .to_string_lossy()
-            .contains(".auxin"));
+        assert!(manager.snapshots_dir.to_string_lossy().contains(".auxin"));
     }
 
     #[test]
@@ -458,8 +464,8 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let manager = BackupRecoveryManager::with_snapshots_dir(temp_dir.path().to_path_buf());
 
-        let snapshot = Snapshot::new(SnapshotType::Manual, "/test/repo")
-            .with_description("Test snapshot");
+        let snapshot =
+            Snapshot::new(SnapshotType::Manual, "/test/repo").with_description("Test snapshot");
 
         let created = manager.create_snapshot(snapshot.clone()).unwrap();
         let loaded = manager.load_snapshot(&created.id).unwrap();

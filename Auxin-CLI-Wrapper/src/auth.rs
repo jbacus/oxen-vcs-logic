@@ -110,9 +110,7 @@ impl AuthManager {
     /// Returns: ~/.auxin/credentials (fallback storage)
     fn default_config_path() -> PathBuf {
         let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-        PathBuf::from(home)
-            .join(".auxin")
-            .join("credentials")
+        PathBuf::from(home).join(".auxin").join("credentials")
     }
 
     /// Store credentials securely
@@ -209,9 +207,8 @@ impl AuthManager {
             creds.username, creds.hub_url
         );
 
-        fs::write(&self.config_file, config_content).with_context(|| {
-            format!("Failed to write credentials to {:?}", self.config_file)
-        })?;
+        fs::write(&self.config_file, config_content)
+            .with_context(|| format!("Failed to write credentials to {:?}", self.config_file))?;
 
         // Set file permissions to user-only read/write (Unix only)
         #[cfg(unix)]
@@ -300,8 +297,8 @@ impl AuthManager {
             return Ok(None);
         }
 
-        let content = fs::read_to_string(&self.config_file)
-            .context("Failed to read credentials file")?;
+        let content =
+            fs::read_to_string(&self.config_file).context("Failed to read credentials file")?;
 
         let mut username = String::new();
         let mut hub_url = "https://hub.oxen.ai".to_string();
@@ -319,9 +316,7 @@ impl AuthManager {
         }
 
         // API key should be in oxen config, but we need a placeholder
-        Ok(Some(Credentials::with_hub_url(
-            username, "", hub_url,
-        )))
+        Ok(Some(Credentials::with_hub_url(username, "", hub_url)))
     }
 
     /// Check if user is authenticated
@@ -350,8 +345,7 @@ impl AuthManager {
 
         // Remove our config file
         if self.config_file.exists() {
-            fs::remove_file(&self.config_file)
-                .context("Failed to remove credentials file")?;
+            fs::remove_file(&self.config_file).context("Failed to remove credentials file")?;
         }
 
         crate::info!("Credentials cleared");
@@ -410,8 +404,7 @@ mod tests {
 
     #[test]
     fn test_credentials_with_hub_url() {
-        let creds =
-            Credentials::with_hub_url("testuser", "api_key", "https://custom.oxen.server");
+        let creds = Credentials::with_hub_url("testuser", "api_key", "https://custom.oxen.server");
         assert_eq!(creds.hub_url, "https://custom.oxen.server");
     }
 
@@ -564,11 +557,8 @@ mod tests {
 
     #[test]
     fn test_credentials_with_custom_hub() {
-        let creds = Credentials::with_hub_url(
-            "testuser",
-            "test_key",
-            "https://custom.hub.example.com",
-        );
+        let creds =
+            Credentials::with_hub_url("testuser", "test_key", "https://custom.hub.example.com");
 
         assert_eq!(creds.username, "testuser");
         assert_eq!(creds.hub_url, "https://custom.hub.example.com");

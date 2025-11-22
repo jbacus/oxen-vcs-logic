@@ -48,9 +48,7 @@ impl ProjectMetadata {
         let path = Self::metadata_path(repo_path);
 
         if !path.exists() {
-            return Err(AppError::NotFound(
-                "Project metadata not found".to_string(),
-            ));
+            return Err(AppError::NotFound("Project metadata not found".to_string()));
         }
 
         let content = std::fs::read_to_string(&path)
@@ -68,12 +66,14 @@ impl ProjectMetadata {
 
         // Ensure .oxen directory exists
         if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent)
-                .map_err(|e| AppError::Internal(format!("Failed to create .oxen directory: {}", e)))?;
+            std::fs::create_dir_all(parent).map_err(|e| {
+                AppError::Internal(format!("Failed to create .oxen directory: {}", e))
+            })?;
         }
 
-        let content = serde_json::to_string_pretty(self)
-            .map_err(|e| AppError::Internal(format!("Failed to serialize project metadata: {}", e)))?;
+        let content = serde_json::to_string_pretty(self).map_err(|e| {
+            AppError::Internal(format!("Failed to serialize project metadata: {}", e))
+        })?;
 
         std::fs::write(&path, content)
             .map_err(|e| AppError::Internal(format!("Failed to write project metadata: {}", e)))?;

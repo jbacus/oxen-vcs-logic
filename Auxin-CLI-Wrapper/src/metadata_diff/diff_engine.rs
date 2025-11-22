@@ -2,8 +2,8 @@
 //
 // Core diff engine for comparing Logic Pro project metadata
 
-use crate::logic_parser::*;
 use super::diff_types::*;
+use crate::logic_parser::*;
 
 /// Threshold for considering a float value as "changed" (in dB for volume)
 const VOLUME_THRESHOLD: f32 = 0.1;
@@ -18,10 +18,7 @@ const EQ_GAIN_THRESHOLD: f32 = 0.5;
 const FREQUENCY_THRESHOLD: f32 = 10.0;
 
 /// Compare two Logic Pro project versions and generate a diff
-pub fn diff_metadata(
-    version_a: &LogicProjectData,
-    version_b: &LogicProjectData,
-) -> MetadataDiff {
+pub fn diff_metadata(version_a: &LogicProjectData, version_b: &LogicProjectData) -> MetadataDiff {
     let mut diff = MetadataDiff::new();
 
     // Compare global settings
@@ -183,10 +180,7 @@ fn diff_track_changes(track_a: &Track, track_b: &Track, diff: &mut MetadataDiff)
     diff_regions(&track_a.regions, &track_b.regions, &track_b.name, diff);
 }
 
-pub fn diff_channel_strip(
-    cs_a: &ChannelStrip,
-    cs_b: &ChannelStrip,
-) -> Option<ChannelStripDiff> {
+pub fn diff_channel_strip(cs_a: &ChannelStrip, cs_b: &ChannelStrip) -> Option<ChannelStripDiff> {
     let mut changes = ChannelStripDiff::new();
 
     // EQ diff
@@ -195,7 +189,8 @@ pub fn diff_channel_strip(
     }
 
     // Compressor diff
-    if let Some(comp_changes) = diff_compressor(cs_a.compressor.as_ref(), cs_b.compressor.as_ref()) {
+    if let Some(comp_changes) = diff_compressor(cs_a.compressor.as_ref(), cs_b.compressor.as_ref())
+    {
         changes.compressor_changes = comp_changes;
     }
 
@@ -516,9 +511,9 @@ fn diff_regions(
     // TODO: Implement region matching by name and time range
 
     for region_b in regions_b {
-        let found = regions_a.iter().any(|r| {
-            r.name == region_b.name && (r.start_time - region_b.start_time).abs() < 0.001
-        });
+        let found = regions_a
+            .iter()
+            .any(|r| r.name == region_b.name && (r.start_time - region_b.start_time).abs() < 0.001);
 
         if !found {
             diff.track_changes.push(TrackChange::RegionChanged {
@@ -531,9 +526,9 @@ fn diff_regions(
     }
 
     for region_a in regions_a {
-        let found = regions_b.iter().any(|r| {
-            r.name == region_a.name && (r.start_time - region_a.start_time).abs() < 0.001
-        });
+        let found = regions_b
+            .iter()
+            .any(|r| r.name == region_a.name && (r.start_time - region_a.start_time).abs() < 0.001);
 
         if !found {
             diff.track_changes.push(TrackChange::RegionChanged {
@@ -562,9 +557,10 @@ fn diff_automation(
 ) {
     // Check for new automation curves
     for auto_b in &version_b.automation {
-        let found = version_a.automation.iter().any(|a| {
-            a.track_id == auto_b.track_id && a.parameter == auto_b.parameter
-        });
+        let found = version_a
+            .automation
+            .iter()
+            .any(|a| a.track_id == auto_b.track_id && a.parameter == auto_b.parameter);
 
         if !found {
             diff.automation_changes.push(AutomationChange::Added {
@@ -577,9 +573,10 @@ fn diff_automation(
 
     // Check for removed automation curves
     for auto_a in &version_a.automation {
-        let found = version_b.automation.iter().any(|a| {
-            a.track_id == auto_a.track_id && a.parameter == auto_a.parameter
-        });
+        let found = version_b
+            .automation
+            .iter()
+            .any(|a| a.track_id == auto_a.track_id && a.parameter == auto_a.parameter);
 
         if !found {
             diff.automation_changes.push(AutomationChange::Removed {

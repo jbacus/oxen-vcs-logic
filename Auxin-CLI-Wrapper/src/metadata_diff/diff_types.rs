@@ -155,14 +155,41 @@ impl Default for ChannelStripDiff {
 /// EQ changes
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum EQChange {
-    BandAdded { band: EQBand, position: usize },
-    BandRemoved { band: EQBand, position: usize },
-    BandFrequencyChanged { position: usize, from: f32, to: f32 },
-    BandGainChanged { position: usize, from: f32, to: f32 },
-    BandQChanged { position: usize, from: f32, to: f32 },
-    BandTypeChanged { position: usize, from: EQBandType, to: EQBandType },
-    BandToggled { position: usize, enabled: bool },
-    BypassToggled { bypassed: bool },
+    BandAdded {
+        band: EQBand,
+        position: usize,
+    },
+    BandRemoved {
+        band: EQBand,
+        position: usize,
+    },
+    BandFrequencyChanged {
+        position: usize,
+        from: f32,
+        to: f32,
+    },
+    BandGainChanged {
+        position: usize,
+        from: f32,
+        to: f32,
+    },
+    BandQChanged {
+        position: usize,
+        from: f32,
+        to: f32,
+    },
+    BandTypeChanged {
+        position: usize,
+        from: EQBandType,
+        to: EQBandType,
+    },
+    BandToggled {
+        position: usize,
+        enabled: bool,
+    },
+    BypassToggled {
+        bypassed: bool,
+    },
 }
 
 /// Compressor changes
@@ -190,10 +217,22 @@ pub enum ReverbChange {
 /// Plugin chain changes
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum PluginChainChange {
-    PluginAdded { plugin: PluginInstance },
-    PluginRemoved { plugin_name: String, position: usize },
-    PluginReordered { plugin_name: String, from: usize, to: usize },
-    PluginBypassed { plugin_name: String, bypassed: bool },
+    PluginAdded {
+        plugin: PluginInstance,
+    },
+    PluginRemoved {
+        plugin_name: String,
+        position: usize,
+    },
+    PluginReordered {
+        plugin_name: String,
+        from: usize,
+        to: usize,
+    },
+    PluginBypassed {
+        plugin_name: String,
+        bypassed: bool,
+    },
 }
 
 /// Plugin-specific changes
@@ -214,13 +253,36 @@ pub struct ParameterChange {
 /// Region changes
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum RegionDiff {
-    Added { region: Region },
-    Removed { region_name: String },
-    Moved { region_name: String, old_start: f64, new_start: f64 },
-    Resized { region_name: String, old_duration: f64, new_duration: f64 },
-    MuteToggled { region_name: String, muted: bool },
-    LoopToggled { region_name: String, looped: bool },
-    FadeChanged { region_name: String, fade_type: FadeType, old_value: f32, new_value: f32 },
+    Added {
+        region: Region,
+    },
+    Removed {
+        region_name: String,
+    },
+    Moved {
+        region_name: String,
+        old_start: f64,
+        new_start: f64,
+    },
+    Resized {
+        region_name: String,
+        old_duration: f64,
+        new_duration: f64,
+    },
+    MuteToggled {
+        region_name: String,
+        muted: bool,
+    },
+    LoopToggled {
+        region_name: String,
+        looped: bool,
+    },
+    FadeChanged {
+        region_name: String,
+        fade_type: FadeType,
+        old_value: f32,
+        new_value: f32,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

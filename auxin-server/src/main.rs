@@ -1,5 +1,5 @@
-use actix_web::{middleware, web, App, HttpResponse, HttpServer, Result};
 use actix_files::{Files, NamedFile};
+use actix_web::{middleware, web, App, HttpResponse, HttpServer, Result};
 use std::path::PathBuf;
 use tracing::info;
 
@@ -30,8 +30,7 @@ async fn main() -> std::io::Result<()> {
     info!("Server will listen on {}:{}", config.host, config.port);
 
     // Ensure SYNC_DIR exists
-    std::fs::create_dir_all(&config.sync_dir)
-        .expect("Failed to create SYNC_DIR");
+    std::fs::create_dir_all(&config.sync_dir).expect("Failed to create SYNC_DIR");
 
     let host = config.host.clone();
     let port = config.port;
@@ -112,7 +111,10 @@ async fn main() -> std::io::Result<()> {
                 .route("/api/projects", web::post().to(api::create_project))
                 .route("/api/projects", web::get().to(api::list_projects))
                 .route("/api/projects/{id}", web::get().to(api::get_project))
-                .route("/api/projects/{namespace}/{name}", web::get().to(api::get_project_by_namespace))
+                .route(
+                    "/api/projects/{namespace}/{name}",
+                    web::get().to(api::get_project_by_namespace),
+                )
                 .route("/api/projects/{id}", web::put().to(api::update_project))
                 .route("/api/projects/{id}", web::delete().to(api::delete_project));
         }
@@ -120,40 +122,124 @@ async fn main() -> std::io::Result<()> {
         let mut app = app
             // Public endpoints
             .route("/api/repos", web::get().to(api::list_repositories))
-            .route("/api/repos/{namespace}/{name}", web::get().to(api::get_repository))
+            .route(
+                "/api/repos/{namespace}/{name}",
+                web::get().to(api::get_repository),
+            )
             // Repository operations
-            .route("/api/repos/{namespace}/{name}", web::post().to(api::create_repository))
-            .route("/api/repos/{namespace}/{name}/clone", web::post().to(api::clone_repository))
-            .route("/api/repos/{namespace}/{name}/status", web::get().to(api::get_status))
-            .route("/api/repos/{namespace}/{name}/commits", web::get().to(api::get_commits))
-            .route("/api/repos/{namespace}/{name}/commits/{commit}/restore", web::post().to(api::restore_commit))
-            .route("/api/repos/{namespace}/{name}/push", web::post().to(api::push_repository))
-            .route("/api/repos/{namespace}/{name}/pull", web::post().to(api::pull_repository))
-            .route("/api/repos/{namespace}/{name}/fetch", web::post().to(api::fetch_repository))
-            .route("/api/repos/{namespace}/{name}/branches", web::get().to(api::list_branches))
-            .route("/api/repos/{namespace}/{name}/branches", web::post().to(api::create_branch))
-            .route("/api/repos/{namespace}/{name}/branches/{branch}", web::delete().to(api::delete_branch))
+            .route(
+                "/api/repos/{namespace}/{name}",
+                web::post().to(api::create_repository),
+            )
+            .route(
+                "/api/repos/{namespace}/{name}/clone",
+                web::post().to(api::clone_repository),
+            )
+            .route(
+                "/api/repos/{namespace}/{name}/status",
+                web::get().to(api::get_status),
+            )
+            .route(
+                "/api/repos/{namespace}/{name}/commits",
+                web::get().to(api::get_commits),
+            )
+            .route(
+                "/api/repos/{namespace}/{name}/commits/{commit}/restore",
+                web::post().to(api::restore_commit),
+            )
+            .route(
+                "/api/repos/{namespace}/{name}/push",
+                web::post().to(api::push_repository),
+            )
+            .route(
+                "/api/repos/{namespace}/{name}/pull",
+                web::post().to(api::pull_repository),
+            )
+            .route(
+                "/api/repos/{namespace}/{name}/fetch",
+                web::post().to(api::fetch_repository),
+            )
+            .route(
+                "/api/repos/{namespace}/{name}/branches",
+                web::get().to(api::list_branches),
+            )
+            .route(
+                "/api/repos/{namespace}/{name}/branches",
+                web::post().to(api::create_branch),
+            )
+            .route(
+                "/api/repos/{namespace}/{name}/branches/{branch}",
+                web::delete().to(api::delete_branch),
+            )
             // Auxin extensions
-            .route("/api/repos/{namespace}/{name}/metadata/{commit}", web::get().to(api::get_metadata))
-            .route("/api/repos/{namespace}/{name}/metadata/{commit}", web::post().to(api::store_metadata))
-            .route("/api/repos/{namespace}/{name}/locks/acquire", web::post().to(api::acquire_lock))
-            .route("/api/repos/{namespace}/{name}/locks/release", web::post().to(api::release_lock))
-            .route("/api/repos/{namespace}/{name}/locks/heartbeat", web::post().to(api::heartbeat_lock))
-            .route("/api/repos/{namespace}/{name}/locks/status", web::get().to(api::lock_status))
-            .route("/api/repos/{namespace}/{name}/activity", web::get().to(api::get_activity))
+            .route(
+                "/api/repos/{namespace}/{name}/metadata/{commit}",
+                web::get().to(api::get_metadata),
+            )
+            .route(
+                "/api/repos/{namespace}/{name}/metadata/{commit}",
+                web::post().to(api::store_metadata),
+            )
+            .route(
+                "/api/repos/{namespace}/{name}/locks/acquire",
+                web::post().to(api::acquire_lock),
+            )
+            .route(
+                "/api/repos/{namespace}/{name}/locks/release",
+                web::post().to(api::release_lock),
+            )
+            .route(
+                "/api/repos/{namespace}/{name}/locks/heartbeat",
+                web::post().to(api::heartbeat_lock),
+            )
+            .route(
+                "/api/repos/{namespace}/{name}/locks/status",
+                web::get().to(api::lock_status),
+            )
+            .route(
+                "/api/repos/{namespace}/{name}/activity",
+                web::get().to(api::get_activity),
+            )
             // Project management (ownership and collaborators)
-            .route("/api/repos/{namespace}/{name}/collaborators", web::get().to(api::list_collaborators))
-            .route("/api/repos/{namespace}/{name}/collaborators", web::post().to(api::add_collaborator))
-            .route("/api/repos/{namespace}/{name}/collaborators/{user_id}", web::delete().to(api::remove_collaborator))
-            .route("/api/repos/{namespace}/{name}/visibility", web::put().to(api::update_visibility))
+            .route(
+                "/api/repos/{namespace}/{name}/collaborators",
+                web::get().to(api::list_collaborators),
+            )
+            .route(
+                "/api/repos/{namespace}/{name}/collaborators",
+                web::post().to(api::add_collaborator),
+            )
+            .route(
+                "/api/repos/{namespace}/{name}/collaborators/{user_id}",
+                web::delete().to(api::remove_collaborator),
+            )
+            .route(
+                "/api/repos/{namespace}/{name}/visibility",
+                web::put().to(api::update_visibility),
+            )
             // WebSocket for real-time notifications
             .route("/ws/repos/{namespace}/{name}", web::get().to(ws_handler))
             // Bounce audio endpoints
-            .route("/api/repos/{namespace}/{name}/bounces", web::get().to(api::list_bounces))
-            .route("/api/repos/{namespace}/{name}/bounces/{commit}", web::get().to(api::get_bounce))
-            .route("/api/repos/{namespace}/{name}/bounces/{commit}/audio", web::get().to(api::get_bounce_audio))
-            .route("/api/repos/{namespace}/{name}/bounces/{commit}", web::post().to(api::upload_bounce))
-            .route("/api/repos/{namespace}/{name}/bounces/{commit}", web::delete().to(api::delete_bounce));
+            .route(
+                "/api/repos/{namespace}/{name}/bounces",
+                web::get().to(api::list_bounces),
+            )
+            .route(
+                "/api/repos/{namespace}/{name}/bounces/{commit}",
+                web::get().to(api::get_bounce),
+            )
+            .route(
+                "/api/repos/{namespace}/{name}/bounces/{commit}/audio",
+                web::get().to(api::get_bounce_audio),
+            )
+            .route(
+                "/api/repos/{namespace}/{name}/bounces/{commit}",
+                web::post().to(api::upload_bounce),
+            )
+            .route(
+                "/api/repos/{namespace}/{name}/bounces/{commit}",
+                web::delete().to(api::delete_bounce),
+            );
 
         // Serve frontend static files if available
         if serve_frontend {

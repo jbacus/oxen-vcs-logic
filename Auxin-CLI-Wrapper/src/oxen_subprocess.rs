@@ -378,8 +378,7 @@ impl OxenCache {
 
     fn invalidate(&mut self, repo_path: &Path) {
         // Remove all entries for this repository
-        self.log_cache
-            .retain(|(path, _), _| path != repo_path);
+        self.log_cache.retain(|(path, _), _| path != repo_path);
         self.status_cache.remove(repo_path);
         self.branches_cache.remove(repo_path);
     }
@@ -436,8 +435,7 @@ impl Default for OxenConfig {
                 .unwrap_or(1000),
             default_remote: std::env::var("AUXIN_DEFAULT_REMOTE")
                 .unwrap_or_else(|_| "origin".to_string()),
-            main_branch: std::env::var("AUXIN_MAIN_BRANCH")
-                .unwrap_or_else(|_| "main".to_string()),
+            main_branch: std::env::var("AUXIN_MAIN_BRANCH").unwrap_or_else(|_| "main".to_string()),
             draft_branch: std::env::var("AUXIN_DRAFT_BRANCH")
                 .unwrap_or_else(|_| "draft".to_string()),
         }
@@ -475,14 +473,15 @@ fn sanitize_path(path: &Path, repo_root: Option<&Path>) -> Result<String> {
     }
 
     // Check for control characters
-    if path_str.chars().any(|c| c.is_control() && c != '\n' && c != '\t') {
+    if path_str
+        .chars()
+        .any(|c| c.is_control() && c != '\n' && c != '\t')
+    {
         return Err(anyhow!("Invalid path: contains control characters"));
     }
 
     // Check for command injection patterns
-    let dangerous_patterns = [
-        "$(", "`", ";", "&&", "||", "|", ">", "<", "\n", "\r",
-    ];
+    let dangerous_patterns = ["$(", "`", ";", "&&", "||", "|", ">", "<", "\n", "\r"];
     for pattern in &dangerous_patterns {
         if path_str.contains(pattern) {
             return Err(anyhow!(
@@ -503,9 +502,11 @@ fn sanitize_path(path: &Path, repo_root: Option<&Path>) -> Result<String> {
 
         // For existing paths, canonicalize to check for path traversal
         if resolved_path.exists() {
-            let canonical = resolved_path.canonicalize()
+            let canonical = resolved_path
+                .canonicalize()
                 .context("Failed to canonicalize path")?;
-            let root_canonical = root.canonicalize()
+            let root_canonical = root
+                .canonicalize()
                 .context("Failed to canonicalize repository root")?;
 
             if !canonical.starts_with(&root_canonical) {
@@ -754,11 +755,7 @@ impl OxenSubprocess {
         let batch_size = self.config.batch_size;
         let total_batches = files.len().div_ceil(batch_size);
 
-        vlog!(
-            "Adding {} files in {} batches",
-            files.len(),
-            total_batches
-        );
+        vlog!("Adding {} files in {} batches", files.len(), total_batches);
 
         for (i, chunk) in files.chunks(batch_size).enumerate() {
             vlog!("Processing batch {}/{}", i + 1, total_batches);
@@ -777,7 +774,11 @@ impl OxenSubprocess {
         }
 
         self.invalidate_cache(repo_path);
-        info!("Added {} file(s) to staging in {} batches", files.len(), total_batches);
+        info!(
+            "Added {} file(s) to staging in {} batches",
+            files.len(),
+            total_batches
+        );
         Ok(())
     }
 
@@ -857,7 +858,8 @@ impl OxenSubprocess {
                     continue;
                 }
 
-                let metadata = entry.metadata()
+                let metadata = entry
+                    .metadata()
                     .with_context(|| format!("Failed to get metadata for: {}", path.display()))?;
 
                 if metadata.is_dir() {
@@ -887,7 +889,8 @@ impl OxenSubprocess {
         // Sanitize the commit message
         let sanitized_message = sanitize_message(message)?;
 
-        let output = self.run_command(&["commit", "-m", &sanitized_message], Some(repo_path), None)?;
+        let output =
+            self.run_command(&["commit", "-m", &sanitized_message], Some(repo_path), None)?;
         self.invalidate_cache(repo_path);
 
         // Parse commit hash from output
@@ -1105,7 +1108,11 @@ impl OxenSubprocess {
     /// oxen.clone("https://hub.oxen.ai/user/repo", Path::new("./my-project")).unwrap();
     /// ```
     pub fn clone(&self, remote_url: &str, destination: &Path) -> Result<()> {
-        vlog!("Cloning repository from: {} to: {}", remote_url, destination.display());
+        vlog!(
+            "Cloning repository from: {} to: {}",
+            remote_url,
+            destination.display()
+        );
 
         // Validate remote URL
         if remote_url.is_empty() {
@@ -1118,7 +1125,8 @@ impl OxenSubprocess {
         }
 
         // Sanitize destination path
-        let dest_str = destination.to_str()
+        let dest_str = destination
+            .to_str()
             .ok_or_else(|| anyhow!("Invalid destination path"))?;
 
         if dest_str.contains('\0') {
@@ -1142,7 +1150,11 @@ impl OxenSubprocess {
 
         self.run_command(&["clone", remote_url, dest_str], parent_dir, timeout)?;
 
-        info!("Cloned repository from {} to {}", remote_url, destination.display());
+        info!(
+            "Cloned repository from {} to {}",
+            remote_url,
+            destination.display()
+        );
         Ok(())
     }
 
@@ -1240,9 +1252,15 @@ impl OxenSubprocess {
             .map_err(|e| anyhow::anyhow!("Failed to parse Oxen config: {}", e))?;
 
         // Ensure remote section exists
-        if !config.as_table().map_or(false, |t| t.contains_key("remote")) {
+        if !config
+            .as_table()
+            .map_or(false, |t| t.contains_key("remote"))
+        {
             if let Some(table) = config.as_table_mut() {
-                table.insert("remote".to_string(), toml::Value::Table(toml::map::Map::new()));
+                table.insert(
+                    "remote".to_string(),
+                    toml::Value::Table(toml::map::Map::new()),
+                );
             }
         }
 
@@ -1311,9 +1329,7 @@ impl OxenSubprocess {
         }
 
         let mut cmd = Command::new(&self.config.oxen_path);
-        cmd.args(args)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
+        cmd.args(args).stdout(Stdio::piped()).stderr(Stdio::piped());
 
         if let Some(dir) = cwd {
             cmd.current_dir(dir);
@@ -1342,7 +1358,10 @@ impl OxenSubprocess {
                 let _ = child.wait();
 
                 let cmd_str = args.join(" ");
-                error!("Command timed out after {:?}: oxen {}", timeout_duration, cmd_str);
+                error!(
+                    "Command timed out after {:?}: oxen {}",
+                    timeout_duration, cmd_str
+                );
 
                 Err(anyhow!(OxenError::Timeout(format!(
                     "Command timed out after {:?}: oxen {}",
@@ -2243,7 +2262,8 @@ Date: 2025-01-01
             };
 
             assert_eq!(
-                is_compatible, should_be_compatible,
+                is_compatible,
+                should_be_compatible,
                 "Version {} should be {}compatible",
                 version_str,
                 if should_be_compatible { "" } else { "in" }
@@ -2268,7 +2288,10 @@ Date: 2025-01-01
         let dest = PathBuf::from("/tmp/test-clone");
         let result = oxen.clone("https://example.com\0/repo", &dest);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Invalid characters"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Invalid characters"));
     }
 
     #[test]
@@ -2277,7 +2300,10 @@ Date: 2025-01-01
         let dest = PathBuf::from("/tmp/test-clone");
         let result = oxen.clone("https://example.com\n/repo", &dest);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Invalid characters"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Invalid characters"));
     }
 
     #[test]

@@ -82,6 +82,29 @@ Professional creative projects contain massive binary assets that overwhelm trad
 
 ## Recent Updates
 
+### 🎨 Advanced Commit Comparison (November 22, 2025)
+
+Professional-grade tools for comparing commits visually and sonically:
+
+**📸 Thumbnail Comparison**
+- Side-by-side visual diff of Logic Pro screenshots
+- Pixel-level accuracy using ImageMagick
+- Detect arrangement changes, new tracks, layout modifications
+- Automatic extraction from .logicx WindowImage.jpg
+
+**🎵 Audio Null Test**
+- Industry-standard phase cancellation analysis
+- Objectively measure differences between mixes
+- RMS level analysis with intelligent interpretation
+- Supports different sample rates and formats
+
+**🔍 Comprehensive Diff**
+- Combines metadata, visual, and audio changes
+- Single command shows complete picture of commit differences
+- Helpful for A/B testing mixes and tracking project evolution
+
+See [DIFF_FEATURES_IMPLEMENTATION.md](DIFF_FEATURES_IMPLEMENTATION.md) for complete documentation.
+
 ### 🎨 3D Modeling Support (November 18, 2025)
 
 Expanded support for 3D modeling applications:

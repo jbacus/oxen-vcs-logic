@@ -21,10 +21,8 @@ impl Config {
         dotenvy::dotenv().ok();
 
         Ok(Self {
-            sync_dir: std::env::var("SYNC_DIR")
-                .unwrap_or_else(|_| "/var/oxen/data".to_string()),
-            host: std::env::var("OXEN_SERVER_HOST")
-                .unwrap_or_else(|_| "0.0.0.0".to_string()),
+            sync_dir: std::env::var("SYNC_DIR").unwrap_or_else(|_| "/var/oxen/data".to_string()),
+            host: std::env::var("OXEN_SERVER_HOST").unwrap_or_else(|_| "0.0.0.0".to_string()),
             port: std::env::var("OXEN_SERVER_PORT")
                 .unwrap_or_else(|_| "3000".to_string())
                 .parse()
@@ -113,7 +111,10 @@ mod tests {
         assert!(config.enable_redis_locks);
         assert!(config.enable_web_ui);
         assert_eq!(config.redis_url, Some("redis://localhost:6379".to_string()));
-        assert_eq!(config.database_url, Some("postgres://localhost/auxin".to_string()));
+        assert_eq!(
+            config.database_url,
+            Some("postgres://localhost/auxin".to_string())
+        );
 
         clear_all_env_vars();
     }

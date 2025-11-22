@@ -50,7 +50,7 @@ fn test_mock_repo_open_nonexistent() {
     assert!(result.is_err());
 
     match result {
-        Err(AppError::NotFound(_)) => {}, // Expected
+        Err(AppError::NotFound(_)) => {} // Expected
         _ => panic!("Expected NotFound error"),
     }
 }
@@ -142,7 +142,11 @@ fn test_auxin_extensions_work_in_mock() {
 
     // Store metadata
     let store_result = repo.store_metadata("test-commit-id", &metadata);
-    assert!(store_result.is_ok(), "Failed to store metadata: {:?}", store_result);
+    assert!(
+        store_result.is_ok(),
+        "Failed to store metadata: {:?}",
+        store_result
+    );
 
     // Retrieve metadata
     let get_result = repo.get_metadata("test-commit-id");
@@ -153,7 +157,10 @@ fn test_auxin_extensions_work_in_mock() {
     let retrieved_metadata = retrieved.unwrap();
     assert_eq!(retrieved_metadata.bpm, Some(120.0));
     assert_eq!(retrieved_metadata.sample_rate, Some(48000));
-    assert_eq!(retrieved_metadata.key_signature, Some("C Major".to_string()));
+    assert_eq!(
+        retrieved_metadata.key_signature,
+        Some("C Major".to_string())
+    );
 }
 
 #[test]
@@ -165,7 +172,11 @@ fn test_auxin_locks_work_in_mock() {
 
     // Lock operations should work in mock mode
     let lock_result = repo.acquire_lock("test-user", "test-machine", 24);
-    assert!(lock_result.is_ok(), "Failed to acquire lock: {:?}", lock_result);
+    assert!(
+        lock_result.is_ok(),
+        "Failed to acquire lock: {:?}",
+        lock_result
+    );
 
     let lock = lock_result.unwrap();
     assert_eq!(lock.user, "test-user");

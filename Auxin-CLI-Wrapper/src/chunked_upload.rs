@@ -43,7 +43,7 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 use uuid::Uuid;
 
-use crate::oxen_backend::{BackendType, OxenBackend, create_backend};
+use crate::oxen_backend::{create_backend, BackendType, OxenBackend};
 
 // Suppress unused import warning for Colorize (used by macros)
 #[allow(unused_imports)]
@@ -303,8 +303,8 @@ impl ChunkedUploadManager {
         }
 
         // Create the appropriate backend
-        let backend = create_backend(config.backend_type)
-            .context("Failed to create Oxen backend")?;
+        let backend =
+            create_backend(config.backend_type).context("Failed to create Oxen backend")?;
 
         Ok(Self {
             config,
@@ -336,10 +336,10 @@ impl ChunkedUploadManager {
 
         if session_file.exists() {
             // Load existing session
-            let content = fs::read_to_string(&session_file)
-                .context("Failed to read upload session file")?;
-            let session: UploadSession = serde_json::from_str(&content)
-                .context("Failed to parse upload session")?;
+            let content =
+                fs::read_to_string(&session_file).context("Failed to read upload session file")?;
+            let session: UploadSession =
+                serde_json::from_str(&content).context("Failed to parse upload session")?;
 
             // Only resume if same remote/branch and not completed
             if session.remote == remote
@@ -378,17 +378,11 @@ impl ChunkedUploadManager {
         for line in stdout.lines() {
             let trimmed = line.trim();
             if trimmed.starts_with("new file:") || trimmed.starts_with("modified:") {
-                let file_path = trimmed
-                    .split(':')
-                    .nth(1)
-                    .map(|s| s.trim())
-                    .unwrap_or("");
+                let file_path = trimmed.split(':').nth(1).map(|s| s.trim()).unwrap_or("");
 
                 if !file_path.is_empty() {
                     let full_path = repo_path.join(file_path);
-                    let size = full_path.metadata()
-                        .map(|m| m.len())
-                        .unwrap_or(0);
+                    let size = full_path.metadata().map(|m| m.len()).unwrap_or(0);
 
                     files.push(FileUploadState {
                         path: file_path.to_string(),
@@ -422,7 +416,8 @@ impl ChunkedUploadManager {
         self.get_or_create_session(repo_path, remote, branch)?;
 
         // Check if we need to scan files
-        let needs_scan = self.current_session
+        let needs_scan = self
+            .current_session
             .as_ref()
             .map(|s| s.files.is_empty())
             .unwrap_or(false);
@@ -449,11 +444,19 @@ impl ChunkedUploadManager {
 
         // Track timing for bandwidth calculation
         let start_time = Instant::now();
-        let start_bytes = self.current_session.as_ref().map(|s| s.bytes_uploaded).unwrap_or(0);
+        let start_bytes = self
+            .current_session
+            .as_ref()
+            .map(|s| s.bytes_uploaded)
+            .unwrap_or(0);
 
         // Execute the actual push
-        crate::info!("Starting upload to {}/{} using {} backend",
-            remote, branch, self.backend.name());
+        crate::info!(
+            "Starting upload to {}/{} using {} backend",
+            remote,
+            branch,
+            self.backend.name()
+        );
 
         let push_result = self.backend.push(repo_path, Some(remote), Some(branch));
 
@@ -497,14 +500,26 @@ impl ChunkedUploadManager {
 
                 let result = UploadResult {
                     success: true,
-                    files_uploaded: self.current_session.as_ref().map(|s| s.files.len()).unwrap_or(0),
-                    bytes_uploaded: self.current_session.as_ref().map(|s| s.bytes_uploaded).unwrap_or(0),
+                    files_uploaded: self
+                        .current_session
+                        .as_ref()
+                        .map(|s| s.files.len())
+                        .unwrap_or(0),
+                    bytes_uploaded: self
+                        .current_session
+                        .as_ref()
+                        .map(|s| s.bytes_uploaded)
+                        .unwrap_or(0),
                     duration: elapsed,
-                    average_bandwidth: self.current_session.as_ref().and_then(|s| s.average_bandwidth()),
+                    average_bandwidth: self
+                        .current_session
+                        .as_ref()
+                        .and_then(|s| s.average_bandwidth()),
                     error: None,
                 };
 
-                crate::info!("Upload completed: {} files, {}",
+                crate::info!(
+                    "Upload completed: {} files, {}",
                     result.files_uploaded,
                     UploadProgress::bytes_string(result.bytes_uploaded)
                 );
@@ -535,9 +550,16 @@ impl ChunkedUploadManager {
                 Ok(UploadResult {
                     success: false,
                     files_uploaded: 0,
-                    bytes_uploaded: self.current_session.as_ref().map(|s| s.bytes_uploaded).unwrap_or(0),
+                    bytes_uploaded: self
+                        .current_session
+                        .as_ref()
+                        .map(|s| s.bytes_uploaded)
+                        .unwrap_or(0),
                     duration: elapsed,
-                    average_bandwidth: self.current_session.as_ref().and_then(|s| s.average_bandwidth()),
+                    average_bandwidth: self
+                        .current_session
+                        .as_ref()
+                        .and_then(|s| s.average_bandwidth()),
                     error: Some(error_msg),
                 })
             }
@@ -605,8 +627,7 @@ impl ChunkedUploadManager {
     pub fn clear_session(&self, repo_path: &Path) -> Result<()> {
         let session_file = self.session_file_path(repo_path);
         if session_file.exists() {
-            fs::remove_file(&session_file)
-                .context("Failed to remove upload session file")?;
+            fs::remove_file(&session_file).context("Failed to remove upload session file")?;
         }
         Ok(())
     }
@@ -617,11 +638,15 @@ impl ChunkedUploadManager {
         F: Fn(UploadProgress),
     {
         if let Some(session) = &self.current_session {
-            let files_completed = session.files.iter()
+            let files_completed = session
+                .files
+                .iter()
                 .filter(|f| f.status == UploadStatus::Completed)
                 .count();
 
-            let current_file = session.files.iter()
+            let current_file = session
+                .files
+                .iter()
                 .find(|f| f.status == UploadStatus::InProgress)
                 .map(|f| f.path.clone());
 
@@ -654,8 +679,7 @@ impl ChunkedUploadManager {
             let session_file = self.session_file_path(repo_path);
             let json = serde_json::to_string_pretty(session)
                 .context("Failed to serialize upload session")?;
-            fs::write(&session_file, json)
-                .context("Failed to write upload session file")?;
+            fs::write(&session_file, json).context("Failed to write upload session file")?;
         }
         Ok(())
     }
@@ -716,11 +740,7 @@ mod tests {
 
     #[test]
     fn test_upload_session_new() {
-        let session = UploadSession::new(
-            Path::new("/test/repo"),
-            "origin",
-            "main"
-        );
+        let session = UploadSession::new(Path::new("/test/repo"), "origin", "main");
 
         assert_eq!(session.remote, "origin");
         assert_eq!(session.branch, "main");
@@ -730,11 +750,7 @@ mod tests {
 
     #[test]
     fn test_upload_session_percentage() {
-        let mut session = UploadSession::new(
-            Path::new("/test/repo"),
-            "origin",
-            "main"
-        );
+        let mut session = UploadSession::new(Path::new("/test/repo"), "origin", "main");
 
         // Empty session should be 100%
         assert_eq!(session.percentage(), 100.0);
@@ -750,11 +766,7 @@ mod tests {
 
     #[test]
     fn test_upload_session_bandwidth() {
-        let mut session = UploadSession::new(
-            Path::new("/test/repo"),
-            "origin",
-            "main"
-        );
+        let mut session = UploadSession::new(Path::new("/test/repo"), "origin", "main");
 
         // No samples
         assert!(session.average_bandwidth().is_none());
@@ -770,11 +782,7 @@ mod tests {
 
     #[test]
     fn test_upload_session_eta() {
-        let mut session = UploadSession::new(
-            Path::new("/test/repo"),
-            "origin",
-            "main"
-        );
+        let mut session = UploadSession::new(Path::new("/test/repo"), "origin", "main");
 
         session.total_bytes = 10000;
         session.bytes_uploaded = 5000;

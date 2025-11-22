@@ -4,7 +4,10 @@ use std::fs;
 use tempfile::TempDir;
 
 use auxin_server::{
-    api, auth::{self, AuthService}, config::Config, project::{ProjectMetadata, Visibility},
+    api,
+    auth::{self, AuthService},
+    config::Config,
+    project::{ProjectMetadata, Visibility},
 };
 
 fn test_config(temp_dir: &TempDir) -> Config {
@@ -73,7 +76,8 @@ async fn test_create_public_repository_with_auth() {
     let config = test_config(&temp_dir);
     let auth_service = AuthService::new(config.clone());
 
-    let (user_id, token) = register_user(&auth_service, "alice", "alice@example.com", "password123").await;
+    let (user_id, token) =
+        register_user(&auth_service, "alice", "alice@example.com", "password123").await;
 
     let app = test::init_service(
         App::new()
@@ -118,7 +122,8 @@ async fn test_create_private_repository() {
     let config = test_config(&temp_dir);
     let auth_service = AuthService::new(config.clone());
 
-    let (_, token) = register_user(&auth_service, "alice", "alice@example.com", "password123").await;
+    let (_, token) =
+        register_user(&auth_service, "alice", "alice@example.com", "password123").await;
 
     let app = test::init_service(
         App::new()
@@ -154,19 +159,23 @@ async fn test_list_repositories_filters_by_visibility() {
     let config = test_config(&temp_dir);
     let auth_service = AuthService::new(config.clone());
 
-    let (alice_id, alice_token) = register_user(&auth_service, "alice", "alice@example.com", "password123").await;
-    let (_, _bob_token) = register_user(&auth_service, "bob", "bob@example.com", "password123").await;
+    let (alice_id, alice_token) =
+        register_user(&auth_service, "alice", "alice@example.com", "password123").await;
+    let (_, _bob_token) =
+        register_user(&auth_service, "bob", "bob@example.com", "password123").await;
 
     // Create alice's public repo
     let public_repo_path = temp_dir.path().join("alice/public-repo");
     fs::create_dir_all(public_repo_path.join(".oxen")).unwrap();
-    let public_metadata = ProjectMetadata::new(alice_id.clone(), "alice".to_string(), Visibility::Public);
+    let public_metadata =
+        ProjectMetadata::new(alice_id.clone(), "alice".to_string(), Visibility::Public);
     public_metadata.save(&public_repo_path).unwrap();
 
     // Create alice's private repo
     let private_repo_path = temp_dir.path().join("alice/private-repo");
     fs::create_dir_all(private_repo_path.join(".oxen")).unwrap();
-    let private_metadata = ProjectMetadata::new(alice_id.clone(), "alice".to_string(), Visibility::Private);
+    let private_metadata =
+        ProjectMetadata::new(alice_id.clone(), "alice".to_string(), Visibility::Private);
     private_metadata.save(&private_repo_path).unwrap();
 
     let app = test::init_service(
@@ -204,8 +213,10 @@ async fn test_private_repository_access_denied() {
     let config = test_config(&temp_dir);
     let auth_service = AuthService::new(config.clone());
 
-    let (alice_id, _) = register_user(&auth_service, "alice", "alice@example.com", "password123").await;
-    let (_, bob_token) = register_user(&auth_service, "bob", "bob@example.com", "password123").await;
+    let (alice_id, _) =
+        register_user(&auth_service, "alice", "alice@example.com", "password123").await;
+    let (_, bob_token) =
+        register_user(&auth_service, "bob", "bob@example.com", "password123").await;
 
     // Create alice's private repo
     let private_repo_path = temp_dir.path().join("alice/private-repo");
@@ -240,7 +251,8 @@ async fn test_add_collaborator() {
     let config = test_config(&temp_dir);
     let auth_service = AuthService::new(config.clone());
 
-    let (alice_id, alice_token) = register_user(&auth_service, "alice", "alice@example.com", "password123").await;
+    let (alice_id, alice_token) =
+        register_user(&auth_service, "alice", "alice@example.com", "password123").await;
     let (bob_id, _) = register_user(&auth_service, "bob", "bob@example.com", "password123").await;
 
     // Create alice's repo
@@ -285,9 +297,17 @@ async fn test_add_collaborator_requires_owner() {
     let config = test_config(&temp_dir);
     let auth_service = AuthService::new(config.clone());
 
-    let (alice_id, _) = register_user(&auth_service, "alice", "alice@example.com", "password123").await;
-    let (bob_id, bob_token) = register_user(&auth_service, "bob", "bob@example.com", "password123").await;
-    let (charlie_id, _) = register_user(&auth_service, "charlie", "charlie@example.com", "password123").await;
+    let (alice_id, _) =
+        register_user(&auth_service, "alice", "alice@example.com", "password123").await;
+    let (bob_id, bob_token) =
+        register_user(&auth_service, "bob", "bob@example.com", "password123").await;
+    let (charlie_id, _) = register_user(
+        &auth_service,
+        "charlie",
+        "charlie@example.com",
+        "password123",
+    )
+    .await;
 
     // Create alice's repo with bob as collaborator
     let repo_path = temp_dir.path().join("alice/testrepo");
@@ -328,8 +348,10 @@ async fn test_collaborator_can_access_private_repo() {
     let config = test_config(&temp_dir);
     let auth_service = AuthService::new(config.clone());
 
-    let (alice_id, _) = register_user(&auth_service, "alice", "alice@example.com", "password123").await;
-    let (bob_id, bob_token) = register_user(&auth_service, "bob", "bob@example.com", "password123").await;
+    let (alice_id, _) =
+        register_user(&auth_service, "alice", "alice@example.com", "password123").await;
+    let (bob_id, bob_token) =
+        register_user(&auth_service, "bob", "bob@example.com", "password123").await;
 
     // Create alice's private repo with bob as collaborator
     let repo_path = temp_dir.path().join("alice/testrepo");
@@ -368,7 +390,8 @@ async fn test_remove_collaborator() {
     let config = test_config(&temp_dir);
     let auth_service = AuthService::new(config.clone());
 
-    let (alice_id, alice_token) = register_user(&auth_service, "alice", "alice@example.com", "password123").await;
+    let (alice_id, alice_token) =
+        register_user(&auth_service, "alice", "alice@example.com", "password123").await;
     let (bob_id, _) = register_user(&auth_service, "bob", "bob@example.com", "password123").await;
 
     // Create alice's repo with bob as collaborator
@@ -390,7 +413,10 @@ async fn test_remove_collaborator() {
     .await;
 
     let req = test::TestRequest::delete()
-        .uri(&format!("/api/repos/alice/testrepo/collaborators/{}", bob_id))
+        .uri(&format!(
+            "/api/repos/alice/testrepo/collaborators/{}",
+            bob_id
+        ))
         .insert_header(("Authorization", format!("Bearer {}", alice_token)))
         .to_request();
 
@@ -408,7 +434,8 @@ async fn test_update_visibility() {
     let config = test_config(&temp_dir);
     let auth_service = AuthService::new(config.clone());
 
-    let (alice_id, alice_token) = register_user(&auth_service, "alice", "alice@example.com", "password123").await;
+    let (alice_id, alice_token) =
+        register_user(&auth_service, "alice", "alice@example.com", "password123").await;
 
     // Create alice's public repo
     let repo_path = temp_dir.path().join("alice/testrepo");
@@ -451,8 +478,10 @@ async fn test_update_visibility_requires_owner() {
     let config = test_config(&temp_dir);
     let auth_service = AuthService::new(config.clone());
 
-    let (alice_id, _) = register_user(&auth_service, "alice", "alice@example.com", "password123").await;
-    let (bob_id, bob_token) = register_user(&auth_service, "bob", "bob@example.com", "password123").await;
+    let (alice_id, _) =
+        register_user(&auth_service, "alice", "alice@example.com", "password123").await;
+    let (bob_id, bob_token) =
+        register_user(&auth_service, "bob", "bob@example.com", "password123").await;
 
     // Create alice's repo with bob as collaborator
     let repo_path = temp_dir.path().join("alice/testrepo");
@@ -493,14 +522,22 @@ async fn test_list_collaborators() {
     let config = test_config(&temp_dir);
     let auth_service = AuthService::new(config.clone());
 
-    let (alice_id, alice_token) = register_user(&auth_service, "alice", "alice@example.com", "password123").await;
+    let (alice_id, alice_token) =
+        register_user(&auth_service, "alice", "alice@example.com", "password123").await;
     let (bob_id, _) = register_user(&auth_service, "bob", "bob@example.com", "password123").await;
-    let (charlie_id, _) = register_user(&auth_service, "charlie", "charlie@example.com", "password123").await;
+    let (charlie_id, _) = register_user(
+        &auth_service,
+        "charlie",
+        "charlie@example.com",
+        "password123",
+    )
+    .await;
 
     // Create alice's repo with bob and charlie as collaborators
     let repo_path = temp_dir.path().join("alice/testrepo");
     fs::create_dir_all(repo_path.join(".oxen")).unwrap();
-    let mut metadata = ProjectMetadata::new(alice_id.clone(), "alice".to_string(), Visibility::Private);
+    let mut metadata =
+        ProjectMetadata::new(alice_id.clone(), "alice".to_string(), Visibility::Private);
     metadata.add_collaborator(bob_id.clone()).unwrap();
     metadata.add_collaborator(charlie_id.clone()).unwrap();
     metadata.save(&repo_path).unwrap();

@@ -135,7 +135,12 @@ pub struct BounceMetadata {
 
 impl BounceMetadata {
     /// Create new bounce metadata
-    pub fn new(commit_id: &str, original_filename: &str, format: AudioFormat, size_bytes: u64) -> Self {
+    pub fn new(
+        commit_id: &str,
+        original_filename: &str,
+        format: AudioFormat,
+        size_bytes: u64,
+    ) -> Self {
         Self {
             commit_id: commit_id.to_string(),
             original_filename: original_filename.to_string(),
@@ -221,8 +226,7 @@ impl BounceManager {
     /// Initialize bounce storage directory
     pub fn init(&self) -> Result<()> {
         if !self.bounces_dir.exists() {
-            fs::create_dir_all(&self.bounces_dir)
-                .context("Failed to create bounces directory")?;
+            fs::create_dir_all(&self.bounces_dir).context("Failed to create bounces directory")?;
         }
         Ok(())
     }
@@ -252,8 +256,7 @@ impl BounceManager {
             .ok_or_else(|| anyhow!("Unsupported audio format: {}", ext))?;
 
         // Get file info
-        let file_meta = fs::metadata(source_file)
-            .context("Failed to read file metadata")?;
+        let file_meta = fs::metadata(source_file).context("Failed to read file metadata")?;
         let size_bytes = file_meta.len();
 
         // Generate filename: commit_id.extension
@@ -261,8 +264,7 @@ impl BounceManager {
         let dest_path = self.bounces_dir.join(&bounce_filename);
 
         // Copy file to bounces directory
-        fs::copy(source_file, &dest_path)
-            .context("Failed to copy bounce file")?;
+        fs::copy(source_file, &dest_path).context("Failed to copy bounce file")?;
 
         // Create metadata
         let original_filename = source_file
@@ -307,11 +309,11 @@ impl BounceManager {
             return Ok(None);
         }
 
-        let contents = fs::read_to_string(&metadata_path)
-            .context("Failed to read bounce metadata")?;
+        let contents =
+            fs::read_to_string(&metadata_path).context("Failed to read bounce metadata")?;
 
-        let metadata: BounceMetadata = serde_json::from_str(&contents)
-            .context("Failed to parse bounce metadata")?;
+        let metadata: BounceMetadata =
+            serde_json::from_str(&contents).context("Failed to parse bounce metadata")?;
 
         Ok(Some(metadata))
     }
@@ -412,7 +414,11 @@ impl BounceManager {
 
                 // User filter
                 if let Some(user) = &filter.added_by {
-                    if !bounce.added_by.to_lowercase().contains(&user.to_lowercase()) {
+                    if !bounce
+                        .added_by
+                        .to_lowercase()
+                        .contains(&user.to_lowercase())
+                    {
                         return false;
                     }
                 }
@@ -439,9 +445,11 @@ impl BounceManager {
 
     /// Compare two bounces by commit ID
     pub fn compare_bounces(&self, commit_a: &str, commit_b: &str) -> Result<BounceComparison> {
-        let bounce_a = self.get_bounce(commit_a)?
+        let bounce_a = self
+            .get_bounce(commit_a)?
             .ok_or_else(|| anyhow!("No bounce found for commit {}", commit_a))?;
-        let bounce_b = self.get_bounce(commit_b)?
+        let bounce_b = self
+            .get_bounce(commit_b)?
             .ok_or_else(|| anyhow!("No bounce found for commit {}", commit_b))?;
 
         Ok(BounceComparison {
@@ -460,9 +468,11 @@ impl BounceManager {
         let mut comparison = self.compare_bounces(commit_a, commit_b)?;
 
         // Perform null test
-        let path_a = self.get_bounce_path(commit_a)?
+        let path_a = self
+            .get_bounce_path(commit_a)?
             .ok_or_else(|| anyhow!("No bounce file for commit {}", commit_a))?;
-        let path_b = self.get_bounce_path(commit_b)?
+        let path_b = self
+            .get_bounce_path(commit_b)?
             .ok_or_else(|| anyhow!("No bounce file for commit {}", commit_b))?;
 
         comparison.null_test_result = Some(self.null_test(&path_a, &path_b)?);
@@ -483,15 +493,19 @@ impl BounceManager {
         // Try using ffmpeg for null test
         let output = Command::new("ffmpeg")
             .args(&[
-                "-i", path_a.to_str().unwrap(),
-                "-i", path_b.to_str().unwrap(),
+                "-i",
+                path_a.to_str().unwrap(),
+                "-i",
+                path_b.to_str().unwrap(),
                 "-filter_complex",
                 "[0:a]aformat=sample_fmts=fltp:sample_rates=48000,volume=1.0[a0];\
                  [1:a]aformat=sample_fmts=fltp:sample_rates=48000,aeval=val(0)*-1:c=same[a1];\
                  [a0][a1]amix=inputs=2:duration=longest,astats=metadata=1:reset=1[aout]",
-                "-map", "[aout]",
-                "-f", "null",
-                "-"
+                "-map",
+                "[aout]",
+                "-f",
+                "null",
+                "-",
             ])
             .stderr(std::process::Stdio::piped())
             .output();
@@ -560,9 +574,7 @@ impl BounceManager {
 
                 Ok(NullTestResult {
                     cancellation_percent: cancellation,
-                    interpretation: format!(
-                        "Estimated based on file size (ffmpeg not available)"
-                    ),
+                    interpretation: format!("Estimated based on file size (ffmpeg not available)"),
                     difference_level_db: None,
                 })
             }
@@ -571,7 +583,8 @@ impl BounceManager {
 
     /// Play a bounce using the system audio player
     pub fn play_bounce(&self, commit_id: &str) -> Result<()> {
-        let path = self.get_bounce_path(commit_id)?
+        let path = self
+            .get_bounce_path(commit_id)?
             .ok_or_else(|| anyhow!("No bounce found for commit {}", commit_id))?;
 
         // Use macOS 'afplay' command
@@ -591,15 +604,13 @@ impl BounceManager {
     pub fn delete_bounce(&self, commit_id: &str) -> Result<()> {
         // Delete audio file
         if let Some(audio_path) = self.get_bounce_path(commit_id)? {
-            fs::remove_file(&audio_path)
-                .context("Failed to delete bounce audio file")?;
+            fs::remove_file(&audio_path).context("Failed to delete bounce audio file")?;
         }
 
         // Delete metadata
         let metadata_path = self.bounces_dir.join(format!("{}.json", commit_id));
         if metadata_path.exists() {
-            fs::remove_file(&metadata_path)
-                .context("Failed to delete bounce metadata")?;
+            fs::remove_file(&metadata_path).context("Failed to delete bounce metadata")?;
         }
 
         Ok(())
@@ -607,11 +618,12 @@ impl BounceManager {
 
     /// Save bounce metadata to JSON file
     fn save_metadata(&self, metadata: &BounceMetadata) -> Result<()> {
-        let path = self.bounces_dir.join(format!("{}.json", metadata.commit_id));
-        let json = serde_json::to_string_pretty(metadata)
-            .context("Failed to serialize metadata")?;
-        fs::write(&path, json)
-            .context("Failed to write metadata file")?;
+        let path = self
+            .bounces_dir
+            .join(format!("{}.json", metadata.commit_id));
+        let json =
+            serde_json::to_string_pretty(metadata).context("Failed to serialize metadata")?;
+        fs::write(&path, json).context("Failed to write metadata file")?;
         Ok(())
     }
 
@@ -704,12 +716,16 @@ impl BounceComparison {
     pub fn format_report(&self) -> String {
         let mut report = String::new();
 
-        report.push_str(&format!("Bounce A: {} (commit {})\n",
+        report.push_str(&format!(
+            "Bounce A: {} (commit {})\n",
             self.bounce_a.original_filename,
-            &self.bounce_a.commit_id[..8.min(self.bounce_a.commit_id.len())]));
-        report.push_str(&format!("Bounce B: {} (commit {})\n\n",
+            &self.bounce_a.commit_id[..8.min(self.bounce_a.commit_id.len())]
+        ));
+        report.push_str(&format!(
+            "Bounce B: {} (commit {})\n\n",
             self.bounce_b.original_filename,
-            &self.bounce_b.commit_id[..8.min(self.bounce_b.commit_id.len())]));
+            &self.bounce_b.commit_id[..8.min(self.bounce_b.commit_id.len())]
+        ));
 
         // Duration comparison
         report.push_str("Duration:\n");
@@ -727,9 +743,17 @@ impl BounceComparison {
         let size_diff = self.size_diff();
         let sign = if size_diff >= 0 { "+" } else { "" };
         if size_diff.abs() >= 1_000_000 {
-            report.push_str(&format!("  Diff: {}{:.2} MB\n", sign, size_diff as f64 / 1_000_000.0));
+            report.push_str(&format!(
+                "  Diff: {}{:.2} MB\n",
+                sign,
+                size_diff as f64 / 1_000_000.0
+            ));
         } else if size_diff.abs() >= 1_000 {
-            report.push_str(&format!("  Diff: {}{:.1} KB\n", sign, size_diff as f64 / 1_000.0));
+            report.push_str(&format!(
+                "  Diff: {}{:.1} KB\n",
+                sign,
+                size_diff as f64 / 1_000.0
+            ));
         } else {
             report.push_str(&format!("  Diff: {} bytes\n", size_diff));
         }
@@ -742,16 +766,29 @@ impl BounceComparison {
         // Sample rate comparison
         if self.bounce_a.sample_rate.is_some() || self.bounce_b.sample_rate.is_some() {
             report.push_str("\nSample Rate:\n");
-            report.push_str(&format!("  A: {} Hz\n",
-                self.bounce_a.sample_rate.map(|s| s.to_string()).unwrap_or_else(|| "unknown".to_string())));
-            report.push_str(&format!("  B: {} Hz\n",
-                self.bounce_b.sample_rate.map(|s| s.to_string()).unwrap_or_else(|| "unknown".to_string())));
+            report.push_str(&format!(
+                "  A: {} Hz\n",
+                self.bounce_a
+                    .sample_rate
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(|| "unknown".to_string())
+            ));
+            report.push_str(&format!(
+                "  B: {} Hz\n",
+                self.bounce_b
+                    .sample_rate
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(|| "unknown".to_string())
+            ));
         }
 
         // Null test results
         if let Some(null_test) = &self.null_test_result {
             report.push_str("\nNull Test (Phase Cancellation):\n");
-            report.push_str(&format!("  Cancellation: {:.1}%\n", null_test.cancellation_percent));
+            report.push_str(&format!(
+                "  Cancellation: {:.1}%\n",
+                null_test.cancellation_percent
+            ));
             if let Some(db) = null_test.difference_level_db {
                 report.push_str(&format!("  Difference Level: {:.2} dB\n", db));
             }
@@ -816,7 +853,10 @@ mod tests {
     #[test]
     fn test_bounce_manager_creation() {
         let manager = BounceManager::new(Path::new("/tmp/test-repo"));
-        assert_eq!(manager.bounces_dir, PathBuf::from("/tmp/test-repo/.auxin/bounces"));
+        assert_eq!(
+            manager.bounces_dir,
+            PathBuf::from("/tmp/test-repo/.auxin/bounces")
+        );
     }
 
     #[test]

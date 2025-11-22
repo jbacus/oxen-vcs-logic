@@ -181,35 +181,46 @@ impl AuxinServerClient {
     /// List all repositories
     pub fn list_repositories(&self) -> Result<Vec<Repository>> {
         let url = self.api_url("/repos");
-        let response = self.get(&url).call()
+        let response = self
+            .get(&url)
+            .call()
             .map_err(|e| anyhow!("Failed to list repositories: {}", e))?;
 
-        response.into_json()
+        response
+            .into_json()
             .context("Failed to parse repository list")
     }
 
     /// Get a specific repository
     pub fn get_repository(&self, namespace: &str, name: &str) -> Result<Repository> {
         let url = self.api_url(&format!("/repos/{}/{}", namespace, name));
-        let response = self.get(&url).call()
+        let response = self
+            .get(&url)
+            .call()
             .map_err(|e| anyhow!("Failed to get repository: {}", e))?;
 
-        response.into_json()
-            .context("Failed to parse repository")
+        response.into_json().context("Failed to parse repository")
     }
 
     /// Create a new repository
-    pub fn create_repository(&self, namespace: &str, name: &str, description: Option<&str>) -> Result<Repository> {
+    pub fn create_repository(
+        &self,
+        namespace: &str,
+        name: &str,
+        description: Option<&str>,
+    ) -> Result<Repository> {
         let url = self.api_url(&format!("/repos/{}/{}", namespace, name));
         let body = CreateRepoRequest {
             description: description.map(|s| s.to_string()),
         };
 
-        let response = self.post(&url)
+        let response = self
+            .post(&url)
             .send_json(&body)
             .map_err(|e| anyhow!("Failed to create repository: {}", e))?;
 
-        response.into_json()
+        response
+            .into_json()
             .context("Failed to parse created repository")
     }
 
@@ -219,10 +230,7 @@ impl AuxinServerClient {
     pub fn get_commits(&self, namespace: &str, name: &str) -> Result<Vec<Commit>> {
         let url = self.api_url(&format!("/repos/{}/{}/commits", namespace, name));
         match self.get(&url).call() {
-            Ok(response) => {
-                response.into_json()
-                    .context("Failed to parse commits")
-            }
+            Ok(response) => response.into_json().context("Failed to parse commits"),
             Err(ureq::Error::Status(501, _)) => {
                 // VCS not implemented in mock mode
                 Ok(vec![])
@@ -237,10 +245,7 @@ impl AuxinServerClient {
     pub fn get_branches(&self, namespace: &str, name: &str) -> Result<Vec<Branch>> {
         let url = self.api_url(&format!("/repos/{}/{}/branches", namespace, name));
         match self.get(&url).call() {
-            Ok(response) => {
-                response.into_json()
-                    .context("Failed to parse branches")
-            }
+            Ok(response) => response.into_json().context("Failed to parse branches"),
             Err(ureq::Error::Status(501, _)) => {
                 // VCS not implemented in mock mode
                 Ok(vec![])
@@ -254,15 +259,23 @@ impl AuxinServerClient {
     /// Get lock status for a repository
     pub fn get_lock_status(&self, namespace: &str, name: &str) -> Result<LockInfo> {
         let url = self.api_url(&format!("/repos/{}/{}/locks/status", namespace, name));
-        let response = self.get(&url).call()
+        let response = self
+            .get(&url)
+            .call()
             .map_err(|e| anyhow!("Failed to get lock status: {}", e))?;
 
-        response.into_json()
-            .context("Failed to parse lock status")
+        response.into_json().context("Failed to parse lock status")
     }
 
     /// Acquire a lock on a repository
-    pub fn acquire_lock(&self, namespace: &str, name: &str, user: &str, machine_id: &str, timeout_hours: u32) -> Result<LockHolder> {
+    pub fn acquire_lock(
+        &self,
+        namespace: &str,
+        name: &str,
+        user: &str,
+        machine_id: &str,
+        timeout_hours: u32,
+    ) -> Result<LockHolder> {
         let url = self.api_url(&format!("/repos/{}/{}/locks/acquire", namespace, name));
         let body = LockAcquireRequest {
             user: user.to_string(),
@@ -270,16 +283,25 @@ impl AuxinServerClient {
             timeout_hours,
         };
 
-        let response = self.post(&url)
+        let response = self
+            .post(&url)
             .send_json(&body)
             .map_err(|e| anyhow!("Failed to acquire lock: {}", e))?;
 
-        response.into_json()
+        response
+            .into_json()
             .context("Failed to parse lock response")
     }
 
     /// Release a lock on a repository
-    pub fn release_lock(&self, namespace: &str, name: &str, lock_id: &str, user: &str, machine_id: &str) -> Result<()> {
+    pub fn release_lock(
+        &self,
+        namespace: &str,
+        name: &str,
+        lock_id: &str,
+        user: &str,
+        machine_id: &str,
+    ) -> Result<()> {
         let url = self.api_url(&format!("/repos/{}/{}/locks/release", namespace, name));
         let body = LockReleaseRequest {
             lock_id: lock_id.to_string(),
@@ -297,7 +319,8 @@ impl AuxinServerClient {
     /// Send heartbeat to extend lock
     pub fn heartbeat_lock(&self, namespace: &str, name: &str) -> Result<()> {
         let url = self.api_url(&format!("/repos/{}/{}/locks/heartbeat", namespace, name));
-        self.post(&url).call()
+        self.post(&url)
+            .call()
             .map_err(|e| anyhow!("Failed to send heartbeat: {}", e))?;
 
         Ok(())
@@ -306,18 +329,36 @@ impl AuxinServerClient {
     // ========== Metadata Operations ==========
 
     /// Get metadata for a commit
-    pub fn get_metadata(&self, namespace: &str, name: &str, commit_id: &str) -> Result<LogicProMetadata> {
-        let url = self.api_url(&format!("/repos/{}/{}/metadata/{}", namespace, name, commit_id));
-        let response = self.get(&url).call()
+    pub fn get_metadata(
+        &self,
+        namespace: &str,
+        name: &str,
+        commit_id: &str,
+    ) -> Result<LogicProMetadata> {
+        let url = self.api_url(&format!(
+            "/repos/{}/{}/metadata/{}",
+            namespace, name, commit_id
+        ));
+        let response = self
+            .get(&url)
+            .call()
             .map_err(|e| anyhow!("Failed to get metadata: {}", e))?;
 
-        response.into_json()
-            .context("Failed to parse metadata")
+        response.into_json().context("Failed to parse metadata")
     }
 
     /// Store metadata for a commit
-    pub fn store_metadata(&self, namespace: &str, name: &str, commit_id: &str, metadata: &LogicProMetadata) -> Result<()> {
-        let url = self.api_url(&format!("/repos/{}/{}/metadata/{}", namespace, name, commit_id));
+    pub fn store_metadata(
+        &self,
+        namespace: &str,
+        name: &str,
+        commit_id: &str,
+        metadata: &LogicProMetadata,
+    ) -> Result<()> {
+        let url = self.api_url(&format!(
+            "/repos/{}/{}/metadata/{}",
+            namespace, name, commit_id
+        ));
         self.post(&url)
             .send_json(metadata)
             .map_err(|e| anyhow!("Failed to store metadata: {}", e))?;

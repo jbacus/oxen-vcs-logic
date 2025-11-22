@@ -148,8 +148,8 @@ impl ActivityFeed {
 
         // Try to extract author from commit message
         // In real implementation, would use git log --format to get author
-        let author = extract_author_from_message(&commit.message)
-            .unwrap_or_else(|| "unknown".to_string());
+        let author =
+            extract_author_from_message(&commit.message).unwrap_or_else(|| "unknown".to_string());
 
         Ok(Activity {
             id: commit.id.clone(),
@@ -428,10 +428,7 @@ mod tests {
 
     #[test]
     fn test_parse_metadata_line() {
-        assert_eq!(
-            parse_metadata_line("BPM: 120"),
-            Some(("BPM", "120"))
-        );
+        assert_eq!(parse_metadata_line("BPM: 120"), Some(("BPM", "120")));
         assert_eq!(
             parse_metadata_line("Sample Rate: 48000Hz"),
             Some(("Sample Rate", "48000Hz"))
