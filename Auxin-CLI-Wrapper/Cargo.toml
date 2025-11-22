@@ -26,7 +26,7 @@ log = "0.4"
 uuid = { version = "1.0", features = ["v4"] }
 wait-timeout = "0.2"    # Timeout handling for subprocess commands
 hostname = "0.3"
-dirs = "5.0"
+dirs = "6.0"
 whoami = "1.4"
 regex = "1.10"
 md5 = "0.7"            # Hashing for session file names
