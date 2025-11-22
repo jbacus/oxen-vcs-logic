@@ -139,6 +139,7 @@ Legacy documentation has been moved to `docs/BONEYARD/` for reference. Use the n
 
 | Old File | New Location |
 |----------|--------------|
+| `GETTING_STARTED.md` | `user/getting-started.md` |
 | `FOR_DEVELOPERS.md` | `developer/architecture.md`, `developer/development-setup.md` |
 | `FOR_MUSICIANS.md` | `user/for-musicians.md` |
 | `TESTING_STRATEGY.md` | `developer/testing.md` |
@@ -148,9 +149,11 @@ Legacy documentation has been moved to `docs/BONEYARD/` for reference. Use the n
 | `SKETCHUP_EXAMPLES.md` | `user/for-modelers.md` |
 | `EXTENSIBILITY.md` | `developer/extensibility.md` |
 | `SEMANTIC_*.md`, `FCP_*.md` | `system/future-features.md` |
+| `OXEN_INTEGRATION_EXECUTIVE_SUMMARY.txt` | See `developer/architecture.md` |
+| `Semantic Audio Diff for Music Production.txt` | See `system/future-features.md` |
 
-The BONEYARD contains 16 archived files that may be deleted in the future.
+The BONEYARD contains 19 archived files that may be deleted in the future.
 
 ---
 
-*Documentation restructured on 2025-11-19*
+*Documentation restructured on 2025-11-19, updated 2025-11-22*
