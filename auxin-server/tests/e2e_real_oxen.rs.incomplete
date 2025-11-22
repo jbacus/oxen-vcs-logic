@@ -1,0 +1,407 @@
+//! End-to-End Tests with Real Oxen Operations
+//!
+//! These tests use real Oxen VCS operations via the auxin-oxen subprocess approach.
+//! Unlike the mock-based tests, these verify actual version control functionality.
+//!
+//! Requirements:
+//! - Oxen CLI must be installed (`pip install oxenai`)
+//! - Tests use local file:// URLs (no network required)
+//!
+//! Run with: `cargo test --test e2e_real_oxen`
+
+use auxin_server::repo::RepositoryOps;
+use std::io::Write;
+use std::path::Path;
+use tempfile::TempDir;
+
+// ==========================================================================
+// Scenario 1: Basic Workflow - Init, Add, Commit
+// ==========================================================================
+
+#[test]
+fn test_real_oxen_init_add_commit() {
+    // Setup
+    let temp_dir = TempDir::new().unwrap();
+    let repo_path = temp_dir.path().join("test-repo");
+
+    // 1. Initialize repository
+    let repo = RepositoryOps::init(&repo_path).unwrap();
+
+    // Verify .oxen directory structure
+    assert!(repo_path.join(".oxen").exists(), ".oxen directory should exist");
+    assert!(repo_path.join(".oxen/HEAD").exists(), "HEAD file should exist");
+    assert!(
+        repo_path.join(".oxen/config.toml").exists(),
+        "config.toml should exist"
+    );
+
+    // 2. Create test file
+    std::fs::write(repo_path.join("test.txt"), "Hello Oxen").unwrap();
+
+    // 3. Add file
+    repo.add(&[Path::new("test.txt")]).unwrap();
+
+    // 4. Commit
+    let commit_id = repo.commit("Add test file").unwrap();
+    assert!(
+        commit_id.len() >= 7,
+        "Commit ID should be at least 7 characters (short hash)"
+    );
+
+    // 5. Verify commit history
+    let commits = repo.log(None).unwrap();
+    assert_eq!(commits.len(), 1, "Should have exactly 1 commit");
+    assert_eq!(
+        commits[0].message, "Add test file",
+        "Commit message should match"
+    );
+}
+
+// ==========================================================================
+// Scenario 2: Clone and Pull Workflow
+// ==========================================================================
+
+#[test]
+fn test_real_oxen_clone_local() {
+    // Create source repository
+    let source_dir = TempDir::new().unwrap();
+    let source_path = source_dir.path().join("source");
+    let source_repo = RepositoryOps::init(&source_path).unwrap();
+
+    // Add content to source
+    std::fs::write(source_path.join("data.txt"), "source data").unwrap();
+    source_repo.add(&[Path::new("data.txt")]).unwrap();
+    source_repo.commit("Initial commit").unwrap();
+
+    // Clone to destination
+    let dest_dir = TempDir::new().unwrap();
+    let dest_path = dest_dir.path().join("dest");
+    let clone_url = format!("file://{}", source_path.display());
+
+    let dest_repo = RepositoryOps::clone(&clone_url, &dest_path).unwrap();
+
+    // Verify cloned content
+    assert!(
+        dest_path.join("data.txt").exists(),
+        "Cloned file should exist"
+    );
+    let content = std::fs::read_to_string(dest_path.join("data.txt")).unwrap();
+    assert_eq!(content, "source data", "File content should match");
+
+    // Verify commit history
+    let commits = dest_repo.log(None).unwrap();
+    assert_eq!(commits.len(), 1, "Clone should have same commit history");
+}
+
+// ==========================================================================
+// Scenario 3: Multi-User Collaboration with Locks
+// ==========================================================================
+
+#[test]
+fn test_lock_contention_real_oxen() {
+    let temp_dir = TempDir::new().unwrap();
+    let repo_path = temp_dir.path().join("collab-repo");
+    let repo = RepositoryOps::init(&repo_path).unwrap();
+
+    // User A acquires lock
+    let lock_a = repo.acquire_lock("user_a", "machine_a", 1).unwrap();
+    assert!(
+        !lock_a.lock_id.is_empty(),
+        "Lock ID should not be empty"
+    );
+
+    // User B tries to acquire lock (should fail)
+    let result = repo.acquire_lock("user_b", "machine_b", 1);
+    assert!(
+        result.is_err(),
+        "Second lock acquisition should fail while first is active"
+    );
+
+    // Verify lock status
+    let status = repo.lock_status().unwrap();
+    assert!(status.is_some(), "Lock status should exist");
+    assert_eq!(
+        status.unwrap().user,
+        "user_a",
+        "Lock should belong to user_a"
+    );
+
+    // User A releases lock
+    repo.release_lock(&lock_a.lock_id).unwrap();
+
+    // Verify lock is released
+    let status_after = repo.lock_status().unwrap();
+    assert!(
+        status_after.is_none(),
+        "Lock should be gone after release"
+    );
+
+    // User B can now acquire lock
+    let lock_b = repo.acquire_lock("user_b", "machine_b", 1).unwrap();
+    assert!(
+        !lock_b.lock_id.is_empty(),
+        "User B should successfully acquire lock"
+    );
+}
+
+// ==========================================================================
+// Scenario 4: Branch Operations
+// ==========================================================================
+
+#[test]
+fn test_branch_operations_real_oxen() {
+    let temp_dir = TempDir::new().unwrap();
+    let repo_path = temp_dir.path().join("branch-repo");
+    let repo = RepositoryOps::init(&repo_path).unwrap();
+
+    // Create initial commit (required before branching)
+    std::fs::write(repo_path.join("file.txt"), "content").unwrap();
+    repo.add(&[Path::new("file.txt")]).unwrap();
+    repo.commit("Initial commit").unwrap();
+
+    // List branches (should have main)
+    let branches = repo.list_branches().unwrap();
+    assert!(
+        branches.contains(&"main".to_string()),
+        "Should have main branch"
+    );
+
+    // Create new branch
+    repo.create_branch("feature").unwrap();
+
+    // List branches again
+    let branches = repo.list_branches().unwrap();
+    assert!(
+        branches.contains(&"feature".to_string()),
+        "Should have feature branch"
+    );
+    assert_eq!(branches.len(), 2, "Should have exactly 2 branches");
+
+    // Checkout feature branch
+    repo.checkout("feature").unwrap();
+    let current = repo.current_branch().unwrap();
+    assert_eq!(
+        current, "feature",
+        "Current branch should be 'feature'"
+    );
+
+    // Checkout back to main
+    repo.checkout("main").unwrap();
+    let current = repo.current_branch().unwrap();
+    assert_eq!(current, "main", "Current branch should be 'main'");
+}
+
+// ==========================================================================
+// Scenario 5: Push and Pull Between Repositories
+// ==========================================================================
+
+#[test]
+fn test_push_pull_workflow() {
+    // Create source repository
+    let source_dir = TempDir::new().unwrap();
+    let source_path = source_dir.path().join("source");
+    let source_repo = RepositoryOps::init(&source_path).unwrap();
+
+    // Add initial content
+    std::fs::write(source_path.join("file1.txt"), "initial").unwrap();
+    source_repo.add(&[Path::new("file1.txt")]).unwrap();
+    source_repo.commit("Initial commit").unwrap();
+
+    // Clone to working directory
+    let work_dir = TempDir::new().unwrap();
+    let work_path = work_dir.path().join("work");
+    let clone_url = format!("file://{}", source_path.display());
+
+    let work_repo = RepositoryOps::clone(&clone_url, &work_path).unwrap();
+
+    // Make changes in working directory
+    std::fs::write(work_path.join("file2.txt"), "new content").unwrap();
+    work_repo.add(&[Path::new("file2.txt")]).unwrap();
+    work_repo.commit("Add file2").unwrap();
+
+    // Push changes back
+    work_repo.push("origin", "main").unwrap();
+
+    // Pull changes in source (to verify push worked)
+    source_repo.pull("origin", "main").unwrap();
+
+    // Verify file exists in source
+    assert!(
+        source_path.join("file2.txt").exists(),
+        "Pushed file should exist in source after pull"
+    );
+}
+
+// ==========================================================================
+// Scenario 6: Metadata Storage and Retrieval
+// ==========================================================================
+
+#[test]
+fn test_metadata_storage() {
+    use auxin_server::extensions::LogicProMetadata;
+
+    let temp_dir = TempDir::new().unwrap();
+    let repo_path = temp_dir.path().join("metadata-repo");
+    let repo = RepositoryOps::init(&repo_path).unwrap();
+
+    // Create commit
+    std::fs::write(repo_path.join("project.logicx"), "project data").unwrap();
+    repo.add(&[Path::new("project.logicx")]).unwrap();
+    let commit_id = repo.commit("Add project").unwrap();
+
+    // Store metadata
+    let metadata = LogicProMetadata {
+        bpm: Some(120.0),
+        sample_rate: Some(44100),
+        key_signature: Some("C Major".to_string()),
+        tags: vec!["rock".to_string(), "demo".to_string()],
+    };
+
+    repo.store_metadata(&commit_id, &metadata).unwrap();
+
+    // Retrieve metadata
+    let retrieved = repo.get_metadata(&commit_id).unwrap();
+    assert!(retrieved.is_some(), "Metadata should be retrievable");
+
+    let retrieved = retrieved.unwrap();
+    assert_eq!(retrieved.bpm, Some(120.0));
+    assert_eq!(retrieved.sample_rate, Some(44100));
+    assert_eq!(retrieved.key_signature, Some("C Major".to_string()));
+    assert_eq!(retrieved.tags, vec!["rock".to_string(), "demo".to_string()]);
+}
+
+// ==========================================================================
+// Scenario 7: Large File Handling (marked #[ignore])
+// ==========================================================================
+
+#[test]
+#[ignore] // Expensive test - run manually with `cargo test -- --ignored`
+fn test_large_file_handling() {
+    let temp_dir = TempDir::new().unwrap();
+    let repo_path = temp_dir.path().join("large-repo");
+    let repo = RepositoryOps::init(&repo_path).unwrap();
+
+    // Create 100MB test file
+    let large_file = repo_path.join("large.bin");
+    let mut file = std::fs::File::create(&large_file).unwrap();
+    let chunk = vec![0u8; 1024 * 1024]; // 1MB chunk
+    for _ in 0..100 {
+        // Write 100 x 1MB = 100MB
+        file.write_all(&chunk).unwrap();
+    }
+    drop(file);
+
+    println!("Created 100MB test file");
+
+    // Add and commit
+    let start = std::time::Instant::now();
+    repo.add(&[Path::new("large.bin")]).unwrap();
+    let commit_id = repo.commit("Add 100MB file").unwrap();
+    let duration = start.elapsed();
+
+    println!(
+        "Large file add+commit took: {:?} (commit: {})",
+        duration, commit_id
+    );
+
+    // Verify commit
+    let commits = repo.log(None).unwrap();
+    assert_eq!(commits.len(), 1, "Should have 1 commit");
+
+    // Clone to verify deduplication works
+    let clone_dir = TempDir::new().unwrap();
+    let clone_path = clone_dir.path().join("clone");
+    let clone_url = format!("file://{}", repo_path.display());
+
+    println!("Cloning repository with large file...");
+    let clone_start = std::time::Instant::now();
+    let _cloned = RepositoryOps::clone(&clone_url, &clone_path).unwrap();
+    let clone_duration = clone_start.elapsed();
+
+    println!("Clone took: {:?}", clone_duration);
+
+    assert!(
+        clone_path.join("large.bin").exists(),
+        "Large file should exist in clone"
+    );
+
+    // Verify file size
+    let file_size = std::fs::metadata(clone_path.join("large.bin"))
+        .unwrap()
+        .len();
+    assert_eq!(
+        file_size,
+        100 * 1024 * 1024,
+        "File size should be 100MB"
+    );
+
+    println!("✓ Large file test completed successfully");
+}
+
+// ==========================================================================
+// Scenario 8: Multiple Commits and History
+// ==========================================================================
+
+#[test]
+fn test_commit_history() {
+    let temp_dir = TempDir::new().unwrap();
+    let repo_path = temp_dir.path().join("history-repo");
+    let repo = RepositoryOps::init(&repo_path).unwrap();
+
+    // Create multiple commits
+    for i in 1..=5 {
+        let filename = format!("file{}.txt", i);
+        std::fs::write(repo_path.join(&filename), format!("Content {}", i)).unwrap();
+        repo.add(&[Path::new(&filename)]).unwrap();
+        repo.commit(&format!("Add file {}", i)).unwrap();
+    }
+
+    // Verify full history
+    let all_commits = repo.log(None).unwrap();
+    assert_eq!(all_commits.len(), 5, "Should have 5 commits");
+
+    // Verify limited history
+    let limited_commits = repo.log(Some(3)).unwrap();
+    assert_eq!(limited_commits.len(), 3, "Should limit to 3 commits");
+
+    // Verify commit messages are in correct order (newest first)
+    assert_eq!(all_commits[0].message, "Add file 5");
+    assert_eq!(all_commits[4].message, "Add file 1");
+}
+
+// ==========================================================================
+// Helper Functions
+// ==========================================================================
+
+/// Check if Oxen CLI is installed
+#[allow(dead_code)]
+fn is_oxen_installed() -> bool {
+    std::process::Command::new("oxen")
+        .arg("--version")
+        .output()
+        .is_ok()
+}
+
+/// Print test environment info
+#[allow(dead_code)]
+fn print_test_env() {
+    println!("=== Test Environment ===");
+    println!("Oxen installed: {}", is_oxen_installed());
+
+    if let Ok(output) = std::process::Command::new("oxen").arg("--version").output() {
+        if let Ok(version) = String::from_utf8(output.stdout) {
+            println!("Oxen version: {}", version.trim());
+        }
+    }
+}
+
+// Optional: Run this to verify environment before running tests
+#[test]
+#[ignore]
+fn test_environment_check() {
+    print_test_env();
+    assert!(
+        is_oxen_installed(),
+        "Oxen CLI must be installed. Run: pip install oxenai"
+    );
+}
