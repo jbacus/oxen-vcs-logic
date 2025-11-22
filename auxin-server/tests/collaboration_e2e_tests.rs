@@ -164,6 +164,7 @@ async fn test_end_to_end_remote_collaboration() {
 
     let req = test::TestRequest::post()
         .uri("/api/repos/pete_colorado/summer-album/locks/acquire")
+        .insert_header(("Authorization", format!("Bearer {}", pete_token)))
         .set_json(&pete_lock_request)
         .to_request();
 
@@ -190,6 +191,7 @@ async fn test_end_to_end_remote_collaboration() {
 
     let req = test::TestRequest::post()
         .uri("/api/repos/pete_colorado/summer-album/locks/acquire")
+        .insert_header(("Authorization", format!("Bearer {}", pete_token)))
         .set_json(&louis_lock_request)
         .to_request();
 
@@ -206,6 +208,7 @@ async fn test_end_to_end_remote_collaboration() {
 
     let req = test::TestRequest::get()
         .uri("/api/repos/pete_colorado/summer-album/locks/status")
+        .insert_header(("Authorization", format!("Bearer {}", pete_token)))
         .to_request();
 
     let resp = test::call_service(&app, req).await;
@@ -236,6 +239,7 @@ async fn test_end_to_end_remote_collaboration() {
 
     let req = test::TestRequest::post()
         .uri("/api/repos/pete_colorado/summer-album/metadata/draft-001")
+        .insert_header(("Authorization", format!("Bearer {}", pete_token)))
         .set_json(&pete_metadata)
         .to_request();
 
@@ -261,6 +265,7 @@ async fn test_end_to_end_remote_collaboration() {
 
     let req = test::TestRequest::post()
         .uri("/api/repos/pete_colorado/summer-album/locks/heartbeat")
+        .insert_header(("Authorization", format!("Bearer {}", pete_token)))
         .set_json(&heartbeat_request)
         .to_request();
 
@@ -280,6 +285,7 @@ async fn test_end_to_end_remote_collaboration() {
 
     let req = test::TestRequest::post()
         .uri("/api/repos/pete_colorado/summer-album/locks/release")
+        .insert_header(("Authorization", format!("Bearer {}", pete_token)))
         .set_json(&release_request)
         .to_request();
 
@@ -292,6 +298,7 @@ async fn test_end_to_end_remote_collaboration() {
     // Verify lock is released
     let req = test::TestRequest::get()
         .uri("/api/repos/pete_colorado/summer-album/locks/status")
+        .insert_header(("Authorization", format!("Bearer {}", pete_token)))
         .to_request();
 
     let resp = test::call_service(&app, req).await;
@@ -305,6 +312,7 @@ async fn test_end_to_end_remote_collaboration() {
 
     let req = test::TestRequest::post()
         .uri("/api/repos/pete_colorado/summer-album/locks/acquire")
+        .insert_header(("Authorization", format!("Bearer {}", pete_token)))
         .set_json(&louis_lock_request)
         .to_request();
 
@@ -332,6 +340,7 @@ async fn test_end_to_end_remote_collaboration() {
 
     let req = test::TestRequest::post()
         .uri("/api/repos/pete_colorado/summer-album/metadata/draft-002")
+        .insert_header(("Authorization", format!("Bearer {}", pete_token)))
         .set_json(&louis_metadata)
         .to_request();
 
@@ -353,6 +362,7 @@ async fn test_end_to_end_remote_collaboration() {
 
     let req = test::TestRequest::post()
         .uri("/api/repos/pete_colorado/summer-album/locks/release")
+        .insert_header(("Authorization", format!("Bearer {}", pete_token)))
         .set_json(&release_request)
         .to_request();
 
@@ -369,6 +379,7 @@ async fn test_end_to_end_remote_collaboration() {
 
     let req = test::TestRequest::get()
         .uri("/api/repos/pete_colorado/summer-album/activity")
+        .insert_header(("Authorization", format!("Bearer {}", pete_token)))
         .to_request();
 
     let resp = test::call_service(&app, req).await;
@@ -499,6 +510,7 @@ async fn test_lock_expiration() {
 
     let req = test::TestRequest::post()
         .uri("/api/repos/testuser/test-expiration/locks/acquire")
+        .insert_header(("Authorization", format!("Bearer {}", pete_token)))
         .set_json(&lock_request)
         .to_request();
 
@@ -514,6 +526,7 @@ async fn test_lock_expiration() {
     // Check status shows correct expiration
     let req = test::TestRequest::get()
         .uri("/api/repos/testuser/test-expiration/locks/status")
+        .insert_header(("Authorization", format!("Bearer {}", pete_token)))
         .to_request();
 
     let resp = test::call_service(&app, req).await;
@@ -568,6 +581,7 @@ async fn test_concurrent_lock_requests() {
 
     let req = test::TestRequest::post()
         .uri("/api/repos/team/concurrent-test/locks/acquire")
+        .insert_header(("Authorization", format!("Bearer {}", pete_token)))
         .set_json(&user1_lock)
         .to_request();
 
@@ -585,6 +599,7 @@ async fn test_concurrent_lock_requests() {
 
     let req = test::TestRequest::post()
         .uri("/api/repos/team/concurrent-test/locks/acquire")
+        .insert_header(("Authorization", format!("Bearer {}", pete_token)))
         .set_json(&user2_lock)
         .to_request();
 
@@ -602,6 +617,7 @@ async fn test_concurrent_lock_requests() {
 
     let req = test::TestRequest::post()
         .uri("/api/repos/team/concurrent-test/locks/acquire")
+        .insert_header(("Authorization", format!("Bearer {}", pete_token)))
         .set_json(&user3_lock)
         .to_request();
 
