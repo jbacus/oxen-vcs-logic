@@ -17,10 +17,7 @@ pub struct MetadataDiffer;
 
 impl MetadataDiffer {
     /// Compare two Logic Pro projects and generate a diff
-    pub fn compare(
-        project_a: &LogicProjectData,
-        project_b: &LogicProjectData,
-    ) -> MetadataDiff {
+    pub fn compare(project_a: &LogicProjectData, project_b: &LogicProjectData) -> MetadataDiff {
         diff_metadata(project_a, project_b)
     }
 

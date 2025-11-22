@@ -131,12 +131,10 @@ impl ThumbnailManager {
         let dest_filename = format!("{}.{}", commit_id, format);
         let dest_path = self.thumbnails_dir.join(&dest_filename);
 
-        fs::copy(&thumbnail_source, &dest_path)
-            .context("Failed to copy thumbnail")?;
+        fs::copy(&thumbnail_source, &dest_path).context("Failed to copy thumbnail")?;
 
         // Get file size
-        let file_meta = fs::metadata(&dest_path)
-            .context("Failed to read thumbnail metadata")?;
+        let file_meta = fs::metadata(&dest_path).context("Failed to read thumbnail metadata")?;
 
         let metadata = ThumbnailMetadata::new(commit_id, format, file_meta.len())
             .with_source(thumbnail_source.to_string_lossy().as_ref());
@@ -190,11 +188,7 @@ impl ThumbnailManager {
     }
 
     /// Add a thumbnail from an external file
-    pub fn add_thumbnail(
-        &self,
-        commit_id: &str,
-        source_file: &Path,
-    ) -> Result<ThumbnailMetadata> {
+    pub fn add_thumbnail(&self, commit_id: &str, source_file: &Path) -> Result<ThumbnailMetadata> {
         self.init()?;
 
         if !source_file.exists() {
@@ -209,11 +203,9 @@ impl ThumbnailManager {
         let dest_filename = format!("{}.{}", commit_id, format);
         let dest_path = self.thumbnails_dir.join(&dest_filename);
 
-        fs::copy(source_file, &dest_path)
-            .context("Failed to copy thumbnail")?;
+        fs::copy(source_file, &dest_path).context("Failed to copy thumbnail")?;
 
-        let file_meta = fs::metadata(&dest_path)
-            .context("Failed to read thumbnail metadata")?;
+        let file_meta = fs::metadata(&dest_path).context("Failed to read thumbnail metadata")?;
 
         let metadata = ThumbnailMetadata::new(commit_id, format, file_meta.len())
             .with_source(source_file.to_string_lossy().as_ref());
@@ -231,11 +223,11 @@ impl ThumbnailManager {
             return Ok(None);
         }
 
-        let contents = fs::read_to_string(&metadata_path)
-            .context("Failed to read thumbnail metadata")?;
+        let contents =
+            fs::read_to_string(&metadata_path).context("Failed to read thumbnail metadata")?;
 
-        let metadata: ThumbnailMetadata = serde_json::from_str(&contents)
-            .context("Failed to parse thumbnail metadata")?;
+        let metadata: ThumbnailMetadata =
+            serde_json::from_str(&contents).context("Failed to parse thumbnail metadata")?;
 
         Ok(Some(metadata))
     }
@@ -280,34 +272,32 @@ impl ThumbnailManager {
     pub fn delete_thumbnail(&self, commit_id: &str) -> Result<()> {
         // Delete image file
         if let Some(image_path) = self.get_thumbnail_path(commit_id)? {
-            fs::remove_file(&image_path)
-                .context("Failed to delete thumbnail image")?;
+            fs::remove_file(&image_path).context("Failed to delete thumbnail image")?;
         }
 
         // Delete metadata
         let metadata_path = self.thumbnails_dir.join(format!("{}.json", commit_id));
         if metadata_path.exists() {
-            fs::remove_file(&metadata_path)
-                .context("Failed to delete thumbnail metadata")?;
+            fs::remove_file(&metadata_path).context("Failed to delete thumbnail metadata")?;
         }
 
         Ok(())
     }
 
     /// Compare two thumbnails and generate diff
-    pub fn compare_thumbnails(
-        &self,
-        commit_a: &str,
-        commit_b: &str,
-    ) -> Result<ThumbnailDiff> {
-        let meta_a = self.get_thumbnail(commit_a)?
+    pub fn compare_thumbnails(&self, commit_a: &str, commit_b: &str) -> Result<ThumbnailDiff> {
+        let meta_a = self
+            .get_thumbnail(commit_a)?
             .ok_or_else(|| anyhow!("No thumbnail for commit {}", commit_a))?;
-        let meta_b = self.get_thumbnail(commit_b)?
+        let meta_b = self
+            .get_thumbnail(commit_b)?
             .ok_or_else(|| anyhow!("No thumbnail for commit {}", commit_b))?;
 
-        let path_a = self.get_thumbnail_path(commit_a)?
+        let path_a = self
+            .get_thumbnail_path(commit_a)?
             .ok_or_else(|| anyhow!("No thumbnail image for commit {}", commit_a))?;
-        let path_b = self.get_thumbnail_path(commit_b)?
+        let path_b = self
+            .get_thumbnail_path(commit_b)?
             .ok_or_else(|| anyhow!("No thumbnail image for commit {}", commit_b))?;
 
         // Calculate size difference
@@ -322,7 +312,8 @@ impl ThumbnailManager {
         };
 
         // Use ImageMagick compare if available for pixel-level diff
-        let difference_percent = self.calculate_image_difference(&path_a, &path_b)
+        let difference_percent = self
+            .calculate_image_difference(&path_a, &path_b)
             .unwrap_or_else(|_| {
                 // Fallback: estimate based on file size
                 if size_diff_bytes == 0 {
@@ -354,10 +345,11 @@ impl ThumbnailManager {
         // Try using ImageMagick's compare command
         let output = Command::new("compare")
             .args(&[
-                "-metric", "RMSE",
+                "-metric",
+                "RMSE",
                 path_a.to_str().unwrap(),
                 path_b.to_str().unwrap(),
-                "null:"
+                "null:",
             ])
             .output();
 
@@ -381,11 +373,12 @@ impl ThumbnailManager {
 
     /// Save thumbnail metadata to JSON file
     fn save_metadata(&self, metadata: &ThumbnailMetadata) -> Result<()> {
-        let path = self.thumbnails_dir.join(format!("{}.json", metadata.commit_id));
-        let json = serde_json::to_string_pretty(metadata)
-            .context("Failed to serialize metadata")?;
-        fs::write(&path, json)
-            .context("Failed to write metadata file")?;
+        let path = self
+            .thumbnails_dir
+            .join(format!("{}.json", metadata.commit_id));
+        let json =
+            serde_json::to_string_pretty(metadata).context("Failed to serialize metadata")?;
+        fs::write(&path, json).context("Failed to write metadata file")?;
         Ok(())
     }
 }

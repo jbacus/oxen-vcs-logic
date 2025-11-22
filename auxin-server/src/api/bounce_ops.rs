@@ -160,7 +160,11 @@ pub async fn list_bounces(
 
             // Filename pattern filter
             if let Some(pattern) = &query.pattern {
-                if !bounce.original_filename.to_lowercase().contains(&pattern.to_lowercase()) {
+                if !bounce
+                    .original_filename
+                    .to_lowercase()
+                    .contains(&pattern.to_lowercase())
+                {
                     return false;
                 }
             }
@@ -199,7 +203,11 @@ pub async fn list_bounces(
 
             // User filter
             if let Some(user) = &query.user {
-                if !bounce.added_by.to_lowercase().contains(&user.to_lowercase()) {
+                if !bounce
+                    .added_by
+                    .to_lowercase()
+                    .contains(&user.to_lowercase())
+                {
                     return false;
                 }
             }
@@ -222,7 +230,10 @@ pub async fn get_bounce(
     path: web::Path<(String, String, String)>,
 ) -> AppResult<HttpResponse> {
     let (namespace, repo_name, commit_id) = path.into_inner();
-    info!("Getting bounce for {}/{} commit {}", namespace, repo_name, commit_id);
+    info!(
+        "Getting bounce for {}/{} commit {}",
+        namespace, repo_name, commit_id
+    );
 
     let bounces_dir = get_bounces_dir(&config, &namespace, &repo_name);
     let metadata_path = bounces_dir.join(format!("{}.json", commit_id));
@@ -249,7 +260,10 @@ pub async fn get_bounce_audio(
     path: web::Path<(String, String, String)>,
 ) -> AppResult<HttpResponse> {
     let (namespace, repo_name, commit_id) = path.into_inner();
-    info!("Getting bounce audio for {}/{} commit {}", namespace, repo_name, commit_id);
+    info!(
+        "Getting bounce audio for {}/{} commit {}",
+        namespace, repo_name, commit_id
+    );
 
     let bounces_dir = get_bounces_dir(&config, &namespace, &repo_name);
 
@@ -270,7 +284,10 @@ pub async fn get_bounce_audio(
     };
 
     // Determine content type
-    let ext = audio_path.extension().and_then(|e| e.to_str()).unwrap_or("wav");
+    let ext = audio_path
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("wav");
     let format = AudioFormat::from_extension(ext).unwrap_or(AudioFormat::Wav);
 
     // Read and return file
@@ -289,7 +306,10 @@ pub async fn upload_bounce(
     mut payload: Multipart,
 ) -> AppResult<HttpResponse> {
     let (namespace, repo_name, commit_id) = path.into_inner();
-    info!("Uploading bounce for {}/{} commit {}", namespace, repo_name, commit_id);
+    info!(
+        "Uploading bounce for {}/{} commit {}",
+        namespace, repo_name, commit_id
+    );
 
     let bounces_dir = get_bounces_dir(&config, &namespace, &repo_name);
 
@@ -324,9 +344,8 @@ pub async fn upload_bounce(
                 filename = content_disposition.get_filename().map(|s| s.to_string());
                 let mut data = Vec::new();
                 while let Some(chunk) = field.next().await {
-                    let chunk = chunk.map_err(|e| {
-                        AppError::Internal(format!("Failed to read file: {}", e))
-                    })?;
+                    let chunk = chunk
+                        .map_err(|e| AppError::Internal(format!("Failed to read file: {}", e)))?;
                     data.extend_from_slice(&chunk);
                 }
                 audio_data = Some(data);
@@ -336,13 +355,11 @@ pub async fn upload_bounce(
     }
 
     // Validate we got an audio file
-    let audio_data = audio_data.ok_or_else(|| {
-        AppError::BadRequest("No audio file provided".to_string())
-    })?;
+    let audio_data =
+        audio_data.ok_or_else(|| AppError::BadRequest("No audio file provided".to_string()))?;
 
-    let filename = filename.ok_or_else(|| {
-        AppError::BadRequest("No filename provided".to_string())
-    })?;
+    let filename =
+        filename.ok_or_else(|| AppError::BadRequest("No filename provided".to_string()))?;
 
     // Get format from filename
     let ext = std::path::Path::new(&filename)
@@ -392,7 +409,10 @@ pub async fn delete_bounce(
     path: web::Path<(String, String, String)>,
 ) -> AppResult<HttpResponse> {
     let (namespace, repo_name, commit_id) = path.into_inner();
-    info!("Deleting bounce for {}/{} commit {}", namespace, repo_name, commit_id);
+    info!(
+        "Deleting bounce for {}/{} commit {}",
+        namespace, repo_name, commit_id
+    );
 
     let bounces_dir = get_bounces_dir(&config, &namespace, &repo_name);
 

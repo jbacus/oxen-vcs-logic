@@ -1,7 +1,7 @@
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 use uuid::Uuid;
-use chrono::Utc;
 
 use crate::error::{AppError, AppResult};
 
@@ -73,26 +73,23 @@ impl Project {
 
     /// List all projects
     pub async fn list(pool: &SqlitePool) -> AppResult<Vec<Project>> {
-        let projects = sqlx::query_as::<_, Project>(
-            "SELECT * FROM projects ORDER BY created_at DESC"
-        )
-        .fetch_all(pool)
-        .await
-        .map_err(|e| AppError::Database(e.to_string()))?;
+        let projects =
+            sqlx::query_as::<_, Project>("SELECT * FROM projects ORDER BY created_at DESC")
+                .fetch_all(pool)
+                .await
+                .map_err(|e| AppError::Database(e.to_string()))?;
 
         Ok(projects)
     }
 
     /// Get a project by ID
     pub async fn get_by_id(pool: &SqlitePool, id: &str) -> AppResult<Project> {
-        let project = sqlx::query_as::<_, Project>(
-            "SELECT * FROM projects WHERE id = ?"
-        )
-        .bind(id)
-        .fetch_optional(pool)
-        .await
-        .map_err(|e| AppError::Database(e.to_string()))?
-        .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
+        let project = sqlx::query_as::<_, Project>("SELECT * FROM projects WHERE id = ?")
+            .bind(id)
+            .fetch_optional(pool)
+            .await
+            .map_err(|e| AppError::Database(e.to_string()))?
+            .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
 
         Ok(project)
     }
@@ -103,15 +100,14 @@ impl Project {
         namespace: &str,
         name: &str,
     ) -> AppResult<Project> {
-        let project = sqlx::query_as::<_, Project>(
-            "SELECT * FROM projects WHERE namespace = ? AND name = ?"
-        )
-        .bind(namespace)
-        .bind(name)
-        .fetch_optional(pool)
-        .await
-        .map_err(|e| AppError::Database(e.to_string()))?
-        .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
+        let project =
+            sqlx::query_as::<_, Project>("SELECT * FROM projects WHERE namespace = ? AND name = ?")
+                .bind(namespace)
+                .bind(name)
+                .fetch_optional(pool)
+                .await
+                .map_err(|e| AppError::Database(e.to_string()))?
+                .ok_or_else(|| AppError::NotFound("Project not found".to_string()))?;
 
         Ok(project)
     }
@@ -140,7 +136,7 @@ impl Project {
             SET name = ?, description = ?, updated_at = ?
             WHERE id = ?
             RETURNING *
-            "#
+            "#,
         )
         .bind(&name)
         .bind(&description)
@@ -176,15 +172,14 @@ impl Project {
     ) -> AppResult<()> {
         let now = Utc::now().to_rfc3339();
 
-        let result = sqlx::query(
-            "UPDATE projects SET repository_path = ?, updated_at = ? WHERE id = ?"
-        )
-        .bind(repository_path)
-        .bind(&now)
-        .bind(id)
-        .execute(pool)
-        .await
-        .map_err(|e| AppError::Database(e.to_string()))?;
+        let result =
+            sqlx::query("UPDATE projects SET repository_path = ?, updated_at = ? WHERE id = ?")
+                .bind(repository_path)
+                .bind(&now)
+                .bind(id)
+                .execute(pool)
+                .await
+                .map_err(|e| AppError::Database(e.to_string()))?;
 
         if result.rows_affected() == 0 {
             return Err(AppError::NotFound("Project not found".to_string()));

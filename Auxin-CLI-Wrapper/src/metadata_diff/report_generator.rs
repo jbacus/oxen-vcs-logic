@@ -204,7 +204,9 @@ impl ReportGenerator {
                 )
             }
             TrackChange::ChannelStripChanged {
-                track_name, changes, ..
+                track_name,
+                changes,
+                ..
             } => {
                 let mut output = format!("\n{} {}:\n", self.bold("Track"), self.bold(track_name));
                 output.push_str(&self.format_channel_strip_diff(changes));
@@ -348,11 +350,7 @@ impl ReportGenerator {
                     to
                 )
             }
-            EQChange::BandTypeChanged {
-                position,
-                from,
-                to,
-            } => {
+            EQChange::BandTypeChanged { position, from, to } => {
                 format!(
                     "      • Band {} type: {:?} → {:?}\n",
                     position + 1,
@@ -399,10 +397,7 @@ impl ReportGenerator {
                 format!("      • Knee: {:.1} → {:.1}\n", from, to)
             }
             CompressorChange::MakeupGainChanged { from, to } => {
-                format!(
-                    "      • Makeup Gain: {:+.1} dB → {:+.1} dB\n",
-                    from, to
-                )
+                format!("      • Makeup Gain: {:+.1} dB → {:+.1} dB\n", from, to)
             }
             CompressorChange::BypassToggled { bypassed } => {
                 format!(
@@ -425,11 +420,7 @@ impl ReportGenerator {
                 format!("      • Pre-Delay: {:.1} ms → {:.1} ms\n", from, to)
             }
             ReverbChange::MixChanged { from, to } => {
-                format!(
-                    "      • Mix: {:.0}% → {:.0}%\n",
-                    from * 100.0,
-                    to * 100.0
-                )
+                format!("      • Mix: {:.0}% → {:.0}%\n", from * 100.0, to * 100.0)
             }
             ReverbChange::BypassToggled { bypassed } => {
                 format!(
@@ -486,7 +477,11 @@ impl ReportGenerator {
                     new_duration
                 )
             }
-            _ => format!("  {} Region change on track \"{}\"\n", self.bullet(), track_name),
+            _ => format!(
+                "  {} Region change on track \"{}\"\n",
+                self.bullet(),
+                track_name
+            ),
         }
     }
 

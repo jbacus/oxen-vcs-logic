@@ -1,5 +1,5 @@
-use sqlx::{SqlitePool, Sqlite, migrate::MigrateDatabase};
 use anyhow::{Context, Result};
+use sqlx::{migrate::MigrateDatabase, Sqlite, SqlitePool};
 use tracing::info;
 
 /// Initialize the database and run migrations

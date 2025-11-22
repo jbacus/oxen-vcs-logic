@@ -16,14 +16,12 @@ use crate::repo::RepositoryOps;
 
 // Re-export API handlers
 pub use repo_ops::{
-    acquire_lock, clone_repository, create_branch, delete_branch, fetch_repository,
-    get_activity, get_commits, get_metadata, get_status, heartbeat_lock, list_branches,
-    lock_status, pull_repository, push_repository, release_lock, restore_commit, store_metadata,
+    acquire_lock, clone_repository, create_branch, delete_branch, fetch_repository, get_activity,
+    get_commits, get_metadata, get_status, heartbeat_lock, list_branches, lock_status,
+    pull_repository, push_repository, release_lock, restore_commit, store_metadata,
 };
 
-pub use bounce_ops::{
-    delete_bounce, get_bounce, get_bounce_audio, list_bounces, upload_bounce,
-};
+pub use bounce_ops::{delete_bounce, get_bounce, get_bounce_audio, list_bounces, upload_bounce};
 
 // File-based collaborator management (default)
 #[cfg(not(feature = "web-ui"))]
@@ -34,8 +32,8 @@ pub use project_ops::{
 // Database-backed project CRUD (web-ui feature)
 #[cfg(feature = "web-ui")]
 pub use project_ops::{
-    create_project, delete_project, get_project, get_project_by_namespace,
-    list_projects, update_project,
+    create_project, delete_project, get_project, get_project_by_namespace, list_projects,
+    update_project,
 };
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -89,7 +87,8 @@ pub async fn list_repositories(
                                     let oxen_dir = repo_entry.path().join(".oxen");
                                     if oxen_dir.exists() {
                                         // Load project metadata
-                                        let metadata = ProjectMetadata::load(&repo_entry.path()).ok();
+                                        let metadata =
+                                            ProjectMetadata::load(&repo_entry.path()).ok();
 
                                         // Check if user has read access
                                         let has_access = metadata
@@ -101,12 +100,21 @@ pub async fn list_repositories(
                                             repositories.push(RepositoryInfo {
                                                 namespace: namespace.clone(),
                                                 name: repo_name,
-                                                path: repo_entry.path().to_string_lossy().to_string(),
+                                                path: repo_entry
+                                                    .path()
+                                                    .to_string_lossy()
+                                                    .to_string(),
                                                 description: None,
-                                                owner: metadata.as_ref().map(|m| m.owner_username.clone()),
-                                                visibility: metadata.as_ref().map(|m| match m.visibility {
-                                                    Visibility::Public => "public".to_string(),
-                                                    Visibility::Private => "private".to_string(),
+                                                owner: metadata
+                                                    .as_ref()
+                                                    .map(|m| m.owner_username.clone()),
+                                                visibility: metadata.as_ref().map(|m| {
+                                                    match m.visibility {
+                                                        Visibility::Public => "public".to_string(),
+                                                        Visibility::Private => {
+                                                            "private".to_string()
+                                                        }
+                                                    }
                                                 }),
                                             });
                                         }
@@ -142,21 +150,17 @@ pub async fn create_repository(
             .get("Authorization")
             .and_then(|h| h.to_str().ok())
             .and_then(|s| s.strip_prefix("Bearer "))
-            .ok_or_else(|| AppError::Unauthorized("No authorization token".to_string()))?
+            .ok_or_else(|| AppError::Unauthorized("No authorization token".to_string()))?,
     )?;
 
     // Validate namespace (prevent path traversal)
     if namespace.is_empty() || namespace.contains("..") || namespace.contains('/') {
-        return Err(AppError::BadRequest(
-            "Invalid namespace".to_string(),
-        ));
+        return Err(AppError::BadRequest("Invalid namespace".to_string()));
     }
 
     // Validate repository name (prevent path traversal)
     if repo_name.is_empty() || repo_name.contains("..") || repo_name.contains('/') {
-        return Err(AppError::BadRequest(
-            "Invalid repository name".to_string(),
-        ));
+        return Err(AppError::BadRequest("Invalid repository name".to_string()));
     }
 
     // Build repository path
@@ -180,9 +184,10 @@ pub async fn create_repository(
         Some("private") => Visibility::Private,
         None => Visibility::Public, // Default to public
         Some(v) => {
-            return Err(AppError::BadRequest(
-                format!("Invalid visibility: {}. Must be 'public' or 'private'", v),
-            ));
+            return Err(AppError::BadRequest(format!(
+                "Invalid visibility: {}. Must be 'public' or 'private'",
+                v
+            )));
         }
     };
 
@@ -190,7 +195,10 @@ pub async fn create_repository(
     let metadata = ProjectMetadata::new(user_id, user.username.clone(), visibility);
     metadata.save(&repo_path)?;
 
-    info!("Repository created successfully: {}/{} (owner: {})", namespace, repo_name, user.username);
+    info!(
+        "Repository created successfully: {}/{} (owner: {})",
+        namespace, repo_name, user.username
+    );
 
     Ok(HttpResponse::Created().json(RepositoryInfo {
         namespace,

@@ -72,10 +72,7 @@ impl DaemonClient {
     pub fn start(&self) -> Result<()> {
         // Construct path to the LaunchAgent plist
         let home = std::env::var("HOME").context("HOME environment variable not set")?;
-        let plist_path = format!(
-            "{}/Library/LaunchAgents/{}.plist",
-            home, LAUNCH_AGENT_LABEL
-        );
+        let plist_path = format!("{}/Library/LaunchAgents/{}.plist", home, LAUNCH_AGENT_LABEL);
 
         // Check if plist exists
         if !std::path::Path::new(&plist_path).exists() {
@@ -112,10 +109,7 @@ impl DaemonClient {
     pub fn stop(&self) -> Result<()> {
         // Construct path to the LaunchAgent plist
         let home = std::env::var("HOME").context("HOME environment variable not set")?;
-        let plist_path = format!(
-            "{}/Library/LaunchAgents/{}.plist",
-            home, LAUNCH_AGENT_LABEL
-        );
+        let plist_path = format!("{}/Library/LaunchAgents/{}.plist", home, LAUNCH_AGENT_LABEL);
 
         // Unload the LaunchAgent
         let output = Command::new("launchctl")
@@ -156,10 +150,7 @@ impl DaemonClient {
             Err(_) => return false,
         };
 
-        let plist_path = format!(
-            "{}/Library/LaunchAgents/{}.plist",
-            home, LAUNCH_AGENT_LABEL
-        );
+        let plist_path = format!("{}/Library/LaunchAgents/{}.plist", home, LAUNCH_AGENT_LABEL);
 
         std::path::Path::new(&plist_path).exists()
     }

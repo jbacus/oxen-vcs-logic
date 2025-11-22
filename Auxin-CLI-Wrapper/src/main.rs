@@ -1,7 +1,11 @@
 use anyhow::Context;
+use auxin::{
+    lock_integration, logger, progress, server_client, success, vlog, warn, AuxinServerClient,
+    BlenderProject, BounceManager, CommitMetadata, Config, LogicProject, OxenRepository,
+    OxenSubprocess, ProjectType, ServerConfig, SketchUpMetadata, SketchUpProject, ThumbnailManager,
+};
 use clap::{Parser, Subcommand};
 use colored::Colorize;
-use auxin::{lock_integration, logger, progress, success, vlog, warn, BlenderProject, CommitMetadata, Config, LogicProject, OxenRepository, OxenSubprocess, ProjectType, SketchUpMetadata, SketchUpProject, AuxinServerClient, ServerConfig, server_client, BounceManager, ThumbnailManager};
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -423,7 +427,11 @@ EXAMPLES:
         #[arg(value_name = "FILE", help = "Path to the audio bounce file")]
         file: PathBuf,
 
-        #[arg(long, value_name = "ID", help = "Commit ID to attach bounce to (default: latest)")]
+        #[arg(
+            long,
+            value_name = "ID",
+            help = "Commit ID to attach bounce to (default: latest)"
+        )]
         commit: Option<String>,
 
         #[arg(long, short, value_name = "TEXT", help = "Description of the bounce")]
@@ -539,10 +547,18 @@ EXAMPLES:
     # Find bounces from last week
     auxin bounce search --after 2024-01-01")]
     Search {
-        #[arg(long, value_name = "FORMAT", help = "Filter by audio format (wav, mp3, flac, aiff, m4a)")]
+        #[arg(
+            long,
+            value_name = "FORMAT",
+            help = "Filter by audio format (wav, mp3, flac, aiff, m4a)"
+        )]
         format: Option<String>,
 
-        #[arg(long, value_name = "PATTERN", help = "Filter by filename pattern (regex)")]
+        #[arg(
+            long,
+            value_name = "PATTERN",
+            help = "Filter by filename pattern (regex)"
+        )]
         pattern: Option<String>,
 
         #[arg(long, value_name = "SECONDS", help = "Minimum duration in seconds")]
@@ -557,13 +573,25 @@ EXAMPLES:
         #[arg(long, value_name = "BYTES", help = "Maximum file size in bytes")]
         max_size: Option<u64>,
 
-        #[arg(long, value_name = "DATE", help = "Filter bounces added after this date (YYYY-MM-DD)")]
+        #[arg(
+            long,
+            value_name = "DATE",
+            help = "Filter bounces added after this date (YYYY-MM-DD)"
+        )]
         after: Option<String>,
 
-        #[arg(long, value_name = "DATE", help = "Filter bounces added before this date (YYYY-MM-DD)")]
+        #[arg(
+            long,
+            value_name = "DATE",
+            help = "Filter bounces added before this date (YYYY-MM-DD)"
+        )]
         before: Option<String>,
 
-        #[arg(long, value_name = "USER", help = "Filter by user who added the bounce")]
+        #[arg(
+            long,
+            value_name = "USER",
+            help = "Filter by user who added the bounce"
+        )]
         user: Option<String>,
     },
 
@@ -629,7 +657,11 @@ EXAMPLES:
         #[arg(value_name = "FILES", required = true, num_args = 1..)]
         files: Vec<PathBuf>,
 
-        #[arg(long, value_name = "ID", help = "Default commit ID for files without embedded ID")]
+        #[arg(
+            long,
+            value_name = "ID",
+            help = "Default commit ID for files without embedded ID"
+        )]
         commit: Option<String>,
     },
 
@@ -659,7 +691,11 @@ EXAMPLES:
         #[arg(long, value_name = "FORMAT", help = "Delete bounces with this format")]
         format: Option<String>,
 
-        #[arg(long, value_name = "DATE", help = "Delete bounces added before this date (YYYY-MM-DD)")]
+        #[arg(
+            long,
+            value_name = "DATE",
+            help = "Delete bounces added before this date (YYYY-MM-DD)"
+        )]
         before: Option<String>,
 
         #[arg(long, value_name = "USER", help = "Delete bounces added by this user")]
@@ -686,7 +722,12 @@ enum HooksCommands {
         #[arg(value_name = "HOOK_NAME", help = "Name of built-in hook to install")]
         name: String,
 
-        #[arg(long, value_name = "TYPE", default_value = "pre-commit", help = "Hook type (pre-commit or post-commit)")]
+        #[arg(
+            long,
+            value_name = "TYPE",
+            default_value = "pre-commit",
+            help = "Hook type (pre-commit or post-commit)"
+        )]
         hook_type: String,
     },
 
@@ -695,7 +736,12 @@ enum HooksCommands {
         #[arg(value_name = "HOOK_NAME", help = "Name of hook to remove")]
         name: String,
 
-        #[arg(long, value_name = "TYPE", default_value = "pre-commit", help = "Hook type (pre-commit or post-commit)")]
+        #[arg(
+            long,
+            value_name = "TYPE",
+            default_value = "pre-commit",
+            help = "Hook type (pre-commit or post-commit)"
+        )]
         hook_type: String,
     },
 }
@@ -807,10 +853,16 @@ EXAMPLES:
     # Clone to current directory (uses repo name)
     auxin clone https://hub.oxen.ai/user/project .")]
     Clone {
-        #[arg(value_name = "REMOTE_URL", help = "URL of the remote repository to clone")]
+        #[arg(
+            value_name = "REMOTE_URL",
+            help = "URL of the remote repository to clone"
+        )]
         remote_url: String,
 
-        #[arg(value_name = "DESTINATION", help = "Local path where the project will be cloned")]
+        #[arg(
+            value_name = "DESTINATION",
+            help = "Local path where the project will be cloned"
+        )]
         destination: PathBuf,
     },
 
@@ -905,14 +957,23 @@ EXAMPLES (SketchUp):
         #[arg(long, help = "[Logic Pro] Beats per minute (tempo) of the project")]
         bpm: Option<f32>,
 
-        #[arg(long, help = "[Logic Pro] Sample rate in Hz (e.g., 44100, 48000, 96000)")]
+        #[arg(
+            long,
+            help = "[Logic Pro] Sample rate in Hz (e.g., 44100, 48000, 96000)"
+        )]
         sample_rate: Option<u32>,
 
-        #[arg(long, help = "[Logic Pro] Key signature (e.g., 'C Major', 'A Minor', 'F# Minor')")]
+        #[arg(
+            long,
+            help = "[Logic Pro] Key signature (e.g., 'C Major', 'A Minor', 'F# Minor')"
+        )]
         key: Option<String>,
 
         // SketchUp metadata
-        #[arg(long, help = "[SketchUp] Model units (e.g., Inches, Feet, Meters, Millimeters)")]
+        #[arg(
+            long,
+            help = "[SketchUp] Model units (e.g., Inches, Feet, Meters, Millimeters)"
+        )]
         units: Option<String>,
 
         #[arg(long, help = "[SketchUp] Number of layers/tags in the model")]
@@ -1101,7 +1162,10 @@ EXAMPLES:
     # Compare two commits (future enhancement)
     # auxin diff abc123f def456a")]
     Diff {
-        #[arg(value_name = "COMMIT_ID", help = "Commit ID to compare against (optional)")]
+        #[arg(
+            value_name = "COMMIT_ID",
+            help = "Commit ID to compare against (optional)"
+        )]
         commit_id: Option<String>,
     },
 
@@ -1146,7 +1210,12 @@ EXAMPLES:
         #[arg(value_name = "COMMIT_B", help = "Second commit ID (newer)")]
         commit_b: String,
 
-        #[arg(long, value_name = "FORMAT", default_value = "colored", help = "Output format (text, colored, json, compact)")]
+        #[arg(
+            long,
+            value_name = "FORMAT",
+            default_value = "colored",
+            help = "Output format (text, colored, json, compact)"
+        )]
         format: String,
 
         #[arg(long, help = "Disable colored output")]
@@ -1207,7 +1276,12 @@ EXAMPLES:
         #[arg(value_name = "QUERY", help = "Search query string")]
         query: String,
 
-        #[arg(long, value_name = "FORMAT", default_value = "list", help = "Output format (list, compact, json)")]
+        #[arg(
+            long,
+            value_name = "FORMAT",
+            default_value = "list",
+            help = "Output format (list, compact, json)"
+        )]
         format: String,
 
         #[arg(long, help = "Sort results by relevance score")]
@@ -1473,7 +1547,10 @@ EXAMPLES:
     # Install for current user (bash)
     auxin completions bash > ~/.local/share/bash-completion/completions/auxin")]
     Completions {
-        #[arg(value_name = "SHELL", help = "Shell to generate completions for (bash, zsh, fish, powershell)")]
+        #[arg(
+            value_name = "SHELL",
+            help = "Shell to generate completions for (bash, zsh, fish, powershell)"
+        )]
         shell: String,
     },
 
@@ -1806,7 +1883,10 @@ EXAMPLES:
     # Get suggestions for specific project
     auxin workflow suggest /path/to/project.logicx")]
     Suggest {
-        #[arg(value_name = "PATH", help = "Repository path (default: current directory)")]
+        #[arg(
+            value_name = "PATH",
+            help = "Repository path (default: current directory)"
+        )]
         path: Option<PathBuf>,
     },
 
@@ -2098,7 +2178,6 @@ EXAMPLES:
     },
 }
 
-
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
@@ -2107,7 +2186,11 @@ async fn main() -> anyhow::Result<()> {
     logger::set_verbose(cli.verbose);
 
     match cli.command {
-        Commands::Init { path, r#type, logic } => {
+        Commands::Init {
+            path,
+            r#type,
+            logic,
+        } => {
             vlog!("Starting initialization for path: {}", path.display());
 
             // Determine project type (handle backward compatibility with --logic flag)
@@ -2116,7 +2199,10 @@ async fn main() -> anyhow::Result<()> {
                 ProjectType::LogicPro
             } else if let Some(type_str) = r#type {
                 ProjectType::parse(&type_str).unwrap_or_else(|| {
-                    progress::error(&format!("Unknown project type: {}. Supported types: auto, logicpro, sketchup", type_str));
+                    progress::error(&format!(
+                        "Unknown project type: {}. Supported types: auto, logicpro, sketchup",
+                        type_str
+                    ));
                     std::process::exit(1);
                 })
             } else {
@@ -2154,7 +2240,9 @@ async fn main() -> anyhow::Result<()> {
                     println!();
                     progress::info("You're all set! Start working in Logic Pro:");
                     println!("  • Changes will be automatically tracked on the draft branch");
-                    println!("  • Create milestone commits: auxin commit -m \"Your message\" --bpm 120");
+                    println!(
+                        "  • Create milestone commits: auxin commit -m \"Your message\" --bpm 120"
+                    );
                     println!("  • View history: auxin log");
                     println!("  • Restore to any commit: auxin restore <commit-id>");
                 }
@@ -2203,20 +2291,26 @@ async fn main() -> anyhow::Result<()> {
                     println!("  • Restore to any commit: auxin restore <commit-id>");
                 }
                 ProjectType::Auto => {
-                    let pb = progress::spinner(&format!("Initializing Oxen repository at {}...", path.display()));
+                    let pb = progress::spinner(&format!(
+                        "Initializing Oxen repository at {}...",
+                        path.display()
+                    ));
                     vlog!("Initializing generic Oxen repository...");
                     let _repo = OxenRepository::init(&path).await?;
 
                     progress::finish_success(
                         &pb,
-                        &format!("Oxen repository initialized at: {}", path.display())
+                        &format!("Oxen repository initialized at: {}", path.display()),
                     );
                 }
             }
             Ok(())
         }
 
-        Commands::Clone { remote_url, destination } => {
+        Commands::Clone {
+            remote_url,
+            destination,
+        } => {
             vlog!("Starting clone operation");
             vlog!("Remote URL: {}", remote_url);
             vlog!("Destination: {}", destination.display());
@@ -2241,31 +2335,47 @@ async fn main() -> anyhow::Result<()> {
                     println!();
 
                     // Detect project type and give relevant next steps
-                    let extension = destination.extension().and_then(|e| e.to_str()).unwrap_or("");
+                    let extension = destination
+                        .extension()
+                        .and_then(|e| e.to_str())
+                        .unwrap_or("");
                     match extension {
                         "logicx" => {
                             progress::info("Logic Pro project cloned successfully!");
                             println!("  • Open in Logic Pro: {}", destination.display());
-                            println!("  • View history: cd {} && auxin log", destination.display());
-                            println!("  • Create commits: auxin commit -m \"Your message\" --bpm 120");
+                            println!(
+                                "  • View history: cd {} && auxin log",
+                                destination.display()
+                            );
+                            println!(
+                                "  • Create commits: auxin commit -m \"Your message\" --bpm 120"
+                            );
                         }
                         "skp" => {
                             progress::info("SketchUp project cloned successfully!");
                             println!("  • Open in SketchUp: {}", destination.display());
-                            println!("  • View history: cd {} && auxin log", destination.display());
+                            println!(
+                                "  • View history: cd {} && auxin log",
+                                destination.display()
+                            );
                             println!("  • Create commits: auxin commit -m \"Your message\" --units Inches");
                         }
                         "blend" => {
                             progress::info("Blender project cloned successfully!");
                             println!("  • Open in Blender: {}", destination.display());
-                            println!("  • View history: cd {} && auxin log", destination.display());
+                            println!(
+                                "  • View history: cd {} && auxin log",
+                                destination.display()
+                            );
                             println!("  • Create commits: auxin commit -m \"Your message\"");
                         }
                         _ => {
                             progress::info("Project cloned successfully!");
                             println!("  • Navigate to: cd {}", destination.display());
                             println!("  • View history: auxin log");
-                            println!("  • Make changes and commit: auxin commit -m \"Your message\"");
+                            println!(
+                                "  • Make changes and commit: auxin commit -m \"Your message\""
+                            );
                         }
                     }
                 }
@@ -2279,7 +2389,9 @@ async fn main() -> anyhow::Result<()> {
                         progress::info("The destination directory already exists.");
                         println!("  • Choose a different destination, or");
                         println!("  • Remove the existing directory and try again");
-                    } else if e.to_string().contains("Network") || e.to_string().contains("timed out") {
+                    } else if e.to_string().contains("Network")
+                        || e.to_string().contains("timed out")
+                    {
                         println!();
                         progress::info("Network error occurred.");
                         println!("  • Check your internet connection");
@@ -2340,8 +2452,11 @@ async fn main() -> anyhow::Result<()> {
 
             // Detect if we're using Logic Pro or SketchUp metadata
             let has_logic_metadata = bpm.is_some() || sample_rate.is_some() || key.is_some();
-            let has_sketchup_metadata = units.is_some() || layers.is_some() || components.is_some()
-                || groups.is_some() || file_size.is_some();
+            let has_sketchup_metadata = units.is_some()
+                || layers.is_some()
+                || components.is_some()
+                || groups.is_some()
+                || file_size.is_some();
 
             let formatted_message = if has_sketchup_metadata {
                 // SketchUp project - use SketchUpMetadata
@@ -2427,10 +2542,14 @@ async fn main() -> anyhow::Result<()> {
                 };
 
                 if let Ok(client) = AuxinServerClient::new(server_config) {
-                    let namespace = config.server.default_namespace.clone()
+                    let namespace = config
+                        .server
+                        .default_namespace
+                        .clone()
                         .unwrap_or_else(|| "default".to_string());
                     let current_dir = std::env::current_dir()?;
-                    let repo_name = current_dir.file_name()
+                    let repo_name = current_dir
+                        .file_name()
                         .map(|s| s.to_string_lossy().to_string())
                         .unwrap_or_else(|| "unknown".to_string());
 
@@ -2439,11 +2558,18 @@ async fn main() -> anyhow::Result<()> {
                         bpm: bpm.map(|b| b as f64),
                         sample_rate,
                         key_signature: key.clone(),
-                        tags: tags.as_ref().map(|t| t.split(',').map(|s| s.trim().to_string()).collect()),
+                        tags: tags
+                            .as_ref()
+                            .map(|t| t.split(',').map(|s| s.trim().to_string()).collect()),
                         custom: None,
                     };
 
-                    match client.store_metadata(&namespace, &repo_name, &commit_id, &server_metadata) {
+                    match client.store_metadata(
+                        &namespace,
+                        &repo_name,
+                        &commit_id,
+                        &server_metadata,
+                    ) {
                         Ok(()) => {
                             vlog!("Metadata stored on server for commit {}", commit_id);
                         }
@@ -2501,12 +2627,16 @@ async fn main() -> anyhow::Result<()> {
                 // Try to detect Logic Pro project and extract thumbnail
                 if let Ok(logic_project) = LogicProject::detect(&current_dir) {
                     let pb = progress::spinner("Extracting project thumbnail...");
-                    match thumbnail_manager.extract_logic_thumbnail(&commit_id, &logic_project.path) {
+                    match thumbnail_manager.extract_logic_thumbnail(&commit_id, &logic_project.path)
+                    {
                         Ok(thumb_metadata) => {
                             progress::finish_success(&pb, "Thumbnail extracted");
                             if let Some(width) = thumb_metadata.width {
                                 if let Some(height) = thumb_metadata.height {
-                                    println!("  Thumbnail: {}x{} ({})", width, height, thumb_metadata.format);
+                                    println!(
+                                        "  Thumbnail: {}x{} ({})",
+                                        width, height, thumb_metadata.format
+                                    );
                                 } else {
                                     println!("  Thumbnail: {}", thumb_metadata.format);
                                 }
@@ -2531,10 +2661,12 @@ async fn main() -> anyhow::Result<()> {
                 match bounce_manager.add_bounce(&commit_id, &bounce_path, None) {
                     Ok(metadata) => {
                         progress::finish_success(&pb, "Bounce added");
-                        println!("  Bounce: {} ({}, {})",
+                        println!(
+                            "  Bounce: {} ({}, {})",
                             metadata.original_filename,
                             metadata.format_duration(),
-                            metadata.format_size());
+                            metadata.format_size()
+                        );
                     }
                     Err(e) => {
                         progress::finish_error(&pb, "Failed to add bounce");
@@ -2546,7 +2678,14 @@ async fn main() -> anyhow::Result<()> {
             Ok(())
         }
 
-        Commands::Log { limit, bpm, tag, key, since, format } => {
+        Commands::Log {
+            limit,
+            bpm,
+            tag,
+            key,
+            since,
+            format,
+        } => {
             let repo = OxenRepository::new(".");
 
             let mut commits = repo.get_history(None).await?;
@@ -2573,9 +2712,9 @@ async fn main() -> anyhow::Result<()> {
 
             if let Some(bpm_filter) = bpm {
                 commits.retain(|c| {
-                    c.message.lines().any(|line| {
-                        line.contains("BPM:") && line.contains(&bpm_filter.to_string())
-                    })
+                    c.message
+                        .lines()
+                        .any(|line| line.contains("BPM:") && line.contains(&bpm_filter.to_string()))
                 });
                 filters_applied.push(format!("BPM = {}", bpm_filter));
             }
@@ -2583,7 +2722,8 @@ async fn main() -> anyhow::Result<()> {
             if let Some(tag_filter) = &tag {
                 commits.retain(|c| {
                     c.message.lines().any(|line| {
-                        line.contains("Tags:") && line.to_lowercase().contains(&tag_filter.to_lowercase())
+                        line.contains("Tags:")
+                            && line.to_lowercase().contains(&tag_filter.to_lowercase())
                     })
                 });
                 filters_applied.push(format!("tag = {}", tag_filter));
@@ -2592,7 +2732,8 @@ async fn main() -> anyhow::Result<()> {
             if let Some(key_filter) = &key {
                 commits.retain(|c| {
                     c.message.lines().any(|line| {
-                        line.contains("Key:") && line.to_lowercase().contains(&key_filter.to_lowercase())
+                        line.contains("Key:")
+                            && line.to_lowercase().contains(&key_filter.to_lowercase())
                     })
                 });
                 filters_applied.push(format!("key = {}", key_filter));
@@ -2619,12 +2760,26 @@ async fn main() -> anyhow::Result<()> {
             println!();
             println!("┌─ Commit History ────────────────────────────────────────┐");
             if !filters_applied.is_empty() {
-                println!("│ Filters: {}                                              │", filters_applied.join(", "));
-                println!("│ Found {} of {} commit(s)                                 │", commits.len(), total_before_filter);
+                println!(
+                    "│ Filters: {}                                              │",
+                    filters_applied.join(", ")
+                );
+                println!(
+                    "│ Found {} of {} commit(s)                                 │",
+                    commits.len(),
+                    total_before_filter
+                );
             } else if let Some(_lim) = limit {
-                println!("│ Showing last {} of {} commit(s)                          │", commits.len(), total_before_filter);
+                println!(
+                    "│ Showing last {} of {} commit(s)                          │",
+                    commits.len(),
+                    total_before_filter
+                );
             } else {
-                println!("│ Showing all {} commit(s)                                 │", commits.len());
+                println!(
+                    "│ Showing all {} commit(s)                                 │",
+                    commits.len()
+                );
             }
             println!("└──────────────────────────────────────────────────────────┘");
             println!();
@@ -2638,7 +2793,12 @@ async fn main() -> anyhow::Result<()> {
                 let short_id = &commit.id[..7.min(commit.id.len())];
 
                 // Visual timeline with bullets
-                println!("{} {} - {}", "●".cyan(), short_id.bright_yellow(), "now".bright_black());
+                println!(
+                    "{} {} - {}",
+                    "●".cyan(),
+                    short_id.bright_yellow(),
+                    "now".bright_black()
+                );
 
                 // Commit message (indented)
                 let lines: Vec<&str> = commit.message.lines().collect();
@@ -2649,7 +2809,11 @@ async fn main() -> anyhow::Result<()> {
                 // Additional metadata if present in message
                 for line in lines.iter().skip(1) {
                     if !line.trim().is_empty() {
-                        if line.contains("BPM:") || line.contains("Sample Rate:") || line.contains("Key:") || line.contains("Tags:") {
+                        if line.contains("BPM:")
+                            || line.contains("Sample Rate:")
+                            || line.contains("Key:")
+                            || line.contains("Tags:")
+                        {
                             println!("  │ {}", line.trim().bright_black());
                         } else {
                             println!("  │ {}", line.trim());
@@ -2670,13 +2834,22 @@ async fn main() -> anyhow::Result<()> {
         }
 
         Commands::Restore { commit_id } => {
-            let pb = progress::spinner(&format!("Restoring to commit {}...", &commit_id[..7.min(commit_id.len())]));
+            let pb = progress::spinner(&format!(
+                "Restoring to commit {}...",
+                &commit_id[..7.min(commit_id.len())]
+            ));
             let repo = OxenRepository::new(".");
 
             pb.set_message("Checking out files...");
             repo.restore(&commit_id).await?;
 
-            progress::finish_success(&pb, &format!("Restored to commit {}", &commit_id[..7.min(commit_id.len())]));
+            progress::finish_success(
+                &pb,
+                &format!(
+                    "Restored to commit {}",
+                    &commit_id[..7.min(commit_id.len())]
+                ),
+            );
             println!();
             progress::warning("Your working directory has been updated to match this commit");
             progress::info("To create a new commit from here, use:");
@@ -2696,12 +2869,14 @@ async fn main() -> anyhow::Result<()> {
             println!("┌─ Repository Status ─────────────────────────────────────┐");
             println!("│                                                          │");
 
-            let total_changes = status.staged.len() + status.modified.len() + status.untracked.len();
+            let total_changes =
+                status.staged.len() + status.modified.len() + status.untracked.len();
 
             if total_changes == 0 {
                 println!("│  ✓ Working directory clean                              │");
             } else {
-                println!("│  Changes: {} staged, {} modified, {} untracked",
+                println!(
+                    "│  Changes: {} staged, {} modified, {} untracked",
                     status.staged.len().to_string().green(),
                     status.modified.len().to_string().yellow(),
                     status.untracked.len().to_string().cyan(),
@@ -2715,7 +2890,8 @@ async fn main() -> anyhow::Result<()> {
                     let pending_count = queue.pending().len();
                     if pending_count > 0 {
                         println!("│                                                          │");
-                        println!("│  {} {} pending sync operation(s)                        │",
+                        println!(
+                            "│  {} {} pending sync operation(s)                        │",
                             "⟳".yellow(),
                             pending_count.to_string().yellow()
                         );
@@ -2736,7 +2912,11 @@ async fn main() -> anyhow::Result<()> {
             }
 
             if !status.modified.is_empty() {
-                println!("{} Modified files ({}):", "◆".yellow(), status.modified.len());
+                println!(
+                    "{} Modified files ({}):",
+                    "◆".yellow(),
+                    status.modified.len()
+                );
                 for path in &status.modified {
                     println!("  {} {}", "M".yellow(), path.display());
                 }
@@ -2744,7 +2924,11 @@ async fn main() -> anyhow::Result<()> {
             }
 
             if !status.untracked.is_empty() {
-                println!("{} Untracked files ({}):", "?".cyan(), status.untracked.len());
+                println!(
+                    "{} Untracked files ({}):",
+                    "?".cyan(),
+                    status.untracked.len()
+                );
                 for path in &status.untracked {
                     println!("  {} {}", "?".cyan(), path.display());
                 }
@@ -2753,7 +2937,9 @@ async fn main() -> anyhow::Result<()> {
 
             // Next steps suggestion
             if total_changes > 0 {
-                if status.staged.is_empty() && (!status.modified.is_empty() || !status.untracked.is_empty()) {
+                if status.staged.is_empty()
+                    && (!status.modified.is_empty() || !status.untracked.is_empty())
+                {
                     progress::info("Next step: auxin add --all");
                 } else if !status.staged.is_empty() {
                     progress::info("Next step: auxin commit -m \"Your message\"");
@@ -2781,15 +2967,18 @@ async fn main() -> anyhow::Result<()> {
             // Get all commits to find the one we want
             let commits = repo.get_history(None).await?;
 
-            let commit = commits.iter().find(|c| {
-                c.id.starts_with(&commit_id) || c.id == commit_id
-            });
+            let commit = commits
+                .iter()
+                .find(|c| c.id.starts_with(&commit_id) || c.id == commit_id);
 
             if let Some(commit) = commit {
                 println!();
                 println!("┌─ Commit Details ────────────────────────────────────────┐");
                 println!("│                                                          │");
-                println!("│  Commit: {}                                      │", commit.id.bright_yellow());
+                println!(
+                    "│  Commit: {}                                      │",
+                    commit.id.bright_yellow()
+                );
                 println!("│                                                          │");
                 println!("└──────────────────────────────────────────────────────────┘");
                 println!();
@@ -2809,8 +2998,11 @@ async fn main() -> anyhow::Result<()> {
                 for line in lines.iter().skip(1) {
                     let trimmed = line.trim();
                     if !trimmed.is_empty() {
-                        if trimmed.starts_with("BPM:") || trimmed.starts_with("Sample Rate:") ||
-                           trimmed.starts_with("Key:") || trimmed.starts_with("Tags:") {
+                        if trimmed.starts_with("BPM:")
+                            || trimmed.starts_with("Sample Rate:")
+                            || trimmed.starts_with("Key:")
+                            || trimmed.starts_with("Tags:")
+                        {
                             if !metadata_found {
                                 println!("{}", "Metadata:".bright_white().bold());
                                 metadata_found = true;
@@ -2824,7 +3016,10 @@ async fn main() -> anyhow::Result<()> {
                 }
 
                 println!();
-                progress::info(&format!("Use 'auxin restore {}' to restore to this commit", &commit.id[..7.min(commit.id.len())]));
+                progress::info(&format!(
+                    "Use 'auxin restore {}' to restore to this commit",
+                    &commit.id[..7.min(commit.id.len())]
+                ));
             } else {
                 progress::error(&format!("Commit not found: {}", commit_id));
                 std::process::exit(1);
@@ -2838,7 +3033,10 @@ async fn main() -> anyhow::Result<()> {
 
             println!();
             if let Some(cid) = &commit_id {
-                println!("┌─ Changes Since Commit {} ─────────────────────┐", &cid[..7.min(cid.len())].bright_yellow());
+                println!(
+                    "┌─ Changes Since Commit {} ─────────────────────┐",
+                    &cid[..7.min(cid.len())].bright_yellow()
+                );
             } else {
                 println!("┌─ Uncommitted Changes ───────────────────────────────────┐");
             }
@@ -2858,12 +3056,21 @@ async fn main() -> anyhow::Result<()> {
 
             // Modified files
             if !status.modified.is_empty() {
-                println!("{} Modified files ({}):", "◆".yellow(), status.modified.len());
+                println!(
+                    "{} Modified files ({}):",
+                    "◆".yellow(),
+                    status.modified.len()
+                );
                 for path in &status.modified {
                     // Try to get file size info
                     if let Ok(metadata) = std::fs::metadata(path) {
                         let size = metadata.len();
-                        println!("  {} {} {}", "~".yellow(), path.display(), format!("({} bytes)", size).bright_black());
+                        println!(
+                            "  {} {} {}",
+                            "~".yellow(),
+                            path.display(),
+                            format!("({} bytes)", size).bright_black()
+                        );
                     } else {
                         println!("  {} {}", "~".yellow(), path.display());
                     }
@@ -2879,9 +3086,19 @@ async fn main() -> anyhow::Result<()> {
                         let size = metadata.len();
                         let size_mb = size as f64 / 1_048_576.0;
                         if size_mb >= 1.0 {
-                            println!("  {} {} {}", "+".green(), path.display(), format!("({:.1} MB)", size_mb).bright_black());
+                            println!(
+                                "  {} {} {}",
+                                "+".green(),
+                                path.display(),
+                                format!("({:.1} MB)", size_mb).bright_black()
+                            );
                         } else {
-                            println!("  {} {} {}", "+".green(), path.display(), format!("({} bytes)", size).bright_black());
+                            println!(
+                                "  {} {} {}",
+                                "+".green(),
+                                path.display(),
+                                format!("({} bytes)", size).bright_black()
+                            );
                         }
                     } else {
                         println!("  {} {}", "+".green(), path.display());
@@ -2999,8 +3216,11 @@ async fn main() -> anyhow::Result<()> {
                             if let Some(dim_diff) = &diff.dimension_diff {
                                 println!("  Dimensions: {}", dim_diff);
                             }
-                            println!("  Size change: {} bytes",
-                                if diff.size_diff_bytes > 0 { "+" } else { "" }.to_string() + &diff.size_diff_bytes.to_string());
+                            println!(
+                                "  Size change: {} bytes",
+                                if diff.size_diff_bytes > 0 { "+" } else { "" }.to_string()
+                                    + &diff.size_diff_bytes.to_string()
+                            );
                         }
                         Err(_) => {}
                     }
@@ -3017,12 +3237,17 @@ async fn main() -> anyhow::Result<()> {
                     match bounce_mgr.compare_bounces(&commit_a_info.id, &commit_b_info.id) {
                         Ok(comparison) => {
                             if let Some(duration_diff) = comparison.duration_diff() {
-                                println!("  Duration: {}{:.2}s",
+                                println!(
+                                    "  Duration: {}{:.2}s",
                                     if duration_diff >= 0.0 { "+" } else { "" },
-                                    duration_diff);
+                                    duration_diff
+                                );
                             }
-                            println!("  Size: {} bytes",
-                                if comparison.size_diff() > 0 { "+" } else { "" }.to_string() + &comparison.size_diff().to_string());
+                            println!(
+                                "  Size: {} bytes",
+                                if comparison.size_diff() > 0 { "+" } else { "" }.to_string()
+                                    + &comparison.size_diff().to_string()
+                            );
                             println!("  {} For detailed audio comparison, use: auxin bounce compare {} {} --null-test",
                                 "💡".bright_yellow(),
                                 &commit_a_info.id[..8],
@@ -3062,7 +3287,9 @@ async fn main() -> anyhow::Result<()> {
                 results.sort_by(|a, b| {
                     let score_b = engine.relevance_score(b, &search_query);
                     let score_a = engine.relevance_score(a, &search_query);
-                    score_b.partial_cmp(&score_a).unwrap_or(std::cmp::Ordering::Equal)
+                    score_b
+                        .partial_cmp(&score_a)
+                        .unwrap_or(std::cmp::Ordering::Equal)
                 });
             }
 
@@ -3113,7 +3340,8 @@ async fn main() -> anyhow::Result<()> {
                             parts.push(key.clone());
                         }
 
-                        let first_line = metadata.message.lines().next().unwrap_or(&metadata.message);
+                        let first_line =
+                            metadata.message.lines().next().unwrap_or(&metadata.message);
                         parts.push(first_line.to_string());
 
                         if ranked {
@@ -3133,13 +3361,15 @@ async fn main() -> anyhow::Result<()> {
                             &commit.id
                         };
 
-                        println!("{}. {} {}",
+                        println!(
+                            "{}. {} {}",
                             format!("{}", i + 1).dimmed(),
                             "Commit".bright_black(),
                             short_id.bright_cyan()
                         );
 
-                        let first_line = metadata.message.lines().next().unwrap_or(&metadata.message);
+                        let first_line =
+                            metadata.message.lines().next().unwrap_or(&metadata.message);
                         println!("   Message: {}", first_line);
 
                         if let Some(bpm) = metadata.bpm {
@@ -3165,7 +3395,8 @@ async fn main() -> anyhow::Result<()> {
                 }
             }
 
-            progress::success(&format!("Found {} matching commit{}",
+            progress::success(&format!(
+                "Found {} matching commit{}",
                 results.len(),
                 if results.len() == 1 { "" } else { "s" }
             ));
@@ -3187,7 +3418,10 @@ async fn main() -> anyhow::Result<()> {
                 let pending_count = queue.pending().len();
 
                 if pending_count > 0 {
-                    vlog!("Auto-syncing {} pending operation(s) before lock operation...", pending_count);
+                    vlog!(
+                        "Auto-syncing {} pending operation(s) before lock operation...",
+                        pending_count
+                    );
                     let report = queue.sync_all()?;
 
                     if !report.failed.is_empty() {
@@ -3215,21 +3449,39 @@ async fn main() -> anyhow::Result<()> {
                                 let machine_id = server_client::get_machine_id();
 
                                 // Get namespace/name from config or current directory
-                                let namespace = config.server.default_namespace.clone()
+                                let namespace = config
+                                    .server
+                                    .default_namespace
+                                    .clone()
                                     .unwrap_or_else(|| "default".to_string());
-                                let repo_name = current_dir.file_name()
+                                let repo_name = current_dir
+                                    .file_name()
                                     .map(|s| s.to_string_lossy().to_string())
                                     .unwrap_or_else(|| "unknown".to_string());
 
                                 let pb = progress::spinner("Acquiring server lock...");
-                                match client.acquire_lock(&namespace, &repo_name, &user, &machine_id, timeout as u32) {
+                                match client.acquire_lock(
+                                    &namespace,
+                                    &repo_name,
+                                    &user,
+                                    &machine_id,
+                                    timeout as u32,
+                                ) {
                                     Ok(lock) => {
                                         progress::finish_success(&pb, "Lock acquired via server");
                                         println!();
                                         success!("Lock acquired successfully");
-                                        println!("  {} {}", "Lock ID:".dimmed(), lock.lock_id.cyan());
+                                        println!(
+                                            "  {} {}",
+                                            "Lock ID:".dimmed(),
+                                            lock.lock_id.cyan()
+                                        );
                                         println!("  {} {}", "User:".dimmed(), lock.user.dimmed());
-                                        println!("  {} {}", "Expires:".dimmed(), lock.expires_at.dimmed());
+                                        println!(
+                                            "  {} {}",
+                                            "Expires:".dimmed(),
+                                            lock.expires_at.dimmed()
+                                        );
                                     }
                                     Err(e) => {
                                         progress::finish_error(&pb, "Failed to acquire lock");
@@ -3252,11 +3504,14 @@ async fn main() -> anyhow::Result<()> {
                                 let mut queue = OfflineQueue::new()?;
                                 let user_id = lock_integration::get_user_identifier();
 
-                                let entry_id = queue.enqueue_with_priority(OfflineQueuedOperation::AcquireLock {
-                                    project_path: current_dir.to_string_lossy().to_string(),
-                                    user_id: user_id.clone(),
-                                    timeout_hours: timeout as u32,
-                                }, 100)?; // High priority
+                                let entry_id = queue.enqueue_with_priority(
+                                    OfflineQueuedOperation::AcquireLock {
+                                        project_path: current_dir.to_string_lossy().to_string(),
+                                        user_id: user_id.clone(),
+                                        timeout_hours: timeout as u32,
+                                    },
+                                    100,
+                                )?; // High priority
 
                                 warn!("Network is offline - operation queued");
                                 println!();
@@ -3294,9 +3549,13 @@ async fn main() -> anyhow::Result<()> {
                                 let machine_id = server_client::get_machine_id();
 
                                 // Get namespace/name from config or current directory
-                                let namespace = config.server.default_namespace.clone()
+                                let namespace = config
+                                    .server
+                                    .default_namespace
+                                    .clone()
                                     .unwrap_or_else(|| "default".to_string());
-                                let repo_name = current_dir.file_name()
+                                let repo_name = current_dir
+                                    .file_name()
                                     .map(|s| s.to_string_lossy().to_string())
                                     .unwrap_or_else(|| "unknown".to_string());
 
@@ -3305,13 +3564,25 @@ async fn main() -> anyhow::Result<()> {
                                 match client.get_lock_status(&namespace, &repo_name) {
                                     Ok(status) => {
                                         if let Some(lock) = status.lock {
-                                            match client.release_lock(&namespace, &repo_name, &lock.lock_id, &user, &machine_id) {
+                                            match client.release_lock(
+                                                &namespace,
+                                                &repo_name,
+                                                &lock.lock_id,
+                                                &user,
+                                                &machine_id,
+                                            ) {
                                                 Ok(()) => {
-                                                    progress::finish_success(&pb, "Lock released via server");
+                                                    progress::finish_success(
+                                                        &pb,
+                                                        "Lock released via server",
+                                                    );
                                                     success!("Lock released successfully");
                                                 }
                                                 Err(e) => {
-                                                    progress::finish_error(&pb, "Failed to release lock");
+                                                    progress::finish_error(
+                                                        &pb,
+                                                        "Failed to release lock",
+                                                    );
                                                     anyhow::bail!("Server release error: {}", e);
                                                 }
                                             }
@@ -3342,10 +3613,13 @@ async fn main() -> anyhow::Result<()> {
 
                                 // We don't know the lock_id when offline, so use a placeholder
                                 // The execute_entry will look up the actual lock
-                                let entry_id = queue.enqueue_with_priority(OfflineQueuedOperation::ReleaseLock {
-                                    project_path: current_dir.to_string_lossy().to_string(),
-                                    lock_id: "pending".to_string(), // Will be looked up during execution
-                                }, 100)?; // High priority
+                                let entry_id = queue.enqueue_with_priority(
+                                    OfflineQueuedOperation::ReleaseLock {
+                                        project_path: current_dir.to_string_lossy().to_string(),
+                                        lock_id: "pending".to_string(), // Will be looked up during execution
+                                    },
+                                    100,
+                                )?; // High priority
 
                                 warn!("Network is offline - operation queued");
                                 println!();
@@ -3378,9 +3652,13 @@ async fn main() -> anyhow::Result<()> {
                         match AuxinServerClient::new(server_config) {
                             Ok(client) => {
                                 // Get namespace/name from config or current directory
-                                let namespace = config.server.default_namespace.clone()
+                                let namespace = config
+                                    .server
+                                    .default_namespace
+                                    .clone()
                                     .unwrap_or_else(|| "default".to_string());
-                                let repo_name = current_dir.file_name()
+                                let repo_name = current_dir
+                                    .file_name()
                                     .map(|s| s.to_string_lossy().to_string())
                                     .unwrap_or_else(|| "unknown".to_string());
 
@@ -3393,19 +3671,51 @@ async fn main() -> anyhow::Result<()> {
                                         println!();
                                         if status.locked {
                                             if let Some(lock) = status.lock {
-                                                println!("{}", "🔒 Repository is LOCKED".red().bold());
+                                                println!(
+                                                    "{}",
+                                                    "🔒 Repository is LOCKED".red().bold()
+                                                );
                                                 println!();
-                                                println!("  {} {}", "Lock ID:".dimmed(), lock.lock_id.cyan());
-                                                println!("  {} {}", "Held by:".dimmed(), lock.user.yellow());
-                                                println!("  {} {}", "Machine:".dimmed(), lock.machine_id.dimmed());
-                                                println!("  {} {}", "Acquired:".dimmed(), lock.acquired_at.dimmed());
-                                                println!("  {} {}", "Expires:".dimmed(), lock.expires_at.yellow());
-                                                println!("  {} {}", "Last seen:".dimmed(), lock.last_heartbeat.dimmed());
+                                                println!(
+                                                    "  {} {}",
+                                                    "Lock ID:".dimmed(),
+                                                    lock.lock_id.cyan()
+                                                );
+                                                println!(
+                                                    "  {} {}",
+                                                    "Held by:".dimmed(),
+                                                    lock.user.yellow()
+                                                );
+                                                println!(
+                                                    "  {} {}",
+                                                    "Machine:".dimmed(),
+                                                    lock.machine_id.dimmed()
+                                                );
+                                                println!(
+                                                    "  {} {}",
+                                                    "Acquired:".dimmed(),
+                                                    lock.acquired_at.dimmed()
+                                                );
+                                                println!(
+                                                    "  {} {}",
+                                                    "Expires:".dimmed(),
+                                                    lock.expires_at.yellow()
+                                                );
+                                                println!(
+                                                    "  {} {}",
+                                                    "Last seen:".dimmed(),
+                                                    lock.last_heartbeat.dimmed()
+                                                );
                                             }
                                         } else {
-                                            println!("{}", "🔓 Repository is UNLOCKED".green().bold());
+                                            println!(
+                                                "{}",
+                                                "🔓 Repository is UNLOCKED".green().bold()
+                                            );
                                             println!();
-                                            progress::info("You can acquire a lock with: auxin lock acquire");
+                                            progress::info(
+                                                "You can acquire a lock with: auxin lock acquire",
+                                            );
                                         }
                                     }
                                     Err(e) => {
@@ -3524,30 +3834,62 @@ async fn main() -> anyhow::Result<()> {
 
                     match auth.get_credentials() {
                         Ok(Some(creds)) => {
-                            println!("│  Status: {} Authenticated                            │", "●".green());
-                            println!("│                                                          │");
-                            println!("│  Username: {}                                    │", creds.username);
+                            println!(
+                                "│  Status: {} Authenticated                            │",
+                                "●".green()
+                            );
+                            println!(
+                                "│                                                          │"
+                            );
+                            println!(
+                                "│  Username: {}                                    │",
+                                creds.username
+                            );
                             println!("│  Hub URL:  {}                      │", creds.hub_url);
-                            println!("│                                                          │");
-                            println!("└──────────────────────────────────────────────────────────┘");
+                            println!(
+                                "│                                                          │"
+                            );
+                            println!(
+                                "└──────────────────────────────────────────────────────────┘"
+                            );
                             println!();
                             progress::info("Run 'auxin auth test' to verify connection");
                         }
                         Ok(None) => {
-                            println!("│  Status: {} Not authenticated                        │", "○".yellow());
-                            println!("│                                                          │");
+                            println!(
+                                "│  Status: {} Not authenticated                        │",
+                                "○".yellow()
+                            );
+                            println!(
+                                "│                                                          │"
+                            );
                             println!("│  You need to login to use remote features               │");
-                            println!("│                                                          │");
-                            println!("└──────────────────────────────────────────────────────────┘");
+                            println!(
+                                "│                                                          │"
+                            );
+                            println!(
+                                "└──────────────────────────────────────────────────────────┘"
+                            );
                             println!();
                             progress::info("Login with: auxin auth login");
                         }
                         Err(e) => {
-                            println!("│  Status: {} Error                                    │", "✗".red());
-                            println!("│                                                          │");
-                            println!("│  Error reading credentials                               │");
-                            println!("│                                                          │");
-                            println!("└──────────────────────────────────────────────────────────┘");
+                            println!(
+                                "│  Status: {} Error                                    │",
+                                "✗".red()
+                            );
+                            println!(
+                                "│                                                          │"
+                            );
+                            println!(
+                                "│  Error reading credentials                               │"
+                            );
+                            println!(
+                                "│                                                          │"
+                            );
+                            println!(
+                                "└──────────────────────────────────────────────────────────┘"
+                            );
                             println!();
                             progress::error(&format!("Error: {}", e));
                         }
@@ -3561,7 +3903,10 @@ async fn main() -> anyhow::Result<()> {
                         Ok(username) => {
                             progress::finish_success(&pb, "Authentication verified");
                             println!();
-                            progress::success(&format!("Successfully authenticated as: {}", username));
+                            progress::success(&format!(
+                                "Successfully authenticated as: {}",
+                                username
+                            ));
                             progress::info("Your credentials are valid");
                         }
                         Err(e) => {
@@ -3596,14 +3941,34 @@ async fn main() -> anyhow::Result<()> {
                     println!("┌─ Server Configuration ──────────────────────────────────┐");
                     println!("│                                                          │");
                     println!("│  URL:        {:<43} │", url_display);
-                    println!("│  Namespace:  {:<43} │",
-                        config.server.default_namespace.as_deref().unwrap_or("(none)"));
-                    println!("│  Timeout:    {} seconds{:<34} │",
-                        config.server.timeout_secs, "");
-                    println!("│  Locks:      {:<43} │",
-                        if config.server.use_server_locks { "enabled" } else { "disabled" });
-                    println!("│  Metadata:   {:<43} │",
-                        if config.server.use_server_metadata { "enabled" } else { "disabled" });
+                    println!(
+                        "│  Namespace:  {:<43} │",
+                        config
+                            .server
+                            .default_namespace
+                            .as_deref()
+                            .unwrap_or("(none)")
+                    );
+                    println!(
+                        "│  Timeout:    {} seconds{:<34} │",
+                        config.server.timeout_secs, ""
+                    );
+                    println!(
+                        "│  Locks:      {:<43} │",
+                        if config.server.use_server_locks {
+                            "enabled"
+                        } else {
+                            "disabled"
+                        }
+                    );
+                    println!(
+                        "│  Metadata:   {:<43} │",
+                        if config.server.use_server_metadata {
+                            "enabled"
+                        } else {
+                            "disabled"
+                        }
+                    );
                     println!("│                                                          │");
 
                     // Check connection
@@ -3641,25 +4006,26 @@ async fn main() -> anyhow::Result<()> {
                     };
 
                     match AuxinServerClient::new(server_config) {
-                        Ok(client) => {
-                            match client.health_check() {
-                                Ok(true) => {
-                                    progress::finish_success(&pb, "Server is healthy");
-                                    println!();
-                                    progress::success(&format!("Connected to {}", config.server.url));
-                                }
-                                Ok(false) => {
-                                    progress::finish_error(&pb, "Server health check failed");
-                                    println!();
-                                    progress::error(&format!("Server at {} is not responding", config.server.url));
-                                }
-                                Err(e) => {
-                                    progress::finish_error(&pb, "Connection failed");
-                                    println!();
-                                    progress::error(&format!("Failed to connect: {}", e));
-                                }
+                        Ok(client) => match client.health_check() {
+                            Ok(true) => {
+                                progress::finish_success(&pb, "Server is healthy");
+                                println!();
+                                progress::success(&format!("Connected to {}", config.server.url));
                             }
-                        }
+                            Ok(false) => {
+                                progress::finish_error(&pb, "Server health check failed");
+                                println!();
+                                progress::error(&format!(
+                                    "Server at {} is not responding",
+                                    config.server.url
+                                ));
+                            }
+                            Err(e) => {
+                                progress::finish_error(&pb, "Connection failed");
+                                println!();
+                                progress::error(&format!("Failed to connect: {}", e));
+                            }
+                        },
                         Err(e) => {
                             progress::finish_error(&pb, "Client error");
                             println!();
@@ -3680,53 +4046,49 @@ async fn main() -> anyhow::Result<()> {
                             config.server.default_namespace = Some(value.clone());
                             progress::success(&format!("Set default namespace to: {}", value));
                         }
-                        "timeout" => {
-                            match value.parse::<u64>() {
-                                Ok(timeout) => {
-                                    config.server.timeout_secs = timeout;
-                                    progress::success(&format!("Set timeout to: {} seconds", timeout));
-                                }
-                                Err(_) => {
-                                    progress::error("Invalid timeout value (must be a number)");
-                                    std::process::exit(1);
-                                }
+                        "timeout" => match value.parse::<u64>() {
+                            Ok(timeout) => {
+                                config.server.timeout_secs = timeout;
+                                progress::success(&format!("Set timeout to: {} seconds", timeout));
                             }
-                        }
-                        "locks" => {
-                            match value.to_lowercase().as_str() {
-                                "true" | "on" | "yes" | "1" => {
-                                    config.server.use_server_locks = true;
-                                    progress::success("Server locks enabled");
-                                }
-                                "false" | "off" | "no" | "0" => {
-                                    config.server.use_server_locks = false;
-                                    progress::success("Server locks disabled");
-                                }
-                                _ => {
-                                    progress::error("Invalid value for locks (use true/false)");
-                                    std::process::exit(1);
-                                }
+                            Err(_) => {
+                                progress::error("Invalid timeout value (must be a number)");
+                                std::process::exit(1);
                             }
-                        }
-                        "metadata" => {
-                            match value.to_lowercase().as_str() {
-                                "true" | "on" | "yes" | "1" => {
-                                    config.server.use_server_metadata = true;
-                                    progress::success("Server metadata storage enabled");
-                                }
-                                "false" | "off" | "no" | "0" => {
-                                    config.server.use_server_metadata = false;
-                                    progress::success("Server metadata storage disabled");
-                                }
-                                _ => {
-                                    progress::error("Invalid value for metadata (use true/false)");
-                                    std::process::exit(1);
-                                }
+                        },
+                        "locks" => match value.to_lowercase().as_str() {
+                            "true" | "on" | "yes" | "1" => {
+                                config.server.use_server_locks = true;
+                                progress::success("Server locks enabled");
                             }
-                        }
+                            "false" | "off" | "no" | "0" => {
+                                config.server.use_server_locks = false;
+                                progress::success("Server locks disabled");
+                            }
+                            _ => {
+                                progress::error("Invalid value for locks (use true/false)");
+                                std::process::exit(1);
+                            }
+                        },
+                        "metadata" => match value.to_lowercase().as_str() {
+                            "true" | "on" | "yes" | "1" => {
+                                config.server.use_server_metadata = true;
+                                progress::success("Server metadata storage enabled");
+                            }
+                            "false" | "off" | "no" | "0" => {
+                                config.server.use_server_metadata = false;
+                                progress::success("Server metadata storage disabled");
+                            }
+                            _ => {
+                                progress::error("Invalid value for metadata (use true/false)");
+                                std::process::exit(1);
+                            }
+                        },
                         _ => {
                             progress::error(&format!("Unknown configuration key: {}", key));
-                            progress::info("Available keys: url, namespace, timeout, locks, metadata");
+                            progress::info(
+                                "Available keys: url, namespace, timeout, locks, metadata",
+                            );
                             std::process::exit(1);
                         }
                     }
@@ -3735,7 +4097,10 @@ async fn main() -> anyhow::Result<()> {
                     if let Some(project_config_path) = Config::project_config_path() {
                         match config.save_to_file(&project_config_path) {
                             Ok(()) => {
-                                progress::info(&format!("Saved to {}", project_config_path.display()));
+                                progress::info(&format!(
+                                    "Saved to {}",
+                                    project_config_path.display()
+                                ));
                             }
                             Err(e) => {
                                 progress::error(&format!("Failed to save config: {}", e));
@@ -3750,20 +4115,24 @@ async fn main() -> anyhow::Result<()> {
 
         Commands::Bounce(bounce_cmd) => {
             // Find repository root
-            let current_dir = std::env::current_dir()
-                .context("Failed to get current directory")?;
+            let current_dir = std::env::current_dir().context("Failed to get current directory")?;
 
             let manager = BounceManager::new(&current_dir);
 
             match bounce_cmd {
-                BounceCommands::Add { file, commit, description } => {
+                BounceCommands::Add {
+                    file,
+                    commit,
+                    description,
+                } => {
                     // Get commit ID - use latest if not specified
                     let commit_id = match commit {
                         Some(id) => id,
                         None => {
                             // Get latest commit from oxen log
                             let subprocess = auxin::OxenSubprocess::new();
-                            let commits = subprocess.log(&current_dir, Some(1))
+                            let commits = subprocess
+                                .log(&current_dir, Some(1))
                                 .context("Failed to get latest commit")?;
                             if commits.is_empty() {
                                 anyhow::bail!("No commits found. Create a commit first.");
@@ -3772,13 +4141,19 @@ async fn main() -> anyhow::Result<()> {
                         }
                     };
 
-                    let pb = progress::spinner(&format!("Adding bounce for commit {}...", &commit_id[..8.min(commit_id.len())]));
+                    let pb = progress::spinner(&format!(
+                        "Adding bounce for commit {}...",
+                        &commit_id[..8.min(commit_id.len())]
+                    ));
 
                     match manager.add_bounce(&commit_id, &file, description.as_deref()) {
                         Ok(metadata) => {
                             progress::finish_success(&pb, "Bounce added");
                             println!();
-                            println!("  Commit:    {}", &metadata.commit_id[..8.min(metadata.commit_id.len())]);
+                            println!(
+                                "  Commit:    {}",
+                                &metadata.commit_id[..8.min(metadata.commit_id.len())]
+                            );
                             println!("  File:      {}", metadata.original_filename);
                             println!("  Format:    {:?}", metadata.format);
                             println!("  Size:      {}", metadata.format_size());
@@ -3795,8 +4170,7 @@ async fn main() -> anyhow::Result<()> {
                 }
 
                 BounceCommands::List => {
-                    let bounces = manager.list_bounces()
-                        .context("Failed to list bounces")?;
+                    let bounces = manager.list_bounces().context("Failed to list bounces")?;
 
                     if bounces.is_empty() {
                         println!("No bounces found.");
@@ -3812,15 +4186,19 @@ async fn main() -> anyhow::Result<()> {
                             let duration = bounce.format_duration();
                             let size = bounce.format_size();
 
-                            println!("│  {} {} │",
+                            println!(
+                                "│  {} {} │",
                                 commit_short.yellow(),
-                                " ".repeat(48 - commit_short.len()));
-                            println!("│    File:     {:<41} │",
+                                " ".repeat(48 - commit_short.len())
+                            );
+                            println!(
+                                "│    File:     {:<41} │",
                                 if bounce.original_filename.len() > 41 {
                                     format!("{}...", &bounce.original_filename[..38])
                                 } else {
                                     bounce.original_filename.clone()
-                                });
+                                }
+                            );
                             println!("│    Format:   {:<41} │", format!("{:?}", bounce.format));
                             println!("│    Duration: {:<41} │", duration);
                             println!("│    Size:     {:<41} │", size);
@@ -3833,7 +4211,9 @@ async fn main() -> anyhow::Result<()> {
                                 };
                                 println!("│    Note:     {:<41} │", desc_display);
                             }
-                            println!("│                                                          │");
+                            println!(
+                                "│                                                          │"
+                            );
                         }
 
                         println!("└──────────────────────────────────────────────────────────┘");
@@ -3843,7 +4223,10 @@ async fn main() -> anyhow::Result<()> {
                 }
 
                 BounceCommands::Play { commit_id } => {
-                    let pb = progress::spinner(&format!("Playing bounce for {}...", &commit_id[..8.min(commit_id.len())]));
+                    let pb = progress::spinner(&format!(
+                        "Playing bounce for {}...",
+                        &commit_id[..8.min(commit_id.len())]
+                    ));
 
                     match manager.play_bounce(&commit_id) {
                         Ok(()) => {
@@ -3861,14 +4244,21 @@ async fn main() -> anyhow::Result<()> {
                         Some(metadata) => {
                             println!();
                             println!("┌─ Bounce Info ───────────────────────────────────────────┐");
-                            println!("│                                                          │");
-                            println!("│  Commit:      {:<42} │", &metadata.commit_id[..8.min(metadata.commit_id.len())]);
-                            println!("│  File:        {:<42} │",
+                            println!(
+                                "│                                                          │"
+                            );
+                            println!(
+                                "│  Commit:      {:<42} │",
+                                &metadata.commit_id[..8.min(metadata.commit_id.len())]
+                            );
+                            println!(
+                                "│  File:        {:<42} │",
                                 if metadata.original_filename.len() > 42 {
                                     format!("{}...", &metadata.original_filename[..39])
                                 } else {
                                     metadata.original_filename.clone()
-                                });
+                                }
+                            );
                             println!("│  Format:      {:<42} │", format!("{:?}", metadata.format));
                             println!("│  Size:        {:<42} │", metadata.format_size());
                             println!("│  Duration:    {:<42} │", metadata.format_duration());
@@ -3880,17 +4270,29 @@ async fn main() -> anyhow::Result<()> {
                                 println!("│  Bit Depth:   {:<42} │", format!("{}-bit", bd));
                             }
                             if let Some(ch) = metadata.channels {
-                                let ch_str = if ch == 1 { "Mono".to_string() } else if ch == 2 { "Stereo".to_string() } else { format!("{} channels", ch) };
+                                let ch_str = if ch == 1 {
+                                    "Mono".to_string()
+                                } else if ch == 2 {
+                                    "Stereo".to_string()
+                                } else {
+                                    format!("{} channels", ch)
+                                };
                                 println!("│  Channels:    {:<42} │", ch_str);
                             }
 
-                            println!("│  Added:       {:<42} │",
-                                metadata.added_at.format("%Y-%m-%d %H:%M").to_string());
+                            println!(
+                                "│  Added:       {:<42} │",
+                                metadata.added_at.format("%Y-%m-%d %H:%M").to_string()
+                            );
                             println!("│  By:          {:<42} │", metadata.added_by);
 
                             if let Some(desc) = &metadata.description {
-                                println!("│                                                          │");
-                                println!("│  Description:                                            │");
+                                println!(
+                                    "│                                                          │"
+                                );
+                                println!(
+                                    "│  Description:                                            │"
+                                );
                                 // Word wrap description
                                 for chunk in desc.as_bytes().chunks(54) {
                                     let line = String::from_utf8_lossy(chunk);
@@ -3898,8 +4300,12 @@ async fn main() -> anyhow::Result<()> {
                                 }
                             }
 
-                            println!("│                                                          │");
-                            println!("└──────────────────────────────────────────────────────────┘");
+                            println!(
+                                "│                                                          │"
+                            );
+                            println!(
+                                "└──────────────────────────────────────────────────────────┘"
+                            );
                             println!();
                         }
                         None => {
@@ -3909,7 +4315,10 @@ async fn main() -> anyhow::Result<()> {
                 }
 
                 BounceCommands::Delete { commit_id } => {
-                    let pb = progress::spinner(&format!("Deleting bounce for {}...", &commit_id[..8.min(commit_id.len())]));
+                    let pb = progress::spinner(&format!(
+                        "Deleting bounce for {}...",
+                        &commit_id[..8.min(commit_id.len())]
+                    ));
 
                     match manager.delete_bounce(&commit_id) {
                         Ok(()) => {
@@ -3972,32 +4381,49 @@ async fn main() -> anyhow::Result<()> {
                     if let Some(before_str) = before {
                         match NaiveDate::parse_from_str(&before_str, "%Y-%m-%d") {
                             Ok(date) => {
-                                filter.before = Some(date.and_hms_opt(23, 59, 59).unwrap().and_utc());
+                                filter.before =
+                                    Some(date.and_hms_opt(23, 59, 59).unwrap().and_utc());
                             }
                             Err(_) => {
                                 progress::finish_error(&pb, "Invalid date");
-                                anyhow::bail!("Invalid date format: {}. Use YYYY-MM-DD", before_str);
+                                anyhow::bail!(
+                                    "Invalid date format: {}. Use YYYY-MM-DD",
+                                    before_str
+                                );
                             }
                         }
                     }
 
                     match manager.search_bounces(&filter) {
                         Ok(bounces) => {
-                            progress::finish_success(&pb, &format!("Found {} bounces", bounces.len()));
+                            progress::finish_success(
+                                &pb,
+                                &format!("Found {} bounces", bounces.len()),
+                            );
 
                             if bounces.is_empty() {
                                 println!("No bounces match the filter criteria");
                             } else {
                                 for bounce in bounces {
                                     println!("\n{}", "─".repeat(50).dimmed());
-                                    println!("{}: {}", "Commit".cyan(), &bounce.commit_id[..8.min(bounce.commit_id.len())]);
+                                    println!(
+                                        "{}: {}",
+                                        "Commit".cyan(),
+                                        &bounce.commit_id[..8.min(bounce.commit_id.len())]
+                                    );
                                     println!("{}: {}", "File".cyan(), bounce.original_filename);
-                                    println!("{}: {:?} | {} | {}",
+                                    println!(
+                                        "{}: {:?} | {} | {}",
                                         "Info".cyan(),
                                         bounce.format,
                                         bounce.format_duration(),
-                                        bounce.format_size());
-                                    println!("{}: {}", "Added".cyan(), bounce.added_at.format("%Y-%m-%d %H:%M"));
+                                        bounce.format_size()
+                                    );
+                                    println!(
+                                        "{}: {}",
+                                        "Added".cyan(),
+                                        bounce.added_at.format("%Y-%m-%d %H:%M")
+                                    );
                                     if let Some(desc) = &bounce.description {
                                         println!("{}: {}", "Description".cyan(), desc);
                                     }
@@ -4011,7 +4437,11 @@ async fn main() -> anyhow::Result<()> {
                     }
                 }
 
-                BounceCommands::Compare { commit_a, commit_b, null_test } => {
+                BounceCommands::Compare {
+                    commit_a,
+                    commit_b,
+                    null_test,
+                } => {
                     let pb = progress::spinner(&format!(
                         "Comparing {} and {}{}...",
                         &commit_a[..8.min(commit_a.len())],
@@ -4059,20 +4489,21 @@ async fn main() -> anyhow::Result<()> {
 
                     for file in &files {
                         // Try to extract commit ID from filename (pattern: commit_<id>_name.ext)
-                        let commit_id = if let Some(filename) = file.file_name().and_then(|n| n.to_str()) {
-                            if filename.starts_with("commit_") {
-                                let parts: Vec<&str> = filename.splitn(3, '_').collect();
-                                if parts.len() >= 2 {
-                                    parts[1].to_string()
+                        let commit_id =
+                            if let Some(filename) = file.file_name().and_then(|n| n.to_str()) {
+                                if filename.starts_with("commit_") {
+                                    let parts: Vec<&str> = filename.splitn(3, '_').collect();
+                                    if parts.len() >= 2 {
+                                        parts[1].to_string()
+                                    } else {
+                                        default_commit.clone()
+                                    }
                                 } else {
                                     default_commit.clone()
                                 }
                             } else {
                                 default_commit.clone()
-                            }
-                        } else {
-                            default_commit.clone()
-                        };
+                            };
 
                         match manager.add_bounce(&commit_id, file, None) {
                             Ok(_) => {
@@ -4088,17 +4519,27 @@ async fn main() -> anyhow::Result<()> {
                     if error_count == 0 {
                         progress::finish_success(&pb, &format!("Added {} bounces", success_count));
                     } else {
-                        progress::finish_error(&pb, &format!("{} added, {} failed", success_count, error_count));
+                        progress::finish_error(
+                            &pb,
+                            &format!("{} added, {} failed", success_count, error_count),
+                        );
                     }
                 }
 
-                BounceCommands::BulkDelete { format, before, user, force } => {
+                BounceCommands::BulkDelete {
+                    format,
+                    before,
+                    user,
+                    force,
+                } => {
                     use auxin::BounceFilter;
                     use chrono::NaiveDate;
 
                     // Require at least one filter
                     if format.is_none() && before.is_none() && user.is_none() {
-                        anyhow::bail!("At least one filter (--format, --before, or --user) must be specified");
+                        anyhow::bail!(
+                            "At least one filter (--format, --before, or --user) must be specified"
+                        );
                     }
 
                     let pb = progress::spinner("Finding bounces to delete...");
@@ -4113,11 +4554,15 @@ async fn main() -> anyhow::Result<()> {
                     if let Some(before_str) = &before {
                         match NaiveDate::parse_from_str(before_str, "%Y-%m-%d") {
                             Ok(date) => {
-                                filter.before = Some(date.and_hms_opt(23, 59, 59).unwrap().and_utc());
+                                filter.before =
+                                    Some(date.and_hms_opt(23, 59, 59).unwrap().and_utc());
                             }
                             Err(_) => {
                                 progress::finish_error(&pb, "Invalid date");
-                                anyhow::bail!("Invalid date format: {}. Use YYYY-MM-DD", before_str);
+                                anyhow::bail!(
+                                    "Invalid date format: {}. Use YYYY-MM-DD",
+                                    before_str
+                                );
                             }
                         }
                     }
@@ -4144,7 +4589,11 @@ async fn main() -> anyhow::Result<()> {
                     if !force {
                         println!("\n{} bounces will be deleted:", bounces.len());
                         for bounce in &bounces {
-                            println!("  • {} ({})", bounce.original_filename, &bounce.commit_id[..8.min(bounce.commit_id.len())]);
+                            println!(
+                                "  • {} ({})",
+                                bounce.original_filename,
+                                &bounce.commit_id[..8.min(bounce.commit_id.len())]
+                            );
                         }
                         println!("\nUse --force to delete without confirmation.");
                         return Ok(());
@@ -4407,15 +4856,21 @@ async fn main() -> anyhow::Result<()> {
                             .collect();
 
                         if !pre_commit.is_empty() {
-                            println!("│  Pre-commit hooks:                                       │");
+                            println!(
+                                "│  Pre-commit hooks:                                       │"
+                            );
                             for (_, name) in pre_commit {
                                 println!("│    • {:<51} │", name);
                             }
-                            println!("│                                                          │");
+                            println!(
+                                "│                                                          │"
+                            );
                         }
 
                         if !post_commit.is_empty() {
-                            println!("│  Post-commit hooks:                                      │");
+                            println!(
+                                "│  Post-commit hooks:                                      │"
+                            );
                             for (_, name) in post_commit {
                                 println!("│    • {:<51} │", name);
                             }
@@ -4441,7 +4896,11 @@ async fn main() -> anyhow::Result<()> {
                             HookType::PreCommit => "pre-commit",
                             HookType::PostCommit => "post-commit",
                         };
-                        println!("│  {} ({})                                 ", hook.name.bright_yellow(), type_str.dimmed());
+                        println!(
+                            "│  {} ({})                                 ",
+                            hook.name.bright_yellow(),
+                            type_str.dimmed()
+                        );
                         println!("│    {:<55} │", hook.description);
                         println!("│                                                          │");
                     }
@@ -4459,7 +4918,10 @@ async fn main() -> anyhow::Result<()> {
                         "pre-commit" => HookType::PreCommit,
                         "post-commit" => HookType::PostCommit,
                         _ => {
-                            anyhow::bail!("Invalid hook type: {}. Use 'pre-commit' or 'post-commit'", hook_type);
+                            anyhow::bail!(
+                                "Invalid hook type: {}. Use 'pre-commit' or 'post-commit'",
+                                hook_type
+                            );
                         }
                     };
 
@@ -4472,7 +4934,11 @@ async fn main() -> anyhow::Result<()> {
 
                     println!();
                     progress::success(&format!("Hook '{}' installed successfully", name));
-                    progress::info(&format!("Edit at: .oxen/hooks/{}/{}", hook_type.dir_name(), name));
+                    progress::info(&format!(
+                        "Edit at: .oxen/hooks/{}/{}",
+                        hook_type.dir_name(),
+                        name
+                    ));
 
                     Ok(())
                 }
@@ -4483,7 +4949,10 @@ async fn main() -> anyhow::Result<()> {
                         "pre-commit" => HookType::PreCommit,
                         "post-commit" => HookType::PostCommit,
                         _ => {
-                            anyhow::bail!("Invalid hook type: {}. Use 'pre-commit' or 'post-commit'", hook_type);
+                            anyhow::bail!(
+                                "Invalid hook type: {}. Use 'pre-commit' or 'post-commit'",
+                                hook_type
+                            );
                         }
                     };
 
@@ -4503,8 +4972,7 @@ async fn main() -> anyhow::Result<()> {
             // Determine project path
             let project_path = match path {
                 Some(p) => p,
-                None => std::env::current_dir()
-                    .context("Failed to get current directory")?,
+                None => std::env::current_dir().context("Failed to get current directory")?,
             };
 
             vlog!("Launching console for project: {}", project_path.display());
@@ -4517,13 +4985,15 @@ async fn main() -> anyhow::Result<()> {
 
             // Check daemon status
             let daemon_client = DaemonClient::new();
-            let status = daemon_client.status().unwrap_or(auxin::daemon_client::DaemonStatus {
-                is_running: false,
-                pid: None,
-                project_count: None,
-                version: None,
-                uptime: None,
-            });
+            let status = daemon_client
+                .status()
+                .unwrap_or(auxin::daemon_client::DaemonStatus {
+                    is_running: false,
+                    pid: None,
+                    project_count: None,
+                    version: None,
+                    uptime: None,
+                });
 
             // Set initial daemon status
             let console_status = if status.is_running {
@@ -4565,7 +5035,10 @@ async fn main() -> anyhow::Result<()> {
             println!();
             println!("┌─ Project Activity ──────────────────────────────────────┐");
             println!("│                                                          │");
-            println!("│  Recent activity ({} commits)                            │", activities.len());
+            println!(
+                "│  Recent activity ({} commits)                            │",
+                activities.len()
+            );
             println!("│                                                          │");
             println!("└──────────────────────────────────────────────────────────┘");
             println!();
@@ -4578,7 +5051,8 @@ async fn main() -> anyhow::Result<()> {
                     activity.author.clone()
                 };
 
-                println!("{} {} {} - {}",
+                println!(
+                    "{} {} {} - {}",
                     (i + 1).to_string().bright_black(),
                     icon,
                     author.cyan(),
@@ -4588,13 +5062,21 @@ async fn main() -> anyhow::Result<()> {
                 // Show metadata if present
                 if !activity.metadata.is_empty() {
                     for (key, value) in &activity.metadata {
-                        println!("    {} {}: {}", "│".bright_black(), key.bright_black(), value.bright_black());
+                        println!(
+                            "    {} {}: {}",
+                            "│".bright_black(),
+                            key.bright_black(),
+                            value.bright_black()
+                        );
                     }
                 }
             }
 
             println!();
-            progress::info(&format!("Showing {} most recent activities", activities.len()));
+            progress::info(&format!(
+                "Showing {} most recent activities",
+                activities.len()
+            ));
 
             Ok(())
         }
@@ -4622,18 +5104,23 @@ async fn main() -> anyhow::Result<()> {
             println!();
             println!("┌─ Team Members ──────────────────────────────────────────┐");
             println!("│                                                          │");
-            println!("│  {} members · {} total commits                           │",
-                members.len(), total_commits);
+            println!(
+                "│  {} members · {} total commits                           │",
+                members.len(),
+                total_commits
+            );
             println!("│                                                          │");
             println!("└──────────────────────────────────────────────────────────┘");
             println!();
 
             for (i, member) in members.iter().enumerate() {
-                let percentage = (member.commit_count as f64 / total_commits as f64 * 100.0) as usize;
+                let percentage =
+                    (member.commit_count as f64 / total_commits as f64 * 100.0) as usize;
                 let bar_length = (percentage / 5).min(20);
                 let bar = "█".repeat(bar_length);
 
-                println!("{} {} {} commits ({}%)",
+                println!(
+                    "{} {} {} commits ({}%)",
                     (i + 1).to_string().bright_black(),
                     member.name.cyan(),
                     member.commit_count.to_string().green(),
@@ -4667,8 +5154,16 @@ async fn main() -> anyhow::Result<()> {
                         progress::success("No pending operations");
                         println!("\n  All operations have been synced!");
                     } else {
-                        println!("  {} {}", "Pending:".bold(), pending.len().to_string().yellow());
-                        println!("  {} {}", "Completed:".bold(), stats.completed.to_string().green());
+                        println!(
+                            "  {} {}",
+                            "Pending:".bold(),
+                            pending.len().to_string().yellow()
+                        );
+                        println!(
+                            "  {} {}",
+                            "Completed:".bold(),
+                            stats.completed.to_string().green()
+                        );
                         println!("  {} {}", "Failed:".bold(), stats.failed.to_string().red());
                         println!();
 
@@ -4682,12 +5177,14 @@ async fn main() -> anyhow::Result<()> {
                                 format!("{}s ago", age.num_seconds())
                             };
 
-                            println!("  {}. {} {}",
+                            println!(
+                                "  {}. {} {}",
                                 (i + 1).to_string().cyan(),
                                 entry.operation.description(),
                                 format!("({})", age_str).dimmed()
                             );
-                            println!("     {} {} | {} {} | {} {}",
+                            println!(
+                                "     {} {} | {} {} | {} {}",
                                 "ID:".dimmed(),
                                 &entry.id[..8].dimmed(),
                                 "Priority:".dimmed(),
@@ -4698,7 +5195,10 @@ async fn main() -> anyhow::Result<()> {
                             println!();
                         }
 
-                        println!("  {}", "Use 'auxin queue sync' to sync pending operations".dimmed());
+                        println!(
+                            "  {}",
+                            "Use 'auxin queue sync' to sync pending operations".dimmed()
+                        );
                     }
 
                     Ok(())
@@ -4715,7 +5215,9 @@ async fn main() -> anyhow::Result<()> {
                     match check_connectivity() {
                         ConnectivityState::Offline => {
                             progress::error("Network is offline - cannot sync");
-                            println!("\n  Operations will remain queued until network is available");
+                            println!(
+                                "\n  Operations will remain queued until network is available"
+                            );
                             return Ok(());
                         }
                         ConnectivityState::Unknown => {
@@ -4739,8 +5241,16 @@ async fn main() -> anyhow::Result<()> {
                     println!();
                     println!("{}", "Sync Results".bold());
                     println!("{}", "=".repeat(50));
-                    println!("  {} {}", "Succeeded:".bold(), report.succeeded.len().to_string().green());
-                    println!("  {} {}", "Failed:".bold(), report.failed.len().to_string().red());
+                    println!(
+                        "  {} {}",
+                        "Succeeded:".bold(),
+                        report.succeeded.len().to_string().green()
+                    );
+                    println!(
+                        "  {} {}",
+                        "Failed:".bold(),
+                        report.failed.len().to_string().red()
+                    );
 
                     if !report.failed.is_empty() {
                         println!();
@@ -4767,9 +5277,8 @@ async fn main() -> anyhow::Result<()> {
                         let total = queue.pending().len() + queue.stats().completed;
 
                         // Remove all entries
-                        let entry_ids: Vec<String> = queue.pending().iter()
-                            .map(|e| e.id.clone())
-                            .collect();
+                        let entry_ids: Vec<String> =
+                            queue.pending().iter().map(|e| e.id.clone()).collect();
 
                         for id in entry_ids {
                             queue.remove(&id)?;
@@ -4782,7 +5291,10 @@ async fn main() -> anyhow::Result<()> {
                         // Clear only completed
                         let completed_count = queue.stats().completed;
                         queue.clear_completed()?;
-                        progress::success(&format!("Cleared {} completed operation(s)", completed_count));
+                        progress::success(&format!(
+                            "Cleared {} completed operation(s)",
+                            completed_count
+                        ));
                     }
 
                     Ok(())
@@ -4877,22 +5389,37 @@ async fn main() -> anyhow::Result<()> {
                     }
 
                     println!();
-                    println!("┌─ Comments on {} ─────────────────────────────────┐",
-                        if commit.len() > 8 { &commit[..8] } else { commit });
+                    println!(
+                        "┌─ Comments on {} ─────────────────────────────────┐",
+                        if commit.len() > 8 {
+                            &commit[..8]
+                        } else {
+                            commit
+                        }
+                    );
                     println!("│                                                          │");
-                    println!("│  {} comments                                              │", comments.len());
+                    println!(
+                        "│  {} comments                                              │",
+                        comments.len()
+                    );
                     println!("│                                                          │");
                     println!("└──────────────────────────────────────────────────────────┘");
                     println!();
 
                     for (i, comment) in comments.iter().enumerate() {
-                        println!("{} 💬 {} said:",
+                        println!(
+                            "{} 💬 {} said:",
                             (i + 1).to_string().bright_black(),
                             comment.author.cyan()
                         );
                         println!("   \"{}\"", comment.text);
-                        println!("   {}",
-                            comment.created_at.format("%Y-%m-%d %H:%M UTC").to_string().bright_black()
+                        println!(
+                            "   {}",
+                            comment
+                                .created_at
+                                .format("%Y-%m-%d %H:%M UTC")
+                                .to_string()
+                                .bright_black()
                         );
                         if i < comments.len() - 1 {
                             println!();
@@ -4907,7 +5434,12 @@ async fn main() -> anyhow::Result<()> {
             }
         }
 
-        Commands::Push { remote, branch, force, verbose } => {
+        Commands::Push {
+            remote,
+            branch,
+            force,
+            verbose,
+        } => {
             use auxin::{ChunkedUploadManager, UploadConfig};
 
             let current_dir = std::env::current_dir()?;
@@ -4917,8 +5449,8 @@ async fn main() -> anyhow::Result<()> {
             let mut config = UploadConfig::default();
             config.verbose = verbose || cli.verbose;
 
-            let mut manager = ChunkedUploadManager::new(config)
-                .context("Failed to initialize upload manager")?;
+            let mut manager =
+                ChunkedUploadManager::new(config).context("Failed to initialize upload manager")?;
 
             // Determine remote and branch
             let remote_name = remote.unwrap_or_else(|| "origin".to_string());
@@ -4927,7 +5459,8 @@ async fn main() -> anyhow::Result<()> {
             } else {
                 // Get current branch
                 let subprocess = auxin::OxenSubprocess::new();
-                subprocess.current_branch(&current_dir)
+                subprocess
+                    .current_branch(&current_dir)
                     .context("Failed to get current branch")?
             };
 
@@ -4935,7 +5468,8 @@ async fn main() -> anyhow::Result<()> {
             println!();
             println!("┌─ Push to Remote ────────────────────────────────────────┐");
             println!("│                                                          │");
-            println!("│  {} {}:{}",
+            println!(
+                "│  {} {}:{}",
                 "→".cyan(),
                 remote_name.cyan().bold(),
                 branch_name.cyan().bold()
@@ -4962,7 +5496,8 @@ async fn main() -> anyhow::Result<()> {
             let is_resuming = manager.has_resumable_session(&current_dir);
             if is_resuming {
                 if let Some(session_info) = manager.get_resumable_session_info(&current_dir) {
-                    progress::info(&format!("Resuming interrupted upload ({:.1}% complete)",
+                    progress::info(&format!(
+                        "Resuming interrupted upload ({:.1}% complete)",
                         session_info.percentage
                     ));
                     println!();
@@ -4972,9 +5507,14 @@ async fn main() -> anyhow::Result<()> {
             // Execute push with progress tracking
             progress::info("Starting push...");
 
-            match manager.upload_with_progress(&current_dir, &remote_name, &branch_name, |_progress| {
-                // Progress callback - could be used for real-time display in future
-            }) {
+            match manager.upload_with_progress(
+                &current_dir,
+                &remote_name,
+                &branch_name,
+                |_progress| {
+                    // Progress callback - could be used for real-time display in future
+                },
+            ) {
                 Ok(result) => {
                     println!();
 
@@ -5005,7 +5545,10 @@ async fn main() -> anyhow::Result<()> {
                     }
 
                     println!();
-                    progress::info(&format!("Branch '{}' pushed to '{}'", branch_name, remote_name));
+                    progress::info(&format!(
+                        "Branch '{}' pushed to '{}'",
+                        branch_name, remote_name
+                    ));
 
                     Ok(())
                 }
@@ -5020,11 +5563,18 @@ async fn main() -> anyhow::Result<()> {
 
                     // Check if it's a network error
                     let error_str = e.to_string().to_lowercase();
-                    if error_str.contains("network") || error_str.contains("connection") || error_str.contains("timeout") {
+                    if error_str.contains("network")
+                        || error_str.contains("connection")
+                        || error_str.contains("timeout")
+                    {
                         println!();
                         progress::info("Network issue detected. Check your connection and retry.");
                         progress::info("For recovery help: auxin recovery push");
-                    } else if error_str.contains("auth") || error_str.contains("permission") || error_str.contains("401") || error_str.contains("403") {
+                    } else if error_str.contains("auth")
+                        || error_str.contains("permission")
+                        || error_str.contains("401")
+                        || error_str.contains("403")
+                    {
                         println!();
                         progress::info("Authentication issue. Try: auxin login");
                     }
@@ -5093,7 +5643,6 @@ async fn main() -> anyhow::Result<()> {
                         all_good = false;
                     }
                 }
-
             } else {
                 println!("{} {}", "⚠".yellow(), "Not in an Oxen repository");
                 println!("  {} Initialize with: auxin init <path>", "→".yellow());
@@ -5103,12 +5652,21 @@ async fn main() -> anyhow::Result<()> {
             print!("{} ", "Checking authentication...".cyan());
             // We can't easily check auth status without trying to connect
             // For now, just note that auth can be set up
-            println!("{} {}", "?".yellow(), "Run 'auxin auth login' to authenticate");
+            println!(
+                "{} {}",
+                "?".yellow(),
+                "Run 'auxin auth login' to authenticate"
+            );
 
             // Summary
             println!("\n{}", "─".repeat(40).dimmed());
             if all_good {
-                println!("{}", "All checks passed! You're ready to use Auxin.".green().bold());
+                println!(
+                    "{}",
+                    "All checks passed! You're ready to use Auxin."
+                        .green()
+                        .bold()
+                );
             } else {
                 println!("{}", "Some issues found. See suggestions above.".yellow());
             }
@@ -5137,24 +5695,22 @@ async fn main() -> anyhow::Result<()> {
                     }
                 }
 
-                RemoteCommands::List => {
-                    match subprocess.remote_list(&current_dir) {
-                        Ok(remotes) if !remotes.is_empty() => {
-                            println!("\n{}", "Configured remotes:".cyan().bold());
-                            for (name, url) in &remotes {
-                                println!("  {} → {}", name.cyan(), url);
-                            }
-                            println!();
+                RemoteCommands::List => match subprocess.remote_list(&current_dir) {
+                    Ok(remotes) if !remotes.is_empty() => {
+                        println!("\n{}", "Configured remotes:".cyan().bold());
+                        for (name, url) in &remotes {
+                            println!("  {} → {}", name.cyan(), url);
                         }
-                        Ok(_) => {
-                            println!("{}", "No remotes configured".yellow());
-                            println!("Add one with: auxin remote add origin <URL>");
-                        }
-                        Err(e) => {
-                            anyhow::bail!("Failed to list remotes: {}", e);
-                        }
+                        println!();
                     }
-                }
+                    Ok(_) => {
+                        println!("{}", "No remotes configured".yellow());
+                        println!("Add one with: auxin remote add origin <URL>");
+                    }
+                    Err(e) => {
+                        anyhow::bail!("Failed to list remotes: {}", e);
+                    }
+                },
 
                 RemoteCommands::Remove { name } => {
                     let pb = progress::spinner(&format!("Removing remote '{}'...", name));
@@ -5175,7 +5731,10 @@ async fn main() -> anyhow::Result<()> {
         }
 
         // TODO: Implement these command handlers
-        Commands::History(_) | Commands::Workflow(_) | Commands::Snapshot(_) | Commands::Recovery(_) => {
+        Commands::History(_)
+        | Commands::Workflow(_)
+        | Commands::Snapshot(_)
+        | Commands::Recovery(_) => {
             anyhow::bail!("This command is not yet implemented")
         }
     }

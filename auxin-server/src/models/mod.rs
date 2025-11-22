@@ -1,3 +1,3 @@
 pub mod project;
 
-pub use project::{Project, CreateProjectRequest, UpdateProjectRequest};
+pub use project::{CreateProjectRequest, Project, UpdateProjectRequest};

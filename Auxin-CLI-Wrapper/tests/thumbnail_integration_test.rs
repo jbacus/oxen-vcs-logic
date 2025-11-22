@@ -28,9 +28,7 @@ fn test_add_thumbnail() {
     fs::write(&source_file, b"fake jpeg data").unwrap();
 
     // Add the thumbnail
-    let metadata = manager
-        .add_thumbnail("commit123", &source_file)
-        .unwrap();
+    let metadata = manager.add_thumbnail("commit123", &source_file).unwrap();
 
     assert_eq!(metadata.commit_id, "commit123");
     assert_eq!(metadata.format, "jpg");
@@ -276,8 +274,16 @@ fn test_compare_thumbnails_dimension_change() {
     // Re-save metadata
     let json1 = serde_json::to_string_pretty(&meta1).unwrap();
     let json2 = serde_json::to_string_pretty(&meta2).unwrap();
-    fs::write(temp_dir.path().join(".auxin/thumbnails/commit_1.json"), json1).unwrap();
-    fs::write(temp_dir.path().join(".auxin/thumbnails/commit_2.json"), json2).unwrap();
+    fs::write(
+        temp_dir.path().join(".auxin/thumbnails/commit_1.json"),
+        json1,
+    )
+    .unwrap();
+    fs::write(
+        temp_dir.path().join(".auxin/thumbnails/commit_2.json"),
+        json2,
+    )
+    .unwrap();
 
     let diff = manager.compare_thumbnails("commit_1", "commit_2").unwrap();
 

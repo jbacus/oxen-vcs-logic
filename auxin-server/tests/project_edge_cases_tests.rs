@@ -37,7 +37,8 @@ mod project_edge_cases {
     async fn test_update_repository_path_nonexistent_project() {
         let pool = setup_test_db().await;
 
-        let result = Project::update_repository_path(&pool, "nonexistent-id", "/path/to/repo").await;
+        let result =
+            Project::update_repository_path(&pool, "nonexistent-id", "/path/to/repo").await;
         assert!(result.is_err());
     }
 
@@ -61,7 +62,10 @@ mod project_edge_cases {
 
         let updated = Project::update(&pool, &project.id, update).await.unwrap();
         assert_eq!(updated.name, "new-name");
-        assert_eq!(updated.description, Some("Original description".to_string()));
+        assert_eq!(
+            updated.description,
+            Some("Original description".to_string())
+        );
     }
 
     #[tokio::test]

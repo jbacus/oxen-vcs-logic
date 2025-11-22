@@ -53,7 +53,11 @@ mod tests {
         let (temp_dir, manager) = create_test_manager();
         manager.init().unwrap();
 
-        let readme_path = temp_dir.path().join(".oxen").join("hooks").join("README.md");
+        let readme_path = temp_dir
+            .path()
+            .join(".oxen")
+            .join("hooks")
+            .join("README.md");
         assert!(readme_path.exists());
     }
 
@@ -118,7 +122,9 @@ mod tests {
         manager.init().unwrap();
 
         // Install same hook twice
-        manager.install_builtin("validate-metadata", HookType::PreCommit).unwrap();
+        manager
+            .install_builtin("validate-metadata", HookType::PreCommit)
+            .unwrap();
         let result = manager.install_builtin("validate-metadata", HookType::PreCommit);
 
         // Should overwrite (succeed)
@@ -146,8 +152,12 @@ mod tests {
         let (_temp_dir, manager) = create_test_manager();
         manager.init().unwrap();
 
-        manager.install_builtin("validate-metadata", HookType::PreCommit).unwrap();
-        manager.install_builtin("backup", HookType::PostCommit).unwrap();
+        manager
+            .install_builtin("validate-metadata", HookType::PreCommit)
+            .unwrap();
+        manager
+            .install_builtin("backup", HookType::PostCommit)
+            .unwrap();
 
         let pre_hooks = manager.list_hooks_by_type(HookType::PreCommit).unwrap();
         let post_hooks = manager.list_hooks_by_type(HookType::PostCommit).unwrap();
@@ -161,8 +171,12 @@ mod tests {
         let (_temp_dir, manager) = create_test_manager();
         manager.init().unwrap();
 
-        manager.install_builtin("validate-metadata", HookType::PreCommit).unwrap();
-        manager.install_builtin("check-file-sizes", HookType::PreCommit).unwrap();
+        manager
+            .install_builtin("validate-metadata", HookType::PreCommit)
+            .unwrap();
+        manager
+            .install_builtin("check-file-sizes", HookType::PreCommit)
+            .unwrap();
 
         let pre_hooks = manager.list_hooks_by_type(HookType::PreCommit).unwrap();
         assert_eq!(pre_hooks.len(), 2);
@@ -173,15 +187,23 @@ mod tests {
         let (_temp_dir, manager) = create_test_manager();
         manager.init().unwrap();
 
-        manager.install_builtin("validate-metadata", HookType::PreCommit).unwrap();
-        manager.install_builtin("backup", HookType::PostCommit).unwrap();
+        manager
+            .install_builtin("validate-metadata", HookType::PreCommit)
+            .unwrap();
+        manager
+            .install_builtin("backup", HookType::PostCommit)
+            .unwrap();
 
         let all_hooks = manager.list_hooks().unwrap();
         assert_eq!(all_hooks.len(), 2);
 
         // Check that tuples contain correct types
-        assert!(all_hooks.iter().any(|(t, n)| *t == HookType::PreCommit && n == "validate-metadata"));
-        assert!(all_hooks.iter().any(|(t, n)| *t == HookType::PostCommit && n == "backup"));
+        assert!(all_hooks
+            .iter()
+            .any(|(t, n)| *t == HookType::PreCommit && n == "validate-metadata"));
+        assert!(all_hooks
+            .iter()
+            .any(|(t, n)| *t == HookType::PostCommit && n == "backup"));
     }
 
     // ===================
@@ -193,7 +215,9 @@ mod tests {
         let (_temp_dir, manager) = create_test_manager();
         manager.init().unwrap();
 
-        manager.install_builtin("validate-metadata", HookType::PreCommit).unwrap();
+        manager
+            .install_builtin("validate-metadata", HookType::PreCommit)
+            .unwrap();
 
         // Verify it exists
         let hooks_before = manager.list_hooks_by_type(HookType::PreCommit).unwrap();
@@ -222,7 +246,9 @@ mod tests {
         let (_temp_dir, manager) = create_test_manager();
         manager.init().unwrap();
 
-        manager.install_builtin("validate-metadata", HookType::PreCommit).unwrap();
+        manager
+            .install_builtin("validate-metadata", HookType::PreCommit)
+            .unwrap();
 
         // Try to remove from wrong type
         let result = manager.remove_hook("validate-metadata", HookType::PostCommit);
@@ -235,12 +261,20 @@ mod tests {
         manager.init().unwrap();
 
         // Install multiple hooks
-        manager.install_builtin("validate-metadata", HookType::PreCommit).unwrap();
-        manager.install_builtin("check-file-sizes", HookType::PreCommit).unwrap();
+        manager
+            .install_builtin("validate-metadata", HookType::PreCommit)
+            .unwrap();
+        manager
+            .install_builtin("check-file-sizes", HookType::PreCommit)
+            .unwrap();
 
         // Remove all
-        manager.remove_hook("validate-metadata", HookType::PreCommit).unwrap();
-        manager.remove_hook("check-file-sizes", HookType::PreCommit).unwrap();
+        manager
+            .remove_hook("validate-metadata", HookType::PreCommit)
+            .unwrap();
+        manager
+            .remove_hook("check-file-sizes", HookType::PreCommit)
+            .unwrap();
 
         let hooks = manager.list_hooks_by_type(HookType::PreCommit).unwrap();
         assert!(hooks.is_empty());
@@ -257,7 +291,8 @@ mod tests {
         manager.init().unwrap();
 
         // Create a simple hook that succeeds
-        let hook_path = temp_dir.path()
+        let hook_path = temp_dir
+            .path()
             .join(".oxen")
             .join("hooks")
             .join("pre-commit")
@@ -281,7 +316,8 @@ mod tests {
         manager.init().unwrap();
 
         // Create a hook that fails
-        let hook_path = temp_dir.path()
+        let hook_path = temp_dir
+            .path()
             .join(".oxen")
             .join("hooks")
             .join("pre-commit")
@@ -361,7 +397,11 @@ mod tests {
         let builtins = HookManager::list_builtins();
 
         for hook in builtins {
-            assert!(!hook.description.is_empty(), "Hook {} has empty description", hook.name);
+            assert!(
+                !hook.description.is_empty(),
+                "Hook {} has empty description",
+                hook.name
+            );
         }
     }
 
@@ -370,8 +410,14 @@ mod tests {
         let builtins = HookManager::list_builtins();
 
         // Check that we have both pre and post commit hooks
-        let pre_commit_count = builtins.iter().filter(|h| h.hook_type == HookType::PreCommit).count();
-        let post_commit_count = builtins.iter().filter(|h| h.hook_type == HookType::PostCommit).count();
+        let pre_commit_count = builtins
+            .iter()
+            .filter(|h| h.hook_type == HookType::PreCommit)
+            .count();
+        let post_commit_count = builtins
+            .iter()
+            .filter(|h| h.hook_type == HookType::PostCommit)
+            .count();
 
         assert!(pre_commit_count > 0, "No pre-commit hooks");
         assert!(post_commit_count > 0, "No post-commit hooks");
@@ -406,9 +452,12 @@ mod tests {
         let (temp_dir, manager) = create_test_manager();
         manager.init().unwrap();
 
-        manager.install_builtin("validate-metadata", HookType::PreCommit).unwrap();
+        manager
+            .install_builtin("validate-metadata", HookType::PreCommit)
+            .unwrap();
 
-        let hook_path = temp_dir.path()
+        let hook_path = temp_dir
+            .path()
             .join(".oxen")
             .join("hooks")
             .join("pre-commit")
@@ -432,18 +481,23 @@ mod tests {
         manager.init().unwrap();
 
         // Create a hook that outputs environment variables
-        let hook_path = temp_dir.path()
+        let hook_path = temp_dir
+            .path()
             .join(".oxen")
             .join("hooks")
             .join("pre-commit")
             .join("env-test");
 
-        fs::write(&hook_path, r#"#!/bin/bash
+        fs::write(
+            &hook_path,
+            r#"#!/bin/bash
 if [ -z "$AUXIN_MESSAGE" ]; then
     exit 1
 fi
 exit 0
-"#).unwrap();
+"#,
+        )
+        .unwrap();
         let mut perms = fs::metadata(&hook_path).unwrap().permissions();
         perms.set_mode(0o755);
         fs::set_permissions(&hook_path, perms).unwrap();

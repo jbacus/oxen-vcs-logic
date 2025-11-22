@@ -1,6 +1,6 @@
 //! Integration tests for thumbnail and bounce diff functionality
 
-use auxin::{ThumbnailManager, BounceManager};
+use auxin::{BounceManager, ThumbnailManager};
 use std::fs;
 use tempfile::TempDir;
 
@@ -68,8 +68,12 @@ fn test_bounce_comparison_basic() {
     fs::write(&audio2, vec![0u8; 2000]).unwrap();
 
     // Add bounces
-    manager.add_bounce("commit1", &audio1, Some("First bounce")).unwrap();
-    manager.add_bounce("commit2", &audio2, Some("Second bounce")).unwrap();
+    manager
+        .add_bounce("commit1", &audio1, Some("First bounce"))
+        .unwrap();
+    manager
+        .add_bounce("commit2", &audio2, Some("Second bounce"))
+        .unwrap();
 
     // Compare
     let comparison = manager.compare_bounces("commit1", "commit2").unwrap();
@@ -96,7 +100,9 @@ fn test_bounce_comparison_with_null_test() {
     manager.add_bounce("commit2", &audio2, None).unwrap();
 
     // Compare with null test
-    let comparison = manager.compare_bounces_with_null_test("commit1", "commit2").unwrap();
+    let comparison = manager
+        .compare_bounces_with_null_test("commit1", "commit2")
+        .unwrap();
 
     assert!(comparison.null_test_result.is_some());
     let null_test = comparison.null_test_result.unwrap();
@@ -123,7 +129,9 @@ fn test_bounce_null_test_fallback_without_ffmpeg() {
     manager.add_bounce("commit_b", &audio2, None).unwrap();
 
     // Null test should work even without ffmpeg (uses fallback)
-    let comparison = manager.compare_bounces_with_null_test("commit_a", "commit_b").unwrap();
+    let comparison = manager
+        .compare_bounces_with_null_test("commit_a", "commit_b")
+        .unwrap();
 
     assert!(comparison.null_test_result.is_some());
     let null_test = comparison.null_test_result.unwrap();
@@ -152,7 +160,9 @@ fn test_bounce_null_test_identical_files() {
     manager.add_bounce("commit_x", &audio1, None).unwrap();
     manager.add_bounce("commit_y", &audio2, None).unwrap();
 
-    let comparison = manager.compare_bounces_with_null_test("commit_x", "commit_y").unwrap();
+    let comparison = manager
+        .compare_bounces_with_null_test("commit_x", "commit_y")
+        .unwrap();
     let null_test = comparison.null_test_result.unwrap();
 
     // Identical files should show high cancellation (even with fallback)
@@ -212,7 +222,10 @@ fn test_thumbnail_comparison_missing_commit() {
     // Should error when commit doesn't exist
     let result = manager.compare_thumbnails("exists", "nonexistent");
     assert!(result.is_err());
-    assert!(result.unwrap_err().to_string().contains("No thumbnail for commit"));
+    assert!(result
+        .unwrap_err()
+        .to_string()
+        .contains("No thumbnail for commit"));
 }
 
 #[test]

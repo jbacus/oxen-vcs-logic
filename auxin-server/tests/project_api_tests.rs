@@ -70,9 +70,7 @@ mod project_api_tests {
         )
         .await;
 
-        let req = test::TestRequest::get()
-            .uri("/api/projects")
-            .to_request();
+        let req = test::TestRequest::get().uri("/api/projects").to_request();
 
         let resp = test::call_service(&app, req).await;
         assert_eq!(resp.status(), 200);
@@ -128,14 +126,10 @@ mod project_api_tests {
             .await
             .unwrap();
 
-        let app = test::init_service(
-            App::new()
-                .app_data(web::Data::new(pool.clone()))
-                .route(
-                    "/api/projects/{namespace}/{name}",
-                    web::get().to(api::get_project_by_namespace),
-                ),
-        )
+        let app = test::init_service(App::new().app_data(web::Data::new(pool.clone())).route(
+            "/api/projects/{namespace}/{name}",
+            web::get().to(api::get_project_by_namespace),
+        ))
         .await;
 
         let req = test::TestRequest::get()

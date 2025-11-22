@@ -35,7 +35,10 @@ impl FileLock {
             } else {
                 return Err(std::io::Error::new(
                     std::io::ErrorKind::AlreadyExists,
-                    format!("Lock held by {} until {}", existing.user, existing.expires_at),
+                    format!(
+                        "Lock held by {} until {}",
+                        existing.user, existing.expires_at
+                    ),
                 ));
             }
         }
@@ -125,9 +128,8 @@ impl FileLock {
 
     fn read_from_file(path: &PathBuf) -> Result<Self, std::io::Error> {
         let content = fs::read_to_string(path)?;
-        serde_json::from_str(&content).map_err(|e| {
-            std::io::Error::new(std::io::ErrorKind::InvalidData, e.to_string())
-        })
+        serde_json::from_str(&content)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e.to_string()))
     }
 
     fn write_to_file(&self, path: &PathBuf) -> Result<(), std::io::Error> {
@@ -171,7 +173,10 @@ mod tests {
         // Try to acquire again
         let result = FileLock::acquire(repo_path, "user2", "machine2", 1);
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), std::io::ErrorKind::AlreadyExists);
+        assert_eq!(
+            result.unwrap_err().kind(),
+            std::io::ErrorKind::AlreadyExists
+        );
     }
 
     #[test]
@@ -197,7 +202,10 @@ mod tests {
         // Try to release with wrong lock ID
         let result = FileLock::release(repo_path, "wrong_id");
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), std::io::ErrorKind::PermissionDenied);
+        assert_eq!(
+            result.unwrap_err().kind(),
+            std::io::ErrorKind::PermissionDenied
+        );
     }
 
     #[test]
@@ -234,7 +242,10 @@ mod tests {
 
         let result = FileLock::heartbeat(repo_path, "wrong_id");
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err().kind(), std::io::ErrorKind::PermissionDenied);
+        assert_eq!(
+            result.unwrap_err().kind(),
+            std::io::ErrorKind::PermissionDenied
+        );
     }
 
     #[test]

@@ -108,21 +108,45 @@ impl RetryPolicy {
 
         // Network errors are retryable
         let retryable_patterns = [
-            "connection refused", "connection reset", "connection timed out",
-            "network", "timeout", "dns", "temporary failure", "try again",
-            "rate limit", "too many requests", "503", "502", "504",
-            "econnrefused", "etimedout", "enotfound", "enetunreach",
+            "connection refused",
+            "connection reset",
+            "connection timed out",
+            "network",
+            "timeout",
+            "dns",
+            "temporary failure",
+            "try again",
+            "rate limit",
+            "too many requests",
+            "503",
+            "502",
+            "504",
+            "econnrefused",
+            "etimedout",
+            "enotfound",
+            "enetunreach",
         ];
 
         // Auth/permission errors are NOT retryable
         let non_retryable_patterns = [
-            "unauthorized", "forbidden", "invalid credentials", "authentication",
-            "permission denied", "not found", "404", "401", "403",
-            "eacces", "eperm",
+            "unauthorized",
+            "forbidden",
+            "invalid credentials",
+            "authentication",
+            "permission denied",
+            "not found",
+            "404",
+            "401",
+            "403",
+            "eacces",
+            "eperm",
         ];
 
         // Check for non-retryable first
-        if non_retryable_patterns.iter().any(|p| error_lower.contains(p)) {
+        if non_retryable_patterns
+            .iter()
+            .any(|p| error_lower.contains(p))
+        {
             return false;
         }
 
@@ -261,7 +285,9 @@ impl NetworkResilienceManager {
     /// Get default queue file path (~/.auxin/operation_queue.json)
     fn default_queue_path() -> PathBuf {
         let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-        PathBuf::from(home).join(".auxin").join("operation_queue.json")
+        PathBuf::from(home)
+            .join(".auxin")
+            .join("operation_queue.json")
     }
 
     /// Load queued operations from disk
@@ -270,11 +296,11 @@ impl NetworkResilienceManager {
             return Ok(());
         }
 
-        let contents = fs::read_to_string(&self.queue_file)
-            .context("Failed to read operation queue file")?;
+        let contents =
+            fs::read_to_string(&self.queue_file).context("Failed to read operation queue file")?;
 
-        let ops: Vec<QueuedOperation> = serde_json::from_str(&contents)
-            .context("Failed to parse operation queue")?;
+        let ops: Vec<QueuedOperation> =
+            serde_json::from_str(&contents).context("Failed to parse operation queue")?;
 
         self.operations = ops.into();
         Ok(())
@@ -290,8 +316,7 @@ impl NetworkResilienceManager {
         let ops: Vec<_> = self.operations.iter().collect();
         let json = serde_json::to_string_pretty(&ops)?;
 
-        fs::write(&self.queue_file, json)
-            .context("Failed to write operation queue file")?;
+        fs::write(&self.queue_file, json).context("Failed to write operation queue file")?;
 
         Ok(())
     }
@@ -367,7 +392,12 @@ impl NetworkResilienceManager {
                         let backoff_ms = INITIAL_BACKOFF_MS * 2u64.pow(attempt - 1);
                         let backoff_ms = backoff_ms.min(MAX_BACKOFF_MS);
 
-                        crate::vlog!("Retry attempt {}/{}, waiting {}ms", attempt, MAX_RETRIES, backoff_ms);
+                        crate::vlog!(
+                            "Retry attempt {}/{}, waiting {}ms",
+                            attempt,
+                            MAX_RETRIES,
+                            backoff_ms
+                        );
                         thread::sleep(StdDuration::from_millis(backoff_ms));
                     }
                 }
@@ -402,7 +432,9 @@ pub fn is_transient_error(error: &anyhow::Error) -> bool {
         "try again",
     ];
 
-    transient_patterns.iter().any(|pattern| error_str.contains(pattern))
+    transient_patterns
+        .iter()
+        .any(|pattern| error_str.contains(pattern))
 }
 
 /// Check if network is available by attempting to connect to Oxen Hub
@@ -468,7 +500,11 @@ impl CircuitBreaker {
     }
 
     /// Create with custom thresholds
-    pub fn with_thresholds(failure_threshold: u32, success_threshold: u32, timeout_secs: u64) -> Self {
+    pub fn with_thresholds(
+        failure_threshold: u32,
+        success_threshold: u32,
+        timeout_secs: u64,
+    ) -> Self {
         Self {
             state: CircuitState::Closed,
             failure_count: 0,
@@ -712,20 +748,22 @@ impl AdaptiveRetryPolicy {
 
                     // Determine backoff strategy based on error type
                     let error_str = e.to_string().to_lowercase();
-                    let adjusted_backoff = if error_str.contains("rate limit") || error_str.contains("429") {
-                        // Linear backoff for rate limiting - use longer delays
-                        backoff_ms * 3
-                    } else if error_str.contains("timeout") {
-                        // Slightly longer backoff for timeouts
-                        backoff_ms * 2
-                    } else {
-                        // Standard exponential backoff
-                        backoff_ms
-                    };
+                    let adjusted_backoff =
+                        if error_str.contains("rate limit") || error_str.contains("429") {
+                            // Linear backoff for rate limiting - use longer delays
+                            backoff_ms * 3
+                        } else if error_str.contains("timeout") {
+                            // Slightly longer backoff for timeouts
+                            backoff_ms * 2
+                        } else {
+                            // Standard exponential backoff
+                            backoff_ms
+                        };
 
                     // Add jitter to prevent thundering herd (±10%)
                     let jitter = (adjusted_backoff as f64 * 0.1) as u64;
-                    let jittered_backoff = adjusted_backoff + (attempt as u64 % (2 * jitter + 1)).saturating_sub(jitter);
+                    let jittered_backoff = adjusted_backoff
+                        + (attempt as u64 % (2 * jitter + 1)).saturating_sub(jitter);
                     let final_backoff = jittered_backoff.min(self.base_policy.max_backoff_ms);
 
                     if self.verbose {
@@ -804,7 +842,10 @@ impl NetworkQuality {
 
     /// Check if the network quality is degraded
     pub fn is_degraded(&self) -> bool {
-        matches!(self, NetworkQuality::Fair | NetworkQuality::Poor | NetworkQuality::Offline)
+        matches!(
+            self,
+            NetworkQuality::Fair | NetworkQuality::Poor | NetworkQuality::Offline
+        )
     }
 }
 
@@ -890,7 +931,10 @@ fn parse_ping_latency(output: &str) -> Option<u64> {
     for line in output.lines() {
         if let Some(time_idx) = line.find("time=") {
             let after_time = &line[time_idx + 5..];
-            let value: String = after_time.chars().take_while(|c| c.is_numeric() || *c == '.').collect();
+            let value: String = after_time
+                .chars()
+                .take_while(|c| c.is_numeric() || *c == '.')
+                .collect();
             if let Ok(ms) = value.parse::<f64>() {
                 return Some(ms as u64);
             }
@@ -904,11 +948,11 @@ fn parse_ping_latency(output: &str) -> Option<u64> {
 pub fn estimate_transfer_time(file_size_bytes: u64, latency_ms: Option<u64>) -> String {
     // Rough bandwidth estimates based on latency
     let bandwidth_mbps = match latency_ms {
-        Some(ms) if ms < 50 => 100.0,  // Excellent: ~100 Mbps
-        Some(ms) if ms < 150 => 50.0,  // Good: ~50 Mbps
-        Some(ms) if ms < 300 => 20.0,  // Fair: ~20 Mbps
-        Some(_) => 5.0,                 // Poor: ~5 Mbps
-        None => 1.0,                    // Unknown: assume slow
+        Some(ms) if ms < 50 => 100.0, // Excellent: ~100 Mbps
+        Some(ms) if ms < 150 => 50.0, // Good: ~50 Mbps
+        Some(ms) if ms < 300 => 20.0, // Fair: ~20 Mbps
+        Some(_) => 5.0,               // Poor: ~5 Mbps
+        None => 1.0,                  // Unknown: assume slow
     };
 
     let bytes_per_second = bandwidth_mbps * 1_000_000.0 / 8.0;
@@ -1115,14 +1159,18 @@ mod tests {
         };
 
         // First 3 failures should re-queue
-        let will_retry = manager.mark_failed(op.clone(), "Network error".to_string()).unwrap();
+        let will_retry = manager
+            .mark_failed(op.clone(), "Network error".to_string())
+            .unwrap();
         assert!(will_retry);
         assert_eq!(manager.queue_size(), 1);
 
         // After MAX_RETRIES, should not re-queue
         let mut op_max = op.clone();
         op_max.attempt_count = MAX_RETRIES - 1;
-        let will_retry = manager.mark_failed(op_max, "Network error".to_string()).unwrap();
+        let will_retry = manager
+            .mark_failed(op_max, "Network error".to_string())
+            .unwrap();
         assert!(!will_retry);
     }
 
@@ -1289,9 +1337,7 @@ mod tests {
 
     #[test]
     fn test_adaptive_retry_policy_eventual_success() {
-        let mut policy = AdaptiveRetryPolicy::with_policy(
-            RetryPolicy::new(3, 10, 100)
-        );
+        let mut policy = AdaptiveRetryPolicy::with_policy(RetryPolicy::new(3, 10, 100));
 
         let mut attempt = 0;
         let result = policy.execute(|| {
@@ -1309,9 +1355,7 @@ mod tests {
 
     #[test]
     fn test_adaptive_retry_policy_max_retries() {
-        let mut policy = AdaptiveRetryPolicy::with_policy(
-            RetryPolicy::new(2, 10, 100)
-        );
+        let mut policy = AdaptiveRetryPolicy::with_policy(RetryPolicy::new(2, 10, 100));
 
         let mut attempt = 0;
         let result: Result<i32> = policy.execute(|| {
@@ -1339,15 +1383,11 @@ mod tests {
 
     #[test]
     fn test_adaptive_retry_policy_circuit_breaker_integration() {
-        let mut policy = AdaptiveRetryPolicy::with_policy(
-            RetryPolicy::new(1, 10, 100)
-        );
+        let mut policy = AdaptiveRetryPolicy::with_policy(RetryPolicy::new(1, 10, 100));
 
         // Trigger multiple failures to open circuit
         for _ in 0..5 {
-            let _result: Result<i32> = policy.execute(|| {
-                Err(anyhow!("Network error"))
-            });
+            let _result: Result<i32> = policy.execute(|| Err(anyhow!("Network error")));
         }
 
         // Circuit should be open now

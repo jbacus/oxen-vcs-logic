@@ -8,6 +8,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Advanced Commit Comparison Features** (2025-11-22)
+  - Thumbnail comparison with pixel-level diff analysis
+    - Automatic extraction from Logic Pro WindowImage.jpg
+    - ImageMagick integration for accurate comparison (RMSE algorithm)
+    - Size-based fallback when ImageMagick unavailable
+    - Dimension change detection
+  - Audio bounce null test (phase cancellation analysis)
+    - Industry-standard audio comparison method
+    - FFmpeg integration for RMS level analysis
+    - Intelligent interpretation scale (identical to completely different)
+    - Support for different sample rates and formats
+    - Fallback to size comparison without FFmpeg
+  - Comprehensive compare command combining metadata, visual, and audio
+  - 26 new tests for diff features (all passing)
+  - Complete documentation in DIFF_FEATURES_IMPLEMENTATION.md
+
+- **Logic Pro Workspace Detection** (2025-11-22)
+  - Automatic detection of Logic Pro workspace re-initialization
+  - Daemon state management for workspace tracking
+  - User dialog for handling workspace changes
+  - New DaemonState.swift model
+  - Enhanced XPC communication for workspace state
+
+- **Compact UI Design** (2025-11-22)
+  - Modern, streamlined design across all Swift UI interfaces
+  - Improved layout and spacing in ProjectDetailContentView
+  - Enhanced visual hierarchy in ProjectListContentView
+  - Compact wizard interface in ProjectWizardView
+  - Updated web dashboard with cleaner design
+
+- **Auxin Server Project CRUD Operations** (2025-11-22)
+  - Full project lifecycle management API
+  - Create, read, update, delete operations for projects
+  - Project metadata storage and retrieval
+  - 4 new test files: project_crud_tests.rs, project_api_tests.rs, project_edge_cases_tests.rs
+  - Authentication integration tests (auth_integration_tests.rs)
+  - GCP deployment configuration and documentation
+
 - **Auxin Server Phase 7 Features** (2025-11-20)
   - User authentication system with bcrypt password hashing
     - Register, login, logout, and token validation endpoints

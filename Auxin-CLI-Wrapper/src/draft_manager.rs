@@ -53,7 +53,10 @@ impl DraftManager {
 
         // Verify repository exists
         if !path.join(".oxen").exists() {
-            return Err(anyhow::anyhow!("Repository not found at {}", path.display()));
+            return Err(anyhow::anyhow!(
+                "Repository not found at {}",
+                path.display()
+            ));
         }
 
         Ok(Self {

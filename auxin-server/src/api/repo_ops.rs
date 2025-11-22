@@ -219,7 +219,10 @@ pub async fn create_branch(
     req: actix_web::HttpRequest,
 ) -> AppResult<HttpResponse> {
     let (namespace, repo_name) = path.into_inner();
-    info!("Creating branch '{}' for: {}/{}", body.branch_name, namespace, repo_name);
+    info!(
+        "Creating branch '{}' for: {}/{}",
+        body.branch_name, namespace, repo_name
+    );
 
     let repo_path = PathBuf::from(&config.sync_dir)
         .join(&namespace)
@@ -247,7 +250,10 @@ pub async fn restore_commit(
     req: actix_web::HttpRequest,
 ) -> AppResult<HttpResponse> {
     let (namespace, repo_name, commit_id) = path.into_inner();
-    info!("Restoring to commit {} in: {}/{}", commit_id, namespace, repo_name);
+    info!(
+        "Restoring to commit {} in: {}/{}",
+        commit_id, namespace, repo_name
+    );
 
     let repo_path = PathBuf::from(&config.sync_dir)
         .join(&namespace)
@@ -275,12 +281,17 @@ pub async fn restore_commit(
 
     // Broadcast via WebSocket
     use crate::websocket::WsMessage;
-    ws_hub.broadcast(&format!("{}/{}", namespace, repo_name), WsMessage::Activity {
-        activity_type: "restore".to_string(),
-        user: user_id.clone(),
-        message: format!("Restored to commit {}", &commit_id[..8]),
-        timestamp: chrono::Utc::now().to_rfc3339(),
-    }).await?;
+    ws_hub
+        .broadcast(
+            &format!("{}/{}", namespace, repo_name),
+            WsMessage::Activity {
+                activity_type: "restore".to_string(),
+                user: user_id.clone(),
+                message: format!("Restored to commit {}", &commit_id[..8]),
+                timestamp: chrono::Utc::now().to_rfc3339(),
+            },
+        )
+        .await?;
 
     Ok(HttpResponse::Ok().json(serde_json::json!({
         "status": "success",
@@ -297,7 +308,10 @@ pub async fn get_metadata(
     req: actix_web::HttpRequest,
 ) -> AppResult<HttpResponse> {
     let (namespace, repo_name, commit_id) = path.into_inner();
-    info!("Getting metadata for commit {} in: {}/{}", commit_id, namespace, repo_name);
+    info!(
+        "Getting metadata for commit {} in: {}/{}",
+        commit_id, namespace, repo_name
+    );
 
     let repo_path = PathBuf::from(&config.sync_dir)
         .join(&namespace)
@@ -327,7 +341,10 @@ pub async fn store_metadata(
     req: actix_web::HttpRequest,
 ) -> AppResult<HttpResponse> {
     let (namespace, repo_name, commit_id) = path.into_inner();
-    info!("Storing metadata for commit {} in: {}/{}", commit_id, namespace, repo_name);
+    info!(
+        "Storing metadata for commit {} in: {}/{}",
+        commit_id, namespace, repo_name
+    );
 
     let repo_path = PathBuf::from(&config.sync_dir)
         .join(&namespace)
@@ -544,7 +561,7 @@ pub async fn clone_repository(
             .get("Authorization")
             .and_then(|h| h.to_str().ok())
             .and_then(|s| s.strip_prefix("Bearer "))
-            .ok_or_else(|| AppError::Unauthorized("No authorization token".to_string()))?
+            .ok_or_else(|| AppError::Unauthorized("No authorization token".to_string()))?,
     )?;
 
     // Validate namespace (prevent path traversal)
@@ -582,7 +599,10 @@ pub async fn clone_repository(
     let metadata = ProjectMetadata::new(user_id, user.username.clone(), Visibility::Public);
     metadata.save(&dest_path)?;
 
-    info!("Repository cloned successfully: {}/{} (owner: {})", namespace, repo_name, user.username);
+    info!(
+        "Repository cloned successfully: {}/{} (owner: {})",
+        namespace, repo_name, user.username
+    );
 
     Ok(HttpResponse::Created().json(serde_json::json!({
         "status": "success",
@@ -602,7 +622,10 @@ pub async fn delete_branch(
     req: actix_web::HttpRequest,
 ) -> AppResult<HttpResponse> {
     let (namespace, repo_name, branch_name) = path.into_inner();
-    info!("Deleting branch '{}' from: {}/{}", branch_name, namespace, repo_name);
+    info!(
+        "Deleting branch '{}' from: {}/{}",
+        branch_name, namespace, repo_name
+    );
 
     let repo_path = PathBuf::from(&config.sync_dir)
         .join(&namespace)

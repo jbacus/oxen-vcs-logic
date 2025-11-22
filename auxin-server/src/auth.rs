@@ -1,4 +1,6 @@
-use actix_web::{dev::ServiceRequest, error::ErrorUnauthorized, web, Error, HttpMessage, HttpResponse};
+use actix_web::{
+    dev::ServiceRequest, error::ErrorUnauthorized, web, Error, HttpMessage, HttpResponse,
+};
 use actix_web_httpauth::extractors::bearer::BearerAuth;
 use bcrypt::{hash, verify, DEFAULT_COST};
 use chrono::{Duration, Utc};
@@ -98,7 +100,9 @@ impl AuthService {
 
     /// Get users file path
     fn users_file_path(&self) -> PathBuf {
-        PathBuf::from(&self.config.sync_dir).join(".auxin").join("users.json")
+        PathBuf::from(&self.config.sync_dir)
+            .join(".auxin")
+            .join("users.json")
     }
 
     /// Load users from JSON file
@@ -178,9 +182,7 @@ impl AuthService {
 
             for user in users.values() {
                 if user.email == email {
-                    return Err(AppError::BadRequest(
-                        "Email already registered".to_string(),
-                    ));
+                    return Err(AppError::BadRequest("Email already registered".to_string()));
                 }
                 if user.username == username {
                     return Err(AppError::BadRequest("Username already taken".to_string()));
@@ -437,7 +439,10 @@ pub fn get_authenticated_user(req: &ServiceRequest) -> Option<String> {
 }
 
 /// Extract authenticated user ID from HTTP request
-pub fn get_user_id_from_request(req: &actix_web::HttpRequest, auth_service: &AuthService) -> AppResult<String> {
+pub fn get_user_id_from_request(
+    req: &actix_web::HttpRequest,
+    auth_service: &AuthService,
+) -> AppResult<String> {
     let token = req
         .headers()
         .get("Authorization")
@@ -450,7 +455,10 @@ pub fn get_user_id_from_request(req: &actix_web::HttpRequest, auth_service: &Aut
 }
 
 /// Extract optional authenticated user ID from HTTP request (for public endpoints)
-pub fn get_optional_user_id_from_request(req: &actix_web::HttpRequest, auth_service: &AuthService) -> Option<String> {
+pub fn get_optional_user_id_from_request(
+    req: &actix_web::HttpRequest,
+    auth_service: &AuthService,
+) -> Option<String> {
     let token = req
         .headers()
         .get("Authorization")

@@ -38,7 +38,9 @@ fn run_cli_command(args: &[&str], working_dir: Option<&PathBuf>) -> Result<Strin
         cmd.current_dir(dir);
     }
 
-    let output = cmd.output().map_err(|e| format!("Failed to execute: {}", e))?;
+    let output = cmd
+        .output()
+        .map_err(|e| format!("Failed to execute: {}", e))?;
 
     if output.status.success() {
         Ok(String::from_utf8_lossy(&output.stdout).to_string())
@@ -59,8 +61,8 @@ fn test_auth_login_flow() {
         return;
     }
 
-    let (username, api_key) = get_test_credentials()
-        .expect("OXEN_TEST_USERNAME and OXEN_TEST_API_KEY must be set");
+    let (username, api_key) =
+        get_test_credentials().expect("OXEN_TEST_USERNAME and OXEN_TEST_API_KEY must be set");
 
     // Test 1: Login
     println!("Testing auth login...");
@@ -69,8 +71,8 @@ fn test_auth_login_flow() {
 
     // Test 2: Status check
     println!("Testing auth status...");
-    let status_output = run_cli_command(&["auth", "status"], None)
-        .expect("Auth status should succeed");
+    let status_output =
+        run_cli_command(&["auth", "status"], None).expect("Auth status should succeed");
 
     assert!(
         status_output.contains(&username),
@@ -79,8 +81,7 @@ fn test_auth_login_flow() {
 
     // Test 3: Connection test
     println!("Testing auth test...");
-    let test_output = run_cli_command(&["auth", "test"], None)
-        .expect("Auth test should succeed");
+    let test_output = run_cli_command(&["auth", "test"], None).expect("Auth test should succeed");
 
     assert!(
         test_output.contains("success") || test_output.contains("Success"),
@@ -99,8 +100,8 @@ fn test_auth_logout_flow() {
 
     // Test logout
     println!("Testing auth logout...");
-    let logout_output = run_cli_command(&["auth", "logout"], None)
-        .expect("Auth logout should succeed");
+    let logout_output =
+        run_cli_command(&["auth", "logout"], None).expect("Auth logout should succeed");
 
     assert!(
         logout_output.contains("success") || logout_output.contains("logged out"),
@@ -108,8 +109,8 @@ fn test_auth_logout_flow() {
     );
 
     // Verify credentials removed
-    let status_output = run_cli_command(&["auth", "status"], None)
-        .expect("Auth status should still work");
+    let status_output =
+        run_cli_command(&["auth", "status"], None).expect("Auth status should still work");
 
     assert!(
         status_output.contains("Not Authenticated"),
@@ -151,8 +152,9 @@ fn test_lock_acquire_release() {
     println!("Acquiring lock...");
     let acquire_output = run_cli_command(
         &["lock", "acquire", "--timeout", "4"],
-        Some(&test_repo.to_path_buf())
-    ).expect("Lock acquire should succeed");
+        Some(&test_repo.to_path_buf()),
+    )
+    .expect("Lock acquire should succeed");
 
     assert!(
         acquire_output.contains("acquired") || acquire_output.contains("Lock ID"),
@@ -201,7 +203,8 @@ fn test_lock_collision() {
 
     // This test requires two separate processes/machines
     // For now, document the manual test procedure
-    println!("
+    println!(
+        "
     ⚠️  Lock collision test requires manual execution:
 
     Machine A:
@@ -221,7 +224,8 @@ fn test_lock_collision() {
     Machine B:
     1. auxin lock acquire --timeout 4
     2. EXPECTED: Success - lock now available
-    ");
+    "
+    );
 
     // TODO: Implement when we have multi-process test harness
 }
@@ -244,8 +248,9 @@ fn test_lock_expiration() {
     println!("Acquiring lock with short timeout...");
     run_cli_command(
         &["lock", "acquire", "--timeout", "1"],
-        Some(&test_repo.to_path_buf())
-    ).expect("Lock acquire should succeed");
+        Some(&test_repo.to_path_buf()),
+    )
+    .expect("Lock acquire should succeed");
 
     // Manually edit the lock file to expire it (simulate time passing)
     println!("Simulating lock expiration...");
@@ -275,8 +280,9 @@ fn test_lock_force_break() {
     println!("Acquiring lock...");
     run_cli_command(
         &["lock", "acquire", "--timeout", "4"],
-        Some(&test_repo.to_path_buf())
-    ).expect("Lock acquire should succeed");
+        Some(&test_repo.to_path_buf()),
+    )
+    .expect("Lock acquire should succeed");
 
     // Try to break without --force (should fail)
     println!("Attempting to break without --force...");
@@ -291,8 +297,9 @@ fn test_lock_force_break() {
     println!("Breaking lock with --force...");
     let break_output = run_cli_command(
         &["lock", "break", "--force"],
-        Some(&test_repo.to_path_buf())
-    ).expect("Lock break should succeed");
+        Some(&test_repo.to_path_buf()),
+    )
+    .expect("Lock break should succeed");
 
     assert!(
         break_output.contains("break") || break_output.contains("removed"),
@@ -333,8 +340,9 @@ fn test_activity_feed() {
     println!("Testing activity feed...");
     let activity_output = run_cli_command(
         &["activity", "--limit", "10"],
-        Some(&test_repo.to_path_buf())
-    ).expect("Activity command should succeed");
+        Some(&test_repo.to_path_buf()),
+    )
+    .expect("Activity command should succeed");
 
     // Verify output contains commit information
     assert!(
@@ -400,10 +408,8 @@ fn test_comment_system() {
     create_test_commits(test_repo);
 
     // Get a commit hash to comment on
-    let log_output = run_cli_command(
-        &["log", "--limit", "1"],
-        Some(&test_repo.to_path_buf())
-    ).expect("Log command should succeed");
+    let log_output = run_cli_command(&["log", "--limit", "1"], Some(&test_repo.to_path_buf()))
+        .expect("Log command should succeed");
 
     // Extract commit hash (basic parsing)
     // TODO: Implement proper hash extraction
@@ -413,8 +419,9 @@ fn test_comment_system() {
     println!("Adding comment...");
     let comment_output = run_cli_command(
         &["comment", "add", commit_hash, "Great work on this mix!"],
-        Some(&test_repo.to_path_buf())
-    ).expect("Comment add should succeed");
+        Some(&test_repo.to_path_buf()),
+    )
+    .expect("Comment add should succeed");
 
     assert!(
         comment_output.contains("success") || comment_output.contains("added"),
@@ -425,8 +432,9 @@ fn test_comment_system() {
     println!("Listing comments...");
     let list_output = run_cli_command(
         &["comment", "list", commit_hash],
-        Some(&test_repo.to_path_buf())
-    ).expect("Comment list should succeed");
+        Some(&test_repo.to_path_buf()),
+    )
+    .expect("Comment list should succeed");
 
     assert!(
         list_output.contains("Great work"),
@@ -434,7 +442,10 @@ fn test_comment_system() {
     );
 
     // Verify comment file exists
-    let comment_file = test_repo.join(".oxen").join("comments").join(format!("{}.json", commit_hash));
+    let comment_file = test_repo
+        .join(".oxen")
+        .join("comments")
+        .join(format!("{}.json", commit_hash));
     assert!(comment_file.exists(), "Comment file should exist");
 
     println!("✅ Comment system test passed");
@@ -451,7 +462,8 @@ fn test_complete_collaboration_workflow() {
         return;
     }
 
-    println!("
+    println!(
+        "
     ⚠️  Complete workflow test requires manual execution with 2 users:
 
     === User A (Producer) ===
@@ -483,7 +495,8 @@ fn test_complete_collaboration_workflow() {
     3. auxin comment list <commit> # See B's comment
 
     Expected: No conflicts, all changes synced, comments visible
-    ");
+    "
+    );
 
     // TODO: Implement when we have multi-machine test harness
 }
@@ -495,7 +508,8 @@ fn test_large_project_performance() {
         return;
     }
 
-    println!("
+    println!(
+        "
     ⚠️  Large project test should be run manually:
 
     1. Create Logic Pro project with ~5GB of audio files
@@ -513,7 +527,8 @@ fn test_large_project_performance() {
     - Pull after changes: ___ minutes
 
     Expected: All operations <10 minutes, no timeouts
-    ");
+    "
+    );
 
     // TODO: Implement automated large project test
 }
@@ -528,7 +543,8 @@ fn setup_test_repo(repo_path: &std::path::Path) {
     fs::create_dir_all(repo_path.join("Alternatives")).expect("Failed to create Alternatives dir");
 
     // Create projectData file
-    fs::write(repo_path.join("projectData"), b"mock project data").expect("Failed to create projectData");
+    fs::write(repo_path.join("projectData"), b"mock project data")
+        .expect("Failed to create projectData");
 
     // Initialize Auxin
     run_cli_command(&["init", "--logic", "."], Some(&repo_path.to_path_buf()))
@@ -557,9 +573,18 @@ fn create_test_commits(repo_path: &std::path::Path) {
         .expect("Failed to add files");
 
     run_cli_command(
-        &["commit", "-m", "First track", "--bpm", "120", "--key", "C Major"],
-        Some(&repo_path.to_path_buf())
-    ).expect("Failed to commit");
+        &[
+            "commit",
+            "-m",
+            "First track",
+            "--bpm",
+            "120",
+            "--key",
+            "C Major",
+        ],
+        Some(&repo_path.to_path_buf()),
+    )
+    .expect("Failed to commit");
 
     // Commit 2
     fs::write(repo_path.join("Audio Files/track2.wav"), b"audio data 2")
@@ -569,9 +594,18 @@ fn create_test_commits(repo_path: &std::path::Path) {
         .expect("Failed to add files");
 
     run_cli_command(
-        &["commit", "-m", "Added drums", "--bpm", "128", "--tags", "drums,tracking"],
-        Some(&repo_path.to_path_buf())
-    ).expect("Failed to commit");
+        &[
+            "commit",
+            "-m",
+            "Added drums",
+            "--bpm",
+            "128",
+            "--tags",
+            "drums,tracking",
+        ],
+        Some(&repo_path.to_path_buf()),
+    )
+    .expect("Failed to commit");
 
     // Commit 3
     fs::write(repo_path.join("Audio Files/track3.wav"), b"audio data 3")
@@ -581,9 +615,20 @@ fn create_test_commits(repo_path: &std::path::Path) {
         .expect("Failed to add files");
 
     run_cli_command(
-        &["commit", "-m", "Mixed", "--bpm", "128", "--key", "C Major", "--tags", "mixing,final"],
-        Some(&repo_path.to_path_buf())
-    ).expect("Failed to commit");
+        &[
+            "commit",
+            "-m",
+            "Mixed",
+            "--bpm",
+            "128",
+            "--key",
+            "C Major",
+            "--tags",
+            "mixing,final",
+        ],
+        Some(&repo_path.to_path_buf()),
+    )
+    .expect("Failed to commit");
 }
 
 // =============================================================================
@@ -592,7 +637,8 @@ fn create_test_commits(repo_path: &std::path::Path) {
 
 #[test]
 fn test_integration_setup_instructions() {
-    println!("
+    println!(
+        "
 ================================================================================
 INTEGRATION TEST SETUP INSTRUCTIONS
 ================================================================================
@@ -637,5 +683,6 @@ CI environments. Follow these steps to run them:
 
 See INTEGRATION_TEST_PLAN.md for detailed test procedures.
 ================================================================================
-    ");
+    "
+    );
 }

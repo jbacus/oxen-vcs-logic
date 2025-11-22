@@ -52,9 +52,8 @@ impl RepositoryOps {
             AppError::Internal(format!("Failed to create metadata directory: {}", e))
         })?;
 
-        std::fs::create_dir_all(oxen_dir.join("locks")).map_err(|e| {
-            AppError::Internal(format!("Failed to create locks directory: {}", e))
-        })?;
+        std::fs::create_dir_all(oxen_dir.join("locks"))
+            .map_err(|e| AppError::Internal(format!("Failed to create locks directory: {}", e)))?;
 
         info!("Repository initialized successfully");
         Ok(Self { repo })
@@ -147,7 +146,10 @@ impl RepositoryOps {
     pub fn clone(remote_url: &str, dest_path: impl AsRef<Path>) -> AppResult<Self> {
         let dest_path = dest_path.as_ref();
 
-        info!("Cloning repository from: {} to: {:?}", remote_url, dest_path);
+        info!(
+            "Cloning repository from: {} to: {:?}",
+            remote_url, dest_path
+        );
 
         let repo = repositories::clone(remote_url, dest_path)
             .map_err(|e| AppError::Internal(format!("Failed to clone repository: {}", e)))?;
@@ -161,9 +163,7 @@ impl RepositoryOps {
         let branch = repositories::branches::current_branch(&self.repo)
             .map_err(|e| AppError::Internal(format!("Failed to get current branch: {}", e)))?;
 
-        Ok(branch
-            .map(|b| b.name)
-            .unwrap_or_else(|| "main".to_string()))
+        Ok(branch.map(|b| b.name).unwrap_or_else(|| "main".to_string()))
     }
 
     /// List all branches
@@ -210,13 +210,11 @@ impl RepositoryOps {
             .join("metadata")
             .join(format!("{}.json", commit_id));
 
-        let json = serde_json::to_string_pretty(metadata).map_err(|e| {
-            AppError::Internal(format!("Failed to serialize metadata: {}", e))
-        })?;
+        let json = serde_json::to_string_pretty(metadata)
+            .map_err(|e| AppError::Internal(format!("Failed to serialize metadata: {}", e)))?;
 
-        std::fs::write(&metadata_path, json).map_err(|e| {
-            AppError::Internal(format!("Failed to write metadata: {}", e))
-        })?;
+        std::fs::write(&metadata_path, json)
+            .map_err(|e| AppError::Internal(format!("Failed to write metadata: {}", e)))?;
 
         debug!("Metadata stored for commit: {}", commit_id);
         Ok(())
@@ -235,13 +233,11 @@ impl RepositoryOps {
             return Ok(None);
         }
 
-        let json = std::fs::read_to_string(&metadata_path).map_err(|e| {
-            AppError::Internal(format!("Failed to read metadata: {}", e))
-        })?;
+        let json = std::fs::read_to_string(&metadata_path)
+            .map_err(|e| AppError::Internal(format!("Failed to read metadata: {}", e)))?;
 
-        let metadata = serde_json::from_str(&json).map_err(|e| {
-            AppError::Internal(format!("Failed to parse metadata: {}", e))
-        })?;
+        let metadata = serde_json::from_str(&json)
+            .map_err(|e| AppError::Internal(format!("Failed to parse metadata: {}", e)))?;
 
         Ok(Some(metadata))
     }
@@ -286,9 +282,8 @@ impl RepositoryOps {
 
     /// Get lock status
     pub fn lock_status(&self) -> AppResult<Option<FileLock>> {
-        FileLock::status(&self.repo.path).map_err(|e| {
-            AppError::Internal(format!("Failed to get lock status: {}", e))
-        })
+        FileLock::status(&self.repo.path)
+            .map_err(|e| AppError::Internal(format!("Failed to get lock status: {}", e)))
     }
 }
 

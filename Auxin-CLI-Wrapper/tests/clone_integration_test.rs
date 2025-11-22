@@ -5,7 +5,6 @@
 /// - Destination path handling
 /// - Error messages
 /// - Integration with oxen subprocess
-
 use std::path::PathBuf;
 use tempfile::TempDir;
 
@@ -38,7 +37,10 @@ mod clone_tests {
         let result = oxen.clone("https://example.com\0/repo", &dest);
 
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Invalid characters"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Invalid characters"));
     }
 
     #[test]
@@ -52,7 +54,10 @@ mod clone_tests {
         let result = oxen.clone("https://example.com\n/repo", &dest);
 
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Invalid characters"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Invalid characters"));
     }
 
     #[test]
@@ -143,7 +148,11 @@ mod clone_tests {
 
         let oxen = OxenSubprocess::new();
         let temp_dir = TempDir::new().unwrap();
-        let dest = temp_dir.path().join("nested").join("path").join("cloned-repo");
+        let dest = temp_dir
+            .path()
+            .join("nested")
+            .join("path")
+            .join("cloned-repo");
 
         // Parent directories don't exist yet
         assert!(!dest.parent().unwrap().exists());
@@ -208,7 +217,9 @@ mod oxen_repository_clone_tests {
             // Error message should mention oxen CLI
             let err_str = e.to_string();
             assert!(
-                err_str.contains("oxen") || err_str.contains("not found") || err_str.contains("Failed")
+                err_str.contains("oxen")
+                    || err_str.contains("not found")
+                    || err_str.contains("Failed")
             );
         }
     }
@@ -249,7 +260,9 @@ mod oxen_repository_clone_tests {
         ];
 
         for url in urls {
-            let dest = temp_dir.path().join(format!("clone-{}", url.replace('/', "-")));
+            let dest = temp_dir
+                .path()
+                .join(format!("clone-{}", url.replace('/', "-")));
             let result = OxenRepository::clone(url, &dest).await;
 
             // Should not fail due to URL validation

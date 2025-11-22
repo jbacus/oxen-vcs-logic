@@ -7,7 +7,9 @@ use std::path::{Path, PathBuf};
 use std::thread;
 use std::time::Duration as StdDuration;
 
-use crate::operation_history::{HistoryOperation, OperationHistoryEntry, OperationHistoryManager, OperationResult};
+use crate::operation_history::{
+    HistoryOperation, OperationHistoryEntry, OperationHistoryManager, OperationResult,
+};
 use crate::remote_lock::RemoteLockManager;
 
 /// Configuration for automated workflows
@@ -56,11 +58,10 @@ impl WorkflowConfig {
             return Ok(Self::default());
         }
 
-        let contents = fs::read_to_string(config_path)
-            .context("Failed to read workflow config")?;
+        let contents = fs::read_to_string(config_path).context("Failed to read workflow config")?;
 
-        let config: WorkflowConfig = serde_json::from_str(&contents)
-            .context("Failed to parse workflow config")?;
+        let config: WorkflowConfig =
+            serde_json::from_str(&contents).context("Failed to parse workflow config")?;
 
         Ok(config)
     }
@@ -95,8 +96,7 @@ pub struct WorkflowAutomation {
 
 impl WorkflowAutomation {
     pub fn new() -> Self {
-        let config = WorkflowConfig::load(&WorkflowConfig::default_path())
-            .unwrap_or_default();
+        let config = WorkflowConfig::load(&WorkflowConfig::default_path()).unwrap_or_default();
 
         Self {
             config,
@@ -256,10 +256,7 @@ impl WorkflowAutomation {
 
         // Check recent operation history
         if let Ok(recent) = self.history_manager.get_recent(5) {
-            let failed_ops: Vec<_> = recent
-                .iter()
-                .filter(|e| e.is_failure())
-                .collect();
+            let failed_ops: Vec<_> = recent.iter().filter(|e| e.is_failure()).collect();
 
             if !failed_ops.is_empty() {
                 suggestions.push(format!(
@@ -282,11 +279,17 @@ impl WorkflowAutomation {
             return Ok(());
         }
 
-        println!("\n{}", "┌─ Suggestions ───────────────────────────────────────────┐".bright_blue());
+        println!(
+            "\n{}",
+            "┌─ Suggestions ───────────────────────────────────────────┐".bright_blue()
+        );
         for suggestion in suggestions {
             println!("│ {}", suggestion);
         }
-        println!("{}\n", "└──────────────────────────────────────────────────────────┘".bright_blue());
+        println!(
+            "{}\n",
+            "└──────────────────────────────────────────────────────────┘".bright_blue()
+        );
 
         Ok(())
     }
@@ -299,10 +302,7 @@ impl WorkflowAutomation {
         match self.lock_manager.get_lock(repo_path)? {
             Some(lock) => {
                 if !lock.is_owned_by_current_user() {
-                    crate::error!(
-                        "Cannot commit: project is locked by {}",
-                        lock.locked_by
-                    );
+                    crate::error!("Cannot commit: project is locked by {}", lock.locked_by);
                     return Ok(false);
                 }
             }

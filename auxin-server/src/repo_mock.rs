@@ -22,9 +22,7 @@ fn run_oxen_command(args: &[&str], cwd: Option<&Path>) -> AppResult<Output> {
 
     let output = cmd.output().map_err(|e| {
         if e.kind() == std::io::ErrorKind::NotFound {
-            AppError::Internal(
-                "Oxen CLI not found. Install with: pip install oxenai".to_string()
-            )
+            AppError::Internal("Oxen CLI not found. Install with: pip install oxenai".to_string())
         } else {
             AppError::Internal(format!("Failed to execute oxen command: {}", e))
         }
@@ -51,9 +49,15 @@ fn check_oxen_output(output: Output, operation: &str) -> AppResult<String> {
         if error_msg.contains("not found") || error_msg.contains("does not exist") {
             Err(AppError::NotFound(format!("{}: {}", operation, error_msg)))
         } else if error_msg.contains("permission") || error_msg.contains("unauthorized") {
-            Err(AppError::Unauthorized(format!("{}: {}", operation, error_msg)))
+            Err(AppError::Unauthorized(format!(
+                "{}: {}",
+                operation, error_msg
+            )))
         } else {
-            Err(AppError::Internal(format!("{} failed: {}", operation, error_msg)))
+            Err(AppError::Internal(format!(
+                "{} failed: {}",
+                operation, error_msg
+            )))
         }
     }
 }
@@ -89,9 +93,8 @@ impl RepositoryOps {
 
         // Create .oxen directory structure
         let oxen_dir = repo_path.join(".oxen");
-        std::fs::create_dir_all(&oxen_dir).map_err(|e| {
-            AppError::Internal(format!("Failed to create .oxen directory: {}", e))
-        })?;
+        std::fs::create_dir_all(&oxen_dir)
+            .map_err(|e| AppError::Internal(format!("Failed to create .oxen directory: {}", e)))?;
 
         // Try to initialize using oxen CLI if available
         match run_oxen_command(&["init"], Some(&repo_path)) {
@@ -102,13 +105,15 @@ impl RepositoryOps {
             }
             Err(e) => {
                 // CLI not available - create minimal structure for basic operations
-                warn!("Oxen CLI not available, creating minimal repository structure: {}", e);
+                warn!(
+                    "Oxen CLI not available, creating minimal repository structure: {}",
+                    e
+                );
 
                 // Create minimal config file
                 let config_path = oxen_dir.join("config.toml");
-                std::fs::write(&config_path, "[repository]\nversion = \"0.1\"\n").map_err(|e| {
-                    AppError::Internal(format!("Failed to create config: {}", e))
-                })?;
+                std::fs::write(&config_path, "[repository]\nversion = \"0.1\"\n")
+                    .map_err(|e| AppError::Internal(format!("Failed to create config: {}", e)))?;
             }
         }
 
@@ -117,9 +122,8 @@ impl RepositoryOps {
             AppError::Internal(format!("Failed to create metadata directory: {}", e))
         })?;
 
-        std::fs::create_dir_all(oxen_dir.join("locks")).map_err(|e| {
-            AppError::Internal(format!("Failed to create locks directory: {}", e))
-        })?;
+        std::fs::create_dir_all(oxen_dir.join("locks"))
+            .map_err(|e| AppError::Internal(format!("Failed to create locks directory: {}", e)))?;
 
         info!("Repository initialized successfully");
 
@@ -204,7 +208,12 @@ impl RepositoryOps {
 
                 // Parse author (optional)
                 let author = if i < lines.len() && lines[i].trim().starts_with("Author:") {
-                    let auth = lines[i].trim().strip_prefix("Author:").unwrap_or("").trim().to_string();
+                    let auth = lines[i]
+                        .trim()
+                        .strip_prefix("Author:")
+                        .unwrap_or("")
+                        .trim()
+                        .to_string();
                     i += 1;
                     auth
                 } else {
@@ -291,17 +300,19 @@ impl RepositoryOps {
     /// Clone a remote repository
     pub fn clone(remote_url: &str, dest_path: impl AsRef<Path>) -> AppResult<Self> {
         let dest_path = dest_path.as_ref();
-        info!("Cloning repository from: {} to: {:?}", remote_url, dest_path);
+        info!(
+            "Cloning repository from: {} to: {:?}",
+            remote_url, dest_path
+        );
 
         // Get parent directory for clone command
-        let parent = dest_path.parent().ok_or_else(|| {
-            AppError::BadRequest("Invalid destination path".to_string())
-        })?;
+        let parent = dest_path
+            .parent()
+            .ok_or_else(|| AppError::BadRequest("Invalid destination path".to_string()))?;
 
         // Create parent directory if it doesn't exist
-        std::fs::create_dir_all(parent).map_err(|e| {
-            AppError::Internal(format!("Failed to create parent directory: {}", e))
-        })?;
+        std::fs::create_dir_all(parent)
+            .map_err(|e| AppError::Internal(format!("Failed to create parent directory: {}", e)))?;
 
         let dest_str = dest_path.to_string_lossy();
         let output = run_oxen_command(&["clone", remote_url, &dest_str], None)?;
@@ -313,9 +324,8 @@ impl RepositoryOps {
             AppError::Internal(format!("Failed to create metadata directory: {}", e))
         })?;
 
-        std::fs::create_dir_all(oxen_dir.join("locks")).map_err(|e| {
-            AppError::Internal(format!("Failed to create locks directory: {}", e))
-        })?;
+        std::fs::create_dir_all(oxen_dir.join("locks"))
+            .map_err(|e| AppError::Internal(format!("Failed to create locks directory: {}", e)))?;
 
         info!("Clone completed successfully");
         Ok(Self {
@@ -447,13 +457,11 @@ impl RepositoryOps {
             .join("metadata")
             .join(format!("{}.json", commit_id));
 
-        let json = serde_json::to_string_pretty(metadata).map_err(|e| {
-            AppError::Internal(format!("Failed to serialize metadata: {}", e))
-        })?;
+        let json = serde_json::to_string_pretty(metadata)
+            .map_err(|e| AppError::Internal(format!("Failed to serialize metadata: {}", e)))?;
 
-        std::fs::write(&metadata_path, json).map_err(|e| {
-            AppError::Internal(format!("Failed to write metadata: {}", e))
-        })?;
+        std::fs::write(&metadata_path, json)
+            .map_err(|e| AppError::Internal(format!("Failed to write metadata: {}", e)))?;
 
         info!("Metadata stored for commit: {}", commit_id);
         Ok(())
@@ -471,13 +479,11 @@ impl RepositoryOps {
             return Ok(None);
         }
 
-        let json = std::fs::read_to_string(&metadata_path).map_err(|e| {
-            AppError::Internal(format!("Failed to read metadata: {}", e))
-        })?;
+        let json = std::fs::read_to_string(&metadata_path)
+            .map_err(|e| AppError::Internal(format!("Failed to read metadata: {}", e)))?;
 
-        let metadata = serde_json::from_str(&json).map_err(|e| {
-            AppError::Internal(format!("Failed to parse metadata: {}", e))
-        })?;
+        let metadata = serde_json::from_str(&json)
+            .map_err(|e| AppError::Internal(format!("Failed to parse metadata: {}", e)))?;
 
         Ok(Some(metadata))
     }
@@ -522,9 +528,8 @@ impl RepositoryOps {
 
     /// Get lock status
     pub fn lock_status(&self) -> AppResult<Option<FileLock>> {
-        FileLock::status(&self.repo_path).map_err(|e| {
-            AppError::Internal(format!("Failed to get lock status: {}", e))
-        })
+        FileLock::status(&self.repo_path)
+            .map_err(|e| AppError::Internal(format!("Failed to get lock status: {}", e)))
     }
 }
 
