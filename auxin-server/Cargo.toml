@@ -48,7 +48,7 @@ bcrypt = "0.15"
 redis = { version = "0.24", features = ["tokio-comp"], optional = true }
 
 # Optional: SQLite/PostgreSQL for web UI metadata cache
-sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "postgres", "sqlite", "uuid", "chrono", "json"], optional = true }
+sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "sqlite", "uuid", "chrono", "json"], optional = true }
 actix-multipart = "0.7.2"
 futures = "0.3.31"
 
