@@ -47,3 +47,109 @@ impl ResponseError for AppError {
 }
 
 pub type AppResult<T> = Result<T, AppError>;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_not_found_display() {
+        let error = AppError::NotFound("Resource".to_string());
+        assert_eq!(error.to_string(), "Not found: Resource");
+    }
+
+    #[test]
+    fn test_bad_request_display() {
+        let error = AppError::BadRequest("Invalid input".to_string());
+        assert_eq!(error.to_string(), "Bad request: Invalid input");
+    }
+
+    #[test]
+    fn test_unauthorized_display() {
+        let error = AppError::Unauthorized("Invalid token".to_string());
+        assert_eq!(error.to_string(), "Unauthorized: Invalid token");
+    }
+
+    #[test]
+    fn test_conflict_display() {
+        let error = AppError::Conflict("Already exists".to_string());
+        assert_eq!(error.to_string(), "Conflict: Already exists");
+    }
+
+    #[test]
+    fn test_internal_display() {
+        let error = AppError::Internal("Database error".to_string());
+        assert_eq!(error.to_string(), "Internal error: Database error");
+    }
+
+    #[test]
+    fn test_not_implemented_display() {
+        let error = AppError::NotImplemented("Feature pending".to_string());
+        assert_eq!(error.to_string(), "Not implemented: Feature pending");
+    }
+
+    #[test]
+    fn test_not_found_status() {
+        let error = AppError::NotFound("Resource".to_string());
+        assert_eq!(error.status_code(), StatusCode::NOT_FOUND);
+    }
+
+    #[test]
+    fn test_bad_request_status() {
+        let error = AppError::BadRequest("Invalid".to_string());
+        assert_eq!(error.status_code(), StatusCode::BAD_REQUEST);
+    }
+
+    #[test]
+    fn test_unauthorized_status() {
+        let error = AppError::Unauthorized("No auth".to_string());
+        assert_eq!(error.status_code(), StatusCode::UNAUTHORIZED);
+    }
+
+    #[test]
+    fn test_conflict_status() {
+        let error = AppError::Conflict("Exists".to_string());
+        assert_eq!(error.status_code(), StatusCode::CONFLICT);
+    }
+
+    #[test]
+    fn test_internal_status() {
+        let error = AppError::Internal("Error".to_string());
+        assert_eq!(error.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
+    }
+
+    #[test]
+    fn test_not_implemented_status() {
+        let error = AppError::NotImplemented("Pending".to_string());
+        assert_eq!(error.status_code(), StatusCode::NOT_IMPLEMENTED);
+    }
+
+    #[test]
+    fn test_error_response_format() {
+        let error = AppError::NotFound("User".to_string());
+        let response = error.error_response();
+
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[test]
+    fn test_app_result_ok() {
+        let result: AppResult<i32> = Ok(42);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 42);
+    }
+
+    #[test]
+    fn test_app_result_err() {
+        let result: AppResult<i32> = Err(AppError::NotFound("Item".to_string()));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_debug_format() {
+        let error = AppError::NotFound("Test".to_string());
+        let debug_str = format!("{:?}", error);
+        assert!(debug_str.contains("NotFound"));
+        assert!(debug_str.contains("Test"));
+    }
+}
