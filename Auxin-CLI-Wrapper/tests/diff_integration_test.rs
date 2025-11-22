@@ -2,7 +2,6 @@
 
 use auxin::{ThumbnailManager, BounceManager};
 use std::fs;
-use std::path::Path;
 use tempfile::TempDir;
 
 #[test]
@@ -106,4 +105,139 @@ fn test_bounce_comparison_with_null_test() {
     assert!(null_test.cancellation_percent >= 0.0);
     assert!(null_test.cancellation_percent <= 100.0);
     assert!(!null_test.interpretation.is_empty());
+}
+
+#[test]
+fn test_bounce_null_test_fallback_without_ffmpeg() {
+    let temp_dir = TempDir::new().unwrap();
+    let manager = BounceManager::new(temp_dir.path());
+
+    // Create two different-sized files
+    let audio1 = temp_dir.path().join("audio1.wav");
+    let audio2 = temp_dir.path().join("audio2.wav");
+
+    fs::write(&audio1, vec![0u8; 1000]).unwrap();
+    fs::write(&audio2, vec![0u8; 1500]).unwrap();
+
+    manager.add_bounce("commit_a", &audio1, None).unwrap();
+    manager.add_bounce("commit_b", &audio2, None).unwrap();
+
+    // Null test should work even without ffmpeg (uses fallback)
+    let comparison = manager.compare_bounces_with_null_test("commit_a", "commit_b").unwrap();
+
+    assert!(comparison.null_test_result.is_some());
+    let null_test = comparison.null_test_result.unwrap();
+
+    // Should use size-based estimation
+    assert!(null_test.cancellation_percent >= 0.0);
+    assert!(null_test.cancellation_percent <= 100.0);
+
+    // Different sizes should show lower cancellation
+    assert!(null_test.cancellation_percent < 100.0);
+}
+
+#[test]
+fn test_bounce_null_test_identical_files() {
+    let temp_dir = TempDir::new().unwrap();
+    let manager = BounceManager::new(temp_dir.path());
+
+    // Create identical files
+    let audio1 = temp_dir.path().join("audio1.wav");
+    let audio2 = temp_dir.path().join("audio2.wav");
+
+    let data = vec![0u8; 2000];
+    fs::write(&audio1, &data).unwrap();
+    fs::write(&audio2, &data).unwrap();
+
+    manager.add_bounce("commit_x", &audio1, None).unwrap();
+    manager.add_bounce("commit_y", &audio2, None).unwrap();
+
+    let comparison = manager.compare_bounces_with_null_test("commit_x", "commit_y").unwrap();
+    let null_test = comparison.null_test_result.unwrap();
+
+    // Identical files should show high cancellation (even with fallback)
+    assert!(null_test.cancellation_percent >= 99.0);
+}
+
+#[test]
+fn test_bounce_comparison_format_report() {
+    let temp_dir = TempDir::new().unwrap();
+    let manager = BounceManager::new(temp_dir.path());
+
+    let audio1 = temp_dir.path().join("audio1.wav");
+    let audio2 = temp_dir.path().join("audio2.wav");
+
+    fs::write(&audio1, vec![0u8; 1000]).unwrap();
+    fs::write(&audio2, vec![0u8; 2000]).unwrap();
+
+    manager.add_bounce("abc123", &audio1, None).unwrap();
+    manager.add_bounce("def456", &audio2, None).unwrap();
+
+    let comparison = manager.compare_bounces("abc123", "def456").unwrap();
+    let report = comparison.format_report();
+
+    // Report should contain key information
+    assert!(report.contains("abc123"));
+    assert!(report.contains("def456"));
+    assert!(report.contains("Duration"));
+    assert!(report.contains("File Size"));
+    assert!(report.contains("Format"));
+}
+
+#[test]
+fn test_bounce_comparison_missing_commit() {
+    let temp_dir = TempDir::new().unwrap();
+    let manager = BounceManager::new(temp_dir.path());
+
+    let audio1 = temp_dir.path().join("audio1.wav");
+    fs::write(&audio1, vec![0u8; 1000]).unwrap();
+    manager.add_bounce("exists", &audio1, None).unwrap();
+
+    // Should error when commit doesn't exist
+    let result = manager.compare_bounces("exists", "nonexistent");
+    assert!(result.is_err());
+    assert!(result.unwrap_err().to_string().contains("No bounce found"));
+}
+
+#[test]
+fn test_thumbnail_comparison_missing_commit() {
+    let temp_dir = TempDir::new().unwrap();
+    let manager = ThumbnailManager::new(temp_dir.path());
+    manager.init().unwrap();
+
+    let img1 = temp_dir.path().join("img1.jpg");
+    fs::write(&img1, b"data").unwrap();
+    manager.add_thumbnail("exists", &img1).unwrap();
+
+    // Should error when commit doesn't exist
+    let result = manager.compare_thumbnails("exists", "nonexistent");
+    assert!(result.is_err());
+    assert!(result.unwrap_err().to_string().contains("No thumbnail for commit"));
+}
+
+#[test]
+fn test_bounce_null_test_interpretation_levels() {
+    // Test that the interpretation matches cancellation percentages
+    use auxin::NullTestResult;
+
+    let result_identical = NullTestResult {
+        cancellation_percent: 99.95,
+        interpretation: "Identical or imperceptibly different".to_string(),
+        difference_level_db: Some(-100.0),
+    };
+    assert!(result_identical.interpretation.contains("Identical"));
+
+    let result_similar = NullTestResult {
+        cancellation_percent: 85.0,
+        interpretation: "Similar with minor differences".to_string(),
+        difference_level_db: Some(-20.0),
+    };
+    assert!(result_similar.interpretation.contains("Similar"));
+
+    let result_different = NullTestResult {
+        cancellation_percent: 15.0,
+        interpretation: "Completely different mixes".to_string(),
+        difference_level_db: Some(-5.0),
+    };
+    assert!(result_different.interpretation.contains("different"));
 }

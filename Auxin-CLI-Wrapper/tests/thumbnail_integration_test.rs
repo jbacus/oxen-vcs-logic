@@ -155,3 +155,134 @@ fn test_get_thumbnail_path_different_formats() {
         assert_eq!(extension, Some(*ext));
     }
 }
+
+#[test]
+fn test_extract_logic_thumbnail_from_logicx_structure() {
+    let temp_dir = TempDir::new().unwrap();
+    let manager = ThumbnailManager::new(temp_dir.path());
+    manager.init().unwrap();
+
+    // Create a mock Logic Pro project structure
+    let project_path = temp_dir.path().join("TestProject.logicx");
+    let alternatives_path = project_path.join("Alternatives").join("001");
+    fs::create_dir_all(&alternatives_path).unwrap();
+
+    // Create a fake WindowImage.jpg
+    let window_image = alternatives_path.join("WindowImage.jpg");
+    let fake_image_data = b"fake jpeg screenshot data from Logic Pro";
+    fs::write(&window_image, fake_image_data).unwrap();
+
+    // Extract thumbnail
+    let result = manager.extract_logic_thumbnail("commit_logic", &project_path);
+
+    assert!(result.is_ok());
+    let metadata = result.unwrap();
+    assert_eq!(metadata.commit_id, "commit_logic");
+    assert_eq!(metadata.format, "jpg");
+    assert_eq!(metadata.size_bytes, fake_image_data.len() as u64);
+
+    // Verify file was copied
+    let thumbnail_path = manager.get_thumbnail_path("commit_logic").unwrap();
+    assert!(thumbnail_path.is_some());
+}
+
+#[test]
+fn test_extract_logic_thumbnail_old_format() {
+    let temp_dir = TempDir::new().unwrap();
+    let manager = ThumbnailManager::new(temp_dir.path());
+    manager.init().unwrap();
+
+    // Create old-style Logic Pro structure (numbered directory)
+    let project_path = temp_dir.path().join("OldProject.logicx");
+    let numbered_path = project_path.join("000");
+    fs::create_dir_all(&numbered_path).unwrap();
+
+    // Create WindowImage in old location
+    let window_image = numbered_path.join("WindowImage.jpg");
+    fs::write(&window_image, b"old format screenshot").unwrap();
+
+    // Extract should find it
+    let result = manager.extract_logic_thumbnail("commit_old", &project_path);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_extract_logic_thumbnail_missing() {
+    let temp_dir = TempDir::new().unwrap();
+    let manager = ThumbnailManager::new(temp_dir.path());
+    manager.init().unwrap();
+
+    // Create project without WindowImage
+    let project_path = temp_dir.path().join("EmptyProject.logicx");
+    fs::create_dir_all(&project_path).unwrap();
+
+    // Should fail gracefully
+    let result = manager.extract_logic_thumbnail("commit_empty", &project_path);
+    assert!(result.is_err());
+    assert!(result.unwrap_err().to_string().contains("No WindowImage"));
+}
+
+#[test]
+fn test_compare_thumbnails_fallback_without_imagemagick() {
+    let temp_dir = TempDir::new().unwrap();
+    let manager = ThumbnailManager::new(temp_dir.path());
+    manager.init().unwrap();
+
+    // Create two different-sized images
+    let img1 = temp_dir.path().join("img1.jpg");
+    let img2 = temp_dir.path().join("img2.jpg");
+
+    fs::write(&img1, vec![0u8; 1000]).unwrap();
+    fs::write(&img2, vec![0u8; 1500]).unwrap();
+
+    manager.add_thumbnail("commit_a", &img1).unwrap();
+    manager.add_thumbnail("commit_b", &img2).unwrap();
+
+    // Compare - should work even without ImageMagick (uses size fallback)
+    let diff = manager.compare_thumbnails("commit_a", "commit_b").unwrap();
+
+    assert_eq!(diff.commit_a, "commit_a");
+    assert_eq!(diff.commit_b, "commit_b");
+    assert_eq!(diff.size_diff_bytes, 500); // 1500 - 1000
+
+    // Difference percent should be calculated from size
+    // (500 / 1500) * 100 = 33.33%
+    assert!(diff.difference_percent > 0.0);
+    assert!(diff.difference_percent <= 100.0);
+}
+
+#[test]
+fn test_compare_thumbnails_dimension_change() {
+    let temp_dir = TempDir::new().unwrap();
+    let manager = ThumbnailManager::new(temp_dir.path());
+    manager.init().unwrap();
+
+    let img1 = temp_dir.path().join("img1.jpg");
+    let img2 = temp_dir.path().join("img2.jpg");
+
+    fs::write(&img1, b"data1").unwrap();
+    fs::write(&img2, b"data2").unwrap();
+
+    // Add with different dimensions
+    let mut meta1 = manager.add_thumbnail("commit_1", &img1).unwrap();
+    let mut meta2 = manager.add_thumbnail("commit_2", &img2).unwrap();
+
+    // Manually set dimensions for testing
+    meta1.width = Some(1920);
+    meta1.height = Some(1080);
+    meta2.width = Some(3840);
+    meta2.height = Some(2160);
+
+    // Re-save metadata
+    let json1 = serde_json::to_string_pretty(&meta1).unwrap();
+    let json2 = serde_json::to_string_pretty(&meta2).unwrap();
+    fs::write(temp_dir.path().join(".auxin/thumbnails/commit_1.json"), json1).unwrap();
+    fs::write(temp_dir.path().join(".auxin/thumbnails/commit_2.json"), json2).unwrap();
+
+    let diff = manager.compare_thumbnails("commit_1", "commit_2").unwrap();
+
+    assert!(diff.dimension_diff.is_some());
+    let dim_diff = diff.dimension_diff.unwrap();
+    assert!(dim_diff.contains("1920x1080"));
+    assert!(dim_diff.contains("3840x2160"));
+}
