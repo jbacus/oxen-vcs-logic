@@ -180,12 +180,13 @@ Scenario 3: Network Resilience
 
 **Current Coverage**: LaunchAgent ~30%, App <10%
 
-#### Task 4.1: LaunchAgent Integration Testing - ⏳ PARTIAL
+#### Task 4.1: LaunchAgent Integration Testing - ⏳ TESTS WRITTEN, VERIFICATION IN PROGRESS
 - ✅ Basic tests exist for LockManager
-- [ ] **NEEDED:** FSEventsMonitor tests (426 lines, 0% coverage)
-- [ ] **NEEDED:** PowerManagement tests (319 lines, 0% coverage)
-- [ ] **NEEDED:** NetworkMonitor tests (276 lines, 0% coverage)
-- [ ] **NEEDED:** Daemon orchestration tests (426 lines, 0% coverage)
+- ✅ FSEventsMonitor tests written (4 tests: lifecycle, debounce, callbacks)
+- ✅ PowerManagement tests written (45 tests: lifecycle, events, battery, concurrency)
+- ✅ NetworkMonitor tests written (23 tests: lifecycle, status, handlers, integration)
+- ⏳ Running Swift tests to verify all pass
+- [ ] **NEEDED:** Daemon orchestration tests (426 lines, need tests)
 - [ ] Test XPC communication reliability
 - [ ] Stress test with rapid file changes
 - [ ] Memory and CPU profiling
