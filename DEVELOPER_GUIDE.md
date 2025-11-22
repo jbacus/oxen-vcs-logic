@@ -1077,7 +1077,7 @@ curl https://auxin.yourdomain.com/metrics
 - **[API Reference](auxin-server/docs/api/README.md)** - REST API documentation
 - **[OpenAPI Spec](auxin-server/docs/api/openapi.yaml)** - Complete API specification
 - **[CI/CD Guide](.github/CI_CD_GUIDE.md)** - GitHub Actions workflows
-- **[Configuration Reference](docs/developer/configuration.md)** - All config options
+- **[Configuration Reference](docs/developer/configuration.md)** - Complete TOML config options and Docker deployment
 
 ### Support
 - **Issues**: [GitHub Issues](https://github.com/jbacus/auxin/issues)

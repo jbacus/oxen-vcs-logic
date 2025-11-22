@@ -1,443 +1,296 @@
-# Auxin Configuration Reference
+# Auxin Configuration
 
-**Last Updated**: 2025-11-20
-**Purpose**: Complete reference for configuration files, environment variables, and settings
+Auxin uses a unified configuration system across its CLI and server components, managed primarily through `config.toml` files. This system allows for flexible configuration at different levels, with a clear precedence order.
 
----
+## Configuration Precedence
 
-## Overview
+Settings are applied in the following order, with higher numbers overriding lower ones:
 
-Auxin uses a layered configuration system:
+1.  **Environment Variables**: Highest priority. Useful for CI/CD pipelines, Docker deployments, or temporary overrides without modifying files.
+2.  **Project Configuration (`.auxin/config.toml`)**: Located in the root of an Auxin project directory. These settings apply specifically to that project and override user-level defaults. They can be committed to version control to ensure consistent project behavior across teams.
+3.  **User Configuration (`~/.auxin/config.toml`)**: Your personal default settings for all Auxin projects. This file is located in your home directory under `.auxin/config.toml` (e.g., `/Users/youruser/.auxin/config.toml` on macOS, or `/home/youruser/.config/auxin/config.toml` on Linux).
+4.  **Built-in Defaults**: Lowest priority. These are the default values compiled into the Auxin binaries.
 
-1. **Project config** (`.auxin/config.toml`) - Per-project settings
-2. **User config** (`~/.auxin/config.toml`) - User-wide defaults
-3. **Environment variables** - Runtime overrides
+## Configuration File Structure (`config.toml`)
 
-Settings are applied in order: project > user > environment > defaults.
+The `config.toml` file is structured into several sections, each managing a different aspect of Auxin's behavior. A comprehensive example with all available options and their default values can be found in `config.toml.example` in the project root.
 
----
+### `[defaults]`
 
-## Configuration Files
+General settings applicable to both CLI and server.
 
-### Project Configuration
+*   `verbose`: (boolean) Enable verbose output. Can be overridden by the `--verbose` or `-v` CLI flag.
+    *   Environment Variable: `AUXIN_VERBOSE`
+*   `color`: (string) Control colored output. Options: `"auto"`, `"always"`, `"never"`.
+    *   Environment Variable: `AUXIN_COLOR`
 
-Located at: `<project>/.auxin/config.toml`
+### `[lock]`
 
-```toml
-# .auxin/config.toml
+Settings related to lock management for collaborative workflows.
 
-[project]
-# Project type (auto-detected on init)
-type = "logicpro"  # logicpro, sketchup, blender
+*   `timeout_hours`: (integer) Default duration (in hours) for which a lock is held before automatic expiration.
+    *   Environment Variable: `AUXIN_LOCK_TIMEOUT`
+*   `auto_renew`: (boolean) Whether locks should be automatically renewed by a background daemon. (Currently not fully implemented)
+*   `renew_before_minutes`: (integer) How many minutes before expiration to attempt auto-renewal.
 
-# Project name (defaults to directory name)
-name = "My Project"
+### `[network]`
 
-[draft]
-# Auto-commit settings for background daemon
-enabled = true
-interval_seconds = 60
-branch_name = "drafts"
+Settings for network operations, affecting resilience and behavior with remote servers.
 
-[lock]
-# Default lock timeout in hours
-default_timeout_hours = 4
+*   `max_retries`: (integer) Maximum number of retry attempts for failed network operations.
+    *   Environment Variable: `AUXIN_MAX_RETRIES`
+*   `initial_backoff_ms`: (integer) Initial delay in milliseconds before the first retry (uses exponential backoff).
+*   `max_backoff_ms`: (integer) Maximum delay in milliseconds for exponential backoff.
+*   `connectivity_check_interval_s`: (integer) How often (in seconds) to check network connectivity.
+*   `connectivity_check_timeout_s`: (integer) How long (in seconds) to wait for a connectivity check to succeed before declaring the network unreachable.
 
-# Heartbeat interval in minutes (keeps lock alive)
-heartbeat_interval_minutes = 10
+### `[queue]`
 
-# Auto-release after missed heartbeats
-auto_release_after_missed = 3
+Settings for the offline operation queue (CLI only).
 
-[remote]
-# Oxen Hub remote URL
-url = "https://hub.oxen.ai"
+*   `auto_sync`: (boolean) Automatically synchronize pending operations when network connectivity is restored.
+    *   Environment Variable: `AUXIN_AUTO_SYNC`
+*   `queue_dir`: (string) Filesystem path to store queued operations. Supports `~` for home directory expansion.
+    *   Environment Variable: `AUXIN_QUEUE_DIR`
+*   `max_entries`: (integer) Maximum number of completed queue entries to retain. Oldest entries are removed when the limit is reached.
+*   `cleanup_after_days`: (integer) Automatically remove completed queue entries older than this many days. Set to `0` to disable.
 
-# Repository namespace (username or organization)
-namespace = "myteam"
+### `[ui]`
 
-# Repository name
-repository = "my-project"
+User interface settings for the CLI.
 
-[server]
-# Auxin server URL (for self-hosted collaboration)
-url = "http://localhost:3000"
+*   `progress`: (boolean) Display progress bars and spinners for long-running operations.
+*   `emoji`: (boolean) Use emoji characters in CLI output (e.g., `✓`, `✗`, `⚠️`). Disable if your terminal does not support them.
+*   `terminal_width`: (integer) Specifies the terminal width for wrapping output. Set to `0` for auto-detection.
 
-# Use server for lock management
-use_for_locks = false
+### `[project]`
 
-# Use server for metadata storage
-use_for_metadata = false
+Default project-related settings (CLI only).
 
-# Request timeout in seconds
-timeout_seconds = 30
+*   `project_type`: (string) Default type for new Auxin projects. Options: `"auto"`, `"logicpro"`, `"sketchup"`, `"blender"`.
+    *   Environment Variable: `AUXIN_PROJECT_TYPE`
 
-# Default namespace
-namespace = "default"
+### `[cli]`
 
-[hooks]
-# Enable pre-commit hooks
-pre_commit_enabled = true
+Settings specific to how the CLI connects and interacts with an Auxin server.
 
-# Enable post-commit hooks
-post_commit_enabled = true
+*   `url`: (string) The base URL of the Auxin server (e.g., `http://localhost:3000`).
+    *   Environment Variable: `AUXIN_SERVER_URL`
+*   `token`: (string, optional) Authentication token for the Auxin server.
+    *   Environment Variable: `AUXIN_SERVER_TOKEN`
+*   `timeout_secs`: (integer) Request timeout in seconds for server API calls.
+    *   Environment Variable: `AUXIN_SERVER_TIMEOUT_SECS`
+*   `use_server_locks`: (boolean) If `true`, the CLI will use the Auxin server for distributed lock management. If `false`, local Git-based locking will be used.
+    *   Environment Variable: `AUXIN_USE_SERVER_LOCKS`
+*   `use_server_metadata`: (boolean) If `true`, the CLI will store and retrieve project metadata (BPM, key, etc.) from the Auxin server. If `false`, metadata will be stored locally within the `.oxen/metadata` directory.
+    *   Environment Variable: `AUXIN_USE_SERVER_METADATA`
+*   `default_namespace`: (string, optional) The default namespace to use when creating or interacting with repositories on the Auxin server.
+    *   Environment Variable: `AUXIN_DEFAULT_NAMESPACE`
 
-# Hook timeout in seconds
-timeout_seconds = 30
-```
+### `[server]`
 
----
+Settings specific to the operation of the `auxin-server` component.
 
-### User Configuration
-
-Located at: `~/.auxin/config.toml`
-
-```toml
-# ~/.auxin/config.toml
-
-[user]
-# Default author name for commits
-name = "Your Name"
-
-# Default email for commits
-email = "you@example.com"
-
-[defaults]
-# Default BPM for new Logic Pro commits
-bpm = 120
-
-# Default sample rate for new Logic Pro commits
-sample_rate = 48000
-
-# Default units for new SketchUp commits
-units = "Feet"
-
-[ui]
-# Enable colored output
-colored = true
-
-# Show progress bars for long operations
-progress_bars = true
-
-# Verbose output by default
-verbose = false
-
-[network]
-# Maximum retry attempts for network operations
-max_retries = 4
-
-# Base retry delay in milliseconds
-retry_delay_ms = 2000
-
-# Connection timeout in seconds
-timeout_seconds = 30
-
-[daemon]
-# Log file location
-log_path = "/tmp/com.auxin.daemon.stdout"
-
-# Error log location
-error_log_path = "/tmp/com.auxin.daemon.stderr"
-```
-
----
-
-## Environment Variables
-
-### Core Variables
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `AUXIN_CONFIG` | User config file path | `~/.auxin/config.toml` |
-| `AUXIN_LOG_LEVEL` | Log level | `info` |
-| `AUXIN_NO_COLOR` | Disable colored output | `false` |
-
-### Logging
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `AUXIN_LOG_LEVEL` | `debug`, `info`, `warn`, `error` | `info` |
-| `RUST_LOG` | Rust log filter (e.g., `auxin=debug`) | - |
-
-### Authentication
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `OXEN_AUTH_TOKEN` | Oxen Hub auth token | (keychain) |
-| `OXEN_HOST` | Oxen Hub URL | `https://hub.oxen.ai` |
-
-### Network
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `AUXIN_NETWORK_TIMEOUT` | Request timeout (seconds) | `30` |
-| `AUXIN_MAX_RETRIES` | Max retry attempts | `4` |
-| `AUXIN_OFFLINE_MODE` | Force offline mode | `false` |
-
-### Server
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `AUXIN_SERVER_URL` | Auxin server URL | (from config) |
-| `AUXIN_SERVER_NAMESPACE` | Default namespace | `default` |
-
----
-
-## .oxenignore Patterns
-
-Auxin auto-generates `.oxenignore` files based on project type.
-
-### Logic Pro Patterns
-
-```gitignore
-# Auto-generated by Auxin for Logic Pro projects
-
-# Temporary and cache files
-*.nosync
-*~
-.DS_Store
-
-# Freeze files (can be regenerated)
-Freeze Files/
-
-# Bounces directory (managed separately)
-Bounces/
-
-# Undo history
-Undo Data/
-
-# Plugin scan caches
-PluginScan/
-
-# Backup files
-*.backup
-*.bak
-
-# Analysis files
-Analyzed Files/
-```
-
-### SketchUp Patterns
-
-```gitignore
-# Auto-generated by Auxin for SketchUp projects
-
-# Temporary files
-*.tmp
-*~
-.DS_Store
-
-# Backup files
-*.skb
-
-# Thumbnail cache
-Thumbnails/
-
-# Autosave files
-AutoSave/
-
-# Layout reference files
-*.layout~
-```
-
-### Blender Patterns
-
-```gitignore
-# Auto-generated by Auxin for Blender projects
-
-# Temporary files
-*.blend1
-*.blend2
-*~
-.DS_Store
-
-# Crash backups
-crash_report/
-
-# Thumbnail cache
-.blender_thumbnails/
-```
-
----
-
-## LaunchAgent Configuration
-
-The daemon is configured via a plist file.
-
-**Location**: `~/Library/LaunchAgents/com.auxin.daemon.plist`
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>Label</key>
-    <string>com.auxin.daemon</string>
-
-    <key>ProgramArguments</key>
-    <array>
-        <string>/usr/local/bin/auxin-daemon</string>
-        <string>--daemon</string>
-    </array>
-
-    <key>RunAtLoad</key>
-    <true/>
-
-    <key>KeepAlive</key>
-    <true/>
-
-    <key>StandardOutPath</key>
-    <string>/tmp/com.auxin.daemon.stdout</string>
-
-    <key>StandardErrorPath</key>
-    <string>/tmp/com.auxin.daemon.stderr</string>
-
-    <key>UserName</key>
-    <string><!-- Set during installation --></string>
-</dict>
-</plist>
-```
-
----
-
-## Network Resilience Settings
-
-### Retry Policy
-
-```toml
-[network.retry]
-# Maximum retry attempts
-max_attempts = 4
-
-# Base delay (doubles each attempt)
-base_delay_ms = 2000
-
-# Maximum delay cap
-max_delay_ms = 16000
-
-# Jitter factor (0.0 - 1.0)
-jitter = 0.1
-```
-
-### Circuit Breaker
-
-```toml
-[network.circuit_breaker]
-# Failures before circuit opens
-failure_threshold = 5
-
-# Time before retry after opening
-reset_timeout_seconds = 60
-
-# Success needed to close circuit
-success_threshold = 3
-```
-
-### Offline Queue
-
-```toml
-[network.offline]
-# Queue file location
-queue_path = ".auxin/offline_queue.json"
-
-# Maximum queued operations
-max_queue_size = 100
-
-# Auto-sync when online
-auto_sync = true
-```
-
----
-
-## Metadata Storage
-
-Commit metadata is stored in the commit message using YAML frontmatter:
-
-```yaml
----
-auxin_metadata:
-  project_type: logicpro
-  bpm: 120.0
-  sample_rate: 48000
-  key_signature: "A Minor"
-  tags:
-    - mixing
-    - vocals
-  bounce:
-    filename: "Mix_v1.wav"
-    format: "wav"
-    duration_seconds: 180.5
----
-
-Added vocal harmonies and adjusted levels
-```
-
----
-
-## Common Configuration Patterns
-
-### Studio Setup (Multiple Projects)
+*   `sync_dir`: (string) The absolute path to the directory where the Auxin server will store all repository data.
+    *   Environment Variable: `AUXIN_SERVER_SYNC_DIR`
+*   `host`: (string) The host address the Auxin server will bind to (e.g., `0.0.0.0` for all interfaces, `127.0.0.1` for localhost only).
+    *   Environment Variable: `AUXIN_SERVER_HOST`
+*   `port`: (integer) The port number the Auxin server will listen on.
+    *   Environment Variable: `AUXIN_SERVER_PORT`
+*   `auth_token_secret`: (string) A secret key used for signing authentication tokens. **IMPORTANT: Change this to a strong, unique value in production environments!**
+    *   Environment Variable: `AUXIN_SERVER_AUTH_TOKEN_SECRET`
+*   `auth_token_expiry_hours`: (integer) The duration (in hours) before authentication tokens expire.
+    *   Environment Variable: `AUXIN_SERVER_AUTH_TOKEN_EXPIRY_HOURS`
+*   `enable_redis_locks`: (boolean) If `true`, enables Redis for distributed lock management across multiple server instances. Requires `redis_url` to be configured.
+    *   Environment Variable: `AUXIN_SERVER_ENABLE_REDIS_LOCKS`
+*   `enable_web_ui`: (boolean) If `true`, enables serving the web-based user interface (frontend) from the server. Requires frontend assets to be built.
+    *   Environment Variable: `AUXIN_SERVER_ENABLE_WEB_UI`
+*   `redis_url`: (string, optional) The connection URL for a Redis server (e.g., `redis://127.0.0.1/`). Required if `enable_redis_locks` is `true`.
+    *   Environment Variable: `AUXIN_SERVER_REDIS_URL`
+*   `database_url`: (string, optional) The connection URL for the database (e.g., `sqlite://data.db` for a local SQLite file, or a PostgreSQL connection string). Required if `enable_web_ui` is `true` and project CRUD operations are desired.
+    *   Environment Variable: `AUXIN_SERVER_DATABASE_URL`
+
+## Example Usage
+
+To configure Auxin, you can create a `config.toml` file in your user configuration directory (`~/.auxin/config.toml`) or within a specific project (`.auxin/config.toml`).
 
 ```toml
 # ~/.auxin/config.toml
-
 [defaults]
-bpm = 120
-sample_rate = 48000
+verbose = true
 
-[network]
-max_retries = 6  # Unreliable connection
-
-[daemon]
-log_path = "~/Library/Logs/Auxin/daemon.log"
-```
-
-### Team Collaboration
-
-```toml
-# .auxin/config.toml
-
-[lock]
-default_timeout_hours = 8  # Long sessions
-heartbeat_interval_minutes = 5
-
-[remote]
-namespace = "our-team"
+[cli]
+url = "https://auxin.mycompany.com"
+default_namespace = "myteam"
 
 [server]
-url = "http://team-server:3000"
-use_for_locks = true
+sync_dir = "/mnt/auxin_data"
+port = 8080
+auth_token_secret = "super_secret_production_key_123"
+enable_redis_locks = true
+redis_url = "redis://my-redis-instance:6379/"
 ```
 
-### Solo Artist (Simple Setup)
+## Docker Deployment
 
-```toml
-# .auxin/config.toml
+When deploying the Auxin server in Docker, you have three flexible options for configuration:
 
-[lock]
-default_timeout_hours = 24  # No contention
+### Option 1: Use Default Configuration
 
-[draft]
-interval_seconds = 120  # Less frequent auto-commits
-```
-
----
-
-## Validating Configuration
-
-Check configuration is valid:
+The Docker image includes a default `config.docker.toml` file with sensible defaults for containerized deployments. To use it as-is:
 
 ```bash
-# Show current configuration
-auxin config show
-
-# Validate configuration files
-auxin config validate
-
-# Show effective configuration (merged)
-auxin config effective
+docker-compose up
 ```
 
----
+The default configuration uses:
+- Data directory: `/var/oxen/data` (mounted volume)
+- Host: `0.0.0.0` (all interfaces)
+- Port: `3000`
+- Auth secret: `dev_secret_change_in_production` ⚠️ **Change this in production!**
 
-*Last Updated: 2025-11-20*
+### Option 2: Mount Custom Configuration File
+
+For production deployments, create your own `config.toml` and mount it into the container:
+
+1. Create your custom configuration:
+
+```bash
+cd auxin-server
+cp config.docker.toml config.toml
+# Edit config.toml with your production settings
+```
+
+2. Update `docker-compose.yml` to mount your config:
+
+```yaml
+services:
+  auxin-server:
+    volumes:
+      - auxin-data:/var/oxen/data
+      - ./config.toml:/app/config.toml:ro  # Mount custom config
+```
+
+3. Start the container:
+
+```bash
+docker-compose up
+```
+
+### Option 3: Override with Environment Variables
+
+You can override any configuration value using environment variables with the `AUXIN_` prefix. This is ideal for CI/CD pipelines or when you want to keep secrets out of config files.
+
+Update your `docker-compose.yml`:
+
+```yaml
+services:
+  auxin-server:
+    environment:
+      # Logging (not part of unified config)
+      - RUST_LOG=info,auxin_server=debug
+
+      # Override server settings
+      - AUXIN_SERVER_PORT=3000
+      - AUXIN_SERVER_HOST=0.0.0.0
+      - AUXIN_SERVER_AUTH_TOKEN_SECRET=your_secret_here
+
+      # Enable optional features
+      - AUXIN_SERVER_ENABLE_REDIS_LOCKS=true
+      - AUXIN_SERVER_REDIS_URL=redis://redis:6379
+```
+
+Environment variables take precedence over `config.toml` values, allowing you to:
+- Keep base configuration in `config.toml`
+- Override sensitive values (secrets) via environment variables
+- Use different settings per environment (dev/staging/prod)
+
+### Complete Docker Compose Example
+
+Here's a production-ready `docker-compose.yml` example:
+
+```yaml
+version: '3.8'
+
+services:
+  auxin-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: auxin-server
+    ports:
+      - "3000:3000"
+    volumes:
+      - auxin-data:/var/oxen/data
+      - ./config.toml:/app/config.toml:ro  # Optional: custom config
+    environment:
+      - RUST_LOG=info,auxin_server=debug
+      - AUXIN_SERVER_AUTH_TOKEN_SECRET=${AUXIN_AUTH_SECRET}  # From .env file
+      - AUXIN_SERVER_ENABLE_REDIS_LOCKS=true
+      - AUXIN_SERVER_REDIS_URL=redis://redis:6379
+    restart: unless-stopped
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:7-alpine
+    container_name: auxin-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+
+volumes:
+  auxin-data:
+    driver: local
+  redis-data:
+    driver: local
+```
+
+### Migration from .env Files (Deprecated)
+
+**Note:** The `.env` file approach is deprecated. If you're migrating from an older deployment:
+
+| Old Variable (`.env`)       | New Variable (`AUXIN_*` prefix)           |
+|-----------------------------|-------------------------------------------|
+| `SYNC_DIR`                  | `AUXIN_SERVER_SYNC_DIR`                   |
+| `OXEN_SERVER_HOST`          | `AUXIN_SERVER_HOST`                       |
+| `OXEN_SERVER_PORT`          | `AUXIN_SERVER_PORT`                       |
+| `AUTH_TOKEN_SECRET`         | `AUXIN_SERVER_AUTH_TOKEN_SECRET`          |
+| `AUTH_TOKEN_EXPIRY_HOURS`   | `AUXIN_SERVER_AUTH_TOKEN_EXPIRY_HOURS`    |
+| `ENABLE_REDIS_LOCKS`        | `AUXIN_SERVER_ENABLE_REDIS_LOCKS`         |
+| `REDIS_URL`                 | `AUXIN_SERVER_REDIS_URL`                  |
+| `ENABLE_WEB_UI`             | `AUXIN_SERVER_ENABLE_WEB_UI`              |
+| `DATABASE_URL`              | `AUXIN_SERVER_DATABASE_URL`               |
+
+Instead of a `.env` file, use either:
+1. A `config.toml` file (recommended for persistent settings)
+2. Environment variables with `AUXIN_SERVER_*` prefix (recommended for secrets)
+
+### Security Best Practices for Docker
+
+1. **Never use default secrets in production!** Always override `auth_token_secret`:
+   ```bash
+   AUXIN_SERVER_AUTH_TOKEN_SECRET=$(openssl rand -base64 32)
+   ```
+
+2. **Use Docker secrets** for sensitive values in production:
+   ```yaml
+   secrets:
+     auth_token:
+       external: true
+
+   services:
+     auxin-server:
+       secrets:
+         - auth_token
+       environment:
+         - AUXIN_SERVER_AUTH_TOKEN_SECRET=/run/secrets/auth_token
+   ```
+
+3. **Mount config files as read-only** (`:ro` flag) to prevent container modifications
+
+4. **Use environment-specific configs**: Maintain separate `config.toml` files for development, staging, and production
+
+For the complete Docker configuration reference, see `auxin-server/config.docker.toml` in the repository.
