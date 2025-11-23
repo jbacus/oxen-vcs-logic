@@ -175,6 +175,142 @@ build_app() {
     echo ""
 }
 
+# Function to clean previous installation state
+clean_previous_install() {
+    print_header "Cleaning Previous Installation State"
+
+    # Stop and unload daemon if running
+    if launchctl list | grep -q "com.auxin.daemon"; then
+        print_info "Stopping existing daemon..."
+        launchctl unload "$LAUNCH_AGENTS_DIR/$PLIST_NAME" 2>/dev/null || true
+        # Wait a moment for daemon to stop
+        sleep 1
+        print_success "Existing daemon stopped"
+    fi
+
+    # Kill any running daemon processes
+    if pgrep -x "auxin-daemon" >/dev/null; then
+        print_info "Terminating running daemon processes..."
+        pkill -TERM "auxin-daemon" 2>/dev/null || true
+        sleep 1
+        # Force kill if still running
+        pkill -KILL "auxin-daemon" 2>/dev/null || true
+        print_success "Daemon processes terminated"
+    fi
+
+    # Clear daemon logs
+    if [ -f "/tmp/com.auxin.daemon.stdout" ] || [ -f "/tmp/com.auxin.daemon.stderr" ]; then
+        print_info "Clearing daemon logs..."
+        rm -f /tmp/com.auxin.daemon.stdout
+        rm -f /tmp/com.auxin.daemon.stderr
+        print_success "Daemon logs cleared"
+    fi
+
+    # Clear any XPC cache (macOS 10.15+)
+    local xpc_cache="$HOME/Library/Caches/com.auxin.daemon"
+    if [ -d "$xpc_cache" ]; then
+        print_info "Clearing XPC cache..."
+        rm -rf "$xpc_cache"
+        print_success "XPC cache cleared"
+    fi
+
+    echo ""
+}
+
+# Function for full clean (--clean flag)
+full_clean() {
+    print_header "Full Clean - Removing All Auxin Components"
+
+    # Stop and unload daemon if running
+    if launchctl list | grep -q "com.auxin.daemon"; then
+        print_info "Stopping daemon..."
+        launchctl unload "$LAUNCH_AGENTS_DIR/$PLIST_NAME" 2>/dev/null || true
+        sleep 1
+    fi
+
+    # Kill any running processes
+    print_info "Terminating all Auxin processes..."
+    pkill -TERM "auxin-daemon" 2>/dev/null || true
+    pkill -TERM "Auxin" 2>/dev/null || true
+    sleep 1
+    pkill -KILL "auxin-daemon" 2>/dev/null || true
+    pkill -KILL "Auxin" 2>/dev/null || true
+    print_success "All processes terminated"
+
+    # Remove installed binaries
+    print_info "Removing installed binaries..."
+    local removed_binaries=false
+    if [ -f "$INSTALL_DIR/auxin" ] || [ -f "$INSTALL_DIR/auxin-daemon" ]; then
+        if [ -w "$INSTALL_DIR" ]; then
+            rm -f "$INSTALL_DIR/auxin" "$INSTALL_DIR/auxin-daemon"
+        else
+            sudo rm -f "$INSTALL_DIR/auxin" "$INSTALL_DIR/auxin-daemon"
+        fi
+        removed_binaries=true
+    fi
+    if [ "$removed_binaries" = true ]; then
+        print_success "Binaries removed from $INSTALL_DIR"
+    else
+        print_info "No binaries found in $INSTALL_DIR"
+    fi
+
+    # Remove plist
+    if [ -f "$LAUNCH_AGENTS_DIR/$PLIST_NAME" ]; then
+        print_info "Removing LaunchAgent plist..."
+        rm -f "$LAUNCH_AGENTS_DIR/$PLIST_NAME"
+        print_success "Plist removed"
+    fi
+
+    # Remove app bundle
+    if [ -d "/Applications/Auxin.app" ]; then
+        print_info "Removing Auxin.app..."
+        if [ -w "/Applications/Auxin.app" ]; then
+            rm -rf "/Applications/Auxin.app"
+        else
+            sudo rm -rf "/Applications/Auxin.app"
+        fi
+        print_success "Auxin.app removed"
+    fi
+
+    # Remove logs
+    print_info "Clearing logs and caches..."
+    rm -f /tmp/com.auxin.daemon.stdout
+    rm -f /tmp/com.auxin.daemon.stderr
+    rm -f /tmp/auxin-app-debug.log
+    rm -f /tmp/auxin-restart-button.log
+    rm -rf "$HOME/Library/Caches/com.auxin.daemon"
+    rm -rf "$HOME/Library/Caches/com.auxin.app"
+    print_success "Logs and caches cleared"
+
+    # Remove config (optional - ask user)
+    if [ -d "$HOME/.config/auxin" ]; then
+        print_warning "Config directory found: $HOME/.config/auxin"
+        echo "  This contains your CLI configuration settings."
+        read -p "  Remove config directory? (y/N): " remove_config
+        if [[ "$remove_config" =~ ^[Yy]$ ]]; then
+            rm -rf "$HOME/.config/auxin"
+            print_success "Config directory removed"
+        else
+            print_info "Config directory kept"
+        fi
+    fi
+
+    # Remove shell completions
+    print_info "Removing shell completions..."
+    rm -f /usr/local/etc/bash_completion.d/auxin 2>/dev/null || true
+    rm -f /opt/homebrew/etc/bash_completion.d/auxin 2>/dev/null || true
+    rm -f "$HOME/.local/share/bash-completion/completions/auxin" 2>/dev/null || true
+    rm -f "$HOME/.zsh/completions/_auxin" 2>/dev/null || true
+    rm -f "$HOME/.config/fish/completions/auxin.fish" 2>/dev/null || true
+    print_success "Shell completions removed"
+
+    echo ""
+    print_success "Full clean complete - system is ready for fresh installation"
+    echo ""
+    print_info "Note: Repository data (.oxen directories in projects) was not removed"
+    echo ""
+}
+
 # Function to install binaries
 install_binaries() {
     print_header "Installing Binaries"
@@ -504,10 +640,12 @@ Options:
   --help              Show this help message
   --skip-checks       Skip prerequisite checks (not recommended)
   --skip-app          Skip building the UI app
+  --clean             Full cleanup before install (kills processes, removes binaries)
   --uninstall         Uninstall Auxin components
 
 Examples:
   $0                  # Full installation
+  $0 --clean          # Clean install (removes everything first)
   $0 --skip-app       # Install CLI and daemon only
   $0 --uninstall      # Remove all components
 
@@ -558,6 +696,7 @@ uninstall() {
 main() {
     local skip_checks=false
     local skip_app=false
+    local do_clean=false
 
     # Parse command line arguments
     while [[ $# -gt 0 ]]; do
@@ -572,6 +711,10 @@ main() {
                 ;;
             --skip-app)
                 skip_app=true
+                shift
+                ;;
+            --clean)
+                do_clean=true
                 shift
                 ;;
             --uninstall)
@@ -597,6 +740,14 @@ main() {
     # Run installation steps
     if [ "$skip_checks" = false ]; then
         check_prerequisites
+    fi
+
+    # Perform full clean if requested
+    if [ "$do_clean" = true ]; then
+        full_clean
+    else
+        # Otherwise just clean state (logs, caches, running processes)
+        clean_previous_install
     fi
 
     build_cli

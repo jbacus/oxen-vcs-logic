@@ -74,31 +74,36 @@ public class OxenDaemon {
         print("\n✓ Daemon started successfully")
         printStatus()
 
-        // Keep daemon running and handle signals
-        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-            // Set up signal handlers using DispatchSource (proper Swift approach)
-            let sigintSource = DispatchSource.makeSignalSource(signal: SIGINT, queue: .main)
-            let sigtermSource = DispatchSource.makeSignalSource(signal: SIGTERM, queue: .main)
+        // Set up signal handlers for graceful shutdown
+        let sigintSource = DispatchSource.makeSignalSource(signal: SIGINT, queue: .main)
+        let sigtermSource = DispatchSource.makeSignalSource(signal: SIGTERM, queue: .main)
 
-            sigintSource.setEventHandler {
-                print("\nReceived SIGINT - shutting down gracefully...")
-                continuation.resume()
+        sigintSource.setEventHandler { [weak self] in
+            print("\nReceived SIGINT - shutting down gracefully...")
+            Task {
+                await self?.stop()
+                exit(0)
             }
-
-            sigtermSource.setEventHandler {
-                print("\nReceived SIGTERM - shutting down gracefully...")
-                continuation.resume()
-            }
-
-            // Ignore default signal handling
-            signal(SIGINT, SIG_IGN)
-            signal(SIGTERM, SIG_IGN)
-
-            sigintSource.resume()
-            sigtermSource.resume()
         }
 
-        await stop()
+        sigtermSource.setEventHandler { [weak self] in
+            print("\nReceived SIGTERM - shutting down gracefully...")
+            Task {
+                await self?.stop()
+                exit(0)
+            }
+        }
+
+        // Ignore default signal handling
+        signal(SIGINT, SIG_IGN)
+        signal(SIGTERM, SIG_IGN)
+
+        sigintSource.resume()
+        sigtermSource.resume()
+
+        // Keep daemon alive by running the main dispatch queue
+        // The XPC service and other event sources will keep the process running
+        dispatchMain()
     }
 
     /// Stop the daemon

@@ -117,7 +117,7 @@ public class NetworkMonitor {
 
         let task = Process()
         task.executableURL = URL(fileURLWithPath: cliPath)
-        task.arguments = ["queue", "sync", "--all"]
+        task.arguments = ["queue", "sync"]
 
         let outputPipe = Pipe()
         let errorPipe = Pipe()
