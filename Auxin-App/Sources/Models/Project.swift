@@ -188,6 +188,7 @@ struct CommitMetadata: Codable {
     // Media attachments
     let thumbnailPath: String?
     let bouncePath: String?
+    let screenshotPath: String?
 
     /// Default initializer with all optional parameters
     init(bpm: Double? = nil, sampleRate: Int? = nil, keySignature: String? = nil, timeSignature: String? = nil,
@@ -195,7 +196,7 @@ struct CommitMetadata: Codable {
          sceneCount: Int? = nil, objectCount: Int? = nil, materialCount: Int? = nil,
          renderEngine: String? = nil, resolution: String? = nil, fps: Int? = nil, frameRange: String? = nil,
          tags: [String]? = nil, fileSizeBytes: Int? = nil,
-         thumbnailPath: String? = nil, bouncePath: String? = nil) {
+         thumbnailPath: String? = nil, bouncePath: String? = nil, screenshotPath: String? = nil) {
         self.bpm = bpm
         self.sampleRate = sampleRate
         self.keySignature = keySignature
@@ -215,6 +216,7 @@ struct CommitMetadata: Codable {
         self.fileSizeBytes = fileSizeBytes
         self.thumbnailPath = thumbnailPath
         self.bouncePath = bouncePath
+        self.screenshotPath = screenshotPath
     }
 
     /// Initialize with Logic Pro metadata

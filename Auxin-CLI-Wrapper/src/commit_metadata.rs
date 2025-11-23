@@ -74,6 +74,10 @@ pub struct CommitMetadata {
     /// Path to bounce audio file relative to .auxin/bounces/
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bounce_path: Option<String>,
+
+    /// Path to screenshot image relative to .auxin/screenshots/
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub screenshot_path: Option<String>,
 }
 
 impl CommitMetadata {
@@ -111,6 +115,7 @@ impl CommitMetadata {
             timestamp: None,
             thumbnail_path: None,
             bounce_path: None,
+            screenshot_path: None,
         }
     }
 
@@ -228,6 +233,18 @@ impl CommitMetadata {
     /// * `path` - Path to bounce file relative to .auxin/bounces/
     pub fn with_bounce(mut self, path: impl Into<String>) -> Self {
         self.bounce_path = Some(path.into());
+        self
+    }
+
+    /// Sets the screenshot path
+    ///
+    /// Builder pattern method that consumes and returns self.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - Path to screenshot file relative to .auxin/screenshots/
+    pub fn with_screenshot(mut self, path: impl Into<String>) -> Self {
+        self.screenshot_path = Some(path.into());
         self
     }
 

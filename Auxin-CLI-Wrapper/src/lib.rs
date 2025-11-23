@@ -34,6 +34,7 @@ pub mod oxen_backend;
 pub mod oxen_ops;
 pub mod progress;
 pub mod remote_lock;
+pub mod screenshot;
 pub mod search;
 pub mod server_client;
 pub mod sketchup_metadata;
@@ -89,6 +90,7 @@ pub use auxin_oxen::{
     OxenSubprocess, StatusInfo,
 };
 pub use remote_lock::{RemoteLock, RemoteLockManager};
+pub use screenshot::{ScreenshotManager, ScreenshotMetadata};
 pub use server_client::{
     AuxinServerClient, LockHolder, LockInfo, LogicProMetadata as ServerMetadata, ServerConfig,
 };
