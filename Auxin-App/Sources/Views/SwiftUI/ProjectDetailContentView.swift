@@ -230,53 +230,20 @@ struct CommitRowView: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            // Screenshot or Thumbnail (screenshot takes priority)
-            if let metadata = commit.metadata {
-                if let screenshotPath = metadata.screenshotPath {
-                    let fullPath = project.path + "/.auxin/screenshots/" + screenshotPath
-                    if let nsImage = NSImage(contentsOfFile: fullPath) {
-                        Image(nsImage: nsImage)
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(width: 80, height: 60)
-                            .clipShape(RoundedRectangle(cornerRadius: 6))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 6)
-                                    .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
-                            )
-                    } else if let thumbnailPath = metadata.thumbnailPath {
-                        let thumbnailFullPath = project.path + "/.auxin/thumbnails/" + thumbnailPath
-                        if let nsImage = NSImage(contentsOfFile: thumbnailFullPath) {
-                            Image(nsImage: nsImage)
-                                .resizable()
-                                .aspectRatio(contentMode: .fill)
-                                .frame(width: 80, height: 60)
-                                .clipShape(RoundedRectangle(cornerRadius: 6))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 6)
-                                        .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
-                                )
-                        } else {
-                            placeholderThumbnail
-                        }
-                    } else {
-                        placeholderThumbnail
-                    }
-                } else if let thumbnailPath = metadata.thumbnailPath {
-                    let fullPath = project.path + "/.auxin/thumbnails/" + thumbnailPath
-                    if let nsImage = NSImage(contentsOfFile: fullPath) {
-                        Image(nsImage: nsImage)
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(width: 80, height: 60)
-                            .clipShape(RoundedRectangle(cornerRadius: 6))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 6)
-                                    .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
-                            )
-                    } else {
-                        placeholderThumbnail
-                    }
+            // Thumbnail (from Logic Pro WindowImage.jpg)
+            if let metadata = commit.metadata,
+               let thumbnailPath = metadata.thumbnailPath {
+                let fullPath = project.path + "/.auxin/thumbnails/" + thumbnailPath
+                if let nsImage = NSImage(contentsOfFile: fullPath) {
+                    Image(nsImage: nsImage)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 80, height: 60)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 6)
+                                .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
+                        )
                 } else {
                     placeholderThumbnail
                 }
