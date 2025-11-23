@@ -6,6 +6,7 @@ use tracing::info;
 use auxin_config::Config;
 use auxin_server::api;
 use auxin_server::auth::{self, AuthService};
+use auxin_server::repo_access::RepoAccessService;
 use auxin_server::websocket::{ws_handler, WsHub};
 
 #[cfg(feature = "web-ui")]
@@ -38,6 +39,10 @@ async fn main() -> std::io::Result<()> {
     // Initialize auth service
     let auth_service = AuthService::new(config.clone());
     info!("Auth service initialized");
+
+    // Initialize repository access control service
+    let repo_access_service = RepoAccessService::new(config.clone());
+    info!("Repository access service initialized");
 
     // Initialize WebSocket hub
     let ws_hub = WsHub::new();
@@ -81,6 +86,7 @@ async fn main() -> std::io::Result<()> {
         let mut app = App::new()
             .app_data(web::Data::new(config.clone()))
             .app_data(web::Data::new(auth_service.clone()))
+            .app_data(web::Data::new(repo_access_service.clone()))
             .app_data(web::Data::new(ws_hub.clone()));
 
         // Add database pool if available
@@ -222,6 +228,19 @@ async fn main() -> std::io::Result<()> {
             .route(
                 "/api/repos/{namespace}/{name}/bounces/{commit}",
                 web::delete().to(api::delete_bounce),
+            )
+            // Repository access control endpoints
+            .route(
+                "/api/repos/{namespace}/{name}/access/grant",
+                web::post().to(api::grant_access),
+            )
+            .route(
+                "/api/repos/{namespace}/{name}/access/revoke",
+                web::post().to(api::revoke_access),
+            )
+            .route(
+                "/api/repos/{namespace}/{name}/access",
+                web::get().to(api::list_access),
             );
 
         // Serve frontend static files if available

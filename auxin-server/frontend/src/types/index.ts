@@ -57,10 +57,13 @@ export interface FileEntry {
 }
 
 // Auth types
+export type UserRole = 'admin' | 'producer' | 'client';
+
 export interface User {
   id: string;
   username: string;
   email: string;
+  role: UserRole;
 }
 
 export interface AuthResponse {
@@ -86,4 +89,21 @@ export interface PushRequest {
 export interface PullResponse {
   commits: Commit[];
   branch: string;
+}
+
+// Bounce types
+export type AudioFormat = 'wav' | 'aiff' | 'mp3' | 'flac' | 'm4a';
+
+export interface BounceMetadata {
+  commit_id: string;
+  original_filename: string;
+  format: AudioFormat;
+  size_bytes: number;
+  duration_secs?: number;
+  sample_rate?: number;
+  bit_depth?: number;
+  channels?: number;
+  added_at: string;
+  added_by: string;
+  description?: string;
 }

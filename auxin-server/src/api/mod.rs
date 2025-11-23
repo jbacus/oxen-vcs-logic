@@ -1,3 +1,4 @@
+mod access_ops;
 mod bounce_ops;
 mod project_ops;
 mod repo_ops;
@@ -22,6 +23,8 @@ pub use repo_ops::{
 };
 
 pub use bounce_ops::{delete_bounce, get_bounce, get_bounce_audio, list_bounces, upload_bounce};
+
+pub use access_ops::{grant_access, list_access, revoke_access};
 
 // File-based collaborator management (default)
 #[cfg(not(feature = "web-ui"))]
