@@ -13,6 +13,7 @@ import type {
   User,
   Activity,
   FileEntry,
+  BounceMetadata,
 } from '@/types';
 
 const api = axios.create({
@@ -157,5 +158,15 @@ export const getBranches = listBranches;
 // Delete branch
 export const deleteBranch = (namespace: string, name: string, branch: string) =>
   api.delete(`/repos/${namespace}/${name}/branches/${branch}`);
+
+// Bounce endpoints (Auxin extension)
+export const listBounces = (namespace: string, name: string) =>
+  api.get<BounceMetadata[]>(`/repos/${namespace}/${name}/bounces`);
+
+export const getBounce = (namespace: string, name: string, commitId: string) =>
+  api.get<BounceMetadata>(`/repos/${namespace}/${name}/bounces/${commitId}`);
+
+export const getBounceAudioUrl = (namespace: string, name: string, commitId: string) =>
+  `/api/repos/${namespace}/${name}/bounces/${commitId}/audio`;
 
 export default api;

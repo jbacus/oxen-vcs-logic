@@ -691,7 +691,7 @@ pub async fn fetch_repository(
     ProjectAuth::require_write(&repo_path, &user_id)?;
 
     let repo = RepositoryOps::open(&repo_path)?;
-    repo.fetch(Some(remote.as_str()))?;
+    repo.fetch(remote.as_str())?;
 
     Ok(HttpResponse::Ok().json(serde_json::json!({
         "status": "success",

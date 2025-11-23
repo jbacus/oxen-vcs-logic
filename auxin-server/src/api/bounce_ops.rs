@@ -13,7 +13,9 @@ use std::path::PathBuf;
 use tracing::{error, info};
 
 use auxin_config::Config;
+use crate::auth::{get_user_id_from_request, require_role, AuthService, UserRole};
 use crate::error::{AppError, AppResult};
+use crate::repo_access::RepoAccessService;
 
 /// Supported audio formats
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -110,13 +112,31 @@ fn get_bounces_dir(config: &Config, namespace: &str, repo_name: &str) -> PathBuf
 }
 
 /// List all bounces for a repository with optional filtering
+/// Requires authentication and read access to repository
 pub async fn list_bounces(
     config: web::Data<Config>,
     path: web::Path<(String, String)>,
     query: web::Query<BounceQuery>,
+    auth_service: web::Data<AuthService>,
+    repo_access: web::Data<RepoAccessService>,
+    req: actix_web::HttpRequest,
 ) -> AppResult<HttpResponse> {
     let (namespace, repo_name) = path.into_inner();
-    info!("Listing bounces for {}/{}", namespace, repo_name);
+
+    // Require authentication with at least Client role
+    let user = require_role(&req, &auth_service, UserRole::Client)?;
+
+    // Check repository access
+    if !repo_access.has_access(&namespace, &repo_name, &user.id, user.role)? {
+        return Err(AppError::Forbidden(
+            "You do not have access to this repository".to_string(),
+        ));
+    }
+
+    info!(
+        "User {} listing bounces for {}/{}",
+        user.username, namespace, repo_name
+    );
 
     let bounces_dir = get_bounces_dir(&config, &namespace, &repo_name);
 
@@ -225,14 +245,29 @@ pub async fn list_bounces(
 }
 
 /// Get bounce metadata for a specific commit
+/// Requires authentication and read access to repository
 pub async fn get_bounce(
     config: web::Data<Config>,
     path: web::Path<(String, String, String)>,
+    auth_service: web::Data<AuthService>,
+    repo_access: web::Data<RepoAccessService>,
+    req: actix_web::HttpRequest,
 ) -> AppResult<HttpResponse> {
     let (namespace, repo_name, commit_id) = path.into_inner();
+
+    // Require authentication with at least Client role
+    let user = require_role(&req, &auth_service, UserRole::Client)?;
+
+    // Check repository access
+    if !repo_access.has_access(&namespace, &repo_name, &user.id, user.role)? {
+        return Err(AppError::Forbidden(
+            "You do not have access to this repository".to_string(),
+        ));
+    }
+
     info!(
-        "Getting bounce for {}/{} commit {}",
-        namespace, repo_name, commit_id
+        "User {} getting bounce for {}/{} commit {}",
+        user.username, namespace, repo_name, commit_id
     );
 
     let bounces_dir = get_bounces_dir(&config, &namespace, &repo_name);
@@ -255,14 +290,29 @@ pub async fn get_bounce(
 }
 
 /// Get bounce audio file for streaming
+/// Requires authentication and read access to repository
 pub async fn get_bounce_audio(
     config: web::Data<Config>,
     path: web::Path<(String, String, String)>,
+    auth_service: web::Data<AuthService>,
+    repo_access: web::Data<RepoAccessService>,
+    req: actix_web::HttpRequest,
 ) -> AppResult<HttpResponse> {
     let (namespace, repo_name, commit_id) = path.into_inner();
+
+    // Require authentication with at least Client role
+    let user = require_role(&req, &auth_service, UserRole::Client)?;
+
+    // Check repository access
+    if !repo_access.has_access(&namespace, &repo_name, &user.id, user.role)? {
+        return Err(AppError::Forbidden(
+            "You do not have access to this repository".to_string(),
+        ));
+    }
+
     info!(
-        "Getting bounce audio for {}/{} commit {}",
-        namespace, repo_name, commit_id
+        "User {} getting bounce audio for {}/{} commit {}",
+        user.username, namespace, repo_name, commit_id
     );
 
     let bounces_dir = get_bounces_dir(&config, &namespace, &repo_name);
@@ -300,15 +350,22 @@ pub async fn get_bounce_audio(
 }
 
 /// Upload a bounce file for a commit
+/// Requires Producer or Admin role
 pub async fn upload_bounce(
     config: web::Data<Config>,
     path: web::Path<(String, String, String)>,
     mut payload: Multipart,
+    auth_service: web::Data<AuthService>,
+    req: actix_web::HttpRequest,
 ) -> AppResult<HttpResponse> {
     let (namespace, repo_name, commit_id) = path.into_inner();
+
+    // Require Producer or Admin role
+    let user = require_role(&req, &auth_service, UserRole::Producer)?;
+
     info!(
-        "Uploading bounce for {}/{} commit {}",
-        namespace, repo_name, commit_id
+        "User {} uploading bounce for {}/{} commit {}",
+        user.username, namespace, repo_name, commit_id
     );
 
     let bounces_dir = get_bounces_dir(&config, &namespace, &repo_name);
@@ -388,7 +445,7 @@ pub async fn upload_bounce(
         bit_depth: None,
         channels: None,
         added_at: Utc::now(),
-        added_by: "api".to_string(), // Could get from auth
+        added_by: user.username.clone(),
         description,
     };
 
@@ -404,14 +461,21 @@ pub async fn upload_bounce(
 }
 
 /// Delete a bounce
+/// Requires Producer or Admin role
 pub async fn delete_bounce(
     config: web::Data<Config>,
     path: web::Path<(String, String, String)>,
+    auth_service: web::Data<AuthService>,
+    req: actix_web::HttpRequest,
 ) -> AppResult<HttpResponse> {
     let (namespace, repo_name, commit_id) = path.into_inner();
+
+    // Require Producer or Admin role
+    let user = require_role(&req, &auth_service, UserRole::Producer)?;
+
     info!(
-        "Deleting bounce for {}/{} commit {}",
-        namespace, repo_name, commit_id
+        "User {} deleting bounce for {}/{} commit {}",
+        user.username, namespace, repo_name, commit_id
     );
 
     let bounces_dir = get_bounces_dir(&config, &namespace, &repo_name);

@@ -13,6 +13,41 @@ use tracing::info;
 use auxin_config::Config;
 use crate::error::{AppError, AppResult};
 
+/// User role for access control
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum UserRole {
+    /// Full system access
+    Admin,
+    /// Can create repos, push/pull, upload bounces, acquire locks
+    Producer,
+    /// Read-only access to bounces in repos they're invited to
+    Client,
+}
+
+impl Default for UserRole {
+    fn default() -> Self {
+        UserRole::Producer
+    }
+}
+
+impl UserRole {
+    /// Check if role can write to repositories
+    pub fn can_write(&self) -> bool {
+        matches!(self, UserRole::Admin | UserRole::Producer)
+    }
+
+    /// Check if role can manage users and permissions
+    pub fn can_manage_users(&self) -> bool {
+        matches!(self, UserRole::Admin)
+    }
+
+    /// Check if role can upload/delete bounces
+    pub fn can_manage_bounces(&self) -> bool {
+        matches!(self, UserRole::Admin | UserRole::Producer)
+    }
+}
+
 /// User account stored in JSON file
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct User {
@@ -21,6 +56,8 @@ pub struct User {
     pub email: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub password_hash: Option<String>,
+    #[serde(default)]
+    pub role: UserRole,
     pub created_at: chrono::DateTime<Utc>,
 }
 
@@ -30,6 +67,7 @@ pub struct UserResponse {
     pub id: String,
     pub username: String,
     pub email: String,
+    pub role: UserRole,
     pub created_at: chrono::DateTime<Utc>,
 }
 
@@ -39,6 +77,7 @@ impl From<User> for UserResponse {
             id: user.id,
             username: user.username,
             email: user.email,
+            role: user.role,
             created_at: user.created_at,
         }
     }
@@ -68,6 +107,8 @@ pub struct RegisterRequest {
     pub username: String,
     pub email: String,
     pub password: String,
+    #[serde(default)]
+    pub role: Option<UserRole>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -157,7 +198,7 @@ impl AuthService {
     }
 
     /// Register a new user
-    pub fn register(&self, username: &str, email: &str, password: &str) -> AppResult<User> {
+    pub fn register(&self, username: &str, email: &str, password: &str, role: Option<UserRole>) -> AppResult<User> {
         // Validate input
         if username.len() < 3 {
             return Err(AppError::BadRequest(
@@ -200,6 +241,7 @@ impl AuthService {
             username: username.to_string(),
             email: email.to_string(),
             password_hash: Some(password_hash),
+            role: role.unwrap_or_default(),
             created_at: Utc::now(),
         };
 
@@ -350,7 +392,7 @@ pub async fn register(
     auth_service: web::Data<AuthService>,
     body: web::Json<RegisterRequest>,
 ) -> Result<HttpResponse, AppError> {
-    let user = auth_service.register(&body.username, &body.email, &body.password)?;
+    let user = auth_service.register(&body.username, &body.email, &body.password, body.role)?;
     let token = auth_service.generate_token(&user.id, &user.username)?;
 
     Ok(HttpResponse::Created().json(AuthResponse {
@@ -468,6 +510,52 @@ pub fn get_optional_user_id_from_request(
     auth_service.get_user_by_token(token).ok().map(|u| u.id)
 }
 
+/// Get user role from HTTP request
+pub fn get_user_role_from_request(
+    req: &actix_web::HttpRequest,
+    auth_service: &AuthService,
+) -> AppResult<UserRole> {
+    let token = req
+        .headers()
+        .get("Authorization")
+        .and_then(|h| h.to_str().ok())
+        .and_then(|s| s.strip_prefix("Bearer "))
+        .ok_or_else(|| AppError::Unauthorized("No authorization token".to_string()))?;
+
+    let user = auth_service.get_user_by_token(token)?;
+    Ok(user.role)
+}
+
+/// Check if user has required role
+pub fn require_role(
+    req: &actix_web::HttpRequest,
+    auth_service: &AuthService,
+    required_role: UserRole,
+) -> AppResult<User> {
+    let token = req
+        .headers()
+        .get("Authorization")
+        .and_then(|h| h.to_str().ok())
+        .and_then(|s| s.strip_prefix("Bearer "))
+        .ok_or_else(|| AppError::Unauthorized("No authorization token".to_string()))?;
+
+    let user = auth_service.get_user_by_token(token)?;
+
+    match (user.role, required_role) {
+        // Admin can do anything
+        (UserRole::Admin, _) => Ok(user),
+        // Exact role match
+        (role, req_role) if role == req_role => Ok(user),
+        // Producer can do what Client can
+        (UserRole::Producer, UserRole::Client) => Ok(user),
+        // Otherwise unauthorized
+        _ => Err(AppError::Unauthorized(format!(
+            "This action requires {:?} role or higher",
+            required_role
+        ))),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -484,11 +572,12 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let auth = AuthService::new(test_config_with_dir(&temp_dir));
         let user = auth
-            .register("testuser", "test@example.com", "password123")
+            .register("testuser", "test@example.com", "password123", None)
             .unwrap();
 
         assert_eq!(user.username, "testuser");
         assert_eq!(user.email, "test@example.com");
+        assert_eq!(user.role, UserRole::Producer); // Default role
         assert!(user.password_hash.is_some());
     }
 
@@ -496,10 +585,10 @@ mod tests {
     fn test_register_duplicate_email() {
         let temp_dir = TempDir::new().unwrap();
         let auth = AuthService::new(test_config_with_dir(&temp_dir));
-        auth.register("user1", "test@example.com", "password123")
+        auth.register("user1", "test@example.com", "password123", None)
             .unwrap();
 
-        let result = auth.register("user2", "test@example.com", "password456");
+        let result = auth.register("user2", "test@example.com", "password456", None);
         assert!(result.is_err());
     }
 
@@ -507,15 +596,26 @@ mod tests {
     fn test_register_short_password() {
         let temp_dir = TempDir::new().unwrap();
         let auth = AuthService::new(test_config_with_dir(&temp_dir));
-        let result = auth.register("testuser", "test@example.com", "short");
+        let result = auth.register("testuser", "test@example.com", "short", None);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_register_client_role() {
+        let temp_dir = TempDir::new().unwrap();
+        let auth = AuthService::new(test_config_with_dir(&temp_dir));
+        let user = auth
+            .register("client", "client@example.com", "password123", Some(UserRole::Client))
+            .unwrap();
+
+        assert_eq!(user.role, UserRole::Client);
     }
 
     #[test]
     fn test_login() {
         let temp_dir = TempDir::new().unwrap();
         let auth = AuthService::new(test_config_with_dir(&temp_dir));
-        auth.register("testuser", "test@example.com", "password123")
+        auth.register("testuser", "test@example.com", "password123", None)
             .unwrap();
 
         let (token, user) = auth.login("test@example.com", "password123").unwrap();
@@ -527,7 +627,7 @@ mod tests {
     fn test_login_wrong_password() {
         let temp_dir = TempDir::new().unwrap();
         let auth = AuthService::new(test_config_with_dir(&temp_dir));
-        auth.register("testuser", "test@example.com", "password123")
+        auth.register("testuser", "test@example.com", "password123", None)
             .unwrap();
 
         let result = auth.login("test@example.com", "wrongpassword");
@@ -539,7 +639,7 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let auth = AuthService::new(test_config_with_dir(&temp_dir));
         let registered = auth
-            .register("testuser", "test@example.com", "password123")
+            .register("testuser", "test@example.com", "password123", None)
             .unwrap();
 
         let (token, _) = auth.login("test@example.com", "password123").unwrap();
