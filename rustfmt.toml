@@ -1,0 +1,97 @@
+# Auxin Rust Formatting Configuration
+# This file defines the code style for all Rust code in this project.
+# See https://rust-lang.github.io/rustfmt/ for full documentation.
+
+# Edition and version
+edition = "2021"
+
+# Maximum line width
+max_width = 100
+
+# Use tabs or spaces
+hard_tabs = false
+tab_spaces = 4
+
+# Imports formatting
+imports_granularity = "Crate"
+imports_layout = "Mixed"
+group_imports = "StdExternalCrate"
+reorder_imports = true
+
+# Function formatting
+fn_params_layout = "Tall"
+fn_single_line = false
+
+# Control flow formatting
+match_arm_blocks = true
+match_block_trailing_comma = true
+overflow_delimited_expr = true
+
+# Comment formatting
+wrap_comments = true
+comment_width = 80
+normalize_comments = true
+normalize_doc_attributes = true
+
+# String formatting
+format_strings = true
+
+# Struct formatting
+struct_field_align_threshold = 0
+
+# Use field init shorthand
+use_field_init_shorthand = true
+
+# Use try shorthand
+use_try_shorthand = true
+
+# Newline style
+newline_style = "Unix"
+
+# Trailing comma
+trailing_comma = "Vertical"
+trailing_semicolon = true
+
+# Where clause formatting
+where_single_line = false
+
+# Blank lines
+blank_lines_upper_bound = 1
+blank_lines_lower_bound = 0
+
+# Chain formatting
+chain_width = 60
+chains_overflow_last = true
+
+# Macro formatting
+format_macro_matchers = true
+format_macro_bodies = true
+
+# Code generation formatting
+format_generated_files = true
+
+# Remove nested parens
+remove_nested_parens = true
+
+# Reorder module declarations
+reorder_impl_items = true
+
+# Space handling
+space_after_colon = true
+space_before_colon = false
+spaces_around_ranges = false
+
+# Empty item positioning
+empty_item_single_line = true
+
+# Enum variant width threshold
+enum_discrim_align_threshold = 0
+
+# Type complexity
+type_punctuation_density = "Wide"
+
+# Merge derives
+merge_derives = true
+
+# Conditional compilation
+condense_wildcard_suffixes = true

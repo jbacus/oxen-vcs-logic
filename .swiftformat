@@ -1,0 +1,117 @@
+# Auxin Swift Formatting Configuration
+# This file defines the code style for all Swift code in this project.
+# See https://github.com/nicklockwood/SwiftFormat for full documentation.
+
+# File options
+--swiftversion 5.9
+
+# Indentation
+--indent 4
+--tabwidth 4
+--indentcase false
+--ifdef indent
+--xcodeindentation enabled
+
+# Line length
+--maxwidth 120
+
+# Wrapping
+--wraparguments before-first
+--wrapparameters before-first
+--wrapcollections before-first
+--wrapreturntype preserve
+--closingparen balanced
+--wrapternary default
+
+# Spacing
+--trimwhitespace always
+--nospaceoperators ...,..<
+--ranges spaced
+--operatorfunc spaced
+
+# Commas
+--commas always
+
+# Semicolons
+--semicolons never
+
+# Line breaks
+--linebreaks lf
+--elseposition same-line
+--guardelse auto
+
+# Parentheses
+--redundantparens infer
+
+# Closures
+--trailingclosures
+--nevertrailing
+
+# Headers
+--header strip
+
+# Imports
+--importgrouping testable-bottom
+
+# Marks
+--marktypes always
+--markextensions always
+--extensionmark "MARK: - %t + %c"
+--groupedextension "MARK: %c"
+
+# Type inference
+--self insert
+--selfrequired
+--shortoptionals always
+--redundanttype inferred
+
+# Void
+--voidtype void
+
+# Organization
+--organizetypes actor,class,enum,struct
+--structthreshold 0
+--classtypes always
+--enumthreshold 0
+
+# Other formatting
+--empty void
+--exponentcase lowercase
+--fractiongrouping disabled
+--decimalgrouping 3,6
+--binarygrouping 4,8
+--octalgrouping 4,8
+--hexgrouping 4,8
+--hexliteralcase uppercase
+--patternlet inline
+--stripunusedargs always
+--yodaswap always
+
+# Rules to enable
+--enable \
+    blankLineAfterImports,\
+    blankLinesAroundMark,\
+    blankLinesAtEndOfScope,\
+    blankLinesAtStartOfScope,\
+    blankLinesBetweenScopes,\
+    consecutiveBlankLines,\
+    duplicateImports,\
+    isEmpty,\
+    organizeDeclarations,\
+    sortImports,\
+    sortedSwitchCases,\
+    unusedArguments,\
+    wrapMultilineStatementBraces
+
+# Rules to disable
+--disable \
+    andOperator,\
+    acronyms
+
+# Excluded paths
+--exclude \
+    .build,\
+    .swiftpm,\
+    DerivedData,\
+    **/Generated,\
+    **/*.generated.swift
