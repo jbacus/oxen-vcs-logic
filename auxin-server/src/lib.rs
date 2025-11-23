@@ -6,6 +6,7 @@ pub mod auth;
 pub mod error;
 pub mod extensions;
 pub mod project;
+pub mod repo_access;
 pub mod websocket;
 
 #[cfg(feature = "web-ui")]

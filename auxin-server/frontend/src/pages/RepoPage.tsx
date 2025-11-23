@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, GitBranch, Terminal, Download, Trash2, AlertTriangle, FolderTree, Lock } from 'lucide-react';
+import { ArrowLeft, GitBranch, Terminal, Download, Trash2, AlertTriangle, FolderTree, Lock, Music } from 'lucide-react';
 import { CommitList } from '@/components/commits/CommitList';
 import { MetadataViewer } from '@/components/metadata/MetadataViewer';
 import { LockManager } from '@/components/locks/LockManager';
@@ -9,6 +9,7 @@ import { CloneInstructions } from '@/components/repos/CloneInstructions';
 import { ActivityFeed } from '@/components/activity/ActivityFeed';
 import { FileBrowser } from '@/components/files/FileBrowser';
 import { BranchManager } from '@/components/branches/BranchManager';
+import { BouncePlayer } from '@/components/bounces/BouncePlayer';
 import { Loading } from '@/components/common/Loading';
 import { ErrorMessage } from '@/components/common/ErrorMessage';
 import {
@@ -22,7 +23,7 @@ import {
   deleteRepository,
 } from '@/services/api';
 
-type TabType = 'commits' | 'locks' | 'metadata' | 'clone' | 'files' | 'branches';
+type TabType = 'commits' | 'locks' | 'metadata' | 'clone' | 'files' | 'branches' | 'bounces';
 
 export function RepoPage() {
   const { namespace, name } = useParams<{ namespace: string; name: string }>();
@@ -120,6 +121,7 @@ export function RepoPage() {
     { id: 'commits', label: 'Commits', icon: GitBranch },
     { id: 'branches', label: 'Branches', icon: GitBranch },
     { id: 'files', label: 'Files', icon: FolderTree },
+    { id: 'bounces', label: 'Bounces', icon: Music },
     { id: 'locks', label: 'Locks', icon: Lock },
     { id: 'metadata', label: 'Metadata', icon: Terminal },
   ];
@@ -230,6 +232,12 @@ export function RepoPage() {
                 </p>
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === 'bounces' && (
+          <div role="tabpanel" id="bounces-panel" aria-labelledby="bounces-tab">
+            <BouncePlayer namespace={namespace} name={name} />
           </div>
         )}
 
