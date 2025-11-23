@@ -140,6 +140,13 @@ jobs:
     - name: Select Xcode version
       run: sudo xcode-select -s /Applications/Xcode_15.2.app/Contents/Developer
 
+    - name: Install SwiftFormat
+      run: brew install swiftformat
+
+    - name: Check formatting
+      working-directory: ./Auxin-LaunchAgent
+      run: swiftformat --lint --config ../.swiftformat .
+
     - name: Cache Swift dependencies
       uses: actions/cache@v4
       with:
@@ -179,6 +186,13 @@ jobs:
 
     - name: Select Xcode version
       run: sudo xcode-select -s /Applications/Xcode_15.2.app/Contents/Developer
+
+    - name: Install SwiftFormat
+      run: brew install swiftformat
+
+    - name: Check formatting
+      working-directory: ./Auxin-App
+      run: swiftformat --lint --config ../.swiftformat .
 
     - name: Cache Swift dependencies
       uses: actions/cache@v4
