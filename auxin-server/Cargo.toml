@@ -45,7 +45,7 @@ dotenvy = "0.15"
 bcrypt = "0.15"
 
 # Optional: Redis for distributed locks
-redis = { version = "0.24", features = ["tokio-comp"], optional = true }
+redis = { version = "0.32", features = ["tokio-comp"], optional = true }
 
 # Optional: SQLite/PostgreSQL for web UI metadata cache
 sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "postgres", "sqlite", "uuid", "chrono", "json"], optional = true }
